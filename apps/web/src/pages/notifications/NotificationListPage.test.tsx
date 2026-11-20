@@ -35,9 +35,23 @@ vi.mock('../../components/layout/NotificationItem.tsx', () => ({
 }));
 
 vi.mock('../../components/recipe-list/index.ts', () => ({
-  PaginationControls: ({ page, totalPages }: { page: number; totalPages: number }) => (
+  PaginationControls: ({
+    page,
+    totalPages,
+    onPageChange,
+  }: {
+    page: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+  }) => (
     <nav data-testid="pagination">
       page {page}/{totalPages}
+      <button type="button" onClick={() => onPageChange(page - 1)}>
+        Previous
+      </button>
+      <button type="button" onClick={() => onPageChange(page + 1)}>
+        Next
+      </button>
     </nav>
   ),
 }));
@@ -235,5 +249,63 @@ describe('NotificationListPage loader — auth guard', () => {
     expect((thrown as Response).headers.get('Location')).toBe(
       '/login?next=%2Fnotifications%3FunreadOnly%3Dtrue',
     );
+  });
+});
+
+describe('NotificationListPage — canonical URL state', () => {
+  /** Renders the page at `entry` and returns the memory router. */
+  function renderAt(entry: string) {
+    mockUseTranslation.mockReturnValue({
+      locale: 'en',
+      setLocale: vi.fn(),
+      t: (key: string) => enMap[key] ?? key,
+      availableLocales: ['en', 'tr'],
+    });
+    const router = createMemoryRouter(
+      [{ path: '/notifications', element: <NotificationListPage />, loader }],
+      { initialEntries: [entry] },
+    );
+    render(<RouterProvider router={router} />);
+    return router;
+  }
+
+  it('switching to All drops both unreadOnly and page from the URL', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue(makeResponse([makeNotification()], 4, 3));
+    const router = renderAt('/notifications?unreadOnly=true&page=3');
+    await waitFor(() => expect(screen.getAllByTestId('notif-item')).toHaveLength(1));
+    expect(mockList).toHaveBeenCalledWith(3, true);
+
+    await user.click(screen.getByRole('button', { name: 'All' }));
+
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+    await waitFor(() => expect(mockList).toHaveBeenLastCalledWith(1, false));
+  });
+
+  it('paging keeps the filter and omits page 1', async () => {
+    const user = userEvent.setup();
+    mockList.mockImplementation(async (page: number) =>
+      makeResponse([makeNotification()], 3, page),
+    );
+    const router = renderAt('/notifications?unreadOnly=true&page=2');
+    await screen.findByText('page 2/3');
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() => expect(router.state.location.search).toBe('?unreadOnly=true&page=3'));
+    await screen.findByText('page 3/3');
+
+    await user.click(screen.getByRole('button', { name: 'Previous' }));
+    await waitFor(() => expect(router.state.location.search).toBe('?unreadOnly=true&page=2'));
+    await screen.findByText('page 2/3');
+
+    await user.click(screen.getByRole('button', { name: 'Previous' }));
+    await waitFor(() => expect(router.state.location.search).toBe('?unreadOnly=true'));
+  });
+
+  it('normalises an invalid page to 1 without an error', async () => {
+    mockList.mockResolvedValue(makeResponse([makeNotification()]));
+    renderAt('/notifications?page=abc');
+    await waitFor(() => expect(screen.getAllByTestId('notif-item')).toHaveLength(1));
+    expect(mockList).toHaveBeenCalledWith(1, false);
   });
 });

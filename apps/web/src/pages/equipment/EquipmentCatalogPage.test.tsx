@@ -451,9 +451,10 @@ describe('EquipmentCatalogPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     expect(setSearchParams).toHaveBeenCalledTimes(1);
-    const [params, options] = setSearchParams.mock.calls[0];
+    // useListUrlState applies a functional updater to the current params.
+    const [updater] = setSearchParams.mock.calls[0];
+    const params = updater(new URLSearchParams({ page: '1' }));
     expect(params.get('page')).toBe('2');
-    expect(options).toEqual({ preventScrollReset: true });
   });
 
   it('navigates to previous page when Previous is clicked', async () => {
@@ -481,7 +482,8 @@ describe('EquipmentCatalogPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
 
     expect(setSearchParams).toHaveBeenCalledTimes(1);
-    const [params] = setSearchParams.mock.calls[0];
+    const [updater] = setSearchParams.mock.calls[0];
+    const params = updater(new URLSearchParams({ page: '3' }));
     expect(params.get('page')).toBe('2');
   });
 
@@ -543,5 +545,42 @@ describe('EquipmentCatalogPage', () => {
     const calls = mockSEOHead.mock.calls;
     const lastProps = calls[calls.length - 1][0] as { title?: string };
     expect(lastProps.title).toBe('Kahve Ekipmanları');
+  });
+});
+
+describe('EquipmentCatalogPage — shareable search (q, debounced replace)', () => {
+  beforeEach(() => {
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+  });
+
+  it('reads the q param and sends it to the API as search', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ q: 'Stagg' }));
+    render(<EquipmentCatalogPage />);
+
+    await waitFor(() =>
+      expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('search=Stagg')),
+    );
+    expect(
+      (screen.getByPlaceholderText('Search by brand, model, or name...') as HTMLInputElement).value,
+    ).toBe('Stagg');
+  });
+
+  it('commits typed text once, after the pause, replacing history and dropping legacy search and page', async () => {
+    const setSearchParams = vi.fn();
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ search: 'old', page: '3' }),
+      setSearchParams,
+    ]);
+    render(<EquipmentCatalogPage />);
+    const input = screen.getByPlaceholderText('Search by brand, model, or name...');
+
+    fireEvent.change(input, { target: { value: 'o' } });
+    fireEvent.change(input, { target: { value: 'Stagg' } });
+    expect(setSearchParams).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(setSearchParams).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    const [updater, options] = setSearchParams.mock.calls[0];
+    expect(options).toEqual({ replace: true, preventScrollReset: true });
+    expect(updater(new URLSearchParams({ search: 'old', page: '3' })).toString()).toBe('q=Stagg');
   });
 });

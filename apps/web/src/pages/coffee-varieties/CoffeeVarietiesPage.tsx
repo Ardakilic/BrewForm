@@ -1,6 +1,5 @@
 import type { CoffeeVarietyOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
 import { api } from '../../api/client.ts';
 import { CatalogEntityCard } from '../../components/catalog/CatalogEntityCard.tsx';
 import { CategoryTabs } from '../../components/catalog/CategoryTabs.tsx';
@@ -11,29 +10,33 @@ import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { CardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { useDebounce } from '../../hooks/useDebounce.ts';
+import { useDebouncedUrlText, useListUrlState } from '../../hooks/useListUrlState.ts';
+import { parseCoffeeVarietyCatalogParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('CoffeeVarietiesPage');
 
 /**
  * Public coffee-variety catalog with URL-driven pagination, category
- * tabs, and debounced search; cards link to variety detail pages.
+ * tabs, and debounced search; cards link to variety detail pages. All
+ * selections live in the URL (`page`, `category`, `q`; a legacy `search` link
+ * is still read): tabs push history, the search box commits after a 300 ms
+ * pause with `replace`, and page 1 is never written.
  */
 export function CoffeeVarietiesPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    state: { page, category, q: search },
+    setFilter,
+    setPage,
+    clearAll,
+  } = useListUrlState(parseCoffeeVarietyCatalogParams);
+  const searchInput = useDebouncedUrlText('q', { legacyKeys: ['search'] });
   const [varieties, setVarieties] = useState<CoffeeVarietyOutput[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const { t } = useTranslation();
-
-  const rawPage = Number(searchParams.get('page'));
-  const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
-  const category = searchParams.get('category') || '';
-  const search = searchParams.get('search') || '';
-  const debouncedSearch = useDebounce(search, 300);
 
   useEffect(() => {
     log.debug({}, 'CoffeeVarietiesPage mounted');
@@ -56,7 +59,7 @@ export function CoffeeVarietiesPage() {
     params.set('page', String(page));
     params.set('perPage', '12');
     if (category) params.set('category', category);
-    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (search) params.set('search', search);
 
     api
       .getWithMeta<{ data: CoffeeVarietyOutput[]; meta: { pagination?: { total: number } } }>(
@@ -72,20 +75,7 @@ export function CoffeeVarietiesPage() {
         setError(t('coffeeVarieties.error.load'));
       })
       .finally(() => setLoading(false));
-  }, [page, category, debouncedSearch, retryNonce]);
-
-  function updateFilter(key: string, value: string) {
-    const params = new URLSearchParams(searchParams);
-    if (value) {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
-    if (key !== 'page') {
-      params.delete('page');
-    }
-    setSearchParams(params, { preventScrollReset: true });
-  }
+  }, [page, category, search, retryNonce]);
 
   const hasActiveFilters = !!(category || search);
 
@@ -104,7 +94,7 @@ export function CoffeeVarietiesPage() {
       <CategoryTabs
         tabs={categoryButtons}
         active={category}
-        onSelect={(v) => updateFilter('category', v)}
+        onSelect={(v) => setFilter('category', v)}
       />
 
       {/* Search */}
@@ -112,8 +102,8 @@ export function CoffeeVarietiesPage() {
         <input
           type="text"
           placeholder={t('coffeeVarieties.searchPlaceholder')}
-          value={search}
-          onChange={(e) => updateFilter('search', e.target.value)}
+          value={searchInput.value}
+          onChange={(e) => searchInput.setValue(e.target.value)}
           className="input-field text-sm max-w-md"
         />
       </div>
@@ -124,11 +114,7 @@ export function CoffeeVarietiesPage() {
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {t('common.activeFilters')}
           </span>
-          <button
-            type="button"
-            onClick={() => setSearchParams({})}
-            className="btn-secondary text-sm"
-          >
+          <button type="button" onClick={clearAll} className="btn-secondary text-sm">
             {t('common.clearAll')}
           </button>
         </div>
@@ -146,9 +132,7 @@ export function CoffeeVarietiesPage() {
               setError(null);
               setLoading(true);
               setRetryNonce((n) => n + 1);
-              const params = new URLSearchParams(searchParams);
-              params.delete('page');
-              setSearchParams(params);
+              setPage(1);
             }}
             className="btn-primary"
           >
@@ -160,11 +144,7 @@ export function CoffeeVarietiesPage() {
           message={t('coffeeVarieties.empty')}
           action={
             hasActiveFilters ? (
-              <button
-                type="button"
-                onClick={() => setSearchParams({})}
-                className="btn-secondary text-sm"
-              >
+              <button type="button" onClick={clearAll} className="btn-secondary text-sm">
                 {t('common.clearSearch')}
               </button>
             ) : undefined
@@ -196,11 +176,7 @@ export function CoffeeVarietiesPage() {
           </div>
 
           {/* Pagination */}
-          <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            onPageChange={(p) => updateFilter('page', String(p))}
-          />
+          <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
     </div>

@@ -7,6 +7,8 @@ import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { EmptyState } from '../components/ui/EmptyState.tsx';
 import { LoadingState } from '../components/ui/LoadingState.tsx';
 import { useTranslation } from '../contexts/I18nContext.tsx';
+import { useDebouncedUrlText, useListUrlState } from '../hooks/useListUrlState.ts';
+import { parseTasteNotesParams } from '../utils/list-parsers.ts';
 import { createLogger } from '../utils/logger.ts';
 
 const log = createLogger('TasteNotesPage');
@@ -199,11 +201,16 @@ function DefinitionPopover({ definition, label }: { definition: string | null; l
 /**
  * Browsable SCAA flavor-wheel explorer: fetches the taste-note
  * hierarchy, supports search filtering, and shows definitions in
- * info popovers.
+ * info popovers. The search filter is shareable: the box commits `?q=` to
+ * the URL after a 300 ms pause (replacing the history entry), and the
+ * hierarchy is filtered by the committed URL value.
  */
 export function TasteNotesPage() {
   const [hierarchy, setHierarchy] = useState<TasteCategory[]>([]);
-  const [search, setSearch] = useState('');
+  const {
+    state: { q: search },
+  } = useListUrlState(parseTasteNotesParams);
+  const searchInput = useDebouncedUrlText('q');
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
 
@@ -274,8 +281,8 @@ export function TasteNotesPage() {
             type="text"
             className="input-field pl-10"
             placeholder={t('taste.searchPlaceholder')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput.value}
+            onChange={(e) => searchInput.setValue(e.target.value)}
           />
         </div>
       </div>

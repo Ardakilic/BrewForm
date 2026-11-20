@@ -221,49 +221,49 @@ How to use this task list
 
 ## 6. Security: rate limiting and cache driver (t2)
 
-- [ ] 6.1 Add `rate-limiter-flexible` pinned to exactly `11.5.0` in `apps/api/package.json` `dependencies`. Run `make install`, commit the updated `pnpm-lock.yaml`, and confirm `make check-api` still passes
-- [ ] 6.2 Add failing cases to `apps/api/src/config/env.test.ts`:
+- [x] 6.1 Add `rate-limiter-flexible` pinned to exactly `11.5.0` in `apps/api/package.json` `dependencies`. Run `make install`, commit the updated `pnpm-lock.yaml`, and confirm `make check-api` still passes
+- [x] 6.2 Add failing cases to `apps/api/src/config/env.test.ts`:
   - defaults: `TRUST_PROXY='none'`, `TRUST_PROXY_HOPS=1`, `RATE_LIMIT_ENABLED=true`, `RATE_LIMIT_STORE='memory'`, `RATE_LIMIT_GLOBAL_MAX=100`, `CACHE_MEMORY_MAX_ENTRIES=10000`
   - rejects `TRUST_PROXY=xff`, `TRUST_PROXY_HOPS=0` and `=6`, `TRUST_PROXY_CIDRS=10.0.0.0/33` and `=not-a-cidr`, `CACHE_MEMORY_MAX_ENTRIES=10`
   - accepts `TRUST_PROXY_CIDRS=10.0.0.0/8, 2001:db8::/32`
   - `RATE_LIMIT_STORE=redis` with `CACHE_ENABLED=false` and no `REDIS_URL` fails on `REDIS_URL`
-- [ ] 6.3 Extend `envSchema` in `apps/api/src/config/env.ts` with the seven variables:
+- [x] 6.3 Extend `envSchema` in `apps/api/src/config/env.ts` with the seven variables:
   - Validate CIDRs with `node:net` `isIP` plus a prefix-length check (≤32 for v4, ≤128 for v6), and expose `TRUST_PROXY_CIDRS` as a parsed `string[]`
   - Add the `RATE_LIMIT_STORE=redis` → `REDIS_URL` rule to the existing `superRefine`, independent of `CACHE_ENABLED`
   - Make the env tests pass, and keep the `api-env-config` empty-string-as-unset rule working for the new optional vars
-- [ ] 6.4 Write `apps/api/src/utils/client-ip/index.test.ts` first, covering every `api-rate-limiting` "Client IP is resolved…" scenario:
+- [x] 6.4 Write `apps/api/src/utils/client-ip/index.test.ts` first, covering every `api-rate-limiting` "Client IP is resolved…" scenario:
   - `none` ignores XFF and CF headers
   - `hops=1` and `hops=2` chain selection, including invalid XFF entries being dropped and a short chain clamping to the socket
   - `cloudflare` accepted only when the hop is in the Cloudflare ranges or `TRUST_PROXY_CIDRS`
   - IPv4-mapped normalisation, IPv6 zone stripping, and `rateLimitIpKey` /64 bucketing
   - no socket → `null`
   - a `fast-check` property: in `hops` mode, prepending arbitrary strings to XFF never changes the result
-- [ ] 6.5 Add `apps/api/src/utils/client-ip/cloudflare-ranges.ts` exporting `CLOUDFLARE_IPV4` and `CLOUDFLARE_IPV6` arrays copied from `https://www.cloudflare.com/ips-v4` and `/ips-v6`, with the source URL and fetch date in a header comment, plus a unit assertion that both lists are non-empty valid CIDRs
-- [ ] 6.6 Implement `apps/api/src/utils/client-ip/index.ts`, with a module logger `createLogger('client-ip')`, until the tests pass. It exports:
+- [x] 6.5 Add `apps/api/src/utils/client-ip/cloudflare-ranges.ts` exporting `CLOUDFLARE_IPV4` and `CLOUDFLARE_IPV6` arrays copied from `https://www.cloudflare.com/ips-v4` and `/ips-v6`, with the source URL and fetch date in a header comment, plus a unit assertion that both lists are non-empty valid CIDRs
+- [x] 6.6 Implement `apps/api/src/utils/client-ip/index.ts`, with a module logger `createLogger('client-ip')`, until the tests pass. It exports:
   - `getClientIp(c, trust = trustConfigFromEnv())`, reading the peer via `getConnInfo` from `@hono/node-server/conninfo` inside try/catch and returning `null` when absent
   - `normalizeIp(raw)`
   - `rateLimitIpKey(ip | null)`, which returns `'unknown'` for `null` and the `<prefix>::/64` form for IPv6
   - a lazily built `net.BlockList` for the Cloudflare ranges plus `TRUST_PROXY_CIDRS`
   - a process-level warn-once when XFF is present under `none`, with context `{}` and no header value
-- [ ] 6.7 Add `apps/api/src/utils/client-ip/test-helpers.ts` exporting `peerEnv(ip)`, which returns the `app.request()` env shape that `getConnInfo` reads (verify against the installed `@hono/node-server` 2.1.6 `conninfo` source). Add one test proving `getClientIp` returns that IP
+- [x] 6.7 Add `apps/api/src/utils/client-ip/test-helpers.ts` exporting `peerEnv(ip)`, which returns the `app.request()` env shape that `getConnInfo` reads (verify against the installed `@hono/node-server` 2.1.6 `conninfo` source). Add one test proving `getClientIp` returns that IP
 - [ ] 6.8 Write `apps/api/src/utils/redis/client.test.ts` asserting that `createRedisClient(url, { lazyConnect: true })` produces an ioredis instance whose `options` include `enableOfflineQueue: false`, `maxRetriesPerRequest: 1`, `commandTimeout: 500` and `connectTimeout: 2000`
 - [ ] 6.9 Implement `apps/api/src/utils/redis/client.ts` `createRedisClient(url, overrides?)` with those options and the default `retryStrategy`. Never log the URL. Log `error` events at most once per disconnect cycle with `{ err }`. Switch `createRedisProvider` in `apps/api/src/utils/cache/redis.ts` to use it, and update its docblock
-- [ ] 6.10 Create `apps/api/src/utils/rate-limit/policies.ts` with the `RateLimitPolicy` type (`id`, `dimension: 'ip' | 'email' | 'email-ip' | 'user'`, `points`, `durationSec`, `mode: 'count' | 'failures'`, `message`) and the frozen `POLICIES` map holding exactly the table from the `api-rate-limiting` spec (`global` reads `config.RATE_LIMIT_GLOBAL_MAX`). Add `policies.test.ts` asserting unique ids, positive integers, every value in the spec table, and that no login message is used by a non-login policy
-- [ ] 6.11 Write `apps/api/src/utils/rate-limit/backend.test.ts` first:
+- [x] 6.10 Create `apps/api/src/utils/rate-limit/policies.ts` with the `RateLimitPolicy` type (`id`, `dimension: 'ip' | 'email' | 'email-ip' | 'user'`, `points`, `durationSec`, `mode: 'count' | 'failures'`, `message`) and the frozen `POLICIES` map holding exactly the table from the `api-rate-limiting` spec (`global` reads `config.RATE_LIMIT_GLOBAL_MAX`). Add `policies.test.ts` asserting unique ids, positive integers, every value in the spec table, and that no login message is used by a non-login policy
+- [x] 6.11 Write `apps/api/src/utils/rate-limit/backend.test.ts` first:
   - the memory backend admits exactly `points` per key per window, and keys are isolated per policy
   - bounded memory (api-rate-limiting "Memory counters expire with their window"): with Vitest fake timers, 1,000 distinct keys under a 60 s policy have no record after the clock advances past 60 s, and the next request starts a fresh window. If `RateLimiterMemory`'s expiry timers do not follow Vitest fake timers, advance real time with a 1 s test policy instead
   - `createRedisBackend` with a fake client whose commands reject and whose `status` is `'end'` still enforces limits through the insurance limiter, emits exactly one degraded warn `{ store: 'redis', err }` across 50 checks, and one recovery info after a simulated `ready` event
   - `status()` reports `memory` / `ok` / `degraded`
-- [ ] 6.12 Implement `apps/api/src/utils/rate-limit/backend.ts`:
+- [x] 6.12 Implement `apps/api/src/utils/rate-limit/backend.ts`:
   - the `RateLimitBackend` interface: `limiter(policy)` (memoised per policy id), `status()`, `close()`
   - `createMemoryBackend()` (`RateLimiterMemory`, `keyPrefix: policy.id`)
   - `createRedisBackend(client)` (`RateLimiterRedis` with `storeClient`, `keyPrefix: 'brewform-rl:' + policy.id`, `rejectIfRedisNotReady: true`, `insuranceLimiter: new RateLimiterMemory(same points/duration)`)
   - degraded and recovery transitions driven by the client's `error` / `ready` events, with a `fallbackDecisions` counter and a module logger `createLogger('rate-limit-backend')`
-- [ ] 6.13 Implement `apps/api/src/utils/rate-limit/registry.ts`: `getRateLimitBackend()`, `setRateLimitBackend(b)`, `resetRateLimitBackend()` (fresh memory backend) and `getRateLimitStoreStatus()` (`disabled` when `RATE_LIMIT_ENABLED=false`). Add `registry.test.ts`
-- [ ] 6.14 Write `apps/api/src/utils/rate-limit/headers.test.ts`, then implement `headers.ts`:
+- [x] 6.13 Implement `apps/api/src/utils/rate-limit/registry.ts`: `getRateLimitBackend()`, `setRateLimitBackend(b)`, `resetRateLimitBackend()` (fresh memory backend) and `getRateLimitStoreStatus()` (`disabled` when `RATE_LIMIT_ENABLED=false`). Add `registry.test.ts`
+- [x] 6.14 Write `apps/api/src/utils/rate-limit/headers.test.ts`, then implement `headers.ts`:
   - `appendRateLimitHeaders(c, policy, { remaining, msBeforeNext })` appends Structured-Field list items to `RateLimit-Policy` (`"<id>";q=<points>;w=<durationSec>`) and `RateLimit` (`"<id>";r=<remaining>;t=<ceil seconds>`), and overwrites `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (epoch seconds)
   - `setRetryAfter(c, msBeforeNext)` (minimum 1)
-- [ ] 6.15 Add `apps/api/src/utils/rate-limit/redis.integration.test.ts`, guarded by `describe.skipIf(!process.env.REDIS_TEST_URL)`:
+- [x] 6.15 Add `apps/api/src/utils/rate-limit/redis.integration.test.ts`, guarded by `describe.skipIf(!process.env.REDIS_TEST_URL)`:
   - 50 concurrent consumes against a limit of 10 admit exactly 10
   - two backends on separate clients share one budget
   - a backend pointed at a closed port answers every check within 1 s via insurance
@@ -772,14 +772,14 @@ How to use this task list
 
 ## 13. Web: shareable URL state on every list page (t5)
 
-- [ ] 13.1 Create `apps/web/src/hooks/useListUrlState.ts` (`setFilter` resets page, `setPage` keeps filters and omits 1, `clearAll`, `useDebouncedUrlText(key, 300)` with `replace: true` + `preventScrollReset` and external re-sync, defaults omitted) plus parser helpers in `apps/web/src/utils/list-params.ts`; Vitest suite `useListUrlState.test.tsx` covering every `web-url-state` scenario
-- [ ] 13.2 Refactor `useRecipeFilters.ts` to delegate to `useListUrlState`; make the `/recipes` search and author inputs in `RecipeListView.tsx` use `useDebouncedUrlText`; test one loader call per typing pause and input re-sync on Back/Clear Filters/badge removal. Keep t7's `maxLength={200}` / `maxLength={100}` on the search and author inputs (task 10.31).
-- [ ] 13.3 Migrate `/equipments` (`EquipmentCatalogPage`) and `/coffee-varieties` (`CoffeeVarietiesPage`) search to debounced replace with param `q` (accept legacy `search` on read) and canonical `page`
-- [ ] 13.4 Canonicalise `/notifications` (omit `page=1`/`unreadOnly=false`) and `/brew-logs` through the shared helpers
-- [ ] 13.5 Add URL pagination to `/collections` and `/collections/browse` (loaders read `?page`, render `PaginationControls`) and a `collectionsPage` param for the profile collections tab in `UserProfilePage`; tests per page
-- [ ] 13.6 Move `/taste-notes` search to `?q=` via `useDebouncedUrlText`
+- [x] 13.1 Create `apps/web/src/hooks/useListUrlState.ts` (`setFilter` resets page, `setPage` keeps filters and omits 1, `clearAll`, `useDebouncedUrlText(key, 300)` with `replace: true` + `preventScrollReset` and external re-sync, defaults omitted) plus parser helpers in `apps/web/src/utils/list-params.ts`; Vitest suite `useListUrlState.test.tsx` covering every `web-url-state` scenario
+- [x] 13.2 Refactor `useRecipeFilters.ts` to delegate to `useListUrlState`; make the `/recipes` search and author inputs in `RecipeListView.tsx` use `useDebouncedUrlText`; test one loader call per typing pause and input re-sync on Back/Clear Filters/badge removal. Keep t7's `maxLength={200}` / `maxLength={100}` on the search and author inputs (task 10.31).
+- [x] 13.3 Migrate `/equipments` (`EquipmentCatalogPage`) and `/coffee-varieties` (`CoffeeVarietiesPage`) search to debounced replace with param `q` (accept legacy `search` on read) and canonical `page`
+- [x] 13.4 Canonicalise `/notifications` (omit `page=1`/`unreadOnly=false`) and `/brew-logs` through the shared helpers
+- [x] 13.5 Add URL pagination to `/collections` and `/collections/browse` (loaders read `?page`, render `PaginationControls`) and a `collectionsPage` param for the profile collections tab in `UserProfilePage`; tests per page
+- [x] 13.6 Move `/taste-notes` search to `?q=` via `useDebouncedUrlText`
 - [ ] 13.7 Move `/admin/users` (`q`, `page`), `/admin/audit-log` (`entityType`, `page`) and `/admin/coffee-varieties` (`category`, `q`, `page`) selections into the URL (done together with their loader migration below)
-- [ ] 13.8 Group check: run `make check-web`, `make lint` and `make test-web` (`useListUrlState.test.tsx`, the `useRecipeFilters`/`RecipeListView` cases and the per-page URL tests of tasks 13.1-13.6), then `make fmt` and `make fmt-check`. Task 13.7 is verified in group 14 with its loader migration.
+- [x] 13.8 Group check: run `make check-web`, `make lint` and `make test-web` (`useListUrlState.test.tsx`, the `useRecipeFilters`/`RecipeListView` cases and the per-page URL tests of tasks 13.1-13.6), then `make fmt` and `make fmt-check`. Task 13.7 is verified in group 14 with its loader migration.
 
 ## 14. Web data loading: regression guards first, then admin, settings, account and auth pages (t5)
 

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -202,5 +202,42 @@ describe('CollectionsBrowsePage', () => {
     const cardLink = screen.getByText('My List').closest('a');
     expect(cardLink).not.toBeNull();
     expect(cardLink!.getAttribute('href')).toBe('/collections/c-abc');
+  });
+});
+
+describe('CollectionsBrowsePage — URL pagination', () => {
+  it('Next writes ?page=2 and the loader requests page=2 from the API', async () => {
+    mockListPublic.mockImplementation(async (params?: Record<string, string>) => ({
+      ...makeEmptyResponse(),
+      data: [makePublicCollection()],
+      meta: {
+        requestId: 'test',
+        pagination: { page: Number(params?.page ?? 1), perPage: 20, total: 30, totalPages: 2 },
+      },
+    }));
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/collections/browse',
+          element: <CollectionsBrowsePage />,
+          loader,
+          HydrateFallback,
+        },
+      ],
+      { initialEntries: ['/collections/browse'] },
+    );
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'common.next' }));
+
+    await waitFor(() => expect(router.state.location.search).toBe('?page=2'));
+    await waitFor(() =>
+      expect(mockListPublic).toHaveBeenLastCalledWith({ page: '2', perPage: '20' }),
+    );
+  });
+
+  it('the loader normalises an invalid page to 1', async () => {
+    await loader({ request: new Request('http://localhost/collections/browse?page=abc') });
+    expect(mockListPublic).toHaveBeenLastCalledWith({ page: '1', perPage: '20' });
   });
 });

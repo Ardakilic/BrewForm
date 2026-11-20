@@ -1,13 +1,15 @@
 import type { NotificationOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { useLoaderData, useSearchParams } from 'react-router';
+import { useLoaderData } from 'react-router';
 import { notificationApi } from '../../api/index.ts';
 import { NotificationItem } from '../../components/layout/NotificationItem.tsx';
 import { PaginationControls } from '../../components/recipe-list/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useListUrlState } from '../../hooks/useListUrlState.ts';
 import { requireAuth } from '../../routes/auth-guards.ts';
+import { parseNotificationListParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { notifyNotificationsChanged } from '../../utils/notification-events.ts';
 
@@ -27,8 +29,7 @@ export const loader = requireAuth(
   async ({ request }: { request: Request }): Promise<NotificationListLoaderData> => {
     log.debug({}, 'NotificationListPage loader started');
     const url = new URL(request.url);
-    const page = Number(url.searchParams.get('page')) || 1;
-    const unreadOnly = url.searchParams.get('unreadOnly') === 'true';
+    const { page, unreadOnly } = parseNotificationListParams(url.searchParams);
     try {
       const notificationsResponse = await notificationApi.list(page, unreadOnly);
       log.debug({ page, unreadOnly }, 'NotificationListPage loader completed');
@@ -50,7 +51,11 @@ export const loader = requireAuth(
 export function NotificationListPage() {
   const { notificationsResponse } = useLoaderData() as NotificationListLoaderData;
   const { t } = useTranslation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    state: { unreadOnly },
+    setFilter,
+    setPage,
+  } = useListUrlState(parseNotificationListParams);
   const [items, setItems] = useState<NotificationOutput[]>(notificationsResponse.data);
 
   // Re-sync local state whenever the loader returns a fresh page.
@@ -68,10 +73,9 @@ export function NotificationListPage() {
   const { page, totalPages } = notificationsResponse.meta.pagination;
   const hasUnread = items.some((n) => !n.readAt);
 
+  /** Goes to `nextPage`, keeping the filter; page 1 is omitted from the URL. */
   function handlePageChange(nextPage: number) {
-    const next = new URLSearchParams(searchParams);
-    next.set('page', String(nextPage));
-    setSearchParams(next);
+    setPage(nextPage);
   }
 
   /**
@@ -79,19 +83,15 @@ export function NotificationListPage() {
    * the URL so it round-trips through the loader (peeling a fresh fetch on
    * every filter change) and survives page reloads.
    */
-  const filter: 'all' | 'unread' = searchParams.get('unreadOnly') === 'true' ? 'unread' : 'all';
+  const filter: 'all' | 'unread' = unreadOnly ? 'unread' : 'all';
 
-  // F05: filter change updates the URL → loader re-fetches with the new
-  // `unreadOnly` arg. Resets `page` to 1 (narrowing likely shrinks the set).
+  /**
+   * F05: a filter change updates the URL → the loader re-fetches with the new `unreadOnly`
+   * arg. It resets to page 1, and the defaults (`page=1`, `unreadOnly=false`) are omitted, so
+   * switching to All yields a bare `/notifications`.
+   */
   function handleFilterChange(next: 'all' | 'unread') {
-    const nextParams = new URLSearchParams(searchParams);
-    if (next === 'all') {
-      nextParams.delete('unreadOnly');
-    } else {
-      nextParams.set('unreadOnly', 'true');
-    }
-    nextParams.set('page', '1');
-    setSearchParams(nextParams);
+    setFilter('unreadOnly', next === 'unread');
   }
 
   function handleItemRead(id: string) {

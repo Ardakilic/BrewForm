@@ -1,13 +1,15 @@
 import type { BrewLogListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
-import { Link, useLoaderData, useSearchParams } from 'react-router';
+import { Link, useLoaderData } from 'react-router';
 import { brewLogApi } from '../../api/index.ts';
 import { BrewLogCard } from '../../components/brew-log/BrewLogCard.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useListUrlState } from '../../hooks/useListUrlState.ts';
 import { requireAuth } from '../../routes/auth-guards.ts';
+import { parsePageOnlyParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('BrewLogListPage');
@@ -20,14 +22,14 @@ export interface BrewLogListLoaderData {
 /**
  * React Router data loader for `/brew-logs` — fetches the authenticated
  * user's brew journal for the requested `?page` (newest first, paginated).
- * Only positive finite integers are accepted as a page; anything else
- * (negative, fractional, infinite, zero, missing, non-numeric) defaults to 1.
+ * The page is read with the shared list parser (`parsePageOnlyParams`): a
+ * positive integer is kept, anything else (negative, infinite, zero, missing,
+ * non-numeric) is page 1.
  * Wrapped in `requireAuth`, so a final 401 redirects to `/login?next=…`.
  */
 export const loader = requireAuth(
   async ({ request }: { request: Request }): Promise<BrewLogListLoaderData> => {
-    const rawPage = Number(new URL(request.url).searchParams.get('page'));
-    const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+    const { page } = parsePageOnlyParams(new URL(request.url).searchParams);
     log.debug({ page }, 'BrewLogListPage loader started');
     try {
       const logsResponse = await brewLogApi.list({ page });
@@ -48,7 +50,7 @@ export const loader = requireAuth(
 export function BrewLogListPage() {
   const { logsResponse } = useLoaderData() as BrewLogListLoaderData;
   const { t } = useTranslation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { setPage } = useListUrlState(parsePageOnlyParams);
 
   useEffect(() => {
     log.debug({}, 'BrewLogListPage mounted');
@@ -59,10 +61,9 @@ export function BrewLogListPage() {
 
   const { page, totalPages } = logsResponse.meta.pagination;
 
+  /** Goes to `nextPage`; page 1 is omitted from the URL. */
   function handlePageChange(nextPage: number) {
-    const next = new URLSearchParams(searchParams);
-    next.set('page', String(nextPage));
-    setSearchParams(next);
+    setPage(nextPage);
   }
 
   return (

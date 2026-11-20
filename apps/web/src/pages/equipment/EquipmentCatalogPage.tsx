@@ -1,6 +1,5 @@
 import type { EquipmentOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
 import { api } from '../../api/client.ts';
 import { CatalogEntityCard } from '../../components/catalog/CatalogEntityCard.tsx';
 import { CategoryTabs } from '../../components/catalog/CategoryTabs.tsx';
@@ -10,29 +9,33 @@ import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { CardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { useDebounce } from '../../hooks/useDebounce.ts';
+import { useDebouncedUrlText, useListUrlState } from '../../hooks/useListUrlState.ts';
+import { parseEquipmentCatalogParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('EquipmentCatalogPage');
 
 /**
  * Public equipment catalog with URL-driven pagination, type-category
- * tabs, and debounced search; cards link to equipment detail pages.
+ * tabs, and debounced search; cards link to equipment detail pages. All
+ * selections live in the URL (`page`, `type`, `q`; a legacy `search` link is
+ * still read): tabs push history, the search box commits after a 300 ms pause
+ * with `replace`, and page 1 is never written.
  */
 export function EquipmentCatalogPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    state: { page, type, q: search },
+    setFilter,
+    setPage,
+    clearAll,
+  } = useListUrlState(parseEquipmentCatalogParams);
+  const searchInput = useDebouncedUrlText('q', { legacyKeys: ['search'] });
   const [equipment, setEquipment] = useState<EquipmentOutput[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCounter, setRetryCounter] = useState(0);
   const { t } = useTranslation();
-
-  const raw = Number(searchParams.get('page'));
-  const page = Number.isFinite(raw) ? Math.max(1, Math.floor(raw)) : 1;
-  const type = searchParams.get('type') || '';
-  const search = searchParams.get('search') || '';
-  const debouncedSearch = useDebounce(search, 300);
 
   useEffect(() => {
     log.debug({}, 'EquipmentCatalogPage mounted');
@@ -60,7 +63,7 @@ export function EquipmentCatalogPage() {
     params.set('page', String(page));
     params.set('perPage', '12');
     if (type) params.set('type', type);
-    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (search) params.set('search', search);
 
     api
       .getWithMeta<{
@@ -81,20 +84,7 @@ export function EquipmentCatalogPage() {
         setError(t('equipment.catalog.error.load'));
       })
       .finally(() => setLoading(false));
-  }, [page, type, debouncedSearch, retryCounter]);
-
-  function updateFilter(key: string, value: string) {
-    const params = new URLSearchParams(searchParams);
-    if (value) {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
-    if (key !== 'page') {
-      params.delete('page');
-    }
-    setSearchParams(params, { preventScrollReset: true });
-  }
+  }, [page, type, search, retryCounter]);
 
   const hasActiveFilters = !!(type || search);
 
@@ -110,19 +100,15 @@ export function EquipmentCatalogPage() {
       </p>
 
       {/* Category tabs */}
-      <CategoryTabs
-        tabs={categoryButtons}
-        active={type}
-        onSelect={(v) => updateFilter('type', v)}
-      />
+      <CategoryTabs tabs={categoryButtons} active={type} onSelect={(v) => setFilter('type', v)} />
 
       {/* Search */}
       <div className="mb-6">
         <input
           type="text"
           placeholder={t('equipment.catalog.searchPlaceholder')}
-          value={search}
-          onChange={(e) => updateFilter('search', e.target.value)}
+          value={searchInput.value}
+          onChange={(e) => searchInput.setValue(e.target.value)}
           className="input-field text-sm max-w-md"
         />
       </div>
@@ -133,11 +119,7 @@ export function EquipmentCatalogPage() {
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {t('common.activeFilters')}
           </span>
-          <button
-            type="button"
-            onClick={() => setSearchParams({})}
-            className="btn-secondary text-sm"
-          >
+          <button type="button" onClick={clearAll} className="btn-secondary text-sm">
             {t('common.clearAll')}
           </button>
         </div>
@@ -154,9 +136,7 @@ export function EquipmentCatalogPage() {
             onClick={() => {
               setError(null);
               setLoading(true);
-              const params = new URLSearchParams(searchParams);
-              params.delete('page');
-              setSearchParams(params, { preventScrollReset: true });
+              setPage(1);
               setRetryCounter((c) => c + 1);
             }}
             className="btn-primary"
@@ -169,11 +149,7 @@ export function EquipmentCatalogPage() {
           message={t('equipment.catalog.empty')}
           action={
             hasActiveFilters ? (
-              <button
-                type="button"
-                onClick={() => setSearchParams({})}
-                className="btn-secondary text-sm"
-              >
+              <button type="button" onClick={clearAll} className="btn-secondary text-sm">
                 {t('common.clearSearch')}
               </button>
             ) : undefined
@@ -195,11 +171,7 @@ export function EquipmentCatalogPage() {
           </div>
 
           {/* Pagination */}
-          <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            onPageChange={(p) => updateFilter('page', String(p))}
-          />
+          <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
     </div>

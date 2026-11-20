@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -103,7 +103,7 @@ function renderListPage(initialEntry = '/brew-logs') {
     [{ path: '/brew-logs', element: <BrewLogListPage />, loader, HydrateFallback }],
     { initialEntries: [initialEntry] },
   );
-  return render(<RouterProvider router={router} />);
+  return { ...render(<RouterProvider router={router} />), router };
 }
 
 // ── Setup ──────────────────────────────────────────────────────────────────
@@ -198,5 +198,25 @@ describe('BrewLogListPage loader — auth guard', () => {
     expect((thrown as Response).headers.get('Location')).toBe(
       '/login?next=%2Fbrew-logs%3Fpage%3D2',
     );
+  });
+});
+
+describe('BrewLogListPage — canonical page URL', () => {
+  it('Next writes ?page=2 and Previous back to page 1 omits the param', async () => {
+    mockList.mockImplementation(async (params?: { page?: number }) =>
+      makeListResponse([makeLog()], { page: params?.page ?? 1, totalPages: 3 }),
+    );
+    const { router } = renderListPage('/brew-logs');
+    await screen.findByRole('button', { name: 'Next' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() => expect(router.state.location.search).toBe('?page=2'));
+    await waitFor(() => expect(mockList).toHaveBeenLastCalledWith({ page: 2 }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Previous' })).not.toBeDisabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+    await waitFor(() => expect(router.state.location.search).toBe(''));
   });
 });

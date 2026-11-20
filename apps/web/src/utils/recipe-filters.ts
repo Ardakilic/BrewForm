@@ -1,3 +1,5 @@
+import { parsePageParam } from './list-params.ts';
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Raw recipe-list filter parameters parsed from the URL query string. */
@@ -18,16 +20,6 @@ export interface ListFilterParams {
   dateTo?: string;
   minRating?: string;
   maxRating?: string;
-}
-
-/**
- * Parses a raw `page` search-param value: a positive integer is kept (`parseInt` rules, so
- * `"2abc"` is 2), anything else (missing, non-numeric, zero, negative) is page 1.
- */
-export function parsePageParam(raw: string | null): number {
-  if (raw === null) return 1;
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
 /**

@@ -18,9 +18,13 @@ import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { FollowButton } from '../../components/user/FollowButton.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { readPage, withParams } from '../../utils/list-params.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('UserProfilePage');
+
+/** Collections shown per page on the profile collections tab (`?collectionsPage=`). */
+const PROFILE_COLLECTIONS_PER_PAGE = 20;
 
 type Tab = 'recipes' | 'badges' | 'followers' | 'following' | 'collections' | 'brews';
 
@@ -37,7 +41,8 @@ export interface ProfileLoaderData {
 /**
  * Fetches the profile for `:username`, plus the follower/following list
  * when `?tab=` selects one; returns `{ profile, followData }` with
- * `followData` null on other tabs. The `brews` tab fetches the VIEWER's own
+ * `followData` null on other tabs. The `collections` tab fetches the requested
+ * `?collectionsPage` of the user's collections. The `brews` tab fetches the VIEWER's own
  * brew journal for the requested `?brewsPage`, but only after establishing
  * that the viewer IS the profile being viewed (a URL-forced `?tab=brews` on
  * another profile, or while logged out, skips the request and leaves
@@ -74,7 +79,11 @@ export const loader = async ({
   } else if (tab === 'following') {
     followData = await followApi.following(profile.id);
   } else if (tab === 'collections') {
-    collectionsData = await collectionApi.listByUser(profile.id);
+    const collectionsPage = readPage(url.searchParams, 'collectionsPage');
+    collectionsData = await collectionApi.listByUser(profile.id, {
+      page: String(collectionsPage),
+      perPage: String(PROFILE_COLLECTIONS_PER_PAGE),
+    });
   } else if (tab === 'brews') {
     // The brew journal is owner-private: fetch it only when the viewer IS the
     // profile being viewed. A URL-forced `?tab=brews` on another user's
@@ -83,8 +92,7 @@ export const loader = async ({
     // propagate to the error boundary instead of rendering an empty journal.
     const viewer = await userApi.me().catch(() => null);
     if (viewer?.username === username) {
-      const rawPage = Number(url.searchParams.get('brewsPage'));
-      const brewsPage = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+      const brewsPage = readPage(url.searchParams, 'brewsPage');
       brewsData = await brewLogApi.list({ page: brewsPage });
     }
   }
@@ -141,6 +149,9 @@ export function UserProfilePage() {
   ];
   // The brew journal is private — its tab is only valid on the viewer's own profile.
   const validTabs: readonly Tab[] = isSelf ? [...ALLOWED_TABS, 'brews'] : ALLOWED_TABS;
+  /** Sets a per-tab page param (`collectionsPage`, `brewsPage`), keeping the rest; page 1 is omitted. */
+  const setPageParam = (key: string, nextPage: number) =>
+    setSearchParams((prev) => withParams(prev, { [key]: nextPage > 1 ? nextPage : null }));
   const rawTab = searchParams.get('tab') ?? 'recipes';
   const tab: Tab = (validTabs as readonly string[]).includes(rawTab) ? (rawTab as Tab) : 'recipes';
 
@@ -241,7 +252,7 @@ export function UserProfilePage() {
           <button
             key={key}
             type="button"
-            onClick={() => setSearchParams({ tab: key })}
+            onClick={() => setSearchParams(key === 'recipes' ? {} : { tab: key })}
             className="text-sm px-4 py-2 rounded"
             style={{
               backgroundColor: tab === key ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
@@ -264,11 +275,20 @@ export function UserProfilePage() {
       )}
 
       {tab === 'collections' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {!collectionsData || collectionsData.data.length === 0 ? (
-            <p style={{ color: 'var(--text-tertiary)' }}>{t('user.noCollections')}</p>
-          ) : (
-            collectionsData.data.map((c) => <CollectionCard key={c.id} collection={c} />)
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {!collectionsData || collectionsData.data.length === 0 ? (
+              <p style={{ color: 'var(--text-tertiary)' }}>{t('user.noCollections')}</p>
+            ) : (
+              collectionsData.data.map((c) => <CollectionCard key={c.id} collection={c} />)
+            )}
+          </div>
+          {collectionsData && collectionsData.meta.pagination.totalPages > 1 && (
+            <PaginationControls
+              page={collectionsData.meta.pagination.page}
+              totalPages={collectionsData.meta.pagination.totalPages}
+              onPageChange={(nextPage) => setPageParam('collectionsPage', nextPage)}
+            />
           )}
         </div>
       )}
@@ -284,11 +304,7 @@ export function UserProfilePage() {
             <PaginationControls
               page={brewsData.meta.pagination.page}
               totalPages={brewsData.meta.pagination.totalPages}
-              onPageChange={(nextPage) => {
-                const next = new URLSearchParams(searchParams);
-                next.set('brewsPage', String(nextPage));
-                setSearchParams(next);
-              }}
+              onPageChange={(nextPage) => setPageParam('brewsPage', nextPage)}
             />
           )}
         </div>

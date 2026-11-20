@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -168,5 +168,35 @@ describe('CollectionListPage loader — auth guard', () => {
     expect((thrown as Response).headers.get('Location')).toBe(
       '/login?next=%2Fcollections%3Fpage%3D2',
     );
+  });
+});
+
+describe('CollectionListPage — URL pagination', () => {
+  it('the loader requests the ?page from the URL with a fixed perPage', async () => {
+    await loader({ request: new Request('http://localhost/collections?page=3') });
+    expect(mockList).toHaveBeenLastCalledWith({ page: '3', perPage: '20' });
+
+    await loader({ request: new Request('http://localhost/collections?page=-1') });
+    expect(mockList).toHaveBeenLastCalledWith({ page: '1', perPage: '20' });
+  });
+
+  it('Next writes ?page=2 and the loader fetches page 2', async () => {
+    mockList.mockImplementation(async (params?: Record<string, string>) => ({
+      ...makeListResponse([makeCollection({ id: 'c1', name: 'Alpha' })]),
+      meta: {
+        requestId: 'test',
+        pagination: { page: Number(params?.page ?? 1), perPage: 20, total: 45, totalPages: 3 },
+      },
+    }));
+    const router = createMemoryRouter(
+      [{ path: '/collections', element: <CollectionListPage />, loader, HydrateFallback }],
+      { initialEntries: ['/collections'] },
+    );
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'common.next' }));
+
+    await waitFor(() => expect(router.state.location.search).toBe('?page=2'));
+    await waitFor(() => expect(mockList).toHaveBeenLastCalledWith({ page: '2', perPage: '20' }));
   });
 });

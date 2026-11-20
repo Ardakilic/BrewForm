@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CoffeeVarietiesPage } from '../CoffeeVarietiesPage.tsx';
 
@@ -521,13 +521,13 @@ describe('CoffeeVarietiesPage', () => {
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     // Use fireEvent since userEvent has type issues in this project setup
-    const { fireEvent } = await import('@testing-library/react');
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     expect(setSearchParams).toHaveBeenCalledTimes(1);
-    const [params, options] = setSearchParams.mock.calls[0];
+    // useListUrlState applies a functional updater to the current params.
+    const [updater] = setSearchParams.mock.calls[0];
+    const params = updater(new URLSearchParams({ page: '1' }));
     expect(params.get('page')).toBe('2');
-    expect(options).toEqual({ preventScrollReset: true });
   });
 
   it('navigates to previous page when Previous is clicked', async () => {
@@ -553,11 +553,11 @@ describe('CoffeeVarietiesPage', () => {
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
-    const { fireEvent } = await import('@testing-library/react');
     fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
 
     expect(setSearchParams).toHaveBeenCalledTimes(1);
-    const [params] = setSearchParams.mock.calls[0];
+    const [updater] = setSearchParams.mock.calls[0];
+    const params = updater(new URLSearchParams({ page: '3' }));
     expect(params.get('page')).toBe('2');
   });
 
@@ -618,5 +618,42 @@ describe('CoffeeVarietiesPage', () => {
     const calls = mockSEOHead.mock.calls;
     const lastProps = calls[calls.length - 1][0] as { title?: string };
     expect(lastProps.title).toBe('Kahve Çeşitleri');
+  });
+});
+
+describe('CoffeeVarietiesPage — shareable search (q, debounced replace)', () => {
+  beforeEach(() => {
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+  });
+
+  it('reads the q param and sends it to the API as search', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ q: 'gesha' }));
+    render(<CoffeeVarietiesPage />);
+
+    await waitFor(() =>
+      expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('search=gesha')),
+    );
+    expect((screen.getByPlaceholderText('Search varieties...') as HTMLInputElement).value).toBe(
+      'gesha',
+    );
+  });
+
+  it('commits typed text once, after the pause, replacing history and dropping legacy search and page', async () => {
+    const setSearchParams = vi.fn();
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ search: 'old', page: '3' }),
+      setSearchParams,
+    ]);
+    render(<CoffeeVarietiesPage />);
+    const input = screen.getByPlaceholderText('Search varieties...');
+
+    fireEvent.change(input, { target: { value: 'o' } });
+    fireEvent.change(input, { target: { value: 'gesha' } });
+    expect(setSearchParams).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(setSearchParams).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    const [updater, options] = setSearchParams.mock.calls[0];
+    expect(options).toEqual({ replace: true, preventScrollReset: true });
+    expect(updater(new URLSearchParams({ search: 'old', page: '3' })).toString()).toBe('q=gesha');
   });
 });

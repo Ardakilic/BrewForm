@@ -381,9 +381,33 @@ describe('UserProfilePage — brews tab (F02)', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'common.next' }));
 
     expect(setParams).toHaveBeenCalledTimes(1);
-    const next = setParams.mock.calls[0][0] as URLSearchParams;
+    // Page params are set through a functional updater applied to the current params.
+    const updater = setParams.mock.calls[0][0] as (prev: URLSearchParams) => URLSearchParams;
+    const next = updater(new URLSearchParams({ tab: 'brews' }));
     expect(next.get('brewsPage')).toBe('2');
     expect(next.get('tab')).toBe('brews');
+  });
+
+  it('renders collections pagination and sets collectionsPage, keeping the tab', async () => {
+    const setParams = vi.fn();
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ tab: 'collections' }),
+      setParams,
+    ] as ReturnType<typeof useSearchParams>);
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [],
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total: 45, totalPages: 3 } },
+    });
+
+    renderProfilePage('diana', 'collections');
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'common.next' }));
+
+    const updater = setParams.mock.calls[0][0] as (prev: URLSearchParams) => URLSearchParams;
+    expect(updater(new URLSearchParams({ tab: 'collections' })).toString()).toBe(
+      'tab=collections&collectionsPage=2',
+    );
   });
 
   it("hides the brews tab on another user's profile", async () => {
@@ -470,6 +494,26 @@ describe('UserProfilePage — brews loader (F02)', () => {
 
     await expect(loader(loaderArgs('http://localhost/u/diana?tab=brews'))).rejects.toBe(
       serverError,
+    );
+  });
+});
+
+describe('UserProfilePage — collections loader pagination', () => {
+  it('requests the ?collectionsPage of the user collections with a fixed perPage', async () => {
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [],
+      meta: { requestId: 'test', pagination: { page: 2, perPage: 20, total: 30, totalPages: 2 } },
+    });
+
+    await loader({
+      params: { username: 'diana' },
+      request: new Request('http://localhost/u/diana?tab=collections&collectionsPage=2'),
+    });
+
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
+      expect.stringMatching(/\/users\/[^/]+\/collections\?page=2&perPage=20$/),
+      undefined,
     );
   });
 });
