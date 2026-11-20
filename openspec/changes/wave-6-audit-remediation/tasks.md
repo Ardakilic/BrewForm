@@ -350,9 +350,9 @@ How to use this task list
 
   Mirror the dev-relevant lines in the root `.env.example` (`TRUST_PROXY=none`, the rate-limit and cache-cap lines), and replace the same stale `CACHE_ENABLED` comment there (`.env.example:12`)
 - [x] 6.43 Add `RATE_LIMIT_STORE: ${RATE_LIMIT_STORE:-redis}`, `TRUST_PROXY: ${TRUST_PROXY:-hops}` and `TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}` to the `api` service in `compose.production.yml`, with a header note about counting proxy hops (the web Caddy edge replaces `X-Forwarded-For` with its `{client_ip}`, so the API sees exactly one hop and `TRUST_PROXY_HOPS=1` stays correct with or without an outer proxy; design t4b decision 3). Add `TRUST_PROXY=none` and `RATE_LIMIT_STORE=memory` to the dev `app` service in `compose.yml`
-- [ ] 6.44 Group check: run `make check`, `make lint`, `make test-api` (the Valkey integration suite skipped) and `make test-web`, then `make fmt`. Confirm `make db-generate` reports "No schema changes, nothing to migrate"
-- [ ] 6.45 Run the Valkey integration suite once against the compose Valkey: `make up`, then `make test-specific filter=src/utils/rate-limit/redis.integration.test.ts` with `REDIS_TEST_URL` exported into the container. Record the result in the PR description
-- [ ] 6.46 Do a manual smoke test with `RATE_LIMIT_STORE=redis` and `CACHE_DRIVER=redis` under `make dev`:
+- [x] 6.44 Group check: run `make check`, `make lint`, `make test-api` (the Valkey integration suite skipped) and `make test-web`, then `make fmt`. Confirm `make db-generate` reports "No schema changes, nothing to migrate"
+- [x] 6.45 Run the Valkey integration suite once against the compose Valkey: `make up`, then `make test-specific filter=src/utils/rate-limit/redis.integration.test.ts` with `REDIS_TEST_URL` exported into the container. Record the result in the PR description
+- [x] 6.46 Do a manual smoke test with `RATE_LIMIT_STORE=redis` and `CACHE_DRIVER=redis` under `make dev`:
   - `docker compose stop valkey`, then check that `GET /health` and `GET /ready` (with `cache: 'degraded'`, `rateLimitStore: 'degraded'`) and a cached GET still answer 2xx within about 1 s
   - check that one degraded warn per component appears in the logs
   - `docker compose start valkey` and check for one recovery info each
