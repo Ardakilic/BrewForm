@@ -1,4 +1,5 @@
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { formatDuration } from '../../utils/format.ts';
 
 interface BrewTimelineProps {
   extractionTimeSeconds: number | null | undefined;
@@ -79,7 +80,7 @@ export function BrewTimeline({
   preInfusionTimeSeconds,
   flowRate,
 }: BrewTimelineProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   if (extractionTimeSeconds == null) {
     return null;
@@ -129,9 +130,12 @@ export function BrewTimeline({
           aria-label={
             preInfusion != null
               ? t('a11y.brewTimeline')
-                  .replace('{preInfusion}', String(preInfusion))
-                  .replace('{extraction}', String(total - preInfusion))
-              : t('a11y.brewTimelineNoPreInfusion').replace('{extraction}', String(total))
+                  .replace('{preInfusion}', formatDuration(preInfusion, locale))
+                  .replace('{extraction}', formatDuration(total - preInfusion, locale))
+              : t('a11y.brewTimelineNoPreInfusion').replace(
+                  '{extraction}',
+                  formatDuration(total, locale),
+                )
           }
         >
           {preInfusion != null && <div style={{ width: `${preInfusionPct}%` }} />}
