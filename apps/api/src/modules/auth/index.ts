@@ -20,7 +20,8 @@ import { createLogger } from '../../utils/logger/index.ts';
 import { error, success } from '../../utils/response/index.ts';
 import * as authService from './service.ts';
 
-const log = createLogger('auth');
+/** Module-scoped structured logger for the auth routes (exported for test spies). */
+export const log = createLogger('auth');
 
 /** Hono sub-router for auth endpoints, mounted at `/api/v1/auth`. */
 const auth = new Hono<AppEnv>();

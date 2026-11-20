@@ -829,10 +829,12 @@ export async function decrementComments(id: string) {
 }
 
 /**
- * Insert or update a user's rating for a recipe.
+ * Insert or update a user's rating for a recipe in one statement.
  *
- * Uses a SELECT-then-INSERT-or-UPDATE approach (not `onConflictDoUpdate`)
- * to ensure consistent behavior across the ratings table.
+ * Runs `insert … on conflict (user_id, recipe_id) do update set rating, updated_at`
+ * against `user_recipe_rating_user_id_recipe_id_unique`, so two concurrent
+ * first ratings by the same user both succeed and leave exactly one row
+ * holding the last-written value.
  *
  * @param userId   - UUID of the user submitting the rating
  * @param recipeId - UUID of the recipe being rated
@@ -840,20 +842,13 @@ export async function decrementComments(id: string) {
  * @returns An object containing the persisted rating value
  */
 export async function upsertUserRating(userId: string, recipeId: string, rating: number) {
-  const existing = await db
-    .select({ id: userRecipeRatings.id })
-    .from(userRecipeRatings)
-    .where(and(eq(userRecipeRatings.userId, userId), eq(userRecipeRatings.recipeId, recipeId)))
-    .limit(1);
-
-  if (existing.length > 0) {
-    await db
-      .update(userRecipeRatings)
-      .set({ rating, updatedAt: new Date() })
-      .where(and(eq(userRecipeRatings.userId, userId), eq(userRecipeRatings.recipeId, recipeId)));
-  } else {
-    await db.insert(userRecipeRatings).values({ userId, recipeId, rating });
-  }
+  await db
+    .insert(userRecipeRatings)
+    .values({ userId, recipeId, rating })
+    .onConflictDoUpdate({
+      target: [userRecipeRatings.userId, userRecipeRatings.recipeId],
+      set: { rating, updatedAt: new Date() },
+    });
   return { rating };
 }
 

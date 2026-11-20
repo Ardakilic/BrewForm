@@ -19,9 +19,23 @@
  * Tracking this in the repo issue tracker is the recommended follow-up;
  * once a path is chosen, the duplicated inline copy in this file should
  * be removed in favour of importing the real implementations.
+ *
+ * The final `upsertUserRating — concurrent first rating` block is the
+ * exception: it is DB-backed (`brewform_test`) and uses the real schema and
+ * `db`, imported under `*Table`/`realDb` aliases so they do not clash with the
+ * mock surface above.
  */
 
-import { describe, expect, it } from 'vitest';
+import '../../test-setup.ts';
+import { db as realDb } from '@brewform/db';
+import {
+  userRecipeRatings as ratingsTable,
+  recipes as recipesTable,
+  users as usersTable,
+} from '@brewform/db/schema';
+import { eq as drizzleEq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import * as recipeService from './service.ts';
 import { rankRecipes } from './service.ts';
 
 type MockCondition = {
@@ -592,5 +606,66 @@ describe('rankRecipes', () => {
     // %espresso% should be sanitized to "espresso" and still match
     const ranked = rankRecipes(recipes, '%espresso%');
     expect(ranked[0].title).toBe('Espresso');
+  });
+});
+
+/**
+ * upsertUserRating — two concurrent first ratings by the same user must both
+ * succeed and leave exactly one `user_recipe_rating` row (spec: error-handling,
+ * "Concurrent first rating does not 500"). With select-then-insert both calls
+ * see no row and the loser's insert hits the unique constraint.
+ */
+describe('upsertUserRating — concurrent first rating', () => {
+  let userId: string;
+  let recipeId: string;
+
+  beforeEach(async () => {
+    userId = crypto.randomUUID();
+    recipeId = crypto.randomUUID();
+    await realDb.insert(usersTable).values({
+      id: userId,
+      email: `rate-race-${userId}@example.com`,
+      username: `rate-race-${userId.slice(0, 8)}`,
+      passwordHash: 'hash',
+    });
+    await realDb.insert(recipesTable).values({
+      id: recipeId,
+      slug: `rate-race-${recipeId}`,
+      title: 'Rate race',
+      authorId: userId,
+      visibility: 'public',
+    });
+  });
+
+  afterEach(async () => {
+    await realDb.delete(ratingsTable).where(drizzleEq(ratingsTable.recipeId, recipeId));
+    await realDb.delete(recipesTable).where(drizzleEq(recipesTable.id, recipeId));
+    await realDb.delete(usersTable).where(drizzleEq(usersTable.id, userId));
+  });
+
+  it('should resolve both calls and keep one row holding one of the values', async () => {
+    const results = await Promise.all([
+      recipeService.upsertUserRating(userId, recipeId, 3),
+      recipeService.upsertUserRating(userId, recipeId, 4),
+    ]);
+    expect(results.map((r) => r.rating).sort()).toEqual([3, 4]);
+
+    const rows = await realDb
+      .select({ rating: ratingsTable.rating, userId: ratingsTable.userId })
+      .from(ratingsTable)
+      .where(drizzleEq(ratingsTable.recipeId, recipeId));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].userId).toBe(userId);
+    expect([3, 4]).toContain(rows[0].rating);
+  });
+
+  it('should update the existing row on a later rating', async () => {
+    await recipeService.upsertUserRating(userId, recipeId, 2);
+    await recipeService.upsertUserRating(userId, recipeId, 9);
+    const rows = await realDb
+      .select({ rating: ratingsTable.rating })
+      .from(ratingsTable)
+      .where(drizzleEq(ratingsTable.recipeId, recipeId));
+    expect(rows).toEqual([{ rating: 9 }]);
   });
 });

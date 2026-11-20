@@ -8,12 +8,33 @@
 import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { collectionItems, collections, recipes, users } from '@brewform/db/schema';
-import { eq, inArray } from 'drizzle-orm';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { DrizzleQueryError, eq, inArray } from 'drizzle-orm';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type CacheProvider, InMemoryCacheProvider } from '../../utils/cache/index.ts';
 import { cacheProvider, setCacheProvider } from '../../utils/cache/singleton.ts';
 import * as model from './model.ts';
 import * as service from './service.ts';
+
+// Spy on every model export while keeping the real implementations, so a test
+// can make `addItem` reject once with a crafted driver error.
+vi.mock('./model.ts', { spy: true });
+
+/**
+ * Build a `DrizzleQueryError` wrapping a postgres-js `PostgresError`-shaped
+ * unique violation on `constraint`, exactly as drizzle-orm 0.45 surfaces it.
+ */
+function wrappedUniqueViolation(constraint: string) {
+  const pgErr = Object.assign(new Error('duplicate key value violates unique constraint'), {
+    name: 'PostgresError',
+    code: '23505',
+    constraint_name: constraint,
+  });
+  return new DrizzleQueryError(
+    'insert into "collection_item" ("collection_id", "recipe_id") values ($1, $2)',
+    ['collection-id', 'recipe-id'],
+    pgErr,
+  );
+}
 
 async function createUser(prefix: string) {
   const id = crypto.randomUUID();
@@ -298,6 +319,24 @@ describe('collection service — addRecipeToCollection', () => {
     await expect(service.addRecipeToCollection(userA.id, colA.id, dupRecipe.id)).rejects.toThrow(
       'ALREADY_IN_COLLECTION',
     );
+  });
+
+  it('a DrizzleQueryError-wrapped 23505 on the item constraint maps to ALREADY_IN_COLLECTION', async () => {
+    vi.mocked(model.addItem).mockRejectedValueOnce(
+      wrappedUniqueViolation('collection_item_collection_id_recipe_id_unique'),
+    );
+    await expect(service.addRecipeToCollection(userA.id, colA.id, publicRecipe.id)).rejects.toThrow(
+      'ALREADY_IN_COLLECTION',
+    );
+  });
+
+  it('a unique violation on another constraint is not reported as ALREADY_IN_COLLECTION', async () => {
+    const err = wrappedUniqueViolation('collection_item_pkey');
+    vi.mocked(model.addItem).mockRejectedValueOnce(err);
+    const thrown = await service
+      .addRecipeToCollection(userA.id, colA.id, publicRecipe.id)
+      .catch((e: unknown) => e);
+    expect(thrown).toBe(err);
   });
 
   it('non-owner of collection throws FORBIDDEN', async () => {

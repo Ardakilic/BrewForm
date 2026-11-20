@@ -8,11 +8,13 @@ import {
 } from '@brewform/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { reloadConfig } from '../../config/env.ts';
-import auth from './index.ts';
+import { errorHandler, log as errorHandlerLog } from '../../middleware/errorHandler.ts';
+import auth, { log as authRouteLog } from './index.ts';
 import { signAccessToken, signRefreshToken } from './jwt.ts';
 import * as model from './model.ts';
+import { logger as authServiceLog } from './service.ts';
 
 function createTestApp() {
   const app = new Hono();
@@ -537,5 +539,172 @@ describe('Auth Routes — DB integration', () => {
         reloadConfig();
       }
     });
+  });
+});
+
+/**
+ * Registration conflicts that slip past the availability pre-checks (spec:
+ * error-handling, "Known race and conflict paths never return 500"). The app
+ * mounts the production `errorHandler`, and every logger on the path plus
+ * `console.error` is captured so the tests can prove that no log line carries
+ * the submitted email, username or a bcrypt hash.
+ */
+describe('Auth Routes — registration conflicts (DB integration)', () => {
+  const createdUsers: string[] = [];
+  let originalAppEnv: string | undefined;
+  let logSpies: Array<ReturnType<typeof vi.spyOn>>;
+
+  /** Auth router behind the production error handler. */
+  function createAppWithErrorHandler() {
+    const app = new Hono();
+    app.onError(errorHandler);
+    app.route('/auth', auth);
+    return app;
+  }
+
+  /** POST a registration with its own rate-limit bucket. */
+  function register(app: Hono, body: { email: string; username: string; password: string }) {
+    return app.request('/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-forwarded-for': `test-${crypto.randomUUID()}`,
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  /** Every argument passed to a captured logger or `console.error`, as one string. */
+  function capturedLogText() {
+    const seen = new Set<unknown>();
+    const flatten = (value: unknown): string => {
+      if (value === null || value === undefined) return '';
+      if (typeof value !== 'object' && typeof value !== 'function') return String(value);
+      if (seen.has(value)) return '';
+      seen.add(value);
+      return Object.getOwnPropertyNames(value)
+        .map((key) => `${key} ${flatten((value as Record<string, unknown>)[key])}`)
+        .join(' ');
+    };
+    return logSpies
+      .flatMap((spy) => spy.mock.calls)
+      .map((call) => flatten(call))
+      .join('\n');
+  }
+
+  /** Assert no captured log line contains the identifiers or a bcrypt hash. */
+  function expectNoPiiInLogs(...values: string[]) {
+    const text = capturedLogText();
+    for (const value of values) expect(text).not.toContain(value);
+    expect(text).not.toMatch(/\$2[ab]\$/);
+  }
+
+  /** Track created users from 201 responses for cleanup. */
+  async function trackCreated(res: Response) {
+    if (res.status !== 201) return;
+    const body = await res.clone().json();
+    createdUsers.push(body.data.user.id);
+  }
+
+  beforeAll(() => {
+    originalAppEnv = process.env.APP_ENV;
+    process.env.APP_ENV = 'test';
+    reloadConfig();
+  });
+
+  afterAll(async () => {
+    if (originalAppEnv === undefined) {
+      delete process.env.APP_ENV;
+    } else {
+      process.env.APP_ENV = originalAppEnv;
+    }
+    reloadConfig();
+    if (createdUsers.length) {
+      await db
+        .delete(emailVerificationTokens)
+        .where(inArray(emailVerificationTokens.userId, createdUsers));
+      await db.delete(userPreferences).where(inArray(userPreferences.userId, createdUsers));
+      await db.delete(users).where(inArray(users.id, createdUsers));
+    }
+  });
+
+  beforeEach(() => {
+    logSpies = [errorHandlerLog, authRouteLog, authServiceLog].flatMap((logger) => [
+      vi.spyOn(logger, 'debug'),
+      vi.spyOn(logger, 'info'),
+      vi.spyOn(logger, 'warn'),
+      vi.spyOn(logger, 'error'),
+    ]);
+    // Hono's default handler and stray debugging both go through console.error.
+    logSpies.push(vi.spyOn(console, 'error').mockImplementation(() => {}));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should answer re-registration with a soft-deleted account email with 409 Email already registered', async () => {
+    const id = crypto.randomUUID();
+    const deleted = await model.createUser({
+      email: `soft-deleted-${id}@example.com`,
+      username: `soft-del-${id.slice(0, 8)}`,
+      password: 'TestPassword1!',
+    });
+    createdUsers.push(deleted.id);
+    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, deleted.id));
+
+    const app = createAppWithErrorHandler();
+    const username = `re-reg-${id.slice(0, 8)}`;
+    const res = await register(app, {
+      email: deleted.email,
+      username,
+      password: 'Test12345!',
+    });
+    await trackCreated(res);
+    const body = await res.json();
+    expect(res.status).toBe(409);
+    expect(body.error.code).toBe('CONFLICT');
+    expect(body.error.message).toBe('Email already registered');
+    expectNoPiiInLogs(deleted.email, username);
+  });
+
+  it('should answer two concurrent registrations with the same new email with one 201 and one 409, logging no PII', async () => {
+    const id = crypto.randomUUID();
+    const email = `race-email-${id}@example.com`;
+    const usernames = [`race-e1-${id.slice(0, 8)}`, `race-e2-${id.slice(0, 8)}`];
+    const app = createAppWithErrorHandler();
+
+    const responses = await Promise.all(
+      usernames.map((username) => register(app, { email, username, password: 'Test12345!' })),
+    );
+    for (const res of responses) await trackCreated(res);
+
+    const statuses = responses.map((res) => res.status).sort();
+    expect(statuses).toEqual([201, 409]);
+    const loser = responses.find((res) => res.status === 409) as Response;
+    const body = await loser.json();
+    expect(body.error.code).toBe('CONFLICT');
+    expect(body.error.message).toBe('Email already registered');
+    expectNoPiiInLogs(email, ...usernames);
+  });
+
+  it('should answer two concurrent registrations with the same username with one 201 and one 409', async () => {
+    const id = crypto.randomUUID();
+    const username = `race-u-${id.slice(0, 8)}`;
+    const emails = [`race-u1-${id}@example.com`, `race-u2-${id}@example.com`];
+    const app = createAppWithErrorHandler();
+
+    const responses = await Promise.all(
+      emails.map((email) => register(app, { email, username, password: 'Test12345!' })),
+    );
+    for (const res of responses) await trackCreated(res);
+
+    const statuses = responses.map((res) => res.status).sort();
+    expect(statuses).toEqual([201, 409]);
+    const loser = responses.find((res) => res.status === 409) as Response;
+    const body = await loser.json();
+    expect(body.error.code).toBe('CONFLICT');
+    expect(body.error.message).toBe('Username already taken');
+    expectNoPiiInLogs(username, ...emails);
   });
 });

@@ -1,6 +1,7 @@
 import type { CollectionCreate, CollectionUpdate } from '@brewform/shared/schemas';
 import type { Visibility } from '@brewform/shared/types';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
+import { isUniqueViolation, toLoggableError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import * as recipeModel from '../recipe/model.ts';
 import * as model from './model.ts';
@@ -375,7 +376,9 @@ export async function listAllPublicCollections(page: number, perPage: number) {
  * @throws 'FORBIDDEN' if the user is not the collection owner, or the recipe is not public and
  *   not owned by the user.
  * @throws 'RECIPE_NOT_FOUND' if the recipe does not exist.
- * @throws 'ALREADY_IN_COLLECTION' if the recipe is already in the collection.
+ * @throws 'ALREADY_IN_COLLECTION' if the recipe is already in the collection (a unique
+ *   violation on `collection_item_collection_id_recipe_id_unique`; any other database
+ *   error, including other unique violations, propagates to the global error handler).
  */
 export async function addRecipeToCollection(
   userId: string,
@@ -393,18 +396,13 @@ export async function addRecipeToCollection(
   try {
     await model.addItem(collectionId, recipeId, sortOrder);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const causeMessage =
-      err instanceof Error && err.cause instanceof Error ? err.cause.message : '';
-    if (
-      message.includes('unique') ||
-      message.includes('duplicate') ||
-      causeMessage.includes('unique') ||
-      causeMessage.includes('duplicate')
-    ) {
+    if (isUniqueViolation(err, 'collection_item_collection_id_recipe_id_unique')) {
       throw new Error('ALREADY_IN_COLLECTION');
     }
-    logger.error({ err, userId, collectionId, recipeId }, 'addRecipeToCollection failed');
+    logger.error(
+      { err: toLoggableError(err), userId, collectionId, recipeId },
+      'addRecipeToCollection failed',
+    );
     throw err;
   }
   // Invalidate only AFTER the write succeeded — an ALREADY_IN_COLLECTION

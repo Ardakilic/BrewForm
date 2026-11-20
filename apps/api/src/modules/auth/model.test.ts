@@ -383,3 +383,44 @@ describe('Auth model', () => {
     });
   });
 });
+
+/**
+ * userIdentifierConflict — maps a unique violation on any user-identifier
+ * constraint (exact or `_lower_unique`) to its domain code, through the shared
+ * cause-chain helper, and ignores everything else.
+ */
+describe('userIdentifierConflict', () => {
+  /** A Drizzle-style wrapper around a postgres-js unique violation. */
+  function uniqueViolation(constraint: string) {
+    return {
+      message: 'Failed query: insert into "user" ...',
+      cause: { name: 'PostgresError', code: '23505', constraint_name: constraint },
+    };
+  }
+
+  it('should map every email constraint to EMAIL_ALREADY_EXISTS', () => {
+    for (const constraint of model.USER_EMAIL_CONSTRAINTS) {
+      expect(model.userIdentifierConflict(uniqueViolation(constraint))).toBe(
+        'EMAIL_ALREADY_EXISTS',
+      );
+    }
+  });
+
+  it('should map every username constraint to USERNAME_ALREADY_EXISTS', () => {
+    for (const constraint of model.USER_USERNAME_CONSTRAINTS) {
+      expect(model.userIdentifierConflict(uniqueViolation(constraint))).toBe(
+        'USERNAME_ALREADY_EXISTS',
+      );
+    }
+  });
+
+  it('should return null for other constraints, other SQLSTATEs and non-database errors', () => {
+    expect(model.userIdentifierConflict(uniqueViolation('user_pkey'))).toBeNull();
+    expect(
+      model.userIdentifierConflict({
+        cause: { name: 'PostgresError', code: '23503', constraint_name: 'user_email_unique' },
+      }),
+    ).toBeNull();
+    expect(model.userIdentifierConflict(new Error('EMAIL_ALREADY_EXISTS'))).toBeNull();
+  });
+});

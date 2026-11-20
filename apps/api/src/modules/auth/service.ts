@@ -17,7 +17,8 @@ import * as model from './model.ts';
 // Standard dedup approach for future OAuth/social login:
 // import { generateUniqueUsername } from '@brewform/shared';
 
-const logger = createLogger('auth-service');
+/** Module-scoped structured logger for the auth service (exported for test spies). */
+export const logger = createLogger('auth-service');
 
 /**
  * Authenticated user shape with the stored `passwordHash` and a
@@ -46,6 +47,34 @@ export interface AuthUser extends Omit<User, 'preferences'> {
  */
 export function toAuthUser(user: Record<string, unknown>): AuthUser {
   return user as unknown as AuthUser;
+}
+
+/**
+ * Insert the user through `model.createUser`, translating a unique violation on
+ * any of `USER_EMAIL_CONSTRAINTS` / `USER_USERNAME_CONSTRAINTS` into
+ * `EMAIL_ALREADY_EXISTS` / `USERNAME_ALREADY_EXISTS`. This is the race
+ * fallback for registrations that passed the availability pre-checks (and for
+ * identifiers the pre-checks do not cover yet). A translated driver error, which
+ * embeds the submitted values, is neither logged nor re-thrown.
+ *
+ * @param data - The registration payload passed to `model.createUser`.
+ * @returns The newly created user row.
+ * @throws {Error} EMAIL_ALREADY_EXISTS or USERNAME_ALREADY_EXISTS on a unique violation.
+ */
+async function createUserOrThrowConflict(data: Parameters<typeof model.createUser>[0]) {
+  logger.debug({}, 'createUserOrThrowConflict started');
+  try {
+    const user = await model.createUser(data);
+    logger.debug({ userId: user.id }, 'createUserOrThrowConflict completed');
+    return user;
+  } catch (err) {
+    const conflict = model.userIdentifierConflict(err);
+    if (conflict) {
+      logger.warn({ domainCode: conflict }, 'register hit a unique violation after the pre-checks');
+      throw new Error(conflict);
+    }
+    throw err;
+  }
 }
 
 /**
@@ -81,7 +110,7 @@ export async function register(data: {
     throw new Error('USERNAME_ALREADY_EXISTS');
   }
 
-  const user = toAuthUser(await model.createUser(data));
+  const user = toAuthUser(await createUserOrThrowConflict(data));
   const accessToken = await jwt.signAccessToken({
     id: user.id,
     email: user.email,

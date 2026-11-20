@@ -14,6 +14,43 @@ import {
 } from '@brewform/db/schema';
 import { compareSync, hashSync } from 'bcryptjs';
 import { and, eq, isNull, ne } from 'drizzle-orm';
+import { isUniqueViolation } from '../../utils/errors.ts';
+
+/**
+ * Unique constraints that guard `user.email`: the exact-match constraint and the
+ * case-insensitive `lower(email)` expression index (created in wave-6 task 7.15).
+ */
+export const USER_EMAIL_CONSTRAINTS = ['user_email_unique', 'user_email_lower_unique'] as const;
+
+/**
+ * Unique constraints that guard `user.username`: the exact-match constraint and
+ * the case-insensitive `lower(username)` expression index (wave-6 task 7.15).
+ */
+export const USER_USERNAME_CONSTRAINTS = [
+  'user_username_unique',
+  'user_username_lower_unique',
+] as const;
+
+/**
+ * Translate a Postgres unique violation on a user identifier into its domain
+ * code. Detection goes through the shared {@link isUniqueViolation} helper, so
+ * bare and Drizzle-wrapped driver errors are both recognized.
+ *
+ * @param err - Any error thrown by a `user` insert or update.
+ * @returns `EMAIL_ALREADY_EXISTS`, `USERNAME_ALREADY_EXISTS`, or `null` when the
+ *          error is not a unique violation on one of those constraints.
+ */
+export function userIdentifierConflict(
+  err: unknown,
+): 'EMAIL_ALREADY_EXISTS' | 'USERNAME_ALREADY_EXISTS' | null {
+  if (USER_EMAIL_CONSTRAINTS.some((constraint) => isUniqueViolation(err, constraint))) {
+    return 'EMAIL_ALREADY_EXISTS';
+  }
+  if (USER_USERNAME_CONSTRAINTS.some((constraint) => isUniqueViolation(err, constraint))) {
+    return 'USERNAME_ALREADY_EXISTS';
+  }
+  return null;
+}
 
 /** Find a non-deleted user by email, including preferences. */
 export async function findUserByEmail(email: string) {

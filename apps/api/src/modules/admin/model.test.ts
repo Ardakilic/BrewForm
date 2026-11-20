@@ -693,6 +693,28 @@ describe('throwIfUniqueViolation', () => {
     const err = { name: 'PostgresError', code: '23505', constraint_name: 'user_email_unique' };
     expect(() => model.throwIfUniqueViolation(err)).toThrow('EMAIL_ALREADY_EXISTS');
   });
+
+  it('should map the case-insensitive _lower_unique constraints too', () => {
+    const email = {
+      cause: { name: 'PostgresError', code: '23505', constraint_name: 'user_email_lower_unique' },
+    };
+    const username = {
+      cause: {
+        name: 'PostgresError',
+        code: '23505',
+        constraint_name: 'user_username_lower_unique',
+      },
+    };
+    expect(() => model.throwIfUniqueViolation(email)).toThrow('EMAIL_ALREADY_EXISTS');
+    expect(() => model.throwIfUniqueViolation(username)).toThrow('USERNAME_ALREADY_EXISTS');
+  });
+
+  it('should not throw for a unique violation on an unrelated constraint', () => {
+    const err = {
+      cause: { name: 'PostgresError', code: '23505', constraint_name: 'user_pkey' },
+    };
+    expect(() => model.throwIfUniqueViolation(err)).not.toThrow();
+  });
 });
 
 describe('adminCreateUser', () => {
