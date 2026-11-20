@@ -1,5 +1,7 @@
+import '../../test-setup.ts';
 import { mkdir, readFile, rm, stat } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { app } from '../../main.ts';
 import { LocalStorageDriver } from './local.ts';
 
 describe('LocalStorageDriver', () => {
@@ -68,6 +70,29 @@ describe('LocalStorageDriver', () => {
     const data = new TextEncoder().encode('malicious');
     await expect(driver.save(data, '../../../etc/passwd')).rejects.toThrow('Invalid filename');
     await expect(driver.save(data, '/etc/passwd')).rejects.toThrow('Invalid filename');
+  });
+
+  it('should serve a file saved by the driver from GET /uploads/<file> in the same directory', async () => {
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+    const url = await driver.save(bytes, 'served.png');
+    expect(url).toBe('/uploads/served.png');
+
+    const res = await app.request(url);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('image/png');
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
+    // The handler read exactly what the driver wrote to the configured directory.
+    expect(new Uint8Array(await readFile(`${testDir}/served.png`))).toEqual(bytes);
+  });
+
+  it('should answer 404 from GET /uploads/<file> for a file the driver never saved', async () => {
+    const res = await app.request('/uploads/never-saved.png');
+    expect(res.status).toBe(404);
+  });
+
+  it('should refuse encoded path traversal on GET /uploads/<path>', async () => {
+    const res = await app.request('/uploads/..%2F..%2Fetc%2Fpasswd');
+    expect(res.status).toBe(403);
   });
 
   it('should reject path traversal in delete', async () => {

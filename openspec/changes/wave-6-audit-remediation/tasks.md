@@ -37,11 +37,11 @@ How to use this task list
 
 ## 3. Foundations: API env parsing and storage startup (t4b api-env-config)
 
-- [ ] 3.1 Add failing cases to `apps/api/src/config/env.test.ts`: (a) `STORAGE_DRIVER=local` with `S3_ENDPOINT=''`, `S3_PUBLIC_URL=''`, `PUBLIC_APP_URL=''` parses and leaves them `undefined`; (b) `APP_PORT=''`, `SMTP_PORT=''`, `UPLOAD_MAX_SIZE_BYTES=''` fall back to `8000`/`1025`/`10485760`; (c) `CACHE_ENABLED=''`, `CACHE_DRIVER=''`, `LOG_FORMAT=''`, `STORAGE_DRIVER=''` fall back to defaults; (d) `JWT_SECRET=''` and `DATABASE_URL='   '` fail naming the key; (e) `STORAGE_DRIVER=s3` with `S3_ENDPOINT=''` fails with `S3_ENDPOINT is required when STORAGE_DRIVER is s3`; (f) `APP_PORT=abc|0|70000`, `SMTP_PORT=70000`, `UPLOAD_MAX_SIZE_BYTES=-1|0` fail; (g) `UPLOAD_DIR='./uploads'` resolves to `path.resolve('./uploads')` and `/app/uploads` stays as is. Run `make test-specific filter=src/config/env.test.ts` and confirm they fail.
-- [ ] 3.2 In `apps/api/src/config/env.ts`, wrap the object schema in `z.preprocess` that copies the input and drops keys whose value is a string that trims to `''`; keep `envSchema` exported and change `Env` to `z.output<typeof envSchema>`; make `APP_PORT`/`SMTP_PORT` `z.coerce.number().int().min(1).max(65535)`, `UPLOAD_MAX_SIZE_BYTES` `z.coerce.number().int().positive()`, and `UPLOAD_DIR` `z.string().default('./uploads').transform((p) => path.resolve(p))` (import `node:path`). Re-run the env tests until green; run `make check-api`. This lands before t2's and t4a's env changes (tasks 6.3 and 5.29), which build on the same schema.
-- [ ] 3.3 Add a test that `loadEnv` failure output names the variable but not the value (spy on `console.error`, set `process.env.JWT_SECRET='tooshort'` and `S3_ENDPOINT='not a url'` with `STORAGE_DRIVER=s3`, call `reloadConfig()` in a `try`, restore env in `finally`); adjust `loadEnv` only if the assertion fails.
-- [ ] 3.4 Update the env comment block in `env.ts` (`UPLOAD_DIR`: "resolved to an absolute path at load; the production image sets /app/uploads") and add a short note that blank values are treated as unset.
-- [ ] 3.5 Write failing unit tests in `apps/api/src/utils/storage/startup.test.ts` for `verifyStorage(config, fsDeps, log)`, with injected `mkdir`, `writeFile`, `unlink`, `stat` and `access`. The tests cover:
+- [x] 3.1 Add failing cases to `apps/api/src/config/env.test.ts`: (a) `STORAGE_DRIVER=local` with `S3_ENDPOINT=''`, `S3_PUBLIC_URL=''`, `PUBLIC_APP_URL=''` parses and leaves them `undefined`; (b) `APP_PORT=''`, `SMTP_PORT=''`, `UPLOAD_MAX_SIZE_BYTES=''` fall back to `8000`/`1025`/`10485760`; (c) `CACHE_ENABLED=''`, `CACHE_DRIVER=''`, `LOG_FORMAT=''`, `STORAGE_DRIVER=''` fall back to defaults; (d) `JWT_SECRET=''` and `DATABASE_URL='   '` fail naming the key; (e) `STORAGE_DRIVER=s3` with `S3_ENDPOINT=''` fails with `S3_ENDPOINT is required when STORAGE_DRIVER is s3`; (f) `APP_PORT=abc|0|70000`, `SMTP_PORT=70000`, `UPLOAD_MAX_SIZE_BYTES=-1|0` fail; (g) `UPLOAD_DIR='./uploads'` resolves to `path.resolve('./uploads')` and `/app/uploads` stays as is. Run `make test-specific filter=src/config/env.test.ts` and confirm they fail.
+- [x] 3.2 In `apps/api/src/config/env.ts`, wrap the object schema in `z.preprocess` that copies the input and drops keys whose value is a string that trims to `''`; keep `envSchema` exported and change `Env` to `z.output<typeof envSchema>`; make `APP_PORT`/`SMTP_PORT` `z.coerce.number().int().min(1).max(65535)`, `UPLOAD_MAX_SIZE_BYTES` `z.coerce.number().int().positive()`, and `UPLOAD_DIR` `z.string().default('./uploads').transform((p) => path.resolve(p))` (import `node:path`). Re-run the env tests until green; run `make check-api`. This lands before t2's and t4a's env changes (tasks 6.3 and 5.29), which build on the same schema.
+- [x] 3.3 Add a test that `loadEnv` failure output names the variable but not the value (spy on `console.error`, set `process.env.JWT_SECRET='tooshort'` and `S3_ENDPOINT='not a url'` with `STORAGE_DRIVER=s3`, call `reloadConfig()` in a `try`, restore env in `finally`); adjust `loadEnv` only if the assertion fails.
+- [x] 3.4 Update the env comment block in `env.ts` (`UPLOAD_DIR`: "resolved to an absolute path at load; the production image sets /app/uploads") and add a short note that blank values are treated as unset.
+- [x] 3.5 Write failing unit tests in `apps/api/src/utils/storage/startup.test.ts` for `verifyStorage(config, fsDeps, log)`, with injected `mkdir`, `writeFile`, `unlink`, `stat` and `access`. The tests cover:
   - It creates a missing directory (`mkdir` with `recursive: true`).
   - It writes and then unlinks `<dir>/.brewform-write-test-<pid>`.
   - It logs info `{ storageDriver: 'local', uploadDir }` and returns `{ storageDriver: 'local', uploadDir, mounted: true }`.
@@ -49,15 +49,15 @@ How to use this task list
   - When `APP_ENV=production` and `stat(dir).dev === stat(parent).dev`, it warns once and returns `mounted: false`. It never warns outside production.
   - For `s3` it logs `{ storageDriver: 's3', bucket }`, never calls the fs deps and never logs keys.
   - `checkStorageHealth(config, { access })` returns `ok` when `access(W_OK)` resolves after a mounted result, `ephemeral` after a `mounted: false` result, `degraded` when `access` rejects, and `s3` without calling `access`.
-- [ ] 3.6 Implement `apps/api/src/utils/storage/startup.ts`: `verifyStorage`, `checkStorageHealth`, `StorageStartupError`, a module-level record of the last `mounted` result, and `resetStorageStartupStateForTests()`.
+- [x] 3.6 Implement `apps/api/src/utils/storage/startup.ts`: `verifyStorage`, `checkStorageHealth`, `StorageStartupError`, a module-level record of the last `mounted` result, and `resetStorageStartupStateForTests()`.
   - Logging: module logger `createLogger('storage-startup')`, entry/exit debug logs, `err` on error logs, no secrets or file contents.
   - Export all of them from `apps/api/src/utils/storage/index.ts`.
   - Run `make test-specific filter=src/utils/storage/startup.test.ts` until green.
-- [ ] 3.7 Call `verifyStorage` in `startup()` in `apps/api/src/main.ts` before `serve()`.
+- [x] 3.7 Call `verifyStorage` in `startup()` in `apps/api/src/main.ts` before `serve()`.
   - On `StorageStartupError`, run `log.error({ err, uploadDir: config.UPLOAD_DIR, uid: process.getuid?.(), gid: process.getgid?.() }, err.message)` and `process.exit(1)`.
   - Update the startup-sequence JSDoc at the top of `main.ts`.
-- [ ] 3.8 Simplify `apps/api/src/utils/storage/local.ts` (`save`/`_resolvePath`) and the `/uploads/*` handler in `main.ts` to use `config.UPLOAD_DIR` directly (already absolute) while keeping the traversal guards; extend `apps/api/src/utils/storage/storage.test.ts` with a case that a file saved by the driver is served by `GET /uploads/<file>` from the same directory (use `app.request`).
-- [ ] 3.9 Group check: run `make test-specific filter=src/config/env.test.ts`, `make test-specific filter=src/utils/storage` and `make check-api`.
+- [x] 3.8 Simplify `apps/api/src/utils/storage/local.ts` (`save`/`_resolvePath`) and the `/uploads/*` handler in `main.ts` to use `config.UPLOAD_DIR` directly (already absolute) while keeping the traversal guards; extend `apps/api/src/utils/storage/storage.test.ts` with a case that a file saved by the driver is served by `GET /uploads/<file>` from the same directory (use `app.request`).
+- [x] 3.9 Group check: run `make test-specific filter=src/config/env.test.ts`, `make test-specific filter=src/utils/storage` and `make check-api`.
 
 ## 4. Security: private recipe notes — database, shared schema and API; legacy POST removed (t1, refine D1, OQ3)
 
@@ -964,13 +964,13 @@ How to use this task list
   - Label `<tspan>` splitting.
   - Remove the old `width/height = size` and `viewBox = 0 0 size size` assertions.
 - [x] 19.5 Rewrite `apps/web/src/components/recipe/ScaaRadarChart.tsx` on `computeRadarLayout`: translated labels via `useSafeT`, `aria-hidden` internals, tokens only, `size` prop replaced by `maxWidthPx` (default 280).
-- [ ] 19.6 Update `apps/web/src/components/recipe/TastingNotesSection.tsx`: render a single chart instance; make the card a `@container` with `flex-col @min-[520px]:flex-row`; translate chip-group headings that map to an SCAA category. Update `TastingNotesSection.test.tsx`.
-- [ ] 19.7 Write failing tests `apps/web/src/utils/brew-timeline.test.ts`:
+- [x] 19.6 Update `apps/web/src/components/recipe/TastingNotesSection.tsx`: render a single chart instance; make the card a `@container` with `flex-col @min-[520px]:flex-row`; translate chip-group headings that map to an SCAA category. Update `TastingNotesSection.test.tsx`.
+- [x] 19.7 Write failing tests `apps/web/src/utils/brew-timeline.test.ts`:
   - `computeTimelineModel`: normal 5/28 → 17.857/82.143%; `pre ≥ total` → single phase plus an `inconsistent` flag; total 0, −5 or `NaN` → `null`; negative or `NaN` pre → no split; property: widths in `[0,100]` and summing to 100.
   - `layoutPhaseLabels` at 200/222/277/507/670px, en/tr: the 3/28 case → pre value goes to the caption; every visible label box sits inside its phase.
-- [ ] 19.8 Implement `apps/web/src/utils/brew-timeline.ts` (pure; uses `utils/chart` and the format helpers).
-- [ ] 19.9 Add `apps/web/src/utils/useElementWidth.ts` (`ResizeObserver` measured in `useLayoutEffect`, feature-detected, fallback width argument) with `useElementWidth.test.ts` covering the jsdom fallback and a stubbed observer.
-- [ ] 19.10 Rewrite `apps/web/src/components/recipe/BrewTimeline.tsx`:
+- [x] 19.8 Implement `apps/web/src/utils/brew-timeline.ts` (pure; uses `utils/chart` and the format helpers).
+- [x] 19.9 Add `apps/web/src/utils/useElementWidth.ts` (`ResizeObserver` measured in `useLayoutEffect`, feature-detected, fallback width argument) with `useElementWidth.test.ts` covering the jsdom fallback and a stubbed observer.
+- [x] 19.10 Rewrite `apps/web/src/components/recipe/BrewTimeline.tsx`:
   - The SVG holds shapes only (`preserveAspectRatio="none"`, `vector-effect="non-scaling-stroke"` on the stroke and the divider).
   - Phase labels are HTML boxes (`width: clampPct(pct)%`), with a caption row for hidden durations.
   - The axis comes from `durationTicks` at 200px, with `--text-secondary` ticks.
@@ -978,15 +978,15 @@ How to use this task list
   - Header uses `flex flex-wrap gap-x-3`; flow rate via `formatDecimal(flowRate, 1)` and `recipe.brewTimeline.flowRate`.
   - Returns `null` for an invalid total.
   - `createLogger('BrewTimeline')` emits `log.warn({ extractionTimeSeconds, preInfusionTimeSeconds }, 'inconsistent pre-infusion ignored')` once per mount from `useEffect`.
-- [ ] 19.11 Rewrite `apps/web/src/components/recipe/BrewTimeline.test.tsx`:
+- [x] 19.11 Rewrite `apps/web/src/components/recipe/BrewTimeline.test.tsx`:
   - Keep the segment-width property (now on the phase boxes).
   - Replace the Property 5 step-formula tests with the new invariants (≤ 8 ticks, includes 0 and total, ascending).
   - Add cases for 43200s (`0 … 12h`), 2,147,483,647 (renders ≤ 8 ticks quickly), and `pre ≥ total` (no minus sign, one warn log via the `vi.hoisted` logger mock).
   - Assert there is no `<text>` inside the stretched SVG.
   - Add a property that every inline `width`/`left` percentage is finite and in `[0,100]`, for fast-check inputs in `[-10, 100000]` plus `NaN`.
-- [ ] 19.12 Verify `apps/web/src/pages/recipes/RecipeFocusModePage.tsx` and `RecipeDetailPage.tsx` need no prop changes, and that `RecipeFocusModePage.test.tsx` and `RecipeDetailPage.test.tsx` still pass.
-- [ ] 19.13 Add `--rating-star` to `:root`, `.dark` and `.coffee` in `apps/web/src/styles/globals.css` (`#b45309` / `#f59e0b` / `#fbbf24`).
-- [ ] 19.14 Add a contrast test `apps/web/src/utils/chart/contrast.test.ts` that parses the three theme blocks in `globals.css` and asserts chart text pairs ≥ 4.5:1 (`--text-secondary` on `--bg-secondary`) and mark pairs ≥ 3:1 (`--accent-primary` and `--rating-star` on `--bg-secondary`).
+- [x] 19.12 Verify `apps/web/src/pages/recipes/RecipeFocusModePage.tsx` and `RecipeDetailPage.tsx` need no prop changes, and that `RecipeFocusModePage.test.tsx` and `RecipeDetailPage.test.tsx` still pass.
+- [x] 19.13 Add `--rating-star` to `:root`, `.dark` and `.coffee` in `apps/web/src/styles/globals.css` (`#b45309` / `#f59e0b` / `#fbbf24`).
+- [x] 19.14 Add a contrast test `apps/web/src/utils/chart/contrast.test.ts` that parses the three theme blocks in `globals.css` and asserts chart text pairs ≥ 4.5:1 (`--text-secondary` on `--bg-secondary`) and mark pairs ≥ 3:1 (`--accent-primary` and `--rating-star` on `--bg-secondary`).
 - [ ] 19.15 Write failing tests in `apps/web/src/components/recipe/StarRating.test.tsx`:
   - Read-only: a single `role="img"` named "Rated 3.5 out of 5 stars", no buttons, tr "3,5"; 7.9 → 4 stars and label 4; 11 → 5; −1 and `NaN` → "Not rated".
   - Interactive keys: ArrowRight×3 + Enter → `onRate(6)`; Shift+ArrowRight → odd values; digit keys 1–5; Home/End; Escape revert; blur commits once.

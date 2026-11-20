@@ -4,8 +4,11 @@
  * Startup sequence:
  *   1. Initialize cache driver (memory | redis, or disabled via CACHE_ENABLED)
  *   2. Register node-cron jobs (hourly badge evaluation)
- *   3. Bind HTTP server via @hono/node-server
- *   4. Register SIGTERM/SIGINT handlers for graceful shutdown
+ *   3. Verify storage (`verifyStorage`): for the local driver create UPLOAD_DIR
+ *      and prove it is writable; on failure log one error (directory, UID/GID,
+ *      ownership fix) and exit with status 1 before listening
+ *   4. Bind HTTP server via @hono/node-server
+ *   5. Register SIGTERM/SIGINT handlers for graceful shutdown
  *
  * Shutdown sequence (on SIGTERM/SIGINT):
  *   1. Shut down HTTP server
@@ -34,6 +37,7 @@ import type { AppEnv } from './types/hono.ts';
 import { createCacheProvider, NullCacheProvider } from './utils/cache/index.ts';
 import { cacheProvider, setCacheProvider } from './utils/cache/singleton.ts';
 import { createLogger } from './utils/logger/index.ts';
+import { StorageStartupError, verifyStorage } from './utils/storage/index.ts';
 import './utils/jobs/cron.ts';
 
 const logger = createLogger('main');
@@ -81,20 +85,24 @@ app.use('*', async (c, next) => {
 app.use('*', crawlerMiddleware);
 app.onError(errorHandler);
 
-// Serve uploads locally when using filesystem storage
+// Serve uploads locally when using filesystem storage. The path is captured by
+// a named regex param: Hono's bare `*` wildcard is not readable through
+// `c.req.param('*')` (it always returned undefined, so every request got 400).
 if (config.STORAGE_DRIVER === 'local') {
-  app.get('/uploads/*', async (c) => {
-    const userPath = c.req.param('*');
+  app.get('/uploads/:path{.+}', async (c) => {
+    const userPath = c.req.param('path');
     if (!userPath) {
       return c.text('Bad Request', 400);
     }
-    const resolvedUploadDir = path.resolve(config.UPLOAD_DIR);
-    const filepath = path.resolve(path.join(resolvedUploadDir, userPath));
+    // config.UPLOAD_DIR is already absolute (resolved once in config/env.ts),
+    // so the driver and this handler always use the same directory.
+    const uploadDir = config.UPLOAD_DIR;
+    const filepath = path.resolve(uploadDir, userPath);
 
     if (
       path.isAbsolute(userPath) ||
       userPath.includes('..') ||
-      !filepath.startsWith(resolvedUploadDir + path.sep)
+      !filepath.startsWith(uploadDir + path.sep)
     ) {
       return c.text('Forbidden', 403);
     }
@@ -126,6 +134,11 @@ if (config.STORAGE_DRIVER === 'local') {
 
 app.route('/', routes);
 
+/**
+ * Boot the API: initialize the cache, verify storage (exits with status 1 on a
+ * `StorageStartupError`), bind the HTTP server and register the graceful
+ * shutdown handlers. See the startup sequence in the module docblock.
+ */
 async function startup() {
   logger.info('Starting BrewForm API...');
 
@@ -137,6 +150,24 @@ async function startup() {
   logger.info({ enabled: config.CACHE_ENABLED, driver: config.CACHE_DRIVER }, 'Cache initialized');
 
   // Cron jobs are registered at module top-level via import above
+
+  try {
+    await verifyStorage(config);
+  } catch (err) {
+    if (err instanceof StorageStartupError) {
+      logger.error(
+        {
+          err,
+          uploadDir: config.UPLOAD_DIR,
+          uid: process.getuid?.(),
+          gid: process.getgid?.(),
+        },
+        err.message,
+      );
+      process.exit(1);
+    }
+    throw err;
+  }
 
   const server = serve({ fetch: app.fetch, port: config.APP_PORT });
   logger.info(`BrewForm API running on http://localhost:${config.APP_PORT}`);
