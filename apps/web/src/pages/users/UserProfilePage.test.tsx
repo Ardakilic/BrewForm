@@ -345,6 +345,75 @@ describe('UserProfilePage — shared cards', () => {
   });
 });
 
+/**
+ * Builds a follow-list profile (the API nests it under `follower` or `following`).
+ *
+ * @param username - The profile's username (also used to derive its id).
+ * @param displayName - The display name, or null/empty to exercise the username fallback.
+ */
+function followProfile(username: string, displayName: string | null) {
+  return { id: `id-${username}`, username, displayName, avatarUrl: null, bio: null };
+}
+
+/**
+ * Serves `rows` for the follow-list request at `path`, the profile for every other request, and
+ * a logged-out viewer.
+ *
+ * @param path - The follow-list request path (`/follow/<profile id>/followers|following`).
+ * @param rows - The follow records the API returns.
+ */
+function mockFollowList(path: string, rows: unknown[]) {
+  mockApiGet.mockImplementation((url: string) => {
+    if (url === '/users/me') {
+      return Promise.reject(new ApiError('UNAUTHORIZED', 'no token', undefined, 401));
+    }
+    return Promise.resolve(url === path ? rows : mockProfile);
+  });
+}
+
+describe('UserProfilePage — follow lists', () => {
+  it('renders each follower from the nested follower profile: name, @handle and profile link', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'followers' }));
+    mockFollowList('/follow/profile-user-id/followers', [
+      { id: 'f1', followerId: 'id-alice', follower: followProfile('alice', 'Alice') },
+      { id: 'f4', followerId: 'id-dave', follower: followProfile('dave', 'Dave Smith') },
+    ]);
+
+    renderProfilePage('diana', 'followers');
+
+    expect(await screen.findByText('Alice')).toBeInTheDocument();
+    expect(screen.getByText('@alice')).toBeInTheDocument();
+    expect(screen.getByText('Alice').closest('a')?.getAttribute('href')).toBe('/u/alice');
+    expect(screen.getByText('Dave Smith')).toBeInTheDocument();
+    expect(screen.getByText('@dave')).toBeInTheDocument();
+  });
+
+  it('falls back to the username when a followed profile has a null or empty display name', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'following' }));
+    mockFollowList('/follow/profile-user-id/following', [
+      { id: 'f2', followingId: 'id-bob', following: followProfile('bob', null) },
+      { id: 'f3', followingId: 'id-carol', following: followProfile('carol', '') },
+    ]);
+
+    renderProfilePage('diana', 'following');
+
+    expect(await screen.findByText('bob')).toBeInTheDocument();
+    expect(screen.getByText('@bob')).toBeInTheDocument();
+    expect(screen.getByText('bob').closest('a')?.getAttribute('href')).toBe('/u/bob');
+    expect(screen.getByText('carol')).toBeInTheDocument();
+    expect(screen.getByText('@carol')).toBeInTheDocument();
+  });
+
+  it('shows the empty message when the profile has no followers', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'followers' }));
+    mockFollowList('/follow/profile-user-id/followers', []);
+
+    renderProfilePage('diana', 'followers');
+
+    expect(await screen.findByText('No followers yet.')).toBeInTheDocument();
+  });
+});
+
 describe('UserProfilePage — brews tab (F02)', () => {
   const selfAuth = {
     ...defaultAuth,

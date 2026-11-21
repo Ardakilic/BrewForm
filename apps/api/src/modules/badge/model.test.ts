@@ -231,3 +231,106 @@ describe('evaluateBadges', () => {
     }
   });
 });
+
+/** All six metrics the `precision_brewer` rule requires on every version. */
+const PRECISION_METRICS = {
+  groundWeightGrams: 18,
+  extractionTimeSeconds: 28,
+  extractionVolumeMl: 36,
+  temperatureCelsius: 93,
+  brewRatio: 2,
+  flowRate: 1.3,
+};
+
+/**
+ * evaluateBadges — `precision_brewer` is met when the user has at least one recipe version and
+ * every version records all six precision metrics (ground weight, extraction time and volume,
+ * temperature, brew ratio, flow rate). Replaces the deleted inline-copy `badge/service.test.ts`.
+ */
+describe('evaluateBadges — precision_brewer', () => {
+  let userId: string;
+  let badgeId: string;
+  let insertedBadge: boolean;
+  let fixture: { recipeId: string; versionId: string };
+
+  beforeEach(async () => {
+    userId = crypto.randomUUID();
+    insertedBadge = false;
+    await db.insert(users).values({
+      id: userId,
+      email: `test-${userId}@example.com`,
+      username: `testuser-${userId}`,
+      passwordHash: 'hash',
+    });
+    // Same defensive fallback as the first_brew block: reuse the seeded definition, else add one.
+    const [existing] = await db
+      .select()
+      .from(badges)
+      .where(eq(badges.rule, 'precision_brewer'))
+      .limit(1);
+    if (existing) {
+      badgeId = existing.id;
+    } else {
+      badgeId = crypto.randomUUID();
+      insertedBadge = true;
+      await db.insert(badges).values({
+        id: badgeId,
+        name: 'Precision Brewer',
+        icon: 'dart',
+        description: 'Filled every precision metric',
+        rule: 'precision_brewer',
+        threshold: 10,
+      });
+    }
+    fixture = await insertRecipeFixture(userId);
+  });
+
+  afterEach(async () => {
+    await db.delete(userBadges).where(eq(userBadges.userId, userId));
+    await db.delete(recipeVersions).where(eq(recipeVersions.id, fixture.versionId));
+    await db.delete(recipes).where(eq(recipes.id, fixture.recipeId));
+    if (insertedBadge) {
+      await db.delete(badges).where(eq(badges.id, badgeId));
+    }
+    await db.delete(users).where(eq(users.id, userId));
+  });
+
+  /**
+   * Lists the rules of the badges the test user holds.
+   *
+   * @returns The awarded badge rules.
+   */
+  async function awardedRules(): Promise<string[]> {
+    const rows = await model.getUserBadges(userId);
+    return rows.map((r) => r.badge?.rule).filter((r): r is NonNullable<typeof r> => r != null);
+  }
+
+  it('awards precision_brewer when every version records all six metrics', async () => {
+    await db
+      .update(recipeVersions)
+      .set(PRECISION_METRICS)
+      .where(eq(recipeVersions.id, fixture.versionId));
+
+    await model.evaluateBadges(userId);
+
+    expect(await awardedRules()).toContain('precision_brewer');
+  });
+
+  it('does not award precision_brewer while a version lacks one metric', async () => {
+    await db
+      .update(recipeVersions)
+      .set({ ...PRECISION_METRICS, flowRate: null })
+      .where(eq(recipeVersions.id, fixture.versionId));
+
+    await model.evaluateBadges(userId);
+    expect(await awardedRules()).not.toContain('precision_brewer');
+
+    // The missing metric was the only blocker: recording it earns the badge.
+    await db
+      .update(recipeVersions)
+      .set({ flowRate: PRECISION_METRICS.flowRate })
+      .where(eq(recipeVersions.id, fixture.versionId));
+    await model.evaluateBadges(userId);
+    expect(await awardedRules()).toContain('precision_brewer');
+  });
+});

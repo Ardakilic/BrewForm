@@ -23,16 +23,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
-    // Exclude legacy test files that use non-Vitest imports.
-    // NOTE: `__tests__/*.integration.test.ts` is intentionally NOT excluded — the
-    // recipe-coffee-dates integration test was converted to Vitest imports so it
-    // runs in CI (it was previously invisible because of that exclude pattern).
-    exclude: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/*.exploration.test.ts',
-      '**/*.preservation.test.ts',
-    ],
+    // Every test file runs: an excluded test rots unseen (packages/shared/src/mock-mirror.test.ts
+    // also rejects test files that import no project module).
+    exclude: ['**/node_modules/**', '**/dist/**'],
     coverage: {
       provider: 'v8',
       // Count ALL production source files, not just the ones a test transitively

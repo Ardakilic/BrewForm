@@ -296,6 +296,42 @@ describe('RecipeCreatePage — bean and coffee variety links', () => {
   });
 });
 
+describe('RecipeCreatePage — coffee dates', () => {
+  it('sends the roast, package-open and grind dates that were entered', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Niche Zero');
+
+    await fillRequired(user);
+    await user.type(screen.getByLabelText(t('recipe.roastDate')), '2024-03-01');
+    await user.type(screen.getByLabelText(t('recipe.packageOpenDate')), '2024-03-05');
+    await user.type(screen.getByLabelText(t('recipe.grindDate')), '2024-03-06');
+    const body = await submitAndGetBody(user);
+
+    expect(body).toMatchObject({
+      roastDate: '2024-03-01',
+      packageOpenDate: '2024-03-05',
+      grindDate: '2024-03-06',
+    });
+  });
+
+  it('sends no date fields when they are left empty', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Niche Zero');
+
+    expect(screen.getByLabelText(t('recipe.roastDate'))).toHaveValue('');
+    expect(screen.getByLabelText(t('recipe.packageOpenDate'))).toHaveValue('');
+    expect(screen.getByLabelText(t('recipe.grindDate'))).toHaveValue('');
+    await fillRequired(user);
+    const body = await submitAndGetBody(user);
+
+    expect('roastDate' in body).toBe(false);
+    expect('packageOpenDate' in body).toBe(false);
+    expect('grindDate' in body).toBe(false);
+  });
+});
+
 describe('RecipeCreatePage — brewer notes', () => {
   it("labels the author's notes as public brewer notes with the visibility hint", async () => {
     renderPage();
