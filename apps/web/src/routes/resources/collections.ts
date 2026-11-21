@@ -152,3 +152,34 @@ export async function myCollectionsAction({
   log.error({ intent }, 'myCollectionsAction unknown intent');
   return { ok: false, intent: '', error: `Unknown intent: ${intent || '(none)'}` };
 }
+
+/** JSON body of the `collections/:id/reorder` resource action. */
+export interface CollectionReorderInput {
+  itemIds: string[];
+}
+
+/** Result of {@link reorderAction}. */
+export type CollectionReorderResult = { ok: true } | ActionFailure;
+
+/**
+ * `collections/:id/reorder` resource action (PATCH, JSON `{ itemIds }`): persists the new item
+ * order through `collectionApi.reorder` with `request.signal`. Returns `{ ok: true }` or
+ * `{ ok: false, error, code }` so `CollectionRecipeList` can roll its optimistic order back; a
+ * final 401 returns `{ ok: false, code: 'UNAUTHORIZED' }`, because a resource route never
+ * redirects. An aborted request rethrows. Logs carry the collection id and item count only.
+ */
+export async function reorderAction({
+  params,
+  request,
+}: Pick<ActionFunctionArgs, 'params' | 'request'>): Promise<CollectionReorderResult> {
+  const collectionId = params.id ?? '';
+  const { itemIds } = (await request.json()) as CollectionReorderInput;
+  try {
+    await withDataLog(log, 'collectionReorder', { collectionId, itemCount: itemIds.length }, () =>
+      collectionApi.reorder(collectionId, itemIds, { signal: request.signal }),
+    );
+    return { ok: true };
+  } catch (err) {
+    return toActionFailure(err, []);
+  }
+}

@@ -83,35 +83,3 @@ export const action = requireAuth(
     }
   },
 );
-
-/** JSON body of the `collections/:id/reorder` resource action. */
-export interface CollectionReorderInput {
-  itemIds: string[];
-}
-
-/** Result of the `collections/:id/reorder` resource action. */
-export type CollectionReorderResult = { ok: true } | ActionFailure;
-
-/**
- * `collections/:id/reorder` resource action (PATCH, JSON `{ itemIds }`): persists the new item
- * order through `collectionApi.reorder`. Returns `{ ok: true }` or `{ ok: false, error }` so
- * `CollectionRecipeList` can roll its optimistic order back; a final 401 redirects through
- * `requireAuth`.
- */
-export const reorderAction = requireAuth(
-  async ({ params, request }: ActionFunctionArgs): Promise<CollectionReorderResult> => {
-    const collectionId = params.id ?? '';
-    const { itemIds } = (await request.json()) as CollectionReorderInput;
-    try {
-      await withDataLog(
-        log,
-        'CollectionDetailPage reorder',
-        { collectionId, itemCount: itemIds.length },
-        () => collectionApi.reorder(collectionId, itemIds, { signal: request.signal }),
-      );
-      return { ok: true };
-    } catch (err) {
-      return toActionFailure(err);
-    }
-  },
-);

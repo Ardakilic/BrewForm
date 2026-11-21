@@ -1,5 +1,5 @@
 import { EMOJI_TAGS_LIST } from '@brewform/shared/constants';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import {
   Link,
   useFetcher,
@@ -31,7 +31,9 @@ import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { RecipeDetailSkeleton } from '../../components/ui/Skeleton.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
+import type { rateAction } from '../../routes/rate.ts';
 import type { loader } from './RecipeDetailPage.data.ts';
 
 const log = createLogger('RecipeDetailPage');
@@ -40,6 +42,8 @@ const log = createLogger('RecipeDetailPage');
  * Full recipe detail view for `/recipes/:slug`, rendered from the route loader
  * (`RecipeDetailPage.data.ts`): SEO head, stat cards, bean, timeline, equipment, tasting
  * notes, comments, and share/QR/fork side cards, with owner-only edit and rating controls.
+ * The viewer's rating is submitted through a typed fetcher (`rateAction`); a failure toasts
+ * `recipe.rating.saveError` and the stars roll back to the saved rating.
  * Only a `public` recipe is indexable: it gets a canonical link and the Recipe JSON-LD.
  * Any other visibility the viewer may open (an `unlisted` recipe reached by link or QR code,
  * or the author's own `draft`/`private` recipe) renders `noindex, nofollow`, with no
@@ -59,8 +63,8 @@ export function RecipeDetailPage() {
   const { t } = useTranslation();
   const unitSystem = useUnitSystem();
 
-  const ratingFetcher = useFetcher();
-  const ratingFormRef = useRef<HTMLFormElement>(null);
+  const ratingFetcher = useFetcher<typeof rateAction>();
+  useActionFeedback(ratingFetcher, { errorKey: 'recipe.rating.saveError' });
 
   useEffect(() => {
     log.debug({ slug }, 'RecipeDetailPage mounted');
@@ -351,27 +355,17 @@ export function RecipeDetailPage() {
                   <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
                     {recipe.userRating ? t('recipe.yourRating') : t('recipe.rateThis')}
                   </p>
-                  <ratingFetcher.Form
-                    ref={ratingFormRef}
-                    method="post"
-                    action={`/recipes/${recipe.id}/rate`}
-                  >
-                    <input type="hidden" name="rating" value={recipe.userRating ?? ''} />
-                    <StarRating
-                      value={recipe.userRating ?? null}
-                      busy={ratingFetcher.state !== 'idle'}
-                      label={recipe.userRating ? t('recipe.yourRating') : t('recipe.rateThis')}
-                      onRate={(rating) => {
-                        const input = ratingFormRef.current?.querySelector(
-                          'input[name="rating"]',
-                        ) as HTMLInputElement;
-                        if (input) {
-                          input.value = String(rating);
-                        }
-                        ratingFormRef.current?.requestSubmit();
-                      }}
-                    />
-                  </ratingFetcher.Form>
+                  <StarRating
+                    value={recipe.userRating ?? null}
+                    busy={ratingFetcher.state !== 'idle'}
+                    label={recipe.userRating ? t('recipe.yourRating') : t('recipe.rateThis')}
+                    onRate={(rating) => {
+                      ratingFetcher.submit(
+                        { rating: String(rating) },
+                        { method: 'post', action: `/recipes/${recipe.id}/rate` },
+                      );
+                    }}
+                  />
                 </div>
               )}
             </div>

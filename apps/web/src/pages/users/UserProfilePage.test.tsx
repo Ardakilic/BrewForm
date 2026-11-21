@@ -52,6 +52,7 @@ vi.mock('@/utils/logger.ts', () => ({
 import { useSearchParams } from 'react-router';
 import { api } from '../../api/client.ts';
 import { ApiError } from '../../api/errors.ts';
+import { ToastProvider } from '../../components/ui/Toast.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { loader } from './UserProfilePage.data.ts';
@@ -88,6 +89,8 @@ const enT = (key: string) => {
     'brewLog.card.notes': 'Notes',
     'brewLog.card.yieldActual': 'Yield',
     'brewLog.card.doseActual': 'Dose',
+    'follow.follow': 'Follow',
+    'follow.followingState': 'Following',
   };
   return map[key] ?? key;
 };
@@ -151,7 +154,12 @@ function renderProfilePage(username = 'diana', tab = 'recipes') {
     [{ path: '/u/:username', element: <UserProfilePage />, loader, HydrateFallback }],
     { initialEntries: [`/u/${username}?tab=${tab}`] },
   );
-  return render(<RouterProvider router={router} />);
+  // FollowButton toasts failures (useActionFeedback), so the page needs the toast context.
+  return render(
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>,
+  );
 }
 
 // ── Setup ──────────────────────────────────────────────────────────────────

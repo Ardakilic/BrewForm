@@ -3,6 +3,7 @@ import { createElement, type ReactNode } from 'react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ToastProvider } from '../../components/ui/Toast.tsx';
 import { loader } from './RecipeDetailPage.data.ts';
 import { RecipeDetailPage } from './RecipeDetailPage.tsx';
 
@@ -282,7 +283,12 @@ function renderDetailPage(slug = 'my-espresso', opts: RenderOpts = {}) {
   const router = createMemoryRouter([route], {
     initialEntries: [`/recipes/${slug}`],
   });
-  return render(<RouterProvider router={router} />);
+  // The page toasts rating failures (useActionFeedback), so it needs the toast context.
+  return render(
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>,
+  );
 }
 
 // ── Setup ──────────────────────────────────────────────────────────────────

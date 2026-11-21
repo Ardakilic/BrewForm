@@ -44,6 +44,7 @@ vi.mock('../contexts/I18nContext.tsx', () => ({
         'emailVerification.sending': 'Sending...',
         'emailVerification.sent': 'Sent',
         'error.rateLimited': 'Too many attempts. Please try again in {seconds} seconds.',
+        'error.unauthorized': 'You need to be logged in to do that',
       })[key] ?? key,
   }),
 }));
@@ -66,6 +67,19 @@ describe('EmailVerificationBanner', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Too many attempts. Please try again in 42 seconds.',
+    );
+  });
+
+  it('shows the error.unauthorized text when the session has expired (401)', async () => {
+    vi.mocked(authApi.sendVerification).mockRejectedValueOnce(
+      new ApiError('UNAUTHORIZED', 'no session', undefined, 401),
+    );
+    renderBanner();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resend' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'You need to be logged in to do that',
     );
   });
 

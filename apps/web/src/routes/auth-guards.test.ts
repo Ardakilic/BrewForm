@@ -108,3 +108,29 @@ describe('requireAdmin', () => {
     ).rejects.toBe(boom);
   });
 });
+
+/**
+ * Every route module except `auth-guards.ts`, as raw source (Vite inlines each file, so the
+ * scan needs no Node APIs). Resource-route handlers live under `routes/` and never redirect.
+ */
+const ROUTE_SOURCES = import.meta.glob<string>(
+  ['./**/*.ts', '!./**/*.test.ts', '!./auth-guards.ts'],
+  {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  },
+);
+
+describe('resource routes never redirect', () => {
+  it('scans the route modules', () => {
+    expect(Object.keys(ROUTE_SOURCES).length).toBeGreaterThan(5);
+  });
+
+  it('no module under routes/ other than auth-guards.ts calls requireAuth or requireAdmin', () => {
+    const offenders = Object.entries(ROUTE_SOURCES)
+      .filter(([, source]) => /\brequire(?:Auth|Admin)\(/.test(source))
+      .map(([path]) => path);
+    expect(offenders).toEqual([]);
+  });
+});

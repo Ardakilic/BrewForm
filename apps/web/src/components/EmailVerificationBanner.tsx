@@ -9,8 +9,9 @@ import { getApiErrorMessage, isRateLimitedError } from '../utils/apiErrorMessage
  * Banner prompting unverified users to verify their email, with a resend button that submits
  * to the `resources/auth/send-verification` resource-route action through a fetcher (no page
  * revalidation). Renders nothing when logged out or already verified. A rate-limited resend
- * shows the localised "try again in N seconds" message; other failures stay silent (the user
- * can try again).
+ * shows the localised "try again in N seconds" message and an expired session (`UNAUTHORIZED`,
+ * the resource route never redirects) shows `error.unauthorized`; other failures stay silent
+ * (the user can try again).
  */
 export function EmailVerificationBanner() {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ export function EmailVerificationBanner() {
     // Other failures stay silent -- the user can try again.
     const err = failureToError(result);
     if (isRateLimitedError(err)) error = getApiErrorMessage(err, t, 'emailVerification.resend');
+    else if (result.code === 'UNAUTHORIZED') error = t('error.unauthorized');
   }
 
   /** Submits the resend request to the resource route. */

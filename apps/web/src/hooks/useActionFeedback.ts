@@ -22,10 +22,11 @@ export interface ActionFeedbackOptions<D> {
 /**
  * Turns a fetcher's action results into feedback: when a submission settles (the fetcher goes
  * back to `idle` with data), it toasts `errorKey` for `{ ok: false }` (or `successKey` for
- * `{ ok: true }`) and runs the matching callback exactly once per submission. A non-fetch
- * effect: it only reads fetcher state.
+ * `{ ok: true }`) and runs the matching callback exactly once per submission. A failure with
+ * `code: 'UNAUTHORIZED'` (a resource route's final 401, which never redirects) toasts
+ * `error.unauthorized` instead of `errorKey`. A non-fetch effect: it only reads fetcher state.
  */
-export function useActionFeedback<D extends { ok: boolean }>(
+export function useActionFeedback<D extends { ok: boolean; code?: string }>(
   fetcher: WatchedFetcher<D>,
   options: ActionFeedbackOptions<D>,
 ): void {
@@ -49,7 +50,8 @@ export function useActionFeedback<D extends { ok: boolean }>(
         toast.success(typeof successKey === 'function' ? successKey(data) : successKey);
       onSuccess?.(data);
     } else {
-      if (errorKey) toast.error(typeof errorKey === 'function' ? errorKey(data) : errorKey);
+      if (data.code === 'UNAUTHORIZED') toast.error('error.unauthorized');
+      else if (errorKey) toast.error(typeof errorKey === 'function' ? errorKey(data) : errorKey);
       onError?.(data);
     }
   });

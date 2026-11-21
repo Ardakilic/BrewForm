@@ -1,29 +1,41 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockFavourite } = vi.hoisted(() => ({ mockFavourite: vi.fn() }));
-
-vi.mock('@/utils/logger.ts', () => ({
-  createLogger: () => ({
+const { mockApi, mockLogger } = vi.hoisted(() => ({
+  mockApi: vi.fn(),
+  mockLogger: {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     trace: vi.fn(),
     fatal: vi.fn(),
-  }),
-}));
-
-vi.mock('../api/index.ts', () => ({
-  recipeApi: {
-    favourite: mockFavourite,
   },
 }));
 
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
+
+vi.mock('../api/index.ts', () => ({
+  recipeApi: {
+    favourite: mockApi,
+  },
+}));
+
+import { ApiError } from '../api/errors.ts';
 import { favouriteAction } from './favourite.ts';
 
-/** Cast a `params` bag into the `ActionFunctionArgs` shape the action destructures. */
-function makeArgs(id: string | undefined) {
-  return { params: { id } } as unknown as Parameters<typeof favouriteAction>[0];
+/** A form-carrying POST like `FavouriteButton` submits (`favourited` is the requested state). */
+function makeRequest(requested?: string): Request {
+  const form = new FormData();
+  if (requested !== undefined) form.set('favourited', requested);
+  return new Request('https://example.test/recipes/recipe-1/favourite', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+/** Cast `(id, request)` into the `ActionFunctionArgs` shape the action destructures. */
+function makeArgs(id: string | undefined, request: Request = makeRequest('true')) {
+  return { params: { id }, request } as unknown as Parameters<typeof favouriteAction>[0];
 }
 
 describe('favouriteAction', () => {
@@ -31,42 +43,96 @@ describe('favouriteAction', () => {
     vi.clearAllMocks();
   });
 
-  it('toggles the favourite state and returns { ok: true, favourited } on success', async () => {
-    mockFavourite.mockResolvedValue({ favourited: true });
+  it('returns { ok: true, favourited } and passes the request signal', async () => {
+    mockApi.mockResolvedValue({ favourited: true });
+    const request = makeRequest('true');
 
-    const result = await favouriteAction(makeArgs('recipe-1'));
+    const result = await favouriteAction(makeArgs('recipe-1', request));
 
     expect(result).toEqual({ ok: true, favourited: true });
-    expect(mockFavourite).toHaveBeenCalledWith('recipe-1');
+    expect(mockApi).toHaveBeenCalledWith('recipe-1', { signal: request.signal });
+    expect(mockLogger.debug).toHaveBeenCalledWith({ id: 'recipe-1' }, 'favouriteAction started');
+    expect(mockLogger.debug).toHaveBeenCalledWith({ id: 'recipe-1' }, 'favouriteAction completed');
   });
 
-  it('returns { ok: false } when the id param is missing', async () => {
-    const result = await favouriteAction(makeArgs(undefined));
+  it.each([undefined, ''])(
+    'returns { ok: false } without calling the API for id %j',
+    async (id) => {
+      const result = await favouriteAction(makeArgs(id));
 
-    expect(result).toEqual({ ok: false, error: 'Missing route parameter: id' });
-    expect(mockFavourite).not.toHaveBeenCalled();
+      expect(result).toEqual({ ok: false, error: 'Missing or invalid route parameter: id' });
+      expect(mockApi).not.toHaveBeenCalled();
+    },
+  );
+
+  it('a failed un-favourite (favourited=false) returns the previous state (favourited: true)', async () => {
+    mockApi.mockRejectedValue(
+      new ApiError('INTERNAL_ERROR', 'Internal server error', undefined, 500),
+    );
+
+    const result = await favouriteAction(makeArgs('recipe-1', makeRequest('false')));
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      favourited: true,
+    });
   });
 
-  it('returns { ok: false } when the id param is an empty string', async () => {
-    const result = await favouriteAction(makeArgs(''));
+  it('a failed favourite (favourited=true) returns the previous state (favourited: false)', async () => {
+    mockApi.mockRejectedValue(new TypeError('Failed to fetch'));
 
-    expect(result).toEqual({ ok: false, error: 'Missing route parameter: id' });
-    expect(mockFavourite).not.toHaveBeenCalled();
+    const result = await favouriteAction(makeArgs('recipe-1', makeRequest('true')));
+
+    expect(result).toEqual({ ok: false, error: 'Failed to fetch', favourited: false });
   });
 
-  it('returns the error message when the API call rejects with an Error', async () => {
-    mockFavourite.mockRejectedValue(new Error('boom'));
+  it('returns no previous state when the form has no favourited field', async () => {
+    mockApi.mockRejectedValue(new ApiError('INTERNAL_ERROR', 'boom', undefined, 500));
 
-    const result = await favouriteAction(makeArgs('recipe-1'));
+    const result = await favouriteAction(makeArgs('recipe-1', makeRequest()));
 
-    expect(result).toEqual({ ok: false, error: 'boom' });
+    expect(result).toEqual({ ok: false, error: 'boom', code: 'INTERNAL_ERROR' });
   });
 
-  it('returns a generic message when the API call rejects with a non-Error', async () => {
-    mockFavourite.mockRejectedValue('string failure');
+  it("returns code 'UNAUTHORIZED' for a final 401 (no redirect)", async () => {
+    mockApi.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
 
-    const result = await favouriteAction(makeArgs('recipe-1'));
+    const result = await favouriteAction(makeArgs('recipe-1', makeRequest('true')));
 
-    expect(result).toEqual({ ok: false, error: 'Favourite failed' });
+    expect(result).toEqual({
+      ok: false,
+      error: 'no session',
+      code: 'UNAUTHORIZED',
+      favourited: false,
+    });
+  });
+
+  it('rethrows an aborted request', async () => {
+    const abort = new DOMException('The operation was aborted.', 'AbortError');
+    mockApi.mockRejectedValue(abort);
+
+    await expect(favouriteAction(makeArgs('recipe-1'))).rejects.toBe(abort);
+  });
+
+  it('logs the failure with { err, id }', async () => {
+    const err = new ApiError('INTERNAL_ERROR', 'boom', undefined, 500);
+    mockApi.mockRejectedValue(err);
+
+    await favouriteAction(makeArgs('recipe-1'));
+
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err, id: 'recipe-1' },
+      'favouriteAction failed',
+    );
+  });
+
+  it("returns 'Request failed' for a non-Error rejection", async () => {
+    mockApi.mockRejectedValue({ weird: true });
+
+    const result = await favouriteAction(makeArgs('recipe-1', makeRequest('true')));
+
+    expect(result).toEqual({ ok: false, error: 'Request failed', favourited: false });
   });
 });

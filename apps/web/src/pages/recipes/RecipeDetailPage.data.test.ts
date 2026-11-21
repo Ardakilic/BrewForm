@@ -44,8 +44,12 @@ describe('RecipeDetailPage shouldRevalidate', () => {
     expect(shouldRevalidate(args(formAction, { ok: true }))).toBe(false);
   });
 
-  it('revalidates after a failed social action', () => {
-    expect(shouldRevalidate(args('/recipes/recipe-1/like', { ok: false, error: 'x' }))).toBe(true);
+  it('does not revalidate after a failed social action', () => {
+    expect(shouldRevalidate(args('/recipes/recipe-1/like', { ok: false, error: 'x' }))).toBe(false);
+  });
+
+  it('does not revalidate after a failed rating', () => {
+    expect(shouldRevalidate(args('/recipes/recipe-1/rate', { ok: false, error: 'x' }))).toBe(false);
   });
 
   it('revalidates after a rating (the community average comes from the loader)', () => {

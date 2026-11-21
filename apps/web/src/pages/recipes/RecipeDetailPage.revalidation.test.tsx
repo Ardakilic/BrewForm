@@ -104,6 +104,9 @@ const PAGE_2 = Array.from({ length: 5 }, (_, i) => comment(`p2-${i}`, `Second pa
 /** Every request the page sent, as `METHOD /path?search`. */
 let requests: string[] = [];
 
+/** How the stub answers `POST /recipes/:id/rate`: success, an HTTP 500 or a network failure. */
+let rateOutcome: 'ok' | 'error' | 'network' = 'ok';
+
 /** A JSON success envelope. */
 function ok(data: unknown, meta?: unknown): Response {
   return new Response(JSON.stringify({ success: true, data, ...(meta ? { meta } : {}) }), {
@@ -116,12 +119,17 @@ function ok(data: unknown, meta?: unknown): Response {
 function stubApi(): void {
   vi.stubGlobal(
     'fetch',
-    vi.fn((input: RequestInfo | URL, init?: RequestInit) => Promise.resolve(respond(input, init))),
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const response = respond(input, init);
+      return response
+        ? Promise.resolve(response)
+        : Promise.reject(new TypeError('Failed to fetch'));
+    }),
   );
 }
 
-/** Answers one stubbed API request synchronously and records it. */
-function respond(input: RequestInfo | URL, init?: RequestInit): Response {
+/** Answers one stubbed API request synchronously and records it (`null` = network failure). */
+function respond(input: RequestInfo | URL, init?: RequestInit): Response | null {
   const url = new URL(String(input), 'http://localhost');
   const path = url.pathname.replace(/^\/api\/v1/, '');
   const method = init?.method ?? 'GET';
@@ -140,6 +148,13 @@ function respond(input: RequestInfo | URL, init?: RequestInit): Response {
     return ok({ favourited: true });
   }
   if (method === 'POST' && path === `/recipes/${RECIPE_ID}/rate`) {
+    if (rateOutcome === 'network') return null;
+    if (rateOutcome === 'error') {
+      return new Response(
+        JSON.stringify({ success: false, error: { code: 'INTERNAL_ERROR', message: 'boom' } }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
     return ok({ rating: 8, avgRating: 8, ratingCount: 1 });
   }
   return new Response(JSON.stringify({ success: false, error: { code: 'NOT_FOUND' } }), {
@@ -189,6 +204,7 @@ async function waitForIdle(router: ReturnType<typeof renderWithAppProviders>['ro
 
 beforeEach(() => {
   requests = [];
+  rateOutcome = 'ok';
   localStorage.clear();
   clearStaticCache();
   stubApi();
@@ -248,4 +264,31 @@ describe('RecipeDetailPage revalidation scope', () => {
     expect(screen.getByText('Second page 4')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t('comment.loadMore') })).toBeNull();
   });
+
+  it.each([
+    ['an HTTP 500', 'error'],
+    ['a network failure', 'network'],
+  ] as const)(
+    'a failed rating (%s) keeps the page, restores the stars and sends no reload',
+    async (_case, outcome) => {
+      rateOutcome = outcome;
+      const { router } = await renderDetail();
+      requests = [];
+
+      const slider = screen.getByRole('slider', { name: t('recipe.rateThis') });
+      fireEvent.keyDown(slider, { key: '4' });
+      fireEvent.keyDown(slider, { key: 'Enter' });
+      expect(await screen.findByText(t('recipe.rating.saveError'))).toBeInTheDocument();
+      await waitForIdle(router);
+
+      expect(requests).toEqual([`POST /recipes/${RECIPE_ID}/rate`]);
+      // The loader's userRating is null: the slider is back to "not rated".
+      expect(screen.getByRole('slider', { name: t('recipe.rateThis') })).toHaveAttribute(
+        'aria-valuenow',
+        '0',
+      );
+      expect(screen.getByText('First page 0')).toBeInTheDocument();
+      expect(screen.queryByText(t('error.route.loadFailed'))).toBeNull();
+    },
+  );
 });

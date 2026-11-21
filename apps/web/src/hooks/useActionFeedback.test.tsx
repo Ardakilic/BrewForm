@@ -18,11 +18,11 @@ vi.mock('@/utils/logger.ts', () => ({
 
 const onSuccess = vi.fn();
 const onError = vi.fn();
-let nextResult: { ok: boolean; error?: string } = { ok: true };
+let nextResult: { ok: boolean; error?: string; code?: string } = { ok: true };
 
 /** Submits to the route action and reports feedback through the hook. */
 function Harness() {
-  const fetcher = useFetcher<{ ok: boolean; error?: string }>();
+  const fetcher = useFetcher<{ ok: boolean; error?: string; code?: string }>();
   useActionFeedback(fetcher, {
     errorKey: 'settings.failedMsg',
     successKey: 'settings.savedMsg',
@@ -59,6 +59,17 @@ describe('useActionFeedback', () => {
     expect(await screen.findByText(t('settings.failedMsg'))).toBeInTheDocument();
     await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
     expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it('toasts error.unauthorized instead of the error key for an UNAUTHORIZED failure', async () => {
+    nextResult = { ok: false, error: 'Unauthorized', code: 'UNAUTHORIZED' };
+    renderHarness();
+
+    fireEvent.click(await screen.findByText('submit'));
+
+    expect(await screen.findByText(t('error.unauthorized'))).toBeInTheDocument();
+    expect(screen.queryByText(t('settings.failedMsg'))).toBeNull();
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
   });
 
   it('toasts the success key and calls onSuccess once for { ok: true }', async () => {

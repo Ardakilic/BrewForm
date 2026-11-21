@@ -36,10 +36,8 @@ vi.mock('@brewform/shared/constants', async (importOriginal) => ({
 
 import { ApiError } from '../../api/errors.ts';
 import { collectionApi } from '../../api/index.ts';
-import {
-  action as collectionAction,
-  reorderAction,
-} from '../../pages/collections/CollectionDetailPage.data.ts';
+import { action as collectionAction } from '../../pages/collections/CollectionDetailPage.data.ts';
+import { reorderAction } from '../../routes/resources/collections.ts';
 import { renderWithAppProviders } from '../../test-utils/render.tsx';
 import { CollectionRecipeList } from './CollectionRecipeList.tsx';
 
@@ -374,40 +372,5 @@ describe('CollectionRecipeList', () => {
 
     expect(await screen.findByText(t('collection.error.remove'))).toBeInTheDocument();
     expect(screen.getByText('First')).toBeInTheDocument();
-  });
-});
-
-describe('collections/:id/reorder resource action', () => {
-  it('returns { ok: true } after collectionApi.reorder resolves', async () => {
-    const result = await reorderAction({
-      params: { id: 'c1' },
-      request: new Request('http://localhost/collections/c1/reorder', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemIds: ['b', 'a'] }),
-      }),
-      context: undefined,
-    } as never);
-
-    expect(result).toEqual({ ok: true });
-    expect(mockReorder).toHaveBeenCalledWith('c1', ['b', 'a'], {
-      signal: expect.any(AbortSignal),
-    });
-  });
-
-  it('returns { ok: false, error } when the API fails', async () => {
-    mockReorder.mockRejectedValue(new ApiError('FORBIDDEN', 'Not yours', undefined, 403));
-
-    const result = await reorderAction({
-      params: { id: 'c1' },
-      request: new Request('http://localhost/collections/c1/reorder', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemIds: ['a'] }),
-      }),
-      context: undefined,
-    } as never);
-
-    expect(result).toEqual({ ok: false, error: 'Not yours', code: 'FORBIDDEN' });
   });
 });

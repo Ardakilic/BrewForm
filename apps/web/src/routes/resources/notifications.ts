@@ -5,7 +5,6 @@ import { notificationApi } from '../../api/index.ts';
 import { readPage } from '../../utils/list-params.ts';
 import { notifyNotificationsChanged } from '../../utils/notification-events.ts';
 import { type ActionFailure, toActionFailure } from '../action-result.ts';
-import { requireAuth } from '../auth-guards.ts';
 import { withDataLog } from '../data-logging.ts';
 
 const log = createLogger('resources/notifications');
@@ -87,40 +86,41 @@ export async function notificationsPageLoader({
  * `resources/notifications/:id/read` action: marks one notification read through
  * `notificationApi.markRead`. On success it dispatches the `brewform:notifications-changed`
  * window event (so the bell badge reloads even when the submitting item has unmounted after
- * navigating) and returns `{ ok: true }`; otherwise `{ ok: false, error }`. A final 401
- * redirects through `requireAuth`.
+ * navigating) and returns `{ ok: true }`; otherwise `{ ok: false, error }`. A final 401 returns
+ * `{ ok: false, code: 'UNAUTHORIZED' }`: a resource route never redirects.
  */
-export const markReadAction = requireAuth(
-  async ({ params, request }: ActionFunctionArgs): Promise<NotificationMutationResult> => {
-    const notificationId = params.id ?? '';
-    try {
-      await withDataLog(log, 'markRead', { notificationId }, () =>
-        notificationApi.markRead(notificationId, { signal: request.signal }),
-      );
-      notifyNotificationsChanged();
-      return { ok: true };
-    } catch (err) {
-      return toActionFailure(err);
-    }
-  },
-);
+export async function markReadAction({
+  params,
+  request,
+}: Pick<ActionFunctionArgs, 'params' | 'request'>): Promise<NotificationMutationResult> {
+  const notificationId = params.id ?? '';
+  try {
+    await withDataLog(log, 'markRead', { notificationId }, () =>
+      notificationApi.markRead(notificationId, { signal: request.signal }),
+    );
+    notifyNotificationsChanged();
+    return { ok: true };
+  } catch (err) {
+    return toActionFailure(err, []);
+  }
+}
 
 /**
  * `resources/notifications/read-all` action: marks every notification read through
  * `notificationApi.markAllRead`, dispatches `brewform:notifications-changed` on success and
- * returns `{ ok: true }`, or `{ ok: false, error }`. A final 401 redirects through
- * `requireAuth`.
+ * returns `{ ok: true }`, or `{ ok: false, error }`. A final 401 returns
+ * `{ ok: false, code: 'UNAUTHORIZED' }`: a resource route never redirects.
  */
-export const markAllReadAction = requireAuth(
-  async ({ request }: ActionFunctionArgs): Promise<NotificationMutationResult> => {
-    try {
-      await withDataLog(log, 'markAllRead', {}, () =>
-        notificationApi.markAllRead({ signal: request.signal }),
-      );
-      notifyNotificationsChanged();
-      return { ok: true };
-    } catch (err) {
-      return toActionFailure(err);
-    }
-  },
-);
+export async function markAllReadAction({
+  request,
+}: Pick<ActionFunctionArgs, 'request'>): Promise<NotificationMutationResult> {
+  try {
+    await withDataLog(log, 'markAllRead', {}, () =>
+      notificationApi.markAllRead({ signal: request.signal }),
+    );
+    notifyNotificationsChanged();
+    return { ok: true };
+  } catch (err) {
+    return toActionFailure(err, []);
+  }
+}

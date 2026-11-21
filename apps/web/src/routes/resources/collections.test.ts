@@ -14,7 +14,13 @@ const { mockLogger } = vi.hoisted(() => ({
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('../../api/index.ts', () => ({
-  collectionApi: { list: vi.fn(), addRecipe: vi.fn(), removeRecipe: vi.fn(), create: vi.fn() },
+  collectionApi: {
+    list: vi.fn(),
+    addRecipe: vi.fn(),
+    removeRecipe: vi.fn(),
+    create: vi.fn(),
+    reorder: vi.fn(),
+  },
 }));
 
 import { ApiError } from '../../api/errors.ts';
@@ -24,6 +30,7 @@ import {
   myCollectionsAction,
   myCollectionsLoader,
   myCollectionsPath,
+  reorderAction,
   shouldRevalidateMyCollections,
 } from './collections.ts';
 
@@ -338,5 +345,61 @@ describe('resources/collections/mine — action', () => {
     expect(mockLogger.debug).toHaveBeenCalled();
     expect(mockLogger.error).toHaveBeenCalled();
     expect(loggedText()).not.toContain('zq7private');
+  });
+});
+
+/** A `collections/:id/reorder` PATCH request carrying `{ itemIds }` as JSON. */
+function reorderRequest(itemIds: string[]): Request {
+  return new Request('http://localhost/collections/c1/reorder', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ itemIds }),
+  });
+}
+
+describe('collections/:id/reorder resource action', () => {
+  it('returns { ok: true } after collectionApi.reorder resolves', async () => {
+    mockApi.reorder.mockResolvedValue(undefined as never);
+
+    const result = await reorderAction({
+      params: { id: 'c1' },
+      request: reorderRequest(['b', 'a']),
+      context: undefined,
+    } as never);
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('returns { ok: false, error, code } when the API fails', async () => {
+    mockApi.reorder.mockRejectedValue(new ApiError('FORBIDDEN', 'Not yours', undefined, 403));
+
+    const result = await reorderAction({
+      params: { id: 'c1' },
+      request: reorderRequest(['a']),
+      context: undefined,
+    } as never);
+
+    expect(result).toEqual({ ok: false, error: 'Not yours', code: 'FORBIDDEN' });
+  });
+
+  it("returns { ok: false, code: 'UNAUTHORIZED' } on a final 401 (no redirect)", async () => {
+    mockApi.reorder.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
+
+    const result = await reorderAction({
+      params: { id: 'c1' },
+      request: reorderRequest(['a']),
+      context: undefined,
+    } as never);
+
+    expect(result).toEqual({ ok: false, error: 'no session', code: 'UNAUTHORIZED' });
+  });
+
+  it('forwards the JSON item order with request.signal', async () => {
+    mockApi.reorder.mockResolvedValue(undefined as never);
+    const request = reorderRequest(['b', 'a']);
+
+    await reorderAction({ params: { id: 'c1' }, request, context: undefined } as never);
+
+    expect(mockApi.reorder).toHaveBeenCalledWith('c1', ['b', 'a'], { signal: request.signal });
   });
 });

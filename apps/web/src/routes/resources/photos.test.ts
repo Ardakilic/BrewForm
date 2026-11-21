@@ -46,6 +46,7 @@ describe('uploadErrorKey', () => {
     ['PAYLOAD_TOO_LARGE', 'photo.error.tooLarge'],
     ['UNSUPPORTED_MEDIA_TYPE', 'photo.error.unsupportedType'],
     ['INVALID_IMAGE', 'photo.error.unsupportedType'],
+    ['UNAUTHORIZED', 'error.unauthorized'],
     ['INTERNAL_ERROR', 'photo.error.uploadFailed'],
     [undefined, 'photo.error.uploadFailed'],
   ])('maps %s to %s', (code, key) => {
@@ -78,6 +79,19 @@ describe('resources/photos action', () => {
       error: 'too big',
       code: 'FILE_TOO_LARGE',
       errorKey: 'photo.error.tooLarge',
+    });
+  });
+
+  it('returns UNAUTHORIZED with the error.unauthorized key on a final 401 (no redirect)', async () => {
+    mockUpload.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
+
+    await expect(
+      uploadPhotoAction({ request: uploadRequest(), params: {}, context: undefined } as never),
+    ).resolves.toEqual({
+      ok: false,
+      error: 'no session',
+      code: 'UNAUTHORIZED',
+      errorKey: 'error.unauthorized',
     });
   });
 

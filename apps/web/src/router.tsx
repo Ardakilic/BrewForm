@@ -34,7 +34,6 @@ import { CollectionCreatePage } from './pages/collections/CollectionCreatePage.t
 import {
   action as collectionDetailAction,
   loader as collectionDetailLoader,
-  reorderAction as collectionReorderAction,
 } from './pages/collections/CollectionDetailPage.data.ts';
 import { CollectionDetailPage } from './pages/collections/CollectionDetailPage.tsx';
 import {
@@ -88,6 +87,7 @@ import {
   shouldRevalidateCoffeeVarietySearch,
 } from './routes/resources/coffee-varieties.ts';
 import {
+  reorderAction as collectionReorderAction,
   myCollectionsAction,
   myCollectionsLoader,
   shouldRevalidateMyCollections,

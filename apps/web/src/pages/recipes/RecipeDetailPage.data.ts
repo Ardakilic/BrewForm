@@ -87,16 +87,22 @@ const SELF_SETTLING_ACTION_RE =
   /^\/(?:recipes\/[^/]+\/(?:like|favourite)|follow\/[^/]+|comments\/recipe\/[^/]+|comments\/[^/]+)$/;
 
 /**
- * `shouldRevalidate` for `/recipes/:slug`: skips re-running the 3-request detail loader after
- * a successful like, favourite, follow or comment action (`actionResult.ok === true`), so a
- * like sends exactly one request and loaded comment pages are kept. A failed action, a rating
- * and every navigation fall back to React Router's default.
+ * `shouldRevalidate` for `/recipes/:slug`: never re-runs the 3-request detail loader after an
+ * action that returned `{ ok: false }` (a failed action changed nothing, and a reload on a
+ * network blip could replace the page with the route error), and skips it after a successful
+ * like, favourite, follow or comment action (`actionResult.ok === true`), so a like sends
+ * exactly one request and loaded comment pages are kept. A successful rating and every
+ * navigation fall back to React Router's default.
  */
 export function shouldRevalidate({
   formAction,
   actionResult,
   defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs): boolean {
+  if (formAction && actionResult?.ok === false) {
+    log.debug({ formAction }, 'RecipeDetailPage revalidation skipped after a failed action');
+    return false;
+  }
   if (formAction && actionResult?.ok === true) {
     const path = new URL(formAction, 'http://localhost').pathname;
     if (SELF_SETTLING_ACTION_RE.test(path)) {

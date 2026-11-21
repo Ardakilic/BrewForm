@@ -329,6 +329,35 @@ describe('StarRating — interactive slider', () => {
     expect(onRate).toHaveBeenLastCalledWith(4);
   });
 
+  it('drops a committed draft when busy clears', async () => {
+    const user = userEvent.setup();
+    const onRate = vi.fn();
+    /** Re-renders the slider with the given saved value and busy flag. */
+    const view = (value: number, busy: boolean) => (
+      <I18nProvider>
+        <StarRating value={value} onRate={onRate} busy={busy} />
+      </I18nProvider>
+    );
+    const { rerender } = renderInLocale(<StarRating value={6} onRate={onRate} />);
+    const slider = screen.getByRole('slider');
+    slider.focus();
+    await user.keyboard('{ArrowRight}{Enter}');
+    expect(onRate).toHaveBeenLastCalledWith(8);
+
+    // Pending: the submitted value is shown.
+    rerender(view(6, true));
+    expect(slider).toHaveAttribute('aria-valuenow', '8');
+
+    // Failed (the saved value did not change): back to the saved rating.
+    rerender(view(6, false));
+    expect(slider).toHaveAttribute('aria-valuenow', '6');
+
+    // Succeeded (the loader returned the new value): the new rating.
+    rerender(view(6, true));
+    rerender(view(8, false));
+    expect(slider).toHaveAttribute('aria-valuenow', '8');
+  });
+
   it('resets the pending value when the saved value changes', async () => {
     const user = userEvent.setup();
     const { rerender } = renderInLocale(<StarRating value={4} onRate={vi.fn()} />);

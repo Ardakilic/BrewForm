@@ -4,10 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
-import type {
-  action as collectionAction,
-  reorderAction,
-} from '../../pages/collections/CollectionDetailPage.data.ts';
+import type { action as collectionAction } from '../../pages/collections/CollectionDetailPage.data.ts';
+import type { reorderAction } from '../../routes/resources/collections.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { RecipeCard } from '../recipe-list/RecipeCard.tsx';
 

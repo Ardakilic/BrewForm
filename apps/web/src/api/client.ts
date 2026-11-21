@@ -124,9 +124,22 @@ export function parseRetryAfter(value: string | null): number | undefined {
 }
 
 /**
+ * Auth endpoints whose 401 is not an expired access token, or that must not revive a session:
+ * a 401 from login means wrong credentials, the refresh must not recurse, and logout must never
+ * refresh. Every other endpoint (including `POST /auth/send-verification`) refreshes and retries.
+ */
+const NO_REFRESH_ENDPOINTS: ReadonlySet<string> = new Set([
+  '/auth/login',
+  '/auth/register',
+  '/auth/refresh',
+  '/auth/logout',
+]);
+
+/**
  * Sends one HTTP request to the API: adds the base URL, cookies, `X-Request-ID` and a JSON
  * content type (except for `FormData` bodies), and retries once after the shared session
- * refresh on a 401 from a non-auth endpoint. Returns the final `Response` unread.
+ * refresh on a 401, except from login, register, refresh and logout
+ * ({@link NO_REFRESH_ENDPOINTS}). Returns the final `Response` unread.
  */
 async function sendWithRefresh(endpoint: string, options: RequestInit): Promise<Response> {
   const headers = new Headers(options.headers);
@@ -146,7 +159,7 @@ async function sendWithRefresh(endpoint: string, options: RequestInit): Promise<
 
   let response = await send();
 
-  if (response.status === 401 && !endpoint.startsWith('/auth/')) {
+  if (response.status === 401 && !NO_REFRESH_ENDPOINTS.has(endpoint.split('?', 1)[0])) {
     const refreshed = await waitUnlessAborted(refreshSession(), options.signal);
     if (refreshed) {
       response = await send();

@@ -145,14 +145,24 @@ describe('resources/notifications mark-read actions', () => {
     expect(events).toBe(0);
   });
 
-  it('markRead redirects a final 401 to the login page', async () => {
+  it("markRead returns { ok: false, code: 'UNAUTHORIZED' } on a final 401 (no redirect)", async () => {
     mockApi.markRead.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
 
-    const thrown = await markReadAction(args(markReadPath('n1'), { id: 'n1' }, 'POST')).catch(
-      (err: unknown) => err,
+    await expect(markReadAction(args(markReadPath('n1'), { id: 'n1' }, 'POST'))).resolves.toEqual({
+      ok: false,
+      error: 'no session',
+      code: 'UNAUTHORIZED',
+    });
+  });
+
+  it("markAllRead returns { ok: false, code: 'UNAUTHORIZED' } on a final 401 (no redirect)", async () => {
+    mockApi.markAllRead.mockRejectedValue(
+      new ApiError('UNAUTHORIZED', 'no session', undefined, 401),
     );
 
-    expect((thrown as Response).headers.get('Location')).toMatch(/^\/login\?next=/);
+    await expect(
+      markAllReadAction(args('/resources/notifications/read-all', {}, 'POST')),
+    ).resolves.toEqual({ ok: false, error: 'no session', code: 'UNAUTHORIZED' });
   });
 
   it('markAllRead returns { ok: true } and broadcasts the change', async () => {

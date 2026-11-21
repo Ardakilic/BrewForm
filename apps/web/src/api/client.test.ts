@@ -147,6 +147,42 @@ describe('api client', () => {
     expect(refreshes).toBe(2);
   });
 
+  it('refreshes and retries POST /auth/send-verification on a 401', async () => {
+    let attempts = 0;
+    const fetchMock = vi.fn((input: string) => {
+      if (input.endsWith('/auth/refresh')) return Promise.resolve(json({ data: {} }));
+      attempts++;
+      return Promise.resolve(
+        attempts === 1
+          ? json({ error: { code: 'UNAUTHORIZED', message: 'expired' } }, 401)
+          : json({ data: { sent: true } }),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(api.post('/auth/send-verification', {})).resolves.toEqual({ sent: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[1][0]).toMatch(/\/auth\/refresh$/);
+    expect(fetchMock.mock.calls[2][0]).toMatch(/\/auth\/send-verification$/);
+  });
+
+  it.each(['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'])(
+    'does not refresh on a 401 from %s',
+    async (endpoint) => {
+      const fetchMock = vi.fn(() =>
+        Promise.resolve(json({ error: { code: 'UNAUTHORIZED', message: 'no' } }, 401)),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+
+      const error = await api.post(endpoint, {}).catch((err: unknown) => err);
+
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(401);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('rejects an aborted request with AbortError and logs no error', async () => {
     vi.stubGlobal(
       'fetch',

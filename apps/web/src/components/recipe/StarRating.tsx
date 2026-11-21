@@ -118,6 +118,10 @@ interface Draft {
  *   commits an uncommitted value once. Pointer hover previews and a click
  *   commits the half or whole star under the pointer. While `busy`, the
  *   slider keeps focus with `aria-disabled="true"` and ignores input.
+ * - A committed value is shown while its submission is pending; when `busy`
+ *   clears the committed draft is dropped, so a failed submission shows the
+ *   saved rating again (the rollback) and a successful one shows the new
+ *   saved value from the parent.
  */
 export function StarRating({
   value,
@@ -132,6 +136,13 @@ export function StarRating({
   const hintId = useId();
   const [hovered, setHovered] = useState(0);
   const [draft, setDraft] = useState<Draft | null>(null);
+  // "Store information from previous renders": when a submission settles (busy → idle), drop
+  // the committed draft so the slider shows the saved value (rolled back after a failure).
+  const [wasBusy, setWasBusy] = useState(busy);
+  if (wasBusy !== busy) {
+    setWasBusy(busy);
+    if (wasBusy) setDraft((d) => (d && !d.dirty ? null : d));
+  }
 
   const saved = normalizeRating(value);
   /** Formats a 1–10 value as stars with the locale separator (7 → "3.5"). */

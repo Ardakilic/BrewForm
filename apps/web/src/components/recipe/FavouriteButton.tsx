@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useFetcher } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import type { favouriteAction } from '../../routes/favourite.ts';
 
 interface Props {
@@ -15,8 +16,11 @@ const log = createLogger('FavouriteButton');
  * Optimistic star/unstar toggle with count, submitted via a fetcher form to
  * `/recipes/:id/favourite` with `defaultShouldRevalidate={false}`, so starring never re-runs
  * the recipe detail loader. While pending the UI shows the submitted value; once settled it
- * shows the `favourited` state the action returned (`{ ok: true, favourited }`), and on
- * `{ ok: false }` it falls back to the loader's values. The fetcher is keyed by recipe.
+ * shows the `favourited` state the action returned, whether or not `ok` is true (a failure
+ * carries the pre-click state, so the button falls back to the last confirmed value; the
+ * loader's values only when no state came back). A failure toasts `recipe.favourite.error`
+ * (`error.unauthorized` for an expired session) through `useActionFeedback`. The fetcher is
+ * keyed by recipe.
  */
 export function FavouriteButton({ recipeId, initialFavourited, initialCount }: Props) {
   const fetcher = useFetcher<typeof favouriteAction>({ key: `favourite-${recipeId}` });
@@ -26,13 +30,14 @@ export function FavouriteButton({ recipeId, initialFavourited, initialCount }: P
     ? fetcher.formData.get('favourited') === 'true'
     : null;
   const settled = fetcher.data;
-  const settledFavourited =
-    settled?.ok && typeof settled.favourited === 'boolean' ? settled.favourited : null;
+  const settledFavourited = typeof settled?.favourited === 'boolean' ? settled.favourited : null;
   const favourited = optimisticFavourited ?? settledFavourited ?? initialFavourited;
 
   // The loader's count already includes `initialFavourited`; adjust it only when the shown
   // state differs from it.
   const count = baseCount + (favourited === initialFavourited ? 0 : favourited ? 1 : -1);
+
+  useActionFeedback(fetcher, { errorKey: 'recipe.favourite.error' });
 
   useEffect(() => {
     log.debug({ recipeId, state: fetcher.state }, 'fetcher state change');
