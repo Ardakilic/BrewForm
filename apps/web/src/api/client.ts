@@ -90,18 +90,22 @@ function abortReason(signal: AbortSignal): unknown {
   return signal.reason ?? new DOMException('The operation was aborted.', 'AbortError');
 }
 
-/**
- * Reads the body as text and parses it as JSON. Returns `null` for an empty or non-JSON
- * body (for example an HTML error page from a proxy) instead of throwing `SyntaxError`.
- */
-async function parseEnvelope(response: Response): Promise<ResponseEnvelope | null> {
-  const text = await response.text();
+/** Parses `text` as a JSON envelope; `null` for an empty or non-JSON body. */
+function parseEnvelopeText(text: string): ResponseEnvelope | null {
   if (!text) return null;
   try {
     return JSON.parse(text) as ResponseEnvelope;
   } catch {
     return null;
   }
+}
+
+/**
+ * Reads the body as text and parses it as JSON. Returns `null` for an empty or non-JSON
+ * body (for example an HTML error page from a proxy) instead of throwing `SyntaxError`.
+ */
+async function parseEnvelope(response: Response): Promise<ResponseEnvelope | null> {
+  return parseEnvelopeText(await response.text());
 }
 
 /**
@@ -120,58 +124,94 @@ export function parseRetryAfter(value: string | null): number | undefined {
 }
 
 /**
- * Sends one API request: adds the base URL, cookies, `X-Request-ID` and a JSON content type,
- * retries once after the shared session refresh on a 401 from a non-auth endpoint, parses the
- * body defensively, and maps failures to {@link ApiError}. An aborted request rethrows the
- * `AbortError` unchanged and is logged at `debug` (it is not a failure).
+ * Sends one HTTP request to the API: adds the base URL, cookies, `X-Request-ID` and a JSON
+ * content type (except for `FormData` bodies), and retries once after the shared session
+ * refresh on a 401 from a non-auth endpoint. Returns the final `Response` unread.
  */
-async function requestInternal(endpoint: string, options: RequestInit): Promise<ResponseEnvelope> {
-  log.debug({ endpoint, method: options.method }, 'API request started');
+async function sendWithRefresh(endpoint: string, options: RequestInit): Promise<Response> {
+  const headers = new Headers(options.headers);
+  if (!headers.has('X-Request-ID')) {
+    headers.set('X-Request-ID', sessionId);
+  }
+  if (!(options.body instanceof FormData) && !headers.has('content-type')) {
+    headers.set('Content-Type', 'application/json');
+  }
 
+  const send = () =>
+    fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
+
+  let response = await send();
+
+  if (response.status === 401 && !endpoint.startsWith('/auth/')) {
+    const refreshed = await waitUnlessAborted(refreshSession(), options.signal);
+    if (refreshed) {
+      response = await send();
+    }
+  }
+  return response;
+}
+
+/**
+ * Maps a non-OK response to an {@link ApiError}: the error envelope's code, message, details
+ * and `Retry-After`, or `INVALID_RESPONSE` with the HTTP status when the body is not an
+ * error envelope (empty, HTML, plain text).
+ */
+function toApiError(response: Response, data: ResponseEnvelope | null): ApiError {
+  if (!data?.error) {
+    return new ApiError(
+      'INVALID_RESPONSE',
+      `Unexpected response from the server (HTTP ${response.status})`,
+      undefined,
+      response.status,
+    );
+  }
+  return new ApiError(
+    data.error.code || 'UNKNOWN_ERROR',
+    data.error.message || 'Request failed',
+    data.error.details,
+    response.status,
+    parseRetryAfter(response.headers.get('Retry-After')),
+  );
+}
+
+/**
+ * Runs one API call with the client's request logs: `debug` start, and on failure an `error`
+ * log, except that an aborted request rethrows the `AbortError` unchanged and is logged at
+ * `debug` (it is not a failure).
+ */
+async function withRequestLog<T>(
+  endpoint: string,
+  method: string | undefined,
+  fn: () => Promise<T>,
+): Promise<T> {
+  log.debug({ endpoint, method }, 'API request started');
   try {
-    const headers = new Headers(options.headers);
-    if (!headers.has('X-Request-ID')) {
-      headers.set('X-Request-ID', sessionId);
+    return await fn();
+  } catch (err: unknown) {
+    if (isAbortError(err)) {
+      log.debug({ endpoint }, 'API request aborted');
+      throw err;
     }
-    if (!(options.body instanceof FormData) && !headers.has('content-type')) {
-      headers.set('Content-Type', 'application/json');
-    }
+    log.error({ err, endpoint }, 'API request failed');
+    throw err;
+  }
+}
 
-    const send = () =>
-      fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers,
-        credentials: 'include',
-      });
-
-    let response = await send();
-
-    if (response.status === 401 && !endpoint.startsWith('/auth/')) {
-      const refreshed = await waitUnlessAborted(refreshSession(), options.signal);
-      if (refreshed) {
-        response = await send();
-      }
-    }
-
+/**
+ * Sends one API request ({@link sendWithRefresh}), parses the body defensively, and maps
+ * failures to {@link ApiError}. An aborted request rethrows the `AbortError` unchanged and is
+ * logged at `debug` (it is not a failure).
+ */
+function requestInternal(endpoint: string, options: RequestInit): Promise<ResponseEnvelope> {
+  return withRequestLog(endpoint, options.method, async () => {
+    const response = await sendWithRefresh(endpoint, options);
     const data = await parseEnvelope(response);
 
-    if (!response.ok) {
-      if (!data?.error) {
-        throw new ApiError(
-          'INVALID_RESPONSE',
-          `Unexpected response from the server (HTTP ${response.status})`,
-          undefined,
-          response.status,
-        );
-      }
-      throw new ApiError(
-        data.error.code || 'UNKNOWN_ERROR',
-        data.error.message || 'Request failed',
-        data.error.details,
-        response.status,
-        parseRetryAfter(response.headers.get('Retry-After')),
-      );
-    }
+    if (!response.ok) throw toApiError(response, data);
 
     if (data === null) {
       if (response.status === 204) return { data: null };
@@ -185,14 +225,22 @@ async function requestInternal(endpoint: string, options: RequestInit): Promise<
 
     log.debug({ endpoint, status: response.status }, 'API request completed');
     return data;
-  } catch (err: unknown) {
-    if (isAbortError(err)) {
-      log.debug({ endpoint }, 'API request aborted');
-      throw err;
-    }
-    log.error({ err, endpoint }, 'API request failed');
-    throw err;
-  }
+  });
+}
+
+/**
+ * Sends one API request and returns the raw body text (for non-JSON endpoints such as the
+ * recipe QR-code SVG). Same base URL, session refresh, error parsing and logging as the JSON
+ * helpers: a non-OK response throws {@link ApiError}.
+ */
+function requestText(endpoint: string, options: RequestInit): Promise<string> {
+  return withRequestLog(endpoint, options.method, async () => {
+    const response = await sendWithRefresh(endpoint, options);
+    const text = await response.text();
+    if (!response.ok) throw toApiError(response, parseEnvelopeText(text));
+    log.debug({ endpoint, status: response.status }, 'API request completed');
+    return text;
+  });
 }
 
 /** Sends a request and unwraps the success envelope's `data` to the caller's type. */
@@ -214,14 +262,17 @@ function requestWithMeta<T>(endpoint: string, options: RequestInit = {}): Promis
  * non-auth endpoints joins one shared `POST /auth/refresh` before retrying
  * once. Non-OK responses throw {@link ApiError}. Every helper takes an
  * optional trailing {@link RequestOptions} (`{ signal }`). Verb helpers unwrap
- * the response envelope's `data`; `getWithMeta` returns the full envelope
- * and `upload` posts `FormData` without a JSON content type.
+ * the response envelope's `data`; `getWithMeta` returns the full envelope,
+ * `getText` returns the raw body text of a non-JSON endpoint, and `upload`
+ * posts `FormData` without a JSON content type.
  */
 export const api = {
   get: <T>(endpoint: string, opts?: RequestOptions) =>
     request<T>(endpoint, { method: 'GET', signal: opts?.signal }),
   getWithMeta: <T>(endpoint: string, opts?: RequestOptions) =>
     requestWithMeta<T>(endpoint, { method: 'GET', signal: opts?.signal }),
+  getText: (endpoint: string, opts?: RequestOptions): Promise<string> =>
+    requestText(endpoint, { method: 'GET', signal: opts?.signal }),
   post: <T, B = unknown>(endpoint: string, body: B, opts?: RequestOptions) =>
     request<T>(endpoint, { method: 'POST', body: JSON.stringify(body), signal: opts?.signal }),
   patch: <T, B = unknown>(endpoint: string, body: B, opts?: RequestOptions) =>

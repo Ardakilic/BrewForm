@@ -1,54 +1,25 @@
-import type { BrewLogListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
 import { Link, useLoaderData } from 'react-router';
-import { brewLogApi } from '../../api/index.ts';
 import { BrewLogCard } from '../../components/brew-log/BrewLogCard.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useListUrlState } from '../../hooks/useListUrlState.ts';
-import { requireAuth } from '../../routes/auth-guards.ts';
 import { parsePageOnlyParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './BrewLogListPage.data.ts';
 
 const log = createLogger('BrewLogListPage');
 
-/** Loader payload for {@link BrewLogListPage}. */
-export interface BrewLogListLoaderData {
-  logsResponse: PaginatedResponse<BrewLogListItemOutput>;
-}
-
 /**
- * React Router data loader for `/brew-logs` — fetches the authenticated
- * user's brew journal for the requested `?page` (newest first, paginated).
- * The page is read with the shared list parser (`parsePageOnlyParams`): a
- * positive integer is kept, anything else (negative, infinite, zero, missing,
- * non-numeric) is page 1.
- * Wrapped in `requireAuth`, so a final 401 redirects to `/login?next=…`.
- */
-export const loader = requireAuth(
-  async ({ request }: { request: Request }): Promise<BrewLogListLoaderData> => {
-    const { page } = parsePageOnlyParams(new URL(request.url).searchParams);
-    log.debug({ page }, 'BrewLogListPage loader started');
-    try {
-      const logsResponse = await brewLogApi.list({ page });
-      log.debug({ page }, 'BrewLogListPage loader completed');
-      return { logsResponse };
-    } catch (err) {
-      log.error({ err, page }, 'BrewLogListPage loader failed');
-      throw err;
-    }
-  },
-);
-
-/**
- * Page component for `/brew-logs` — the user's brew journal: a newest-first
- * list of brew-log cards with pagination and an empty state. New brews are
- * logged from a recipe page (the create route requires a `recipeId`).
+ * Page component for `/brew-logs` — the user's brew journal, rendered from the route loader
+ * (`BrewLogListPage.data.ts`): a newest-first list of brew-log cards with pagination and an
+ * empty state. New brews are logged from a recipe page (the create route requires a
+ * `recipeId`).
  */
 export function BrewLogListPage() {
-  const { logsResponse } = useLoaderData() as BrewLogListLoaderData;
+  const { logsResponse } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
   const { setPage } = useListUrlState(parsePageOnlyParams);
 

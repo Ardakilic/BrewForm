@@ -1,659 +1,230 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { t } from '@brewform/shared/i18n';
+import type { CoffeeVarietyOutput, PaginatedResponse } from '@brewform/shared/schemas';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CoffeeVarietiesPage } from '../CoffeeVarietiesPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
-  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  mockLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  },
 }));
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
-vi.mock('react-router', () => ({
-  Link: ({
-    to,
-    children,
-    ...props
-  }: {
-    to: string;
-    children: React.ReactNode;
-    [key: string]: unknown;
-  }) => (
-    <a href={to} {...props}>
-      {children}
-    </a>
-  ),
-  useSearchParams: vi.fn(),
+vi.mock('../../../api/index.ts', () => ({
+  coffeeVarietyApi: { list: vi.fn() },
 }));
 
-vi.mock('../../../contexts/I18nContext.tsx', () => ({
-  useTranslation: vi.fn(),
-}));
+import { coffeeVarietyApi } from '../../../api/index.ts';
+import { RouteErrorState } from '../../../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../../../test-utils/render.tsx';
+import { loader } from '../CoffeeVarietiesPage.data.ts';
+import { CoffeeVarietiesPage } from '../CoffeeVarietiesPage.tsx';
 
-vi.mock('../../../api/client.ts', () => ({
-  api: { getWithMeta: vi.fn() },
-}));
+const mockList = vi.mocked(coffeeVarietyApi.list);
 
-vi.mock('../../../hooks/useDebounce.ts', () => ({
-  useDebounce: (value: string) => value,
-}));
-
-vi.mock('../../../components/seo/SEOHead.tsx', () => ({
-  SEOHead: vi.fn(() => null),
-}));
-
-import { useSearchParams } from 'react-router';
-import { api } from '../../../api/client.ts';
-import { SEOHead } from '../../../components/seo/SEOHead.tsx';
-import { useTranslation } from '../../../contexts/I18nContext.tsx';
-
-const mockUseSearchParams = vi.mocked(useSearchParams);
-const mockUseTranslation = vi.mocked(useTranslation);
-const mockApiGetWithMeta = vi.mocked(api.getWithMeta);
-const mockSEOHead = vi.mocked(SEOHead);
-
-const enT = (key: string) => {
-  const map: Record<string, string> = {
-    'common.all': 'All',
-    'common.clearAll': 'Clear all',
-    'common.retry': 'Retry',
-    'common.clearSearch': 'Clear search',
-    'common.activeFilters': 'Active filters:',
-    'common.pagination': 'Page {page} of {total}',
-    'common.previous': 'Previous',
-    'common.next': 'Next',
-    'coffeeVarieties.title': 'Coffee Varieties',
-    'coffeeVarieties.subtitle': 'Explore different varieties, processing methods, and market names',
-    'coffeeVarieties.searchPlaceholder': 'Search varieties...',
-    'coffeeVarieties.error.load': 'Failed to load varieties',
-    'coffeeVarieties.empty': 'No varieties found',
-    'coffeeVarieties.category.variety': 'Varieties',
-    'coffeeVarieties.category.processing': 'Processing Methods',
-    'coffeeVarieties.category.market_name': 'Market Names',
-    'coffeeVarieties.category.varietyShort': 'Var.',
-    'coffeeVarieties.category.processingShort': 'Proc.',
-    'coffeeVarieties.category.marketNameShort': 'Mkt.',
-  };
-  return map[key] ?? key;
-};
-
-const trT = (key: string) => {
-  const map: Record<string, string> = {
-    'common.all': 'Tümü',
-    'common.clearAll': 'Tümünü temizle',
-    'common.retry': 'Tekrar dene',
-    'common.clearSearch': 'Aramayı temizle',
-    'common.activeFilters': 'Aktif filtreler:',
-    'common.pagination': 'Sayfa {page} / {total}',
-    'common.previous': 'Önceki',
-    'common.next': 'İleri',
-    'coffeeVarieties.title': 'Kahve Çeşitleri',
-    'coffeeVarieties.subtitle': 'Farklı çeşitleri, işleme yöntemlerini ve pazar adlarını keşfedin',
-    'coffeeVarieties.searchPlaceholder': 'Çeşit ara...',
-    'coffeeVarieties.error.load': 'Çeşitler yüklenemedi',
-    'coffeeVarieties.empty': 'Çeşit bulunamadı',
-    'coffeeVarieties.category.variety': 'Çeşitler',
-    'coffeeVarieties.category.processing': 'İşleme Yöntemleri',
-    'coffeeVarieties.category.market_name': 'Pazar Adları',
-    'coffeeVarieties.category.varietyShort': 'Çeş.',
-    'coffeeVarieties.category.processingShort': 'İşl.',
-    'coffeeVarieties.category.marketNameShort': 'Paz.',
-  };
-  return map[key] ?? key;
-};
-
-const defaultTranslation = {
-  locale: 'en' as const,
-  setLocale: vi.fn(),
-  t: enT,
-  availableLocales: ['en', 'tr'],
-};
-
-function makeSearchParams(init: Record<string, string> = {}) {
-  const params = new URLSearchParams(init);
-  return [params, vi.fn()] as ReturnType<typeof useSearchParams>;
+/** Builds a coffee-variety fixture. */
+function makeVariety(overrides: Partial<CoffeeVarietyOutput> = {}): CoffeeVarietyOutput {
+  return {
+    id: 'var-1',
+    name: 'Bourbon',
+    species: 'Arabica',
+    category: 'variety',
+    origin: 'Réunion',
+    cupProfile: 'Sweet, balanced',
+    ...overrides,
+  } as CoffeeVarietyOutput;
 }
 
-function makePaginatedResponse(items: unknown[], total: number) {
+/** Builds the paginated envelope `GET /coffee-varieties` returns. */
+function page(
+  items: CoffeeVarietyOutput[],
+  total = items.length,
+): PaginatedResponse<CoffeeVarietyOutput> {
   return {
     success: true,
     data: items,
     meta: {
-      requestId: 'test-req',
-      pagination: {
-        page: 1,
-        perPage: 12,
-        total,
-        totalPages: Math.ceil(total / 12),
-      },
+      requestId: 't',
+      pagination: { page: 1, perPage: 12, total, totalPages: Math.ceil(total / 12) },
     },
   };
 }
 
+/** Renders `/coffee-varieties` (with `search`) through its real loader. */
+function renderPage(search = '', locale: 'en' | 'tr' = 'en') {
+  return renderWithAppProviders(
+    [
+      {
+        path: '/coffee-varieties',
+        loader,
+        Component: CoffeeVarietiesPage,
+        errorElement: <RouteErrorState />,
+      },
+    ],
+    { initialEntries: [`/coffee-varieties${search}`], locale },
+  );
+}
+
+/** Runs the loader for `url` with a fresh request. */
+function runLoader(url: string) {
+  const request = new Request(`http://localhost${url}`);
+  return { request, result: loader({ request, params: {}, context: undefined } as never) };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLogger.debug.mockClear();
-  mockLogger.info.mockClear();
-  mockLogger.warn.mockClear();
-  mockLogger.error.mockClear();
-  mockUseTranslation.mockReturnValue(defaultTranslation);
-  mockUseSearchParams.mockReturnValue(makeSearchParams());
-  mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+  localStorage.clear();
+  mockList.mockResolvedValue(page([]));
 });
 
-/** Tests for CoffeeVarietiesPage — rendering, category tabs, search, pagination, SEO, and i18n. */
+describe('/coffee-varieties loader', () => {
+  it('maps the URL state to catalogue params and forwards request.signal', async () => {
+    mockList.mockResolvedValue(page([makeVariety()], 25));
+    const { request, result } = runLoader('/coffee-varieties?page=3&category=processing&q=wash');
+
+    await expect(result).resolves.toEqual({ varieties: [makeVariety()], totalPages: 3 });
+    expect(mockList).toHaveBeenCalledWith(
+      { page: '3', perPage: '12', category: 'processing', search: 'wash' },
+      { signal: request.signal },
+    );
+  });
+
+  it('reads a legacy search link and drops an unknown category', async () => {
+    await runLoader('/coffee-varieties?search=Gesha&category=bogus').result;
+    expect(mockList).toHaveBeenCalledWith(
+      { page: '1', perPage: '12', search: 'Gesha' },
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it('logs and rethrows a failure', async () => {
+    const err = new Error('down');
+    mockList.mockRejectedValue(err);
+    await expect(runLoader('/coffee-varieties').result).rejects.toBe(err);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err, page: 1, category: '' },
+      'CoffeeVarietiesPage loadData failed',
+    );
+  });
+});
+
 describe('CoffeeVarietiesPage', () => {
   it('logs mount and unmount', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    const { unmount } = render(<CoffeeVarietiesPage />);
+    const { unmount } = renderPage();
+    await screen.findByRole('heading', { name: t('coffeeVarieties.title') });
+    // The mount effect runs after the commit that renders the loader data.
     await waitFor(() =>
       expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietiesPage mounted'),
     );
     unmount();
-    await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietiesPage unmounted'),
-    );
+    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietiesPage unmounted');
   });
 
-  it('renders page title and subtitle — English', async () => {
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByRole('heading', { name: 'Coffee Varieties' })).toBeInTheDocument();
+  it('renders the title, subtitle, tabs and SEO title in English', async () => {
+    renderPage();
     expect(
-      screen.getByText('Explore different varieties, processing methods, and market names'),
+      await screen.findByRole('heading', { name: t('coffeeVarieties.title') }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t('coffeeVarieties.subtitle'))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t('coffeeVarieties.category.processing') }),
+    ).toBeInTheDocument();
+    expect(document.title).toBe(`${t('coffeeVarieties.title')} | BrewForm`);
+  });
+
+  it('renders the title, tabs and placeholder in Turkish', async () => {
+    renderPage('', 'tr');
+    expect(
+      await screen.findByRole('heading', { name: t('coffeeVarieties.title', 'tr') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t('coffeeVarieties.category.market_name', 'tr') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(t('coffeeVarieties.searchPlaceholder', 'tr')),
     ).toBeInTheDocument();
   });
 
-  it('renders page title and subtitle — Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<CoffeeVarietiesPage />);
+  it('renders variety cards with category badges, linked to the detail page', async () => {
+    mockList.mockResolvedValue(
+      page([
+        makeVariety(),
+        makeVariety({ id: 'var-2', name: 'Washed', category: 'processing', species: null }),
+        makeVariety({ id: 'var-3', name: 'Yirgacheffe', category: 'market_name' }),
+      ]),
+    );
+    renderPage();
+    expect(await screen.findByText('Bourbon')).toBeInTheDocument();
+    expect(screen.getByText(t('coffeeVarieties.category.varietyShort'))).toBeInTheDocument();
+    expect(screen.getByText(t('coffeeVarieties.category.processingShort'))).toBeInTheDocument();
+    expect(screen.getByText(t('coffeeVarieties.category.marketNameShort'))).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Bourbon/ })).toHaveAttribute(
+      'href',
+      '/coffee-varieties/var-1',
+    );
+  });
 
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+  it('shows the empty state, with a clear-search action when filters are active', async () => {
+    renderPage('?q=zzz');
+    expect(await screen.findByText(t('coffeeVarieties.empty'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t('common.clearSearch') })).toBeInTheDocument();
+  });
 
-    expect(screen.getByRole('heading', { name: 'Kahve Çeşitleri' })).toBeInTheDocument();
+  it('renders the route error state (not the empty state) when the load fails', async () => {
+    mockList.mockRejectedValue(new Error('Network error'));
+    renderPage();
+    expect(await screen.findByText(t('error.route.loadFailed'))).toBeInTheDocument();
+    expect(screen.queryByText(t('coffeeVarieties.empty'))).not.toBeInTheDocument();
+  });
+
+  it('retrying a failed load re-runs the loader', async () => {
+    mockList.mockRejectedValueOnce(new Error('Network error'));
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: t('common.retry') }));
     expect(
-      screen.getByText('Farklı çeşitleri, işleme yöntemlerini ve pazar adlarını keşfedin'),
+      await screen.findByRole('heading', { name: t('coffeeVarieties.title') }),
     ).toBeInTheDocument();
+    expect(mockList).toHaveBeenCalledTimes(2);
   });
 
-  it('renders coffee variety cards when API returns data', async () => {
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'v1',
-            name: 'Bourbon',
-            species: 'Arabica',
-            category: 'variety',
-            origin: 'Ethiopia',
-            cupProfile: 'Sweet and fruity',
-            slug: 'bourbon',
-          },
-          {
-            id: 'v2',
-            name: 'Washed',
-            species: 'Arabica',
-            category: 'processing',
-            origin: null,
-            cupProfile: null,
-            slug: 'washed',
-          },
-        ],
-        2,
-      ),
+  it('a category tab pushes the category param and drops the page', async () => {
+    const { router } = renderPage('?page=2');
+    await screen.findByRole('heading', { name: t('coffeeVarieties.title') });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: t('coffeeVarieties.category.variety') }),
     );
-    render(<CoffeeVarietiesPage />);
 
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Bourbon')).toBeInTheDocument();
-    expect(screen.getByText('Washed')).toBeInTheDocument();
-    expect(screen.getAllByText('Arabica').length).toBe(2);
-    expect(screen.getByText('Ethiopia')).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.search).toBe('?category=variety'));
   });
 
-  it('shows loading skeleton while fetching', () => {
-    mockApiGetWithMeta.mockReturnValue(new Promise(() => {}));
-    render(<CoffeeVarietiesPage />);
+  it('paginates: Previous from page 3 goes to page 2, keeping filters', async () => {
+    mockList.mockResolvedValue(page([makeVariety()], 36));
+    const { router } = renderPage('?category=variety&page=3');
+    await screen.findByText('Bourbon');
 
-    const skeletons = document.querySelectorAll('.animate-pulse');
-    expect(skeletons.length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole('button', { name: t('common.previous') }));
+
+    await waitFor(() => expect(router.state.location.search).toBe('?category=variety&page=2'));
   });
 
-  it('shows empty state when API returns empty array', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('No varieties found')).toBeInTheDocument();
-  });
-
-  it('shows empty state in Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Çeşit bulunamadı')).toBeInTheDocument();
-  });
-
-  it('shows error state with retry button', async () => {
-    mockApiGetWithMeta.mockRejectedValue(new Error('Network error'));
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Failed to load varieties')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      { err: expect.any(Error) },
-      'CoffeeVarietiesPage loadData failed',
-    );
-  });
-
-  it('shows error state with retry button in Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockRejectedValue(new Error('Network error'));
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Çeşitler yüklenemedi')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Tekrar dene' })).toBeInTheDocument();
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      { err: expect.any(Error) },
-      'CoffeeVarietiesPage loadData failed',
-    );
-  });
-
-  it('renders category filter buttons — English', async () => {
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Varieties' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Processing Methods' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Market Names' })).toBeInTheDocument();
-  });
-
-  it('renders category filter buttons — Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByRole('button', { name: 'Tümü' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Çeşitler' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'İşleme Yöntemleri' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Pazar Adları' })).toBeInTheDocument();
-  });
-
-  it('renders search input with placeholder — English', async () => {
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByPlaceholderText('Search varieties...')).toBeInTheDocument();
-  });
-
-  it('renders search input with placeholder — Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByPlaceholderText('Çeşit ara...')).toBeInTheDocument();
-  });
-
-  it('calls API with category filter in query string', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ category: 'processing' }));
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('category=processing'));
-  });
-
-  it('calls API with search filter in query string', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ search: 'Bourbon' }));
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('search=Bourbon'));
-  });
-
-  it('shows active filters and clear all when filter is applied', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ category: 'variety' }));
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Active filters:')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Clear all' })).toBeInTheDocument();
-  });
-
-  it('shows pagination when multiple pages exist', async () => {
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'v1',
-            name: 'Bourbon',
-            species: 'Arabica',
-            category: 'variety',
-            origin: null,
-            cupProfile: null,
-            slug: 'bourbon',
-          },
-        ],
-        25,
-      ),
-    );
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText(/Page 1 of 3/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
-  });
-
-  it('shows pagination in Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'v1',
-            name: 'Bourbon',
-            species: 'Arabica',
-            category: 'variety',
-            origin: null,
-            cupProfile: null,
-            slug: 'bourbon',
-          },
-        ],
-        25,
-      ),
-    );
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText(/Sayfa 1 \/ 3/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'İleri' })).toBeInTheDocument();
-  });
-
-  it('paginated response with meta.pagination.total calculates correct totalPages', async () => {
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'v1',
-            name: 'Test',
-            species: null,
-            category: null,
-            origin: null,
-            cupProfile: null,
-            slug: 'test',
-          },
-        ],
-        30,
-      ),
-    );
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText(/Page 1 of 3/)).toBeInTheDocument();
-  });
-
-  it('renders category badges on cards — variety type', async () => {
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'v1',
-            name: 'Geisha',
-            species: 'Arabica',
-            category: 'variety',
-            origin: 'Panama',
-            cupProfile: null,
-            slug: 'geisha',
-          },
-        ],
-        1,
-      ),
-    );
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Var.')).toBeInTheDocument();
-  });
-
-  it('renders category badges on cards — processing type', async () => {
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'v1',
-            name: 'Natural',
-            species: 'Arabica',
-            category: 'processing',
-            origin: null,
-            cupProfile: null,
-            slug: 'natural',
-          },
-        ],
-        1,
-      ),
-    );
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Proc.')).toBeInTheDocument();
-  });
-
-  it('renders category badges on cards — market_name type', async () => {
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'v1',
-            name: 'Yirgacheffe',
-            species: 'Arabica',
-            category: 'market_name',
-            origin: null,
-            cupProfile: null,
-            slug: 'yirgacheffe',
-          },
-        ],
-        1,
-      ),
-    );
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Mkt.')).toBeInTheDocument();
-  });
-
-  it('calls API with page param', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ page: '3' }));
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('page=3'));
-  });
-
-  it('navigates to next page when Next is clicked', async () => {
-    const setSearchParams = vi.fn();
-    mockUseSearchParams.mockReturnValue([new URLSearchParams({ page: '1' }), setSearchParams]);
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'v1',
-            name: 'Bourbon',
-            species: 'Arabica',
-            category: 'variety',
-            origin: null,
-            cupProfile: null,
-            slug: 'bourbon',
-          },
-        ],
-        25,
-      ),
-    );
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    // Use fireEvent since userEvent has type issues in this project setup
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-
-    expect(setSearchParams).toHaveBeenCalledTimes(1);
-    // useListUrlState applies a functional updater to the current params.
-    const [updater] = setSearchParams.mock.calls[0];
-    const params = updater(new URLSearchParams({ page: '1' }));
-    expect(params.get('page')).toBe('2');
-  });
-
-  it('navigates to previous page when Previous is clicked', async () => {
-    const setSearchParams = vi.fn();
-    mockUseSearchParams.mockReturnValue([new URLSearchParams({ page: '3' }), setSearchParams]);
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'v1',
-            name: 'Bourbon',
-            species: 'Arabica',
-            category: 'variety',
-            origin: null,
-            cupProfile: null,
-            slug: 'bourbon',
-          },
-        ],
-        25,
-      ),
-    );
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
-
-    expect(setSearchParams).toHaveBeenCalledTimes(1);
-    const [updater] = setSearchParams.mock.calls[0];
-    const params = updater(new URLSearchParams({ page: '3' }));
-    expect(params.get('page')).toBe('2');
-  });
-
-  it('links coffee variety cards to detail page', async () => {
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'v1',
-            name: 'Bourbon',
-            species: null,
-            category: null,
-            origin: null,
-            cupProfile: null,
-            slug: 'bourbon',
-          },
-        ],
-        1,
-      ),
-    );
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    const link = screen.getByRole('link', { name: /Bourbon/ });
-    expect(link).toHaveAttribute('href', '/coffee-varieties/v1');
-  });
-
-  it('shows clear search button in empty state when filters active', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ category: 'variety' }));
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('No varieties found')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Clear search' })).toBeInTheDocument();
-  });
-
-  it('passes translated title to SEOHead', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    const calls = mockSEOHead.mock.calls;
-    const lastProps = calls[calls.length - 1][0] as { title?: string };
-    expect(lastProps.title).toBe('Coffee Varieties');
-  });
-
-  it('passes translated title to SEOHead — Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    const calls = mockSEOHead.mock.calls;
-    const lastProps = calls[calls.length - 1][0] as { title?: string };
-    expect(lastProps.title).toBe('Kahve Çeşitleri');
-  });
-});
-
-describe('CoffeeVarietiesPage — shareable search (q, debounced replace)', () => {
-  beforeEach(() => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-  });
-
-  it('reads the q param and sends it to the API as search', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ q: 'gesha' }));
-    render(<CoffeeVarietiesPage />);
-
-    await waitFor(() =>
-      expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('search=gesha')),
-    );
-    expect((screen.getByPlaceholderText('Search varieties...') as HTMLInputElement).value).toBe(
-      'gesha',
-    );
-  });
-
-  it('commits typed text once, after the pause, replacing history and dropping legacy search and page', async () => {
-    const setSearchParams = vi.fn();
-    mockUseSearchParams.mockReturnValue([
-      new URLSearchParams({ search: 'old', page: '3' }),
-      setSearchParams,
-    ]);
-    render(<CoffeeVarietiesPage />);
-    const input = screen.getByPlaceholderText('Search varieties...');
-
-    fireEvent.change(input, { target: { value: 'o' } });
-    fireEvent.change(input, { target: { value: 'gesha' } });
-    expect(setSearchParams).not.toHaveBeenCalled();
-
-    await waitFor(() => expect(setSearchParams).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    const [updater, options] = setSearchParams.mock.calls[0];
-    expect(options).toEqual({ replace: true, preventScrollReset: true });
-    expect(updater(new URLSearchParams({ search: 'old', page: '3' })).toString()).toBe('q=gesha');
+  it('commits typed search text once, replacing history and dropping legacy search and page', async () => {
+    const { router } = renderPage('?search=old&page=3');
+    const input = await screen.findByPlaceholderText(t('coffeeVarieties.searchPlaceholder'));
+    expect((input as HTMLInputElement).value).toBe('old');
+
+    fireEvent.change(input, { target: { value: 'g' } });
+    fireEvent.change(input, { target: { value: 'Gesha' } });
+
+    await waitFor(() => expect(router.state.location.search).toBe('?q=Gesha'), {
+      timeout: 2000,
+    });
+    expect(router.state.historyAction).toBe('REPLACE');
   });
 });

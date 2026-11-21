@@ -1,18 +1,17 @@
-import type { CoffeeVarietyOutput } from '@brewform/shared/schemas';
-import { useEffect, useState } from 'react';
-import { api } from '../../api/client.ts';
+import { useEffect } from 'react';
+import { useLoaderData, useLocation, useNavigation } from 'react-router';
 import { CatalogEntityCard } from '../../components/catalog/CatalogEntityCard.tsx';
 import { CategoryTabs } from '../../components/catalog/CategoryTabs.tsx';
 import { varietyCategoryLabel } from '../../components/catalog/TypeBadge.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { CardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useDebouncedUrlText, useListUrlState } from '../../hooks/useListUrlState.ts';
 import { parseCoffeeVarietyCatalogParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './CoffeeVarietiesPage.data.ts';
 
 const log = createLogger('CoffeeVarietiesPage');
 
@@ -21,7 +20,10 @@ const log = createLogger('CoffeeVarietiesPage');
  * tabs, and debounced search; cards link to variety detail pages. All
  * selections live in the URL (`page`, `category`, `q`; a legacy `search` link
  * is still read): tabs push history, the search box commits after a 300 ms
- * pause with `replace`, and page 1 is never written.
+ * pause with `replace`, and page 1 is never written. The cards come from the
+ * `/coffee-varieties` route loader (`CoffeeVarietiesPage.data.ts`); a skeleton
+ * shows while a new URL state loads, and a failed load renders the route error
+ * state.
  */
 export function CoffeeVarietiesPage() {
   const {
@@ -31,11 +33,11 @@ export function CoffeeVarietiesPage() {
     clearAll,
   } = useListUrlState(parseCoffeeVarietyCatalogParams);
   const searchInput = useDebouncedUrlText('q', { legacyKeys: ['search'] });
-  const [varieties, setVarieties] = useState<CoffeeVarietyOutput[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [retryNonce, setRetryNonce] = useState(0);
+  const { varieties, totalPages } = useLoaderData<typeof loader>();
+  const navigation = useNavigation();
+  const location = useLocation();
+  const loading =
+    navigation.state === 'loading' && navigation.location.pathname === location.pathname;
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -51,31 +53,6 @@ export function CoffeeVarietiesPage() {
     { value: 'processing', label: t('coffeeVarieties.category.processing') },
     { value: 'market_name', label: t('coffeeVarieties.category.market_name') },
   ];
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    const params = new URLSearchParams();
-    params.set('page', String(page));
-    params.set('perPage', '12');
-    if (category) params.set('category', category);
-    if (search) params.set('search', search);
-
-    api
-      .getWithMeta<{ data: CoffeeVarietyOutput[]; meta: { pagination?: { total: number } } }>(
-        `/coffee-varieties?${params.toString()}`,
-      )
-      .then((data) => {
-        const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-        setVarieties(items);
-        setTotalPages(Math.ceil((data?.meta?.pagination?.total ?? items.length) / 12) || 1);
-      })
-      .catch((err) => {
-        log.error({ err }, 'CoffeeVarietiesPage loadData failed');
-        setError(t('coffeeVarieties.error.load'));
-      })
-      .finally(() => setLoading(false));
-  }, [page, category, search, retryNonce]);
 
   const hasActiveFilters = !!(category || search);
 
@@ -123,22 +100,6 @@ export function CoffeeVarietiesPage() {
       {/* Content */}
       {loading ? (
         <CardSkeletonGrid variant="catalog" />
-      ) : error ? (
-        <div className="text-center py-12">
-          <ErrorState message={error} className="mb-4" />
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setLoading(true);
-              setRetryNonce((n) => n + 1);
-              setPage(1);
-            }}
-            className="btn-primary"
-          >
-            {t('common.retry')}
-          </button>
-        </div>
       ) : varieties.length === 0 ? (
         <EmptyState
           message={t('coffeeVarieties.empty')}

@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '../../api/index.ts';
+import { useFetcher } from 'react-router';
+import { TASTE_NOTES_PATH, type tasteNotesLoader } from '../../routes/resources/taste-notes.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { useSafeT } from '../../utils/safe-translation.ts';
 import { IntensityDots } from '../recipe/IntensityDots.tsx';
@@ -23,7 +24,15 @@ interface Props {
   onIntensitiesChange?: (intensities: Record<string, number>) => void;
 }
 
-/** Searchable autocomplete for SCAA taste notes with hierarchical grouping, intensity controls, and keyboard navigation. */
+/** No taste notes yet: the fetcher has not loaded, or its load failed. */
+const NO_NOTES: TasteNote[] = [];
+
+/**
+ * Searchable autocomplete for SCAA taste notes with hierarchical grouping, intensity controls,
+ * and keyboard navigation. The flat note list is read once on mount with a fetcher from the
+ * `resources/taste-notes` resource route (served by the single-flight static cache, which
+ * logs a failure); a failed load leaves the list in its loading state.
+ */
 export function TasteAutocomplete({
   selectedIds,
   onSelectionChange,
@@ -32,22 +41,17 @@ export function TasteAutocomplete({
 }: Props) {
   const t = useSafeT();
   const [query, setQuery] = useState('');
-  const [allNotes, setAllNotes] = useState<TasteNote[]>([]);
+  const { load, data } = useFetcher<typeof tasteNotesLoader>();
+  const allNotes: TasteNote[] = data?.ok ? data.notes : NO_NOTES;
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Map<string, HTMLLIElement>>(new Map());
 
   useEffect(() => {
-    api
-      .get<TasteNote[]>('/taste-notes/flat')
-      .then((data) => {
-        setAllNotes(data as TasteNote[]);
-      })
-      .catch((err) => {
-        log.error({ err }, 'Failed to fetch taste notes list');
-      });
-  }, []);
+    log.debug({}, 'TasteAutocomplete loading taste notes');
+    void load(TASTE_NOTES_PATH);
+  }, [load]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

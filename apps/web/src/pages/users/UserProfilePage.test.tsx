@@ -54,7 +54,8 @@ import { api } from '../../api/client.ts';
 import { ApiError } from '../../api/errors.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { loader, UserProfilePage } from './UserProfilePage.tsx';
+import { loader } from './UserProfilePage.data.ts';
+import { UserProfilePage } from './UserProfilePage.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -276,7 +277,9 @@ describe('UserProfilePage — own profile under any URL casing', () => {
     expect(await screen.findByText('Edit Profile')).toBeInTheDocument();
     expect(screen.queryByText('Follow')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Brew Journal' })).toBeInTheDocument();
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=1', undefined);
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=1', {
+      signal: expect.any(AbortSignal),
+    });
   });
 });
 
@@ -498,7 +501,9 @@ describe('UserProfilePage — brews loader (F02)', () => {
 
     await loader(loaderArgs('http://localhost/u/diana?tab=brews&brewsPage=2'));
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=2', undefined);
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=2', {
+      signal: expect.any(AbortSignal),
+    });
   });
 
   it('defaults an invalid ?brewsPage to 1', async () => {
@@ -511,7 +516,9 @@ describe('UserProfilePage — brews loader (F02)', () => {
 
     await loader(loaderArgs('http://localhost/u/diana?tab=brews&brewsPage=-3'));
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=1', undefined);
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=1', {
+      signal: expect.any(AbortSignal),
+    });
   });
 
   it('skips the brew-log fetch when logged out (brewsData stays null)', async () => {
@@ -558,7 +565,7 @@ describe('UserProfilePage — collections loader pagination', () => {
 
     expect(mockApiGetWithMeta).toHaveBeenCalledWith(
       expect.stringMatching(/\/users\/[^/]+\/collections\?page=2&perPage=20$/),
-      undefined,
+      { signal: expect.any(AbortSignal) },
     );
   });
 });
@@ -583,5 +590,44 @@ describe('UserProfilePage — loader not-found mapping', () => {
     await expect(
       loader({ params: { username: 'ghost' }, request: new Request('http://localhost/u/ghost') }),
     ).rejects.toBe(serverError);
+  });
+});
+
+describe('UserProfilePage loader — request.signal', () => {
+  it('forwards request.signal to the profile, follow-list and viewer requests', async () => {
+    meUser = DIANA_ME;
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [],
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total: 0, totalPages: 0 } },
+    });
+    const signalOpts = { signal: expect.any(AbortSignal) };
+
+    await loader({
+      params: { username: 'diana' },
+      request: new Request('http://localhost/u/diana?tab=followers'),
+    });
+    expect(mockApiGet).toHaveBeenCalledWith('/users/diana', signalOpts);
+    expect(mockApiGet).toHaveBeenCalledWith('/follow/profile-user-id/followers', signalOpts);
+
+    await loader({
+      params: { username: 'diana' },
+      request: new Request('http://localhost/u/diana?tab=brews'),
+    });
+    expect(mockApiGet).toHaveBeenCalledWith('/users/me', signalOpts);
+  });
+
+  it('rethrows an aborted viewer lookup instead of treating it as logged out', async () => {
+    const abort = new DOMException('aborted', 'AbortError');
+    mockApiGet.mockImplementation((url: string) =>
+      url === '/users/me' ? Promise.reject(abort) : Promise.resolve(mockProfile),
+    );
+
+    await expect(
+      loader({
+        params: { username: 'diana' },
+        request: new Request('http://localhost/u/diana?tab=brews'),
+      }),
+    ).rejects.toBe(abort);
   });
 });

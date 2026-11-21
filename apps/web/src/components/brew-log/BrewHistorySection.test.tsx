@@ -17,6 +17,7 @@ vi.mock('../../contexts/I18nContext.tsx', () => ({
 
 import { brewLogApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { recipeBrewLogsLoader } from '../../routes/resources/brew-logs.ts';
 import { BrewHistorySection } from './BrewHistorySection.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -76,15 +77,20 @@ function makeResponse(data: BrewLogListItemOutput[]): PaginatedResponse<BrewLogL
   };
 }
 
+/** Renders the section with the real `resources/brew-logs/recipe/:recipeId` resource route. */
 function renderSection(
   props: { recipeId: string; currentVersionId: string | null } = {
     recipeId: 'r1',
     currentVersionId: 'v1',
   },
 ) {
-  const router = createMemoryRouter([{ path: '/', element: <BrewHistorySection {...props} /> }], {
-    initialEntries: ['/'],
-  });
+  const router = createMemoryRouter(
+    [
+      { path: '/', element: <BrewHistorySection {...props} /> },
+      { path: '/resources/brew-logs/recipe/:recipeId', loader: recipeBrewLogsLoader },
+    ],
+    { initialEntries: ['/'] },
+  );
   return render(<RouterProvider router={router} />);
 }
 
@@ -99,11 +105,15 @@ beforeEach(() => {
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('BrewHistorySection', () => {
-  it('fetches the first page of five logs for the recipe', async () => {
+  it('loads the first page of five logs for the recipe through the resource route', async () => {
     renderSection();
 
     await waitFor(() => {
-      expect(mockListForRecipe).toHaveBeenCalledWith('r1', { page: 1, perPage: 5 });
+      expect(mockListForRecipe).toHaveBeenCalledWith(
+        'r1',
+        { page: 1, perPage: 5 },
+        { signal: expect.any(AbortSignal) },
+      );
     });
   });
 

@@ -92,30 +92,7 @@ function findEffectFetches(source: string): number[] {
  * removes its files, and a listed file whose effects no longer fetch fails the test. Must be
  * empty (and removed) before the change is archived.
  */
-const PENDING = new Set<string>([
-  'components/brew-log/BrewHistorySection.tsx',
-  'components/brew-log/RecipeBrewStats.tsx',
-  'components/collections/AddToCollectionModal.tsx',
-  'components/layout/NotificationBell.tsx',
-  'components/layout/NotificationDropdown.tsx',
-  'components/taste/TasteAutocomplete.tsx',
-  'pages/TasteNotesPage.tsx',
-  'pages/beans/BeanListPage.tsx',
-  'pages/coffee-varieties/CoffeeVarietiesPage.tsx',
-  'pages/coffee-varieties/CoffeeVarietyDetailPage.tsx',
-  'pages/equipment/EquipmentCatalogPage.tsx',
-  'pages/equipment/EquipmentDetailPage.tsx',
-  'pages/equipment/EquipmentListPage.tsx',
-  'pages/recipes/RecipeComparePage.tsx',
-  'pages/recipes/RecipeCreatePage.tsx',
-  'pages/recipes/RecipeEditPage.tsx',
-  'pages/recipes/RecipeFocusModePage.tsx',
-  'pages/recipes/RecipeForkPage.tsx',
-  'pages/recipes/RecipeVersionsPage.tsx',
-  'pages/recipes/VersionDiffPage.tsx',
-  'pages/recipes/useCoffeeVarietyFilter.tsx',
-  'pages/setups/SetupListPage.tsx',
-]);
+const PENDING = new Set<string>(['components/collections/AddToCollectionModal.tsx']);
 
 describe('architecture — useEffect fetch scanner self-check', () => {
   it('flags a direct client call in an effect', () => {

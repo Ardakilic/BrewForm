@@ -55,9 +55,7 @@ describe('useStaticCacheSync', () => {
 
     expect(clearStaticCache).toHaveBeenCalledTimes(1);
     expect(invalidateStaticCache).not.toHaveBeenCalled();
-    expect(setItemSpy.mock.calls.some(([key]) => key === 'brewform-static-cache-bust')).toBe(
-      false,
-    );
+    expect(setItemSpy.mock.calls.some(([key]) => key === 'brewform-static-cache-bust')).toBe(false);
     unmount();
   });
 

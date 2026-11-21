@@ -1,38 +1,51 @@
 import { BREW_METHODS, DRINK_TYPES } from '@brewform/shared/constants';
-import type { RecipeDetailOutput, RecipeDetailVersionOutput } from '@brewform/shared/schemas';
+import type { RecipeDetailVersionOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
-import { recipeApi } from '../../api/index.ts';
+import { useFetcher, useLoaderData, useNavigate } from 'react-router';
 import { DiffHighlighter } from '../../components/recipe/DiffHighlighter.tsx';
 import { MergeSelector } from '../../components/recipe/MergeSelector.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { formatDecimal, formatDuration } from '../../utils/format.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './RecipeComparePage.data.ts';
+import { recipeFormErrorMessage } from './recipe-form-errors.ts';
 
 const log = createLogger('RecipeComparePage');
 
+/** The display label of a constant `value` (falls back to the raw value). */
 function labelFor(value: string, constants: ReadonlyArray<{ value: string; label: string }>) {
   return constants.find((c) => c.value === value)?.label || value;
 }
 
+/** A formatter that appends `unit` to a value, or `-` when the value is missing. */
 const unitFormatter = (unit: string) => (val: string | number | null) =>
   val != null ? `${val}${unit}` : '-';
 
 /**
- * Unified diff comparison of two recipes (`:slug1` vs `:slug2`):
- * fetches both in parallel and renders their current versions'
- * parameters in a single diff table, with an optional merge flow.
+ * Unified diff comparison of two recipes (`:slug1` vs `:slug2`): both come from the route
+ * loader (`RecipeComparePage.data.ts`; a missing recipe renders the not-found page and any
+ * other failure the route error state), and their current versions' parameters render in a
+ * single diff table, with an optional merge flow submitted to the route action. Never
+ * indexed: derived view (`noindex, nofollow`).
  */
 export function RecipeComparePage() {
   const { t } = useTranslation();
-  const { slug1, slug2 } = useParams();
+  const { recipe1, recipe2 } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
-  const [recipe1, setRecipe1] = useState<RecipeDetailOutput | null>(null);
-  const [recipe2, setRecipe2] = useState<RecipeDetailOutput | null>(null);
-  const [loading, setLoading] = useState(true);
+  const mergeFetcher = useFetcher<typeof action>();
   const [showMerge, setShowMerge] = useState(false);
   const [mergeError, setMergeError] = useState<string | null>(null);
+
+  useActionFeedback(mergeFetcher, {
+    onSuccess: (result) => {
+      if (result.ok) navigate(`/recipes/${result.id}/edit`);
+    },
+    onError: (result) => {
+      if (!result.ok) setMergeError(recipeFormErrorMessage(result, t, 'error.unexpected'));
+    },
+  });
 
   useEffect(() => {
     log.debug({}, 'RecipeComparePage mounted');
@@ -50,61 +63,18 @@ export function RecipeComparePage() {
     return () => document.removeEventListener('keydown', onKey);
   }, [showMerge]);
 
-  useEffect(() => {
-    if (!slug1 || !slug2) return;
-    setLoading(true);
-    // Deliberate null-fallback: a missing/unloadable recipe renders as an empty pane
-    // (the not-found branch below) instead of failing the whole comparison.
-    Promise.all([
-      recipeApi.get(slug1).catch(() => {
-        return null;
-      }),
-      recipeApi.get(slug2).catch(() => {
-        return null;
-      }),
-    ])
-      .then(([r1, r2]) => {
-        setRecipe1(r1);
-        setRecipe2(r2);
-      })
-      .finally(() => setLoading(false));
-  }, [slug1, slug2]);
-
-  async function handleMerge(selections: Record<string, 'v1' | 'v2'>) {
-    if (!recipe1?.currentVersion || !recipe2?.currentVersion) return;
+  /** Submits the merge of both current versions with the chosen per-field selections. */
+  function handleMerge(selections: Record<string, 'v1' | 'v2'>) {
+    if (mergeFetcher.state !== 'idle') return;
     setMergeError(null);
-    try {
-      const merged = await recipeApi.merge({
+    mergeFetcher.submit(
+      {
         recipeVersionId1: recipe1.currentVersion.id,
         recipeVersionId2: recipe2.currentVersion.id,
         title: `${recipe1.title} + ${recipe2.title}`,
         selections,
-      });
-      navigate(`/recipes/${merged.id}/edit`);
-    } catch (err) {
-      log.error({ err }, 'recipe merge failed');
-      setMergeError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  if (loading) {
-    return (
-      <div
-        className="mx-auto max-w-6xl px-6 py-12 text-center"
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        {t('common.loading')}
-      </div>
-    );
-  }
-  if (!recipe1 || !recipe2 || !recipe1.currentVersion || !recipe2.currentVersion) {
-    return (
-      <div
-        className="mx-auto max-w-6xl px-6 py-12 text-center"
-        style={{ color: 'var(--text-tertiary)' }}
-      >
-        {t('compare.notFound')}
-      </div>
+      },
+      { method: 'post', encType: 'application/json', defaultShouldRevalidate: false },
     );
   }
 
@@ -153,6 +123,7 @@ export function RecipeComparePage() {
         title={t('compare.seoTitle')
           .replace('{title1}', recipe1.title)
           .replace('{title2}', recipe2.title)}
+        noIndex
       />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -203,6 +174,7 @@ export function RecipeComparePage() {
   );
 }
 
+/** The diff table of the two current versions' parameters, taste notes and equipment. */
 function CompareTable({
   v1,
   v2,

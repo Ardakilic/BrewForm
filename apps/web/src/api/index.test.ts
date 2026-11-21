@@ -4,6 +4,7 @@ const { apiMock } = vi.hoisted(() => ({
   apiMock: {
     get: vi.fn(),
     getWithMeta: vi.fn(),
+    getText: vi.fn(),
     post: vi.fn(),
     patch: vi.fn(),
     put: vi.fn(),
@@ -45,6 +46,7 @@ import {
   isApiError,
   notificationApi,
   preferencesApi,
+  qrcodeApi,
   recipeApi,
   setupApi,
   tasteApi,
@@ -56,6 +58,7 @@ describe('api client wrappers', () => {
     vi.clearAllMocks();
     apiMock.get.mockResolvedValue({});
     apiMock.getWithMeta.mockResolvedValue({});
+    apiMock.getText.mockResolvedValue('');
     apiMock.post.mockResolvedValue({});
     apiMock.patch.mockResolvedValue({});
     apiMock.put.mockResolvedValue({});
@@ -454,6 +457,14 @@ describe('api client wrappers', () => {
 
       await commentApi.list('r1', 2, opts);
       expect(apiMock.getWithMeta).toHaveBeenLastCalledWith('/comments/recipe/r1?page=2', opts);
+    });
+
+    it('qrcodeApi.recipeSvg reads the SVG text through api.getText with the signal', async () => {
+      const opts = { signal: new AbortController().signal };
+      apiMock.getText.mockResolvedValue('<svg/>');
+
+      await expect(qrcodeApi.recipeSvg('cold-brew', opts)).resolves.toBe('<svg/>');
+      expect(apiMock.getText).toHaveBeenLastCalledWith('/qrcode/recipe/cold-brew.svg', opts);
     });
 
     it('does not log an error when a notification request is aborted', async () => {

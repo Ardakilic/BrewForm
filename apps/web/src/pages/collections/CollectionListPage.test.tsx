@@ -36,7 +36,8 @@ import type { CollectionListItemOutput, PaginatedResponse } from '@brewform/shar
 import { ApiError } from '../../api/errors.ts';
 import { collectionApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { CollectionListPage, loader } from './CollectionListPage.tsx';
+import { loader } from './CollectionListPage.data.ts';
+import { CollectionListPage } from './CollectionListPage.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockList = vi.mocked(collectionApi.list);
@@ -93,6 +94,11 @@ function makeListResponse(
 }
 
 const HydrateFallback = () => null;
+
+/** Calls the `/collections` loader for `url` (only `request` matters to it). */
+function runLoader(url: string) {
+  return loader({ request: new Request(url), params: {}, context: undefined } as never);
+}
 
 function renderListPage() {
   const router = createMemoryRouter(
@@ -160,9 +166,9 @@ describe('CollectionListPage loader — auth guard', () => {
   it('redirects a final 401 to /login with the encoded return path', async () => {
     mockList.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
 
-    const thrown = await loader({
-      request: new Request('http://localhost/collections?page=2'),
-    }).catch((err: unknown) => err);
+    const thrown = await runLoader('http://localhost/collections?page=2').catch(
+      (err: unknown) => err,
+    );
 
     expect(thrown).toBeInstanceOf(Response);
     expect((thrown as Response).headers.get('Location')).toBe(
@@ -173,11 +179,30 @@ describe('CollectionListPage loader — auth guard', () => {
 
 describe('CollectionListPage — URL pagination', () => {
   it('the loader requests the ?page from the URL with a fixed perPage', async () => {
-    await loader({ request: new Request('http://localhost/collections?page=3') });
-    expect(mockList).toHaveBeenLastCalledWith({ page: '3', perPage: '20' });
+    await runLoader('http://localhost/collections?page=3');
+    expect(mockList).toHaveBeenLastCalledWith(
+      { page: '3', perPage: '20' },
+      { signal: expect.any(AbortSignal) },
+    );
 
-    await loader({ request: new Request('http://localhost/collections?page=-1') });
-    expect(mockList).toHaveBeenLastCalledWith({ page: '1', perPage: '20' });
+    await runLoader('http://localhost/collections?page=-1');
+    expect(mockList).toHaveBeenLastCalledWith(
+      { page: '1', perPage: '20' },
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it('forwards the request signal to collectionApi.list', async () => {
+    const controller = new AbortController();
+    await loader({
+      request: new Request('http://localhost/collections', { signal: controller.signal }),
+      params: {},
+      context: undefined,
+    } as never);
+    const opts = mockList.mock.calls[0][1];
+    expect(opts?.signal).toBeInstanceOf(AbortSignal);
+    controller.abort();
+    expect(opts?.signal?.aborted).toBe(true);
   });
 
   it('Next writes ?page=2 and the loader fetches page 2', async () => {
@@ -197,6 +222,11 @@ describe('CollectionListPage — URL pagination', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'common.next' }));
 
     await waitFor(() => expect(router.state.location.search).toBe('?page=2'));
-    await waitFor(() => expect(mockList).toHaveBeenLastCalledWith({ page: '2', perPage: '20' }));
+    await waitFor(() =>
+      expect(mockList).toHaveBeenLastCalledWith(
+        { page: '2', perPage: '20' },
+        { signal: expect.any(AbortSignal) },
+      ),
+    );
   });
 });

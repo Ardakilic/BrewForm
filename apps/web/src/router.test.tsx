@@ -116,7 +116,6 @@ describe('router route config', () => {
       'reset-password',
       'verify-email',
       'recipes/unavailable',
-      'taste-notes',
       'contact',
       'privacy',
       'terms',
@@ -124,6 +123,24 @@ describe('router route config', () => {
     for (const path of withElements) {
       expect(byPath.get(path), `expected route "${path}" to exist`).toBeDefined();
       expect(byPath.get(path)?.element, `expected "${path}" to have an element`).toBeTruthy();
+    }
+  });
+
+  it('loads the catalog and personal list pages through granular lazy loaders', () => {
+    const lazyWithLoader = [
+      'equipments',
+      'equipment/:id',
+      'coffee-varieties',
+      'coffee-varieties/:id',
+      'taste-notes',
+      'beans',
+      'setups',
+      'equipment',
+    ];
+    for (const path of lazyWithLoader) {
+      const lazy = byPath.get(path)?.lazy as Record<string, unknown> | undefined;
+      expect(lazy?.loader, `expected "${path}" to lazy-load a loader`).toBeTypeOf('function');
+      expect(lazy?.Component, `expected "${path}" to lazy-load a Component`).toBeTypeOf('function');
     }
   });
 

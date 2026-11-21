@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react';
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { RequireAuth } from './components/auth/RequireAuth.tsx';
 import { RootErrorBoundary } from './components/ErrorBoundary.tsx';
@@ -19,61 +20,54 @@ import {
   loader as verifyEmailLoader,
 } from './pages/auth/VerifyEmailPage.data.ts';
 import { VerifyEmailPage, VerifyEmailPending } from './pages/auth/VerifyEmailPage.tsx';
-import { BeanListPage } from './pages/beans/BeanListPage.tsx';
 import {
-  BrewLogFormPage,
+  action as brewLogFormAction,
   loader as brewLogFormLoader,
-} from './pages/brew-logs/BrewLogFormPage.tsx';
-import {
-  BrewLogListPage,
-  loader as brewLogListLoader,
-} from './pages/brew-logs/BrewLogListPage.tsx';
+} from './pages/brew-logs/BrewLogFormPage.data.ts';
+import { BrewLogFormPage } from './pages/brew-logs/BrewLogFormPage.tsx';
+import { loader as brewLogListLoader } from './pages/brew-logs/BrewLogListPage.data.ts';
+import { BrewLogListPage } from './pages/brew-logs/BrewLogListPage.tsx';
 import { action as contactAction } from './pages/ContactPage.data.ts';
 import { ContactPage } from './pages/ContactPage.tsx';
+import { action as collectionCreateAction } from './pages/collections/CollectionCreatePage.data.ts';
 import { CollectionCreatePage } from './pages/collections/CollectionCreatePage.tsx';
 import {
-  CollectionDetailPage,
+  action as collectionDetailAction,
   loader as collectionDetailLoader,
-} from './pages/collections/CollectionDetailPage.tsx';
+  reorderAction as collectionReorderAction,
+} from './pages/collections/CollectionDetailPage.data.ts';
+import { CollectionDetailPage } from './pages/collections/CollectionDetailPage.tsx';
 import {
-  CollectionEditPage,
+  action as collectionEditAction,
   loader as collectionEditLoader,
-} from './pages/collections/CollectionEditPage.tsx';
-import {
-  CollectionListPage,
-  loader as collectionListLoader,
-} from './pages/collections/CollectionListPage.tsx';
-import {
-  CollectionsBrowsePage,
-  loader as collectionsBrowseLoader,
-} from './pages/collections/CollectionsBrowsePage.tsx';
+} from './pages/collections/CollectionEditPage.data.ts';
+import { CollectionEditPage } from './pages/collections/CollectionEditPage.tsx';
+import { loader as collectionListLoader } from './pages/collections/CollectionListPage.data.ts';
+import { CollectionListPage } from './pages/collections/CollectionListPage.tsx';
+import { loader as collectionsBrowseLoader } from './pages/collections/CollectionsBrowsePage.data.ts';
+import { CollectionsBrowsePage } from './pages/collections/CollectionsBrowsePage.tsx';
 import { NotFoundPage } from './pages/ErrorPage.tsx';
-import { EquipmentListPage } from './pages/equipment/EquipmentListPage.tsx';
 // Eagerly loaded: high-traffic public pages and lightweight auth pages
-import { HomePage, loader as homeLoader } from './pages/HomePage.tsx';
-import {
-  NotificationListPage,
-  loader as notificationListLoader,
-} from './pages/notifications/NotificationListPage.tsx';
+import { loader as homeLoader } from './pages/HomePage.data.ts';
+import { HomePage } from './pages/HomePage.tsx';
+import { loader as notificationListLoader } from './pages/notifications/NotificationListPage.data.ts';
+import { NotificationListPage } from './pages/notifications/NotificationListPage.tsx';
 import { PrivacyPage } from './pages/PrivacyPage.tsx';
-import { loader as detailLoader, RecipeDetailPage } from './pages/recipes/RecipeDetailPage.tsx';
-import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage.tsx';
-import { RecipeListPage, loader as recipeListLoader } from './pages/recipes/RecipeListPage.tsx';
+import { loader as detailLoader } from './pages/recipes/RecipeDetailPage.data.ts';
+import { RecipeDetailPage } from './pages/recipes/RecipeDetailPage.tsx';
+import { loader as recipeListLoader } from './pages/recipes/RecipeListPage.data.ts';
+import { RecipeListPage } from './pages/recipes/RecipeListPage.tsx';
 import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage.tsx';
-import { RecipeVersionsPage } from './pages/recipes/RecipeVersionsPage.tsx';
-import {
-  StarredRecipesPage,
-  loader as starredLoader,
-} from './pages/recipes/StarredRecipesPage.tsx';
+import { loader as starredLoader } from './pages/recipes/StarredRecipesPage.data.ts';
+import { StarredRecipesPage } from './pages/recipes/StarredRecipesPage.tsx';
 import {
   action as settingsAction,
   loader as settingsLoader,
 } from './pages/settings/SettingsPage.data.ts';
 import { SettingsPage } from './pages/settings/SettingsPage.tsx';
-import { SetupListPage } from './pages/setups/SetupListPage.tsx';
-import { TasteNotesPage } from './pages/TasteNotesPage.tsx';
 import { TermsPage } from './pages/TermsPage.tsx';
-import { loader as profileLoader, UserProfilePage } from './pages/users/UserProfilePage.tsx';
+import { loader as profileLoader } from './pages/users/UserProfilePage.data.ts';
+import { UserProfilePage } from './pages/users/UserProfilePage.tsx';
 import { createCommentAction, deleteCommentAction, listCommentsLoader } from './routes/comments.ts';
 import { favouriteAction } from './routes/favourite.ts';
 import { followAction } from './routes/follow.ts';
@@ -81,7 +75,44 @@ import { followAction } from './routes/follow.ts';
 import { likeAction } from './routes/like.ts';
 import { rateAction } from './routes/rate.ts';
 import { sendVerificationAction } from './routes/resources/auth.ts';
+import {
+  recipeBrewLogsLoader,
+  recipeBrewStatsLoader,
+  shouldRevalidateBrewLogs,
+} from './routes/resources/brew-logs.ts';
+import {
+  coffeeVarietySearchLoader,
+  shouldRevalidateCoffeeVarietySearch,
+} from './routes/resources/coffee-varieties.ts';
+import {
+  markAllReadAction,
+  markReadAction,
+  notificationsPageLoader,
+  shouldRevalidateNotifications,
+  unreadCountLoader,
+} from './routes/resources/notifications.ts';
+import { uploadPhotoAction } from './routes/resources/photos.ts';
+import { recipeQrLoader, shouldRevalidateRecipeQr } from './routes/resources/qrcode.ts';
+import { shouldRevalidateTasteNotes, tasteNotesLoader } from './routes/resources/taste-notes.ts';
 import { ROOT_ROUTE_ID, rootLoader, shouldRevalidateRoot } from './routes/root.ts';
+
+/**
+ * Wraps a lazily loaded auth-only page in the `RequireAuth` render guard (signed-out users
+ * are replaced to `/login?next=…`), for granular `lazy: { Component }` routes whose page
+ * module is code-split.
+ */
+function withRequireAuthGuard(Page: ComponentType): ComponentType {
+  /** The guarded page: renders `Page` only for a signed-in user. */
+  function GuardedPage() {
+    return (
+      <RequireAuth>
+        <Page />
+      </RequireAuth>
+    );
+  }
+  GuardedPage.displayName = `RequireAuth(${Page.displayName ?? Page.name})`;
+  return GuardedPage;
+}
 
 /**
  * The application route tree: every page route, loader and resource-route action.
@@ -101,7 +132,7 @@ export const routes: RouteObject[] = [
         index: true,
         element: <HomePage />,
         loader: homeLoader,
-        errorElement: <RootErrorBoundary />,
+        errorElement: <RouteErrorState />,
       },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
@@ -119,7 +150,7 @@ export const routes: RouteObject[] = [
         path: 'recipes',
         loader: recipeListLoader,
         element: <RecipeListPage />,
-        errorElement: <RootErrorBoundary />,
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'recipes/starred',
@@ -129,42 +160,54 @@ export const routes: RouteObject[] = [
           </RequireAuth>
         ),
         loader: starredLoader,
-        errorElement: <RootErrorBoundary />,
+        errorElement: <RouteErrorState />,
       },
       { path: 'recipes/unavailable', element: <RecipeNotAvailablePage /> },
       {
         path: 'recipes/new',
-        lazy: async () => {
-          const { RecipeCreatePage } = await import('./pages/recipes/RecipeCreatePage.tsx');
-          return {
-            element: (
-              <RequireAuth>
-                <RecipeCreatePage />
-              </RequireAuth>
+        lazy: {
+          loader: async () => (await import('./pages/recipes/RecipeCreatePage.data.ts')).loader,
+          action: async () => (await import('./pages/recipes/RecipeCreatePage.data.ts')).action,
+          Component: async () =>
+            withRequireAuthGuard(
+              (await import('./pages/recipes/RecipeCreatePage.tsx')).RecipeCreatePage,
             ),
-          };
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'recipes/compare/:slug1/:slug2',
-        lazy: async () => {
-          const { RecipeComparePage } = await import('./pages/recipes/RecipeComparePage.tsx');
-          return { Component: RecipeComparePage };
+        lazy: {
+          loader: async () => (await import('./pages/recipes/RecipeComparePage.data.ts')).loader,
+          action: async () => (await import('./pages/recipes/RecipeComparePage.data.ts')).action,
+          Component: async () =>
+            (await import('./pages/recipes/RecipeComparePage.tsx')).RecipeComparePage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'recipes/:slug/versions/diff',
-        lazy: async () => {
-          const { VersionDiffPage } = await import('./pages/recipes/VersionDiffPage.tsx');
-          return { Component: VersionDiffPage };
+        lazy: {
+          loader: async () => (await import('./pages/recipes/VersionDiffPage.data.ts')).loader,
+          Component: async () =>
+            (await import('./pages/recipes/VersionDiffPage.tsx')).VersionDiffPage,
         },
+        errorElement: <RouteErrorState />,
       },
-      { path: 'recipes/:slug/versions', element: <RecipeVersionsPage /> },
+      {
+        path: 'recipes/:slug/versions',
+        lazy: {
+          loader: async () => (await import('./pages/recipes/RecipeVersionsPage.data.ts')).loader,
+          Component: async () =>
+            (await import('./pages/recipes/RecipeVersionsPage.tsx')).RecipeVersionsPage,
+        },
+        errorElement: <RouteErrorState />,
+      },
       {
         path: 'recipes/:slug',
         element: <RecipeDetailPage />,
         loader: detailLoader,
-        errorElement: <RootErrorBoundary />,
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'collections',
@@ -174,13 +217,13 @@ export const routes: RouteObject[] = [
           </RequireAuth>
         ),
         loader: collectionListLoader,
-        errorElement: <RootErrorBoundary />,
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'collections/browse',
         element: <CollectionsBrowsePage />,
         loader: collectionsBrowseLoader,
-        errorElement: <RootErrorBoundary />,
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'collections/new',
@@ -189,13 +232,15 @@ export const routes: RouteObject[] = [
             <CollectionCreatePage />
           </RequireAuth>
         ),
-        errorElement: <RootErrorBoundary />,
+        action: collectionCreateAction,
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'collections/:id',
         element: <CollectionDetailPage />,
         loader: collectionDetailLoader,
-        errorElement: <RootErrorBoundary />,
+        action: collectionDetailAction,
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'collections/:id/edit',
@@ -205,7 +250,8 @@ export const routes: RouteObject[] = [
           </RequireAuth>
         ),
         loader: collectionEditLoader,
-        errorElement: <RootErrorBoundary />,
+        action: collectionEditAction,
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'brew-logs',
@@ -215,7 +261,7 @@ export const routes: RouteObject[] = [
           </RequireAuth>
         ),
         loader: brewLogListLoader,
-        errorElement: <RootErrorBoundary />,
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'brew-logs/new',
@@ -225,7 +271,8 @@ export const routes: RouteObject[] = [
           </RequireAuth>
         ),
         loader: brewLogFormLoader,
-        errorElement: <RootErrorBoundary />,
+        action: brewLogFormAction,
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'brew-logs/:id/edit',
@@ -235,40 +282,47 @@ export const routes: RouteObject[] = [
           </RequireAuth>
         ),
         loader: brewLogFormLoader,
-        errorElement: <RootErrorBoundary />,
+        action: brewLogFormAction,
+        errorElement: <RouteErrorState />,
       },
-      { path: 'recipes/:slug/focus', element: <RecipeFocusModePage /> },
+      {
+        path: 'recipes/:slug/focus',
+        lazy: {
+          loader: async () => (await import('./pages/recipes/RecipeFocusModePage.data.ts')).loader,
+          Component: async () =>
+            (await import('./pages/recipes/RecipeFocusModePage.tsx')).RecipeFocusModePage,
+        },
+        errorElement: <RouteErrorState />,
+      },
       {
         path: 'recipes/:id/edit',
-        lazy: async () => {
-          const { RecipeEditPage } = await import('./pages/recipes/RecipeEditPage.tsx');
-          return {
-            element: (
-              <RequireAuth>
-                <RecipeEditPage />
-              </RequireAuth>
+        lazy: {
+          loader: async () => (await import('./pages/recipes/RecipeEditPage.data.ts')).loader,
+          action: async () => (await import('./pages/recipes/RecipeEditPage.data.ts')).action,
+          Component: async () =>
+            withRequireAuthGuard(
+              (await import('./pages/recipes/RecipeEditPage.tsx')).RecipeEditPage,
             ),
-          };
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'recipes/:id/fork',
-        lazy: async () => {
-          const { RecipeForkPage } = await import('./pages/recipes/RecipeForkPage.tsx');
-          return {
-            element: (
-              <RequireAuth>
-                <RecipeForkPage />
-              </RequireAuth>
+        lazy: {
+          loader: async () => (await import('./pages/recipes/RecipeForkPage.data.ts')).loader,
+          action: async () => (await import('./pages/recipes/RecipeForkPage.data.ts')).action,
+          Component: async () =>
+            withRequireAuthGuard(
+              (await import('./pages/recipes/RecipeForkPage.tsx')).RecipeForkPage,
             ),
-          };
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'u/:username',
         element: <UserProfilePage />,
         loader: profileLoader,
-        errorElement: <RootErrorBoundary />,
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'settings',
@@ -289,40 +343,49 @@ export const routes: RouteObject[] = [
           </RequireAuth>
         ),
         loader: notificationListLoader,
-        errorElement: <RootErrorBoundary />,
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'setups',
-        element: (
-          <RequireAuth>
-            <SetupListPage />
-          </RequireAuth>
-        ),
+        lazy: {
+          loader: async () => (await import('./pages/setups/SetupListPage.data.ts')).loader,
+          action: async () => (await import('./pages/setups/SetupListPage.data.ts')).action,
+          Component: async () =>
+            withRequireAuthGuard((await import('./pages/setups/SetupListPage.tsx')).SetupListPage),
+        },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'beans',
-        element: (
-          <RequireAuth>
-            <BeanListPage />
-          </RequireAuth>
-        ),
+        lazy: {
+          loader: async () => (await import('./pages/beans/BeanListPage.data.ts')).loader,
+          action: async () => (await import('./pages/beans/BeanListPage.data.ts')).action,
+          Component: async () =>
+            withRequireAuthGuard((await import('./pages/beans/BeanListPage.tsx')).BeanListPage),
+        },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'equipment',
-        element: (
-          <RequireAuth>
-            <EquipmentListPage />
-          </RequireAuth>
-        ),
+        lazy: {
+          loader: async () => (await import('./pages/equipment/EquipmentListPage.data.ts')).loader,
+          action: async () => (await import('./pages/equipment/EquipmentListPage.data.ts')).action,
+          Component: async () =>
+            withRequireAuthGuard(
+              (await import('./pages/equipment/EquipmentListPage.tsx')).EquipmentListPage,
+            ),
+        },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'equipments',
-        lazy: async () => {
-          const { EquipmentCatalogPage } = await import(
-            './pages/equipment/EquipmentCatalogPage.tsx'
-          );
-          return { Component: EquipmentCatalogPage };
+        lazy: {
+          loader: async () =>
+            (await import('./pages/equipment/EquipmentCatalogPage.data.ts')).loader,
+          Component: async () =>
+            (await import('./pages/equipment/EquipmentCatalogPage.tsx')).EquipmentCatalogPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'equipment/catalog',
@@ -330,30 +393,45 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'equipment/:id',
-        lazy: async () => {
-          const { EquipmentDetailPage } = await import('./pages/equipment/EquipmentDetailPage.tsx');
-          return { Component: EquipmentDetailPage };
+        lazy: {
+          loader: async () =>
+            (await import('./pages/equipment/EquipmentDetailPage.data.ts')).loader,
+          Component: async () =>
+            (await import('./pages/equipment/EquipmentDetailPage.tsx')).EquipmentDetailPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'coffee-varieties',
-        lazy: async () => {
-          const { CoffeeVarietiesPage } = await import(
-            './pages/coffee-varieties/CoffeeVarietiesPage.tsx'
-          );
-          return { Component: CoffeeVarietiesPage };
+        lazy: {
+          loader: async () =>
+            (await import('./pages/coffee-varieties/CoffeeVarietiesPage.data.ts')).loader,
+          Component: async () =>
+            (await import('./pages/coffee-varieties/CoffeeVarietiesPage.tsx')).CoffeeVarietiesPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'coffee-varieties/:id',
-        lazy: async () => {
-          const { CoffeeVarietyDetailPage } = await import(
-            './pages/coffee-varieties/CoffeeVarietyDetailPage.tsx'
-          );
-          return { Component: CoffeeVarietyDetailPage };
+        lazy: {
+          loader: async () =>
+            (await import('./pages/coffee-varieties/CoffeeVarietyDetailPage.data.ts')).loader,
+          Component: async () =>
+            (await import('./pages/coffee-varieties/CoffeeVarietyDetailPage.tsx'))
+              .CoffeeVarietyDetailPage,
         },
+        errorElement: <RouteErrorState />,
       },
-      { path: 'taste-notes', element: <TasteNotesPage /> },
+      {
+        path: 'taste-notes',
+        lazy: {
+          loader: async () => (await import('./pages/TasteNotesPage.data.ts')).loader,
+          shouldRevalidate: async () =>
+            (await import('./pages/TasteNotesPage.data.ts')).shouldRevalidate,
+          Component: async () => (await import('./pages/TasteNotesPage.tsx')).TasteNotesPage,
+        },
+        errorElement: <RouteErrorState />,
+      },
       {
         path: 'onboarding',
         element: (
@@ -381,6 +459,45 @@ export const routes: RouteObject[] = [
       },
       { path: 'comments/:id', action: deleteCommentAction },
       { path: 'resources/auth/send-verification', action: sendVerificationAction },
+      {
+        path: 'resources/brew-logs/recipe/:recipeId',
+        loader: recipeBrewLogsLoader,
+        shouldRevalidate: shouldRevalidateBrewLogs,
+      },
+      {
+        path: 'resources/brew-logs/stats/:recipeId',
+        loader: recipeBrewStatsLoader,
+        shouldRevalidate: shouldRevalidateBrewLogs,
+      },
+      {
+        path: 'resources/taste-notes',
+        loader: tasteNotesLoader,
+        shouldRevalidate: shouldRevalidateTasteNotes,
+      },
+      { path: 'resources/photos', action: uploadPhotoAction },
+      {
+        path: 'resources/coffee-varieties/search',
+        loader: coffeeVarietySearchLoader,
+        shouldRevalidate: shouldRevalidateCoffeeVarietySearch,
+      },
+      { path: 'collections/:id/reorder', action: collectionReorderAction },
+      {
+        path: 'resources/notifications',
+        loader: notificationsPageLoader,
+        shouldRevalidate: shouldRevalidateNotifications,
+      },
+      {
+        path: 'resources/notifications/unread-count',
+        loader: unreadCountLoader,
+        shouldRevalidate: shouldRevalidateNotifications,
+      },
+      { path: 'resources/notifications/read-all', action: markAllReadAction },
+      { path: 'resources/notifications/:id/read', action: markReadAction },
+      {
+        path: 'resources/qrcode/recipe/:slug',
+        loader: recipeQrLoader,
+        shouldRevalidate: shouldRevalidateRecipeQr,
+      },
 
       { path: '*', element: <NotFoundPage /> },
     ],

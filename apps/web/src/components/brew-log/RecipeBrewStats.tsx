@@ -1,8 +1,14 @@
-import type { RecipeBrewStatsOutput } from '@brewform/shared/schemas';
-import { useEffect, useState } from 'react';
-import { brewLogApi } from '../../api/index.ts';
+import { useEffect } from 'react';
+import { useFetcher } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import {
+  type recipeBrewStatsLoader,
+  recipeBrewStatsPath,
+} from '../../routes/resources/brew-logs.ts';
 import { formatDecimal } from '../../utils/format.ts';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('RecipeBrewStats');
 
 /** Props for {@link RecipeBrewStats}. */
 interface RecipeBrewStatsProps {
@@ -12,27 +18,19 @@ interface RecipeBrewStatsProps {
 /**
  * Inline brew stats for one recipe: the viewer's brew count and average
  * personal rating (one locale-formatted decimal plus "/10" — the ten-point
- * scale carries no star glyph; rating hidden when null). Renders nothing
- * while loading, on error, or before the first brew.
+ * scale carries no star glyph; rating hidden when null). The stats are read
+ * with a fetcher from the `resources/brew-logs/stats/:recipeId` resource route.
+ * Renders nothing while loading, on error, or before the first brew.
  */
 export function RecipeBrewStats({ recipeId }: RecipeBrewStatsProps) {
   const { t, locale } = useTranslation();
-  const [stats, setStats] = useState<RecipeBrewStatsOutput | null>(null);
+  const { load, data } = useFetcher<typeof recipeBrewStatsLoader>();
+  const stats = data?.ok ? data.stats : null;
 
   useEffect(() => {
-    let cancelled = false;
-    brewLogApi
-      .getRecipeStats(recipeId)
-      .then((result) => {
-        if (!cancelled) setStats(result);
-      })
-      .catch(() => {
-        // ponytail: stats are decorative — swallow errors silently
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [recipeId]);
+    log.debug({ recipeId }, 'RecipeBrewStats loading stats');
+    void load(recipeBrewStatsPath(recipeId));
+  }, [load, recipeId]);
 
   if (!stats || stats.brewCount === 0) return null;
 

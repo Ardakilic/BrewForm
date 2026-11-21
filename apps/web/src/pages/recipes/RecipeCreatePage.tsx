@@ -5,40 +5,89 @@ import {
   VISIBILITY_STATES_LIST,
 } from '@brewform/shared/constants';
 import type {
+  BeanOutput,
   EquipmentOutput,
   RecipeCreate,
-  RecipeDetailOutput,
   SetupOutput,
 } from '@brewform/shared/schemas';
 import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { ApiError } from '../../api/errors.ts';
-import { beanApi, equipmentApi, recipeApi, setupApi } from '../../api/index.ts';
+import { useFetcher, useLoaderData, useNavigate, useSearchParams } from 'react-router';
 import { Field, Section } from '../../components/form/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './RecipeCreatePage.data.ts';
+import { recipeFormErrorMessage } from './recipe-form-errors.ts';
 
 const log = createLogger('RecipeCreatePage');
 
-/** Multi-step form for creating a new brew recipe with bean info, brew parameters, equipment selection, taste notes, and preparation instructions. */
+/**
+ * `/recipes/new`: the recipe creation form. The equipment lookup, the user's setups and the
+ * optional `?beanId` bean come from the route loader (`RecipeCreatePage.data.ts`); saving
+ * submits the `RecipeCreate` payload to the route action and navigates to the new recipe on
+ * `{ ok: true }`, or lists the validation/API errors on `{ ok: false }`. The form is keyed by
+ * the bean so a different `?beanId` re-seeds the pre-filled coffee fields.
+ */
 export function RecipeCreatePage() {
+  const { equipment, setups, bean } = useLoaderData<typeof loader>();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    log.debug({}, 'RecipeCreatePage mounted');
+    return () => {
+      log.debug({}, 'RecipeCreatePage unmounted');
+    };
+  }, []);
+
+  return (
+    <RecipeCreateForm
+      key={bean?.id ?? 'no-bean'}
+      equipmentList={equipment}
+      setupList={setups}
+      bean={bean}
+      initialSetupId={searchParams.get('setupId') || ''}
+    />
+  );
+}
+
+/** Props of {@link RecipeCreateForm}: the loader's lookups and the initial selections. */
+interface RecipeCreateFormProps {
+  equipmentList: EquipmentOutput[];
+  setupList: SetupOutput[];
+  /** The `?beanId` bean whose name, brand/roaster and processing pre-fill the form. */
+  bean: BeanOutput | null;
+  /** The `?setupId` setup selected (and auto-filled) on open. */
+  initialSetupId: string;
+}
+
+/**
+ * Multi-step form for creating a new brew recipe with bean info, brew parameters, equipment
+ * selection, taste notes, and preparation instructions. Submits through the `/recipes/new`
+ * route action with a fetcher.
+ */
+function RecipeCreateForm({
+  equipmentList,
+  setupList,
+  bean,
+  initialSetupId,
+}: RecipeCreateFormProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
-  const [loading, setLoading] = useState(false);
+  const fetcher = useFetcher<typeof action>();
+  const loading = fetcher.state !== 'idle';
   const [error, setError] = useState('');
 
   const [title, setTitle] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('draft');
   const [brewMethod, setBrewMethod] = useState<BrewMethod>('espresso_machine');
   const [drinkType, setDrinkType] = useState<DrinkType>('espresso');
-  const [productName, setProductName] = useState('');
-  const [coffeeBrand, setCoffeeBrand] = useState('');
-  const [coffeeProcessing, setCoffeeProcessing] = useState('');
+  const [productName, setProductName] = useState(bean?.name ?? '');
+  const [coffeeBrand, setCoffeeBrand] = useState(bean?.brand || bean?.roaster || '');
+  const [coffeeProcessing, setCoffeeProcessing] = useState(bean?.processing ?? '');
   const [grinder, setGrinder] = useState('');
   const [grindSize, setGrindSize] = useState('');
   const [groundWeightGrams, setGroundWeightGrams] = useState('');
@@ -55,65 +104,20 @@ export function RecipeCreatePage() {
   const [roastDate, setRoastDate] = useState('');
   const [packageOpenDate, setPackageOpenDate] = useState('');
   const [grindDate, setGrindDate] = useState('');
+  const [brewerDetails, setBrewerDetails] = useState('');
 
-  // Equipment & Setup state
-  const [equipmentList, setEquipmentList] = useState<EquipmentOutput[]>([]);
-  const [setupList, setSetupList] = useState<SetupOutput[]>([]);
+  // Equipment & Setup selections
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
-  const [selectedSetupId, setSelectedSetupId] = useState(searchParams.get('setupId') || '');
-  const [equipLoading, setEquipLoading] = useState(true);
-  const [equipError, setEquipError] = useState('');
+  const [selectedSetupId, setSelectedSetupId] = useState(initialSetupId);
 
-  useEffect(() => {
-    log.debug({}, 'RecipeCreatePage mounted');
-    return () => {
-      log.debug({}, 'RecipeCreatePage unmounted');
-    };
-  }, []);
-
-  useEffect(() => {
-    Promise.all([
-      equipmentApi
-        .list()
-        .then((data) => {
-          if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
-            setEquipmentList(data);
-          } else {
-            setEquipError(t('recipe.form.equipmentLoadError'));
-          }
-        })
-        .catch(() => setEquipError(t('recipe.form.equipmentLoadError'))),
-      setupApi
-        .list()
-        .then((data) => {
-          if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
-            setSetupList(data);
-          } else {
-            setEquipError(t('recipe.createPage.setupLoadError'));
-          }
-        })
-        .catch(() => setEquipError(t('recipe.createPage.setupLoadError'))),
-    ]).finally(() => setEquipLoading(false));
-  }, [t]);
-
-  // Pre-fill bean info from URL param
-  useEffect(() => {
-    const beanId = searchParams.get('beanId');
-    if (!beanId) return;
-    beanApi
-      .get(beanId)
-      .then((data) => {
-        if (data && typeof data === 'object') {
-          if (data.name) setProductName(data.name);
-          if (data.brand) setCoffeeBrand(data.brand);
-          else if (data.roaster) setCoffeeBrand(data.roaster);
-          if (data.processing) setCoffeeProcessing(data.processing);
-        }
-      })
-      .catch((err) => {
-        log.error({ err, beanId }, 'Failed to pre-fill bean info from URL param');
-      });
-  }, [searchParams]);
+  useActionFeedback(fetcher, {
+    onSuccess: (result) => {
+      if (result.ok) navigate(`/recipes/${result.slug}`);
+    },
+    onError: (result) => {
+      if (!result.ok) setError(recipeFormErrorMessage(result, t, 'recipe.createPage.error'));
+    },
+  });
 
   // Auto-fill grinder and brewerDetails when setup changes
   useEffect(() => {
@@ -142,61 +146,55 @@ export function RecipeCreatePage() {
     );
   }
 
-  const [brewerDetails, setBrewerDetails] = useState('');
-
-  /** Validates and submits the recipe creation form. On success navigates to the new recipe page; on failure displays validation or network errors. */
-  async function handleSubmit(e: React.FormEvent) {
+  /**
+   * Builds the `RecipeCreate` payload and submits it to the `/recipes/new` action. The
+   * action's result (navigate on success, error list on failure) is handled by
+   * `useActionFeedback` above.
+   */
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
+    if (loading) return;
     setError('');
-    try {
-      // Build the create payload. Optional fields are sent as `undefined` so the
-      // API applies Zod defaults; only `title`, `visibility`, `brewMethod`,
-      // `drinkType`, `preparationNotes`, and `isFavourite` are required by the
-      // `RecipeCreate` output contract (Zod `.default` makes them non-optional
-      // in `z.infer`).
-      const data: RecipeCreate = {
-        title: title.trim(),
-        visibility,
-        brewMethod,
-        drinkType,
-        isFavourite: false,
-        productName: productName || undefined,
-        coffeeBrand: coffeeBrand || undefined,
-        coffeeProcessing: coffeeProcessing || undefined,
-        grinder: grinder || undefined,
-        grindSize: grindSize || undefined,
-        brewerDetails: brewerDetails || undefined,
-        groundWeightGrams: groundWeightGrams ? Number(groundWeightGrams) : undefined,
-        extractionTimeSeconds: extractionTimeSeconds ? Number(extractionTimeSeconds) : undefined,
-        extractionVolumeMl: extractionVolumeMl ? Number(extractionVolumeMl) : undefined,
-        temperatureCelsius: temperatureCelsius ? Number(temperatureCelsius) : undefined,
-        tds: tds ? Number(tds) : undefined,
-        personalNotes: personalNotes || undefined,
-        preparationNotes: preparationNotes.trim(),
-        rating: rating ? Number(rating) : undefined,
-        emojiTag: (emojiTag || undefined) as RecipeCreate['emojiTag'],
-        tasteNoteIds: tasteNoteIds.length > 0 ? tasteNoteIds : undefined,
-        tasteNoteIntensities: tasteNoteIds.length > 0 ? tasteNoteIntensities : undefined,
-        roastDate: roastDate || undefined,
-        packageOpenDate: packageOpenDate || undefined,
-        grindDate: grindDate || undefined,
-        equipmentIds: selectedEquipmentIds.length > 0 ? selectedEquipmentIds : undefined,
-        setupId: selectedSetupId || undefined,
-      };
-      const result: RecipeDetailOutput = await recipeApi.create(data);
-      navigate(`/recipes/${result.slug}`);
-    } catch (err) {
-      if (err instanceof ApiError && err.details) {
-        const messages = err.details.map((d) => `${d.field}: ${d.message}`);
-        setError(messages.join('\n'));
-      } else {
-        const message = err instanceof Error ? err.message : t('recipe.createPage.error');
-        setError(message);
-      }
-    } finally {
-      setLoading(false);
-    }
+    // Build the create payload. Optional fields are sent as `undefined` so the
+    // API applies Zod defaults; only `title`, `visibility`, `brewMethod`,
+    // `drinkType`, `preparationNotes`, and `isFavourite` are required by the
+    // `RecipeCreate` output contract (Zod `.default` makes them non-optional
+    // in `z.infer`).
+    const data: RecipeCreate = {
+      title: title.trim(),
+      visibility,
+      brewMethod,
+      drinkType,
+      isFavourite: false,
+      productName: productName || undefined,
+      coffeeBrand: coffeeBrand || undefined,
+      coffeeProcessing: coffeeProcessing || undefined,
+      grinder: grinder || undefined,
+      grindSize: grindSize || undefined,
+      brewerDetails: brewerDetails || undefined,
+      groundWeightGrams: groundWeightGrams ? Number(groundWeightGrams) : undefined,
+      extractionTimeSeconds: extractionTimeSeconds ? Number(extractionTimeSeconds) : undefined,
+      extractionVolumeMl: extractionVolumeMl ? Number(extractionVolumeMl) : undefined,
+      temperatureCelsius: temperatureCelsius ? Number(temperatureCelsius) : undefined,
+      tds: tds ? Number(tds) : undefined,
+      personalNotes: personalNotes || undefined,
+      preparationNotes: preparationNotes.trim(),
+      rating: rating ? Number(rating) : undefined,
+      emojiTag: (emojiTag || undefined) as RecipeCreate['emojiTag'],
+      tasteNoteIds: tasteNoteIds.length > 0 ? tasteNoteIds : undefined,
+      tasteNoteIntensities: tasteNoteIds.length > 0 ? tasteNoteIntensities : undefined,
+      roastDate: roastDate || undefined,
+      packageOpenDate: packageOpenDate || undefined,
+      grindDate: grindDate || undefined,
+      equipmentIds: selectedEquipmentIds.length > 0 ? selectedEquipmentIds : undefined,
+      setupId: selectedSetupId || undefined,
+    };
+    // JSON round-trip drops the `undefined` fields, exactly as the HTTP body would.
+    fetcher.submit(JSON.parse(JSON.stringify(data)), {
+      method: 'post',
+      encType: 'application/json',
+      defaultShouldRevalidate: false,
+    });
   }
 
   return (
@@ -266,62 +264,50 @@ export function RecipeCreatePage() {
         </Section>
 
         <Section title={t('recipe.form.equipmentSetup')}>
-          {equipLoading ? (
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {t('recipe.form.loadingEquipment')}
-            </p>
-          ) : equipError ? (
-            <p className="text-sm" style={{ color: 'var(--error)' }}>
-              {equipError}
-            </p>
-          ) : (
-            <>
-              <Field label={t('recipe.form.setupAutofill')}>
-                <select
-                  value={selectedSetupId}
-                  onChange={(e) => setSelectedSetupId(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">{t('recipe.form.none')}</option>
-                  {setupList.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                      {s.isDefault ? ' (default)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+          <Field label={t('recipe.form.setupAutofill')}>
+            <select
+              value={selectedSetupId}
+              onChange={(e) => setSelectedSetupId(e.target.value)}
+              className="input-field"
+            >
+              <option value="">{t('recipe.form.none')}</option>
+              {setupList.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.isDefault ? ' (default)' : ''}
+                </option>
+              ))}
+            </select>
+          </Field>
 
-              <Field label={t('equipment.title')}>
-                <div className="space-y-2 mt-1">
-                  {equipmentList.length === 0 ? (
-                    <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                      {t('recipe.form.noEquipment')}
-                    </p>
-                  ) : (
-                    equipmentList.map((eq) => (
-                      <label
-                        key={eq.id}
-                        className="flex items-center gap-2 text-sm cursor-pointer"
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedEquipmentIds.includes(eq.id)}
-                          onChange={() => toggleEquipment(eq.id)}
-                          className="rounded"
-                        />
-                        <span>{eq.name}</span>
-                        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                          ({eq.type})
-                        </span>
-                      </label>
-                    ))
-                  )}
-                </div>
-              </Field>
-            </>
-          )}
+          <Field label={t('equipment.title')}>
+            <div className="space-y-2 mt-1">
+              {equipmentList.length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                  {t('recipe.form.noEquipment')}
+                </p>
+              ) : (
+                equipmentList.map((eq) => (
+                  <label
+                    key={eq.id}
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedEquipmentIds.includes(eq.id)}
+                      onChange={() => toggleEquipment(eq.id)}
+                      className="rounded"
+                    />
+                    <span>{eq.name}</span>
+                    <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                      ({eq.type})
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+          </Field>
         </Section>
 
         <Section title={t('recipe.form.coffeeIdentity')}>

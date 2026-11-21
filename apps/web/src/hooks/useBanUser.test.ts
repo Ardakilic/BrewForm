@@ -18,7 +18,7 @@ import { useBanUser } from './useBanUser.ts';
 
 const testUser = { id: 'u1', username: 'alice', displayName: 'Alice' };
 
-/** The latest hook result rendered by {@link Harness}. */
+/** The latest hook result rendered by {@link Harness} (reset before each test). */
 let hook: ReturnType<typeof useBanUser>;
 const onSuccess = vi.fn();
 
@@ -61,6 +61,9 @@ function renderHarness(result: () => unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
   submissions = [];
+  // A stale hook from the previous test would satisfy `waitFor(() => expect(hook).toBeDefined())`
+  // before this test's router has rendered, sending the submission to an unmounted harness.
+  hook = undefined as unknown as ReturnType<typeof useBanUser>;
 });
 
 describe('useBanUser', () => {

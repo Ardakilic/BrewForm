@@ -10,12 +10,19 @@
 
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../../contexts/I18nContext.tsx';
 import { BeanSection } from '../BeanSection.tsx';
 import { BrewTimeline } from '../BrewTimeline.tsx';
 import { EquipmentSection } from '../EquipmentSection.tsx';
 import { ShareSection } from '../ShareSection.tsx';
+
+// ShareSection's QR download runs through a fetcher (a data-router hook) and a toast; these
+// tests render it in a plain MemoryRouter, so the download hook is stubbed (it is covered by
+// useRecipeQrDownload.test.tsx and ShareSection.test.tsx).
+vi.mock('../../qrcode/useRecipeQrDownload.ts', () => ({
+  useRecipeQrDownload: () => ({ download: () => {}, downloading: false }),
+}));
 
 /** Helper: wrap component with all required providers */
 function withProviders(ui: React.ReactElement) {

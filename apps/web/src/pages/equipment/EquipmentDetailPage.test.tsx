@@ -1,347 +1,235 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { t } from '@brewform/shared/i18n';
+import type { EquipmentOutput, RecipeWithAuthorOutput } from '@brewform/shared/schemas';
+import { act, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { EquipmentDetailPage } from './EquipmentDetailPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
-  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  mockLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  },
 }));
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
-vi.mock('react-router', () => ({
-  Link: ({
-    to,
-    children,
-    ...props
-  }: {
-    to: string;
-    children: React.ReactNode;
-    [key: string]: unknown;
-  }) => (
-    <a href={to} {...props}>
-      {children}
-    </a>
-  ),
-  useParams: vi.fn(),
-  useNavigate: vi.fn(() => vi.fn()),
-}));
-
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: vi.fn(),
-}));
-
-vi.mock('../../api/client.ts', () => ({
-  api: { get: vi.fn() },
+vi.mock('../../api/index.ts', () => ({
+  equipmentApi: { get: vi.fn(), recipes: vi.fn() },
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
   SEOHead: vi.fn(() => null),
 }));
 
-import { useParams } from 'react-router';
-import { api } from '../../api/client.ts';
+import { ApiError } from '../../api/errors.ts';
+import type { RequestOptions } from '../../api/index.ts';
+import { equipmentApi } from '../../api/index.ts';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { loader } from './EquipmentDetailPage.data.ts';
+import { EquipmentDetailPage } from './EquipmentDetailPage.tsx';
 
-const mockUseParams = vi.mocked(useParams);
-const mockUseTranslation = vi.mocked(useTranslation);
-const mockApiGet = vi.mocked(api.get);
+const mockGet = vi.mocked(equipmentApi.get);
+const mockRecipes = vi.mocked(equipmentApi.recipes);
 const mockSEOHead = vi.mocked(SEOHead);
 
-const enT = (key: string) => {
-  const map: Record<string, string> = {
-    'equipment.error.notFound': 'Equipment not found',
-    'equipment.backToList': 'Back to equipment list',
-    'equipment.recipesUsing': 'Recipes using this equipment',
-    'equipment.noRecipes': 'No recipes use this equipment yet.',
-    'equipment.catalog.title': 'Coffee Equipment',
-    'recipe.focusMode.by': 'by',
-    'recipe.card.by': 'by',
-  };
-  return map[key] ?? key;
-};
-
-const trT = (key: string) => {
-  const map: Record<string, string> = {
-    'equipment.error.notFound': 'Ekipman bulunamadı',
-    'equipment.backToList': 'Ekipman listesine dön',
-    'equipment.recipesUsing': 'Bu ekipmanı kullanan tarifler',
-    'equipment.noRecipes': 'Bu ekipmanı kullanan tarif henüz yok.',
-    'equipment.catalog.title': 'Kahve Ekipmanları',
-    'recipe.focusMode.by': 'tarafından',
-    'recipe.card.by': 'tarafından',
-  };
-  return map[key] ?? key;
-};
-
-const defaultTranslation = {
-  locale: 'en' as const,
-  setLocale: vi.fn(),
-  t: enT,
-  availableLocales: ['en', 'tr'],
-};
-
-const mockEquipment = {
+const STAGG = {
   id: 'eq-1',
   name: 'Stagg EKG',
   brand: 'Fellow',
   model: 'Stagg EKG',
   type: 'kettle',
   description: 'Electric pour-over kettle with temperature control',
-};
+} as EquipmentOutput;
 
-const mockRecipes = {
-  data: [
-    {
-      id: 'r1',
-      slug: 'my-espresso',
-      title: 'My Espresso',
-      authorId: 'u1',
-      visibility: 'public',
-      currentVersionId: 'v1',
-      author: { username: 'coffeelover', displayName: 'Coffee Lover', avatarUrl: null },
-      likeCount: 5,
-      commentCount: 2,
-      forkCount: 0,
-      forkedFromId: null,
-      featured: false,
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-      deletedAt: null,
-    },
-  ],
-};
+const RECIPES = [
+  {
+    id: 'r1',
+    slug: 'my-espresso',
+    title: 'My Espresso',
+    authorId: 'u1',
+    visibility: 'public',
+    currentVersionId: 'v1',
+    author: { username: 'coffeelover', displayName: 'Coffee Lover', avatarUrl: null },
+    likeCount: 5,
+    commentCount: 2,
+    forkCount: 0,
+    forkedFromId: null,
+    featured: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    deletedAt: null,
+  },
+] as unknown as RecipeWithAuthorOutput[];
+
+/** Renders `/equipment/:id` through its real loader. */
+function renderPage(id = 'eq-1', locale: 'en' | 'tr' = 'en') {
+  return renderWithAppProviders(
+    [
+      {
+        path: '/equipment/:id',
+        loader,
+        Component: EquipmentDetailPage,
+        errorElement: <RouteErrorState />,
+      },
+    ],
+    { initialEntries: [`/equipment/${id}`], locale },
+  );
+}
+
+/** The props of the last SEOHead render. */
+function lastSeoProps() {
+  const calls = mockSEOHead.mock.calls;
+  return calls[calls.length - 1][0] as { title?: string; description?: string; canonical?: string };
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLogger.debug.mockClear();
-  mockLogger.info.mockClear();
-  mockLogger.warn.mockClear();
-  mockLogger.error.mockClear();
-  mockUseParams.mockReturnValue({ id: 'eq-1' });
-  mockUseTranslation.mockReturnValue(defaultTranslation);
-  (mockApiGet as ReturnType<typeof vi.fn>)
-    .mockResolvedValueOnce(mockEquipment)
-    .mockResolvedValueOnce(mockRecipes);
+  localStorage.clear();
+  mockGet.mockResolvedValue(STAGG);
+  mockRecipes.mockResolvedValue(RECIPES);
 });
 
-/** Tests for EquipmentDetailPage — loading, error, brand/model, description, recipes, breadcrumb, SEO props, and i18n. */
+describe('/equipment/:id loader', () => {
+  it('loads the item and six recipes in parallel, forwarding request.signal', async () => {
+    const request = new Request('http://localhost/equipment/eq-1');
+    const result = await loader({ request, params: { id: 'eq-1' }, context: undefined } as never);
+
+    expect(result).toEqual({ equipment: STAGG, recipes: RECIPES });
+    expect(mockGet).toHaveBeenCalledWith('eq-1', { signal: request.signal });
+    expect(mockRecipes).toHaveBeenCalledWith('eq-1', { perPage: '6' }, { signal: request.signal });
+  });
+
+  it('turns an API 404 into a 404 Response without an error log', async () => {
+    mockGet.mockRejectedValue(new ApiError('NOT_FOUND', 'missing', undefined, 404));
+    const request = new Request('http://localhost/equipment/nope');
+    const thrown = await Promise.resolve(
+      loader({ request, params: { id: 'nope' }, context: undefined } as never),
+    ).catch((e: unknown) => e);
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).status).toBe(404);
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+});
+
 describe('EquipmentDetailPage', () => {
   it('logs mount and unmount', async () => {
-    const { unmount } = render(<EquipmentDetailPage />);
+    const { unmount } = renderPage();
+    await screen.findByRole('heading', { name: 'Stagg EKG' });
+    // The mount effect runs after the commit that renders the loader data.
     await waitFor(() =>
       expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentDetailPage mounted'),
     );
     unmount();
-    await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentDetailPage unmounted'),
-    );
+    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentDetailPage unmounted');
   });
 
-  it('shows loading skeleton while fetching', () => {
-    (mockApiGet as ReturnType<typeof vi.fn>).mockReset();
-    (mockApiGet as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}));
-    render(<EquipmentDetailPage />);
-
-    const skeletons = document.querySelectorAll('.animate-pulse');
-    expect(skeletons.length).toBeGreaterThan(0);
-  });
-
-  it('renders equipment details when data loads — English', async () => {
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
-    );
-
-    expect(screen.getAllByText('Fellow').length).toBe(1);
+  it('renders the brand, model, type badge and description', async () => {
+    renderPage();
+    expect(await screen.findByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument();
+    expect(screen.getAllByText('Fellow')).toHaveLength(1);
+    expect(screen.getByText('kettle')).toBeInTheDocument();
     expect(
       screen.getByText('Electric pour-over kettle with temperature control'),
     ).toBeInTheDocument();
-    expect(screen.getByText('kettle')).toBeInTheDocument();
   });
 
-  it('renders brand and model as title', async () => {
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
-    );
-
-    expect(screen.getAllByText('Fellow').length).toBeGreaterThan(0);
-  });
-
-  it('uses name when brand is null', async () => {
-    (mockApiGet as ReturnType<typeof vi.fn>).mockReset();
-    (mockApiGet as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce({ ...mockEquipment, brand: null, model: null })
-      .mockResolvedValueOnce(mockRecipes);
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
-    );
-  });
-
-  it('renders type badge', async () => {
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() => expect(screen.getByText('kettle')).toBeInTheDocument());
-  });
-
-  it('converts underscores in type badge to spaces', async () => {
-    (mockApiGet as ReturnType<typeof vi.fn>).mockReset();
-    (mockApiGet as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce({ ...mockEquipment, type: 'pour_over_brewer' })
-      .mockResolvedValueOnce(mockRecipes);
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() => expect(screen.getByText('pour over brewer')).toBeInTheDocument());
-  });
-
-  it('shows error state when API fails', async () => {
-    (mockApiGet as ReturnType<typeof vi.fn>).mockReset();
-    (mockApiGet as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() => expect(screen.getByText('Equipment not found')).toBeInTheDocument());
-    expect(screen.getByRole('link', { name: 'Back to equipment list' })).toBeInTheDocument();
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      { err: expect.any(Error) },
-      'EquipmentDetailPage loadData failed',
-    );
-  });
-
-  it('shows error state in Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    (mockApiGet as ReturnType<typeof vi.fn>).mockReset();
-    (mockApiGet as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() => expect(screen.getByText('Ekipman bulunamadı')).toBeInTheDocument());
-    expect(screen.getByRole('link', { name: 'Ekipman listesine dön' })).toBeInTheDocument();
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      { err: expect.any(Error) },
-      'EquipmentDetailPage loadData failed',
-    );
-  });
-
-  it('renders recipes section', async () => {
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() =>
-      expect(screen.getByText('Recipes using this equipment')).toBeInTheDocument(),
-    );
-    expect(screen.getByText('My Espresso')).toBeInTheDocument();
-  });
-
-  it('renders each recipe via the shared RecipeCard with a clickable author button', async () => {
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    // RecipeCard wraps the title in a link to /recipes/:slug
-    const link = screen.getByText('My Espresso').closest('a');
-    expect(link).not.toBeNull();
-    expect(link!.getAttribute('href')).toBe('/recipes/my-espresso');
-
-    // The author is now a clickable button (canonical stopPropagation AuthorButton)
-    expect(screen.getByRole('button', { name: 'Coffee Lover' })).toBeInTheDocument();
-  });
-
-  it('shows empty recipes message when no recipes', async () => {
-    (mockApiGet as ReturnType<typeof vi.fn>).mockReset();
-    (mockApiGet as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce(mockEquipment)
-      .mockResolvedValueOnce({ data: [] });
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() =>
-      expect(screen.getByText('No recipes use this equipment yet.')).toBeInTheDocument(),
-    );
-  });
-
-  it('passes title to SEOHead', async () => {
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
-    );
-
-    const calls = mockSEOHead.mock.calls;
-    const lastProps = calls[calls.length - 1][0] as {
-      title?: string;
-      description?: string;
-      canonical?: string;
-    };
-    expect(lastProps.title).toBe('Fellow Stagg EKG');
-  });
-
-  it('passes description to SEOHead from equipment.description', async () => {
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
-    );
-
-    const calls = mockSEOHead.mock.calls;
-    const lastProps = calls[calls.length - 1][0] as { description?: string };
-    expect(lastProps.description).toBe('Electric pour-over kettle with temperature control');
-  });
-
-  it('passes canonical URL to SEOHead', async () => {
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
-    );
-
-    const calls = mockSEOHead.mock.calls;
-    const lastProps = calls[calls.length - 1][0] as { canonical?: string };
-    expect(lastProps.canonical).toContain('/equipment/eq-1');
-  });
-
-  it('falls back to brand+type description when no description', async () => {
-    (mockApiGet as ReturnType<typeof vi.fn>).mockReset();
-    (mockApiGet as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce({ ...mockEquipment, description: null })
-      .mockResolvedValueOnce(mockRecipes);
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
-    );
-
-    const calls = mockSEOHead.mock.calls;
-    const lastProps = calls[calls.length - 1][0] as { description?: string };
-    expect(lastProps.description).toBe('Fellow kettle');
-  });
-
-  it('renders breadcrumb with link to catalog', async () => {
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
-    );
-
-    expect(screen.getByRole('link', { name: 'Coffee Equipment' })).toHaveAttribute(
-      'href',
-      '/equipments',
-    );
-  });
-
-  it('hides description section when no description', async () => {
-    (mockApiGet as ReturnType<typeof vi.fn>).mockReset();
-    (mockApiGet as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce({ ...mockEquipment, description: null })
-      .mockResolvedValueOnce(mockRecipes);
-    render(<EquipmentDetailPage />);
-
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
-    );
-
+  it('uses the name when there is no model and spaces out the type', async () => {
+    mockGet.mockResolvedValue({
+      ...STAGG,
+      brand: null,
+      model: null,
+      type: 'pour_over_brewer',
+      description: null,
+    } as EquipmentOutput);
+    renderPage();
+    expect(await screen.findByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument();
+    expect(screen.getByText('pour over brewer')).toBeInTheDocument();
     expect(
       screen.queryByText('Electric pour-over kettle with temperature control'),
     ).not.toBeInTheDocument();
+  });
+
+  it('renders the not-found page for an unknown id', async () => {
+    mockGet.mockRejectedValue(new ApiError('NOT_FOUND', 'missing', undefined, 404));
+    renderPage('nope');
+    expect(await screen.findByText(t('error.404'))).toBeInTheDocument();
+  });
+
+  it('renders the route error state in Turkish when the load fails', async () => {
+    mockGet.mockRejectedValue(new Error('down'));
+    renderPage('eq-1', 'tr');
+    expect(await screen.findByText(t('error.route.loadFailed', 'tr'))).toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error), equipmentId: 'eq-1' },
+      'EquipmentDetailPage loadData failed',
+    );
+  });
+
+  it('aborts a superseded load and only ever renders the new item', async () => {
+    const signals: Record<string, AbortSignal | undefined> = {};
+    mockGet.mockImplementation((id: string, opts?: RequestOptions) => {
+      signals[id] = opts?.signal;
+      if (id === 'eq-a') return new Promise<EquipmentOutput>(() => {});
+      return Promise.resolve({ ...STAGG, id, model: 'Model B', name: 'B' } as EquipmentOutput);
+    });
+    const { router } = renderPage('eq-b');
+    await screen.findByRole('heading', { name: 'Model B' });
+
+    act(() => {
+      void router.navigate('/equipment/eq-a');
+    });
+    await waitFor(() => expect(signals['eq-a']).toBeDefined());
+    act(() => {
+      void router.navigate('/equipment/eq-c');
+    });
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/equipment/eq-c'));
+    expect(signals['eq-a']?.aborted).toBe(true);
+    expect(await screen.findByRole('heading', { name: 'Model B' })).toBeInTheDocument();
+  });
+
+  it('renders the recipes through the shared RecipeCard', async () => {
+    renderPage();
+    expect(await screen.findByText(t('equipment.recipesUsing'))).toBeInTheDocument();
+    const link = screen.getByText('My Espresso').closest('a');
+    expect(link?.getAttribute('href')).toBe('/recipes/my-espresso');
+    expect(screen.getByRole('button', { name: 'Coffee Lover' })).toBeInTheDocument();
+  });
+
+  it('shows the empty recipes message when no recipes use the item', async () => {
+    mockRecipes.mockResolvedValue([]);
+    renderPage();
+    expect(await screen.findByText(t('equipment.noRecipes'))).toBeInTheDocument();
+  });
+
+  it('passes title, description and canonical URL to SEOHead', async () => {
+    renderPage();
+    await screen.findByRole('heading', { name: 'Stagg EKG' });
+    expect(lastSeoProps()).toMatchObject({
+      title: 'Fellow Stagg EKG',
+      description: 'Electric pour-over kettle with temperature control',
+    });
+    expect(lastSeoProps().canonical).toContain('/equipment/eq-1');
+  });
+
+  it('falls back to a brand + type description', async () => {
+    mockGet.mockResolvedValue({ ...STAGG, description: null } as EquipmentOutput);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Stagg EKG' });
+    expect(lastSeoProps().description).toBe('Fellow kettle');
+  });
+
+  it('renders a breadcrumb back to the catalogue', async () => {
+    renderPage();
+    await screen.findByRole('heading', { name: 'Stagg EKG' });
+    expect(screen.getByRole('link', { name: t('equipment.catalog.title') })).toHaveAttribute(
+      'href',
+      '/equipments',
+    );
   });
 });

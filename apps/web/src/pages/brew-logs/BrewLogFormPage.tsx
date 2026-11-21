@@ -1,96 +1,35 @@
-import type {
-  BrewLogCreate,
-  BrewLogOutput,
-  BrewLogUpdate,
-  RecipeDetailOutput,
-} from '@brewform/shared/schemas';
 import { useEffect, useMemo } from 'react';
-import { redirect, useLoaderData, useNavigate } from 'react-router';
-import { ApiError } from '../../api/errors.ts';
-import { brewLogApi, recipeApi } from '../../api/index.ts';
+import { useFetcher, useLoaderData, useNavigate } from 'react-router';
 import { BrewLogForm, type BrewLogFormValues } from '../../components/brew-log/BrewLogForm.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
-import { useToast } from '../../components/ui/Toast.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { requireAuth } from '../../routes/auth-guards.ts';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './BrewLogFormPage.data.ts';
 
 const log = createLogger('BrewLogFormPage');
 
-/** Loader payload for {@link BrewLogFormPage} — serves both create and edit routes. */
-export interface BrewLogFormLoaderData {
-  mode: 'create' | 'edit';
-  logId?: string;
-  editLog?: BrewLogOutput;
-  recipe?: RecipeDetailOutput;
-  recipeId?: string;
-  recipeVersionId?: string;
-}
-
 /**
- * React Router data loader for `/brew-logs/new` and `/brew-logs/:id/edit`.
- * Create mode requires `?recipeId` (redirects to `/brew-logs` without it) and
- * fetches the recipe to prefill dose/yield from the version. Edit mode fetches
- * the existing log (the API rejects non-owners with 404); a 404 ApiError
- * redirects to `/brew-logs`, a final 401 redirects to `/login?next=…`
- * (`requireAuth`), and any other error propagates to the error boundary.
- */
-export const loader = requireAuth(
-  async ({
-    params,
-    request,
-  }: {
-    params: Record<string, string | undefined>;
-    request: Request;
-  }): Promise<BrewLogFormLoaderData> => {
-    if (params.id) {
-      log.debug({ logId: params.id }, 'BrewLogFormPage edit loader started');
-      try {
-        const editLog = await brewLogApi.get(params.id);
-        log.debug({ logId: params.id }, 'BrewLogFormPage edit loader completed');
-        return { mode: 'edit', logId: params.id, editLog };
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 404) {
-          log.debug(
-            { logId: params.id, status: err.status },
-            'BrewLogFormPage edit loader redirecting',
-          );
-          throw redirect('/brew-logs');
-        }
-        log.error({ err, logId: params.id }, 'BrewLogFormPage edit loader failed');
-        throw err;
-      }
-    }
-    const url = new URL(request.url);
-    const recipeId = url.searchParams.get('recipeId');
-    if (!recipeId) {
-      log.debug({}, 'BrewLogFormPage create loader missing recipeId, redirecting');
-      throw redirect('/brew-logs');
-    }
-    const recipeVersionId = url.searchParams.get('recipeVersionId') ?? undefined;
-    log.debug({ recipeId, recipeVersionId }, 'BrewLogFormPage create loader started');
-    try {
-      const recipe = await recipeApi.get(recipeId);
-      log.debug({ recipeId }, 'BrewLogFormPage create loader completed');
-      return { mode: 'create', recipe, recipeId, recipeVersionId };
-    } catch (err) {
-      log.error({ err, recipeId }, 'BrewLogFormPage create loader failed');
-      throw err;
-    }
-  },
-);
-
-/**
- * Page component for `/brew-logs/new` (create) and `/brew-logs/:id/edit`
- * (edit). Create prefills dose/yield from the recipe version; edit prefills
- * from the fetched log.
+ * Page component for `/brew-logs/new` (create) and `/brew-logs/:id/edit` (edit), rendered
+ * from the route loader (`BrewLogFormPage.data.ts`). Create prefills dose/yield from the
+ * recipe version; edit prefills from the fetched log. Saving submits the form values to the
+ * route action through a fetcher (no revalidation, so the typed values survive a failure):
+ * `{ ok: true }` navigates to `/brew-logs`, `{ ok: false }` shows an error toast.
  */
 export function BrewLogFormPage() {
   const { mode, logId, editLog, recipe, recipeId, recipeVersionId } =
-    useLoaderData() as BrewLogFormLoaderData;
+    useLoaderData<typeof loader>();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const toast = useToast();
+  const saveFetcher = useFetcher<typeof action>();
+
+  useActionFeedback(saveFetcher, {
+    errorKey: mode === 'edit' ? 'brewLog.error.updateFailed' : 'brewLog.error.createFailed',
+    onSuccess: () => {
+      log.debug({ mode, logId }, 'Brew log saved');
+      navigate('/brew-logs');
+    },
+  });
 
   useEffect(() => {
     log.debug({ mode, logId }, 'BrewLogFormPage mounted');
@@ -124,37 +63,19 @@ export function BrewLogFormPage() {
     };
   }, [mode, editLog, recipe, recipeVersionId]);
 
-  const handleSubmit = async (values: BrewLogFormValues) => {
-    try {
-      if (mode === 'edit' && logId) {
-        const data: BrewLogUpdate = {
-          brewedAt: values.brewedAt,
-          yieldActual: values.yieldActual,
-          doseActual: values.doseActual,
-          notes: values.notes,
-          personalRating: values.personalRating,
-        };
-        await brewLogApi.update(logId, data);
-        log.debug({ logId }, 'Brew log updated');
-      } else {
-        const data: BrewLogCreate = {
-          recipeId: recipeId!,
-          recipeVersionId,
-          brewedAt: values.brewedAt,
-          yieldActual: values.yieldActual ?? undefined,
-          doseActual: values.doseActual ?? undefined,
-          notes: values.notes ?? undefined,
-          personalRating: values.personalRating ?? undefined,
-        };
-        await brewLogApi.create(data);
-        log.debug({ recipeId }, 'Brew log created');
-      }
-      navigate('/brew-logs');
-    } catch (err) {
-      log.error({ err, mode, logId }, 'Failed to save brew log');
-      toast.error(mode === 'edit' ? 'brewLog.error.updateFailed' : 'brewLog.error.createFailed');
-    }
-  };
+  /**
+   * Submits `values` to the route action and resolves once the submission settles, so the
+   * form keeps its submitting state until then; the result is handled by `useActionFeedback`.
+   */
+  const handleSubmit = (values: BrewLogFormValues) =>
+    saveFetcher.submit(
+      {
+        values: { ...values },
+        ...(recipeId ? { recipeId } : {}),
+        ...(recipeVersionId ? { recipeVersionId } : {}),
+      },
+      { method: 'post', encType: 'application/json', defaultShouldRevalidate: false },
+    );
 
   return (
     <PageContainer width="2xl">

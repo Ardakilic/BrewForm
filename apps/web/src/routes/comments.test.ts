@@ -50,7 +50,7 @@ describe('listCommentsLoader', () => {
     );
 
     expect(result).toBe(paginated);
-    expect(mockList).toHaveBeenCalledWith('recipe-1', 1);
+    expect(mockList).toHaveBeenCalledWith('recipe-1', 1, { signal: expect.any(AbortSignal) });
   });
 
   it('defaults page to 1 when the query param is absent', async () => {
@@ -63,7 +63,7 @@ describe('listCommentsLoader', () => {
       makeArgs('recipe-1', makeRequest('https://example.test/comments/recipe/recipe-1')),
     );
 
-    expect(mockList).toHaveBeenCalledWith('recipe-1', 1);
+    expect(mockList).toHaveBeenCalledWith('recipe-1', 1, { signal: expect.any(AbortSignal) });
   });
 
   it('parses the page query param when present and numeric', async () => {
@@ -76,7 +76,7 @@ describe('listCommentsLoader', () => {
       makeArgs('recipe-1', makeRequest('https://example.test/comments/recipe/recipe-1?page=3')),
     );
 
-    expect(mockList).toHaveBeenCalledWith('recipe-1', 3);
+    expect(mockList).toHaveBeenCalledWith('recipe-1', 3, { signal: expect.any(AbortSignal) });
   });
 
   it('defaults page to 1 when the query param is non-numeric', async () => {
@@ -89,7 +89,7 @@ describe('listCommentsLoader', () => {
       makeArgs('recipe-1', makeRequest('https://example.test/comments/recipe/recipe-1?page=foo')),
     );
 
-    expect(mockList).toHaveBeenCalledWith('recipe-1', 1);
+    expect(mockList).toHaveBeenCalledWith('recipe-1', 1, { signal: expect.any(AbortSignal) });
   });
 
   it('throws 400 when recipeId path param is missing', async () => {

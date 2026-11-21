@@ -1,31 +1,45 @@
-import type { SetupOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { setupApi } from '../../api/index.ts';
+import { useFetcher, useLoaderData } from 'react-router';
 import { Field } from '../../components/form/Field.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { useConfirm } from '../../components/ui/Modal.tsx';
 import { OwnedItemCard } from '../../components/ui/OwnedItemCard.tsx';
-import { useToast } from '../../components/ui/Toast.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './SetupListPage.data.ts';
 
 const log = createLogger('SetupListPage');
 
-/** The user's brewing setups: list plus inline create/delete and default-setup handling. */
+/**
+ * The user's brewing setups: list plus inline create/delete and default-setup display. Setups
+ * come from the `/setups` route loader (`SetupListPage.data.ts`); create and delete submit
+ * `intent`s to the route action, which revalidates the list, and a failure shows an error
+ * toast (the create form keeps its input). A failed load renders the route error state.
+ */
 export function SetupListPage() {
-  const [setups, setSetups] = useState<SetupOutput[]>([]);
-  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
+  const { setups } = useLoaderData<typeof loader>();
+  const createFetcher = useFetcher<typeof action>();
+  const deleteFetcher = useFetcher<typeof action>();
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [brewerDetails, setBrewerDetails] = useState('');
   const [grinder, setGrinder] = useState('');
-  const [saving, setSaving] = useState(false);
+  const saving = createFetcher.state !== 'idle';
   const { t } = useTranslation();
   const { confirm } = useConfirm();
-  const toast = useToast();
+
+  useActionFeedback(createFetcher, {
+    errorKey: 'setup.error.createFailed',
+    onSuccess: () => {
+      setName('');
+      setBrewerDetails('');
+      setGrinder('');
+      setShowForm(false);
+    },
+  });
+  useActionFeedback(deleteFetcher, { errorKey: 'setup.error.deleteFailed' });
 
   useEffect(() => {
     log.debug({}, 'SetupListPage mounted');
@@ -34,43 +48,14 @@ export function SetupListPage() {
     };
   }, []);
 
-  useEffect(() => {
-    setupApi
-      .list()
-      .then((data) => {
-        setSetups(data);
-        setStatus('ready');
-      })
-      .catch((err) => {
-        log.error({ err }, 'setup list fetch failed');
-        setStatus('error');
-      });
-  }, []);
-
-  async function handleCreate(e: React.FormEvent) {
+  /** Submits the create form as a `create` intent (a name is required). */
+  function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || saving) return;
-    setSaving(true);
-    try {
-      const newSetup = await setupApi.create({
-        name: name.trim(),
-        isDefault: false,
-        brewerDetails: brewerDetails || undefined,
-        grinder: grinder || undefined,
-      });
-      setSetups((prev) => [...prev, newSetup]);
-      setName('');
-      setBrewerDetails('');
-      setGrinder('');
-      setShowForm(false);
-    } catch (err) {
-      log.error({ err }, 'handleCreate failed');
-      toast.error('setup.error.createFailed');
-    } finally {
-      setSaving(false);
-    }
+    createFetcher.submit({ intent: 'create', name, brewerDetails, grinder }, { method: 'post' });
   }
 
+  /** Asks for confirmation, then submits the `delete` intent. */
   async function handleDelete(id: string) {
     if (
       !(await confirm({
@@ -80,17 +65,7 @@ export function SetupListPage() {
       }))
     )
       return;
-    try {
-      await setupApi.delete(id);
-      setSetups((prev) => prev.filter((s) => s.id !== id));
-    } catch (err) {
-      log.error({ err, setupId: id }, 'handleDelete failed');
-      toast.error('setup.error.deleteFailed');
-    }
-  }
-
-  if (status === 'loading') {
-    return <LoadingState className="mx-auto max-w-4xl px-6" />;
+    deleteFetcher.submit({ intent: 'delete', id }, { method: 'post' });
   }
 
   return (
@@ -145,9 +120,7 @@ export function SetupListPage() {
         </form>
       )}
 
-      {status === 'error' ? (
-        <ErrorState message={t('setup.error.loadFailed')} />
-      ) : setups.length === 0 ? (
+      {setups.length === 0 ? (
         <EmptyState message={t('setup.noSetups')} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

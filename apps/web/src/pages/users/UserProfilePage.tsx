@@ -1,15 +1,5 @@
-import type {
-  BrewLogListItemOutput,
-  CollectionListItemOutput,
-  FollowerListItemOutput,
-  FollowingListItemOutput,
-  PaginatedResponse,
-  PublicUserOutput,
-} from '@brewform/shared/schemas';
 import { useEffect } from 'react';
 import { Link, useLoaderData, useSearchParams } from 'react-router';
-import { ApiError } from '../../api/errors.ts';
-import { brewLogApi, collectionApi, followApi, userApi } from '../../api/index.ts';
 import { BrewLogCard } from '../../components/brew-log/BrewLogCard.tsx';
 import { CollectionCard } from '../../components/collections/CollectionCard.tsx';
 import { RecipeCard } from '../../components/recipe-list/RecipeCard.tsx';
@@ -18,89 +8,15 @@ import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { FollowButton } from '../../components/user/FollowButton.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { readPage, withParams } from '../../utils/list-params.ts';
+import { withParams } from '../../utils/list-params.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { FollowRecord, loader } from './UserProfilePage.data.ts';
 
 const log = createLogger('UserProfilePage');
 
-/** Collections shown per page on the profile collections tab (`?collectionsPage=`). */
-const PROFILE_COLLECTIONS_PER_PAGE = 20;
-
 type Tab = 'recipes' | 'badges' | 'followers' | 'following' | 'collections' | 'brews';
 
-type FollowRecord = FollowerListItemOutput | FollowingListItemOutput;
-
-/** Loader data for the user profile page — public profile plus tab-specific follow/collection/brew data. */
-export interface ProfileLoaderData {
-  profile: PublicUserOutput;
-  followData: FollowRecord[] | null;
-  collectionsData: PaginatedResponse<CollectionListItemOutput> | null;
-  brewsData: PaginatedResponse<BrewLogListItemOutput> | null;
-}
-
-/**
- * Fetches the profile for `:username`, plus the follower/following list
- * when `?tab=` selects one; returns `{ profile, followData }` with
- * `followData` null on other tabs. The `collections` tab fetches the requested
- * `?collectionsPage` of the user's collections. The `brews` tab fetches the VIEWER's own
- * brew journal for the requested `?brewsPage`, but only after establishing
- * that the viewer IS the profile being viewed (a URL-forced `?tab=brews` on
- * another profile, or while logged out, skips the request and leaves
- * `brewsData` null). Once ownership is established, list errors propagate to
- * the error boundary rather than rendering a misleading empty journal. An
- * unknown username (API 404) throws a 404 `Response` so the not-found page renders.
- */
-export const loader = async ({
-  params,
-  request,
-}: {
-  params: Record<string, string | undefined>;
-  request: Request;
-}): Promise<ProfileLoaderData> => {
-  const username = params.username;
-  if (!username) throw new Response('Not Found', { status: 404 });
-  let profile: PublicUserOutput;
-  try {
-    profile = await userApi.getProfile(username);
-  } catch (err) {
-    // An unknown username renders the not-found page, not the generic error boundary.
-    if (err instanceof ApiError && err.status === 404) {
-      throw new Response('Not Found', { status: 404 });
-    }
-    throw err;
-  }
-  const url = new URL(request.url);
-  const tab = url.searchParams.get('tab') ?? 'recipes';
-  let followData: FollowRecord[] | null = null;
-  let collectionsData: PaginatedResponse<CollectionListItemOutput> | null = null;
-  let brewsData: PaginatedResponse<BrewLogListItemOutput> | null = null;
-  if (tab === 'followers') {
-    followData = await followApi.followers(profile.id);
-  } else if (tab === 'following') {
-    followData = await followApi.following(profile.id);
-  } else if (tab === 'collections') {
-    const collectionsPage = readPage(url.searchParams, 'collectionsPage');
-    collectionsData = await collectionApi.listByUser(profile.id, {
-      page: String(collectionsPage),
-      perPage: String(PROFILE_COLLECTIONS_PER_PAGE),
-    });
-  } else if (tab === 'brews') {
-    // The brew journal is owner-private: fetch it only when the viewer IS the
-    // profile being viewed. Ownership compares ids, not the URL username:
-    // profile URLs resolve case-insensitively (`/u/arda` opens `Arda`). A
-    // URL-forced `?tab=brews` on another user's profile (or while logged out)
-    // skips the request and leaves `brewsData` null. Once ownership is
-    // established the list errors propagate to the error boundary instead of
-    // rendering an empty journal.
-    const viewer = await userApi.me().catch(() => null);
-    if (viewer?.id === profile.id) {
-      const brewsPage = readPage(url.searchParams, 'brewsPage');
-      brewsData = await brewLogApi.list({ page: brewsPage });
-    }
-  }
-  return { profile, followData, collectionsData, brewsData };
-};
-
+/** Renders a follower or following list, or `emptyMsg` when it is empty. */
 function FollowList({ data, emptyMsg }: { data: FollowRecord[]; emptyMsg: string }) {
   return (
     <div className="flex flex-col gap-2">
@@ -130,15 +46,16 @@ function FollowList({ data, emptyMsg }: { data: FollowRecord[]; emptyMsg: string
 }
 
 /**
- * Public profile page with recipes/badges/followers/following tabs
- * (driven by `?tab=`), follow button for other users, and profile
- * header from loader data.
+ * Public profile page with recipes/badges/followers/following/collections tabs (driven by
+ * `?tab=`, plus the brew journal on the viewer's own profile), a follow button for other
+ * users, and the profile header, all from the `/u/:username` route loader
+ * (`UserProfilePage.data.ts`). Own-profile checks compare ids, never usernames.
  */
 export function UserProfilePage() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { profile, followData, collectionsData, brewsData } = useLoaderData() as ProfileLoaderData;
+  const { profile, followData, collectionsData, brewsData } = useLoaderData<typeof loader>();
 
   // Compare ids: the URL username may differ in case from the stored one (`/u/arda` → `Arda`).
   const isSelf = user != null && user.id === profile?.id;

@@ -1,95 +1,46 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { t } from '@brewform/shared/i18n';
+import type { BeanOutput, EquipmentOutput, RecipeDetailOutput } from '@brewform/shared/schemas';
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/utils/logger.ts', () => ({
-  createLogger: () => ({
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     trace: vi.fn(),
     fatal: vi.fn(),
-  }),
+  },
 }));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
-vi.mock('../../components/seo/SEOHead.tsx', () => ({
-  SEOHead: () => null,
-}));
-
+// The taste-note picker loads its own lookup through a fetcher; it is not under test here.
 vi.mock('../../components/taste/TasteAutocomplete.tsx', () => ({
   TasteAutocomplete: () => null,
 }));
 
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: () => ({
-    t: (k: string) => {
-      const map: Record<string, string> = {
-        'recipe.edit': 'Tarifi Düzenle',
-        'common.loading': 'Yükleniyor...',
-        'common.saving': 'Kaydediliyor...',
-        'common.saveChanges': 'Değişiklikleri Kaydet',
-        'common.cancel': 'İptal',
-        'recipe.editPage.bumpVersion': 'Sürüm Yükselt',
-        'recipe.editPage.noVersions': 'Tarifin sürümü yok',
-        'recipe.editPage.loadError': 'Tarif yüklenemedi',
-        'recipe.editPage.updateError': 'Tarif güncellenemedi',
-        'recipe.form.basicInfo': 'Temel Bilgiler',
-        'recipe.form.title': 'Başlık',
-        'recipe.form.brewConfig': 'Demleme Yapılandırması',
-        'recipe.form.coffeeIdentity': 'Kahve Kimliği',
-        'recipe.form.brewParams': 'Demleme Parametreleri',
-        'recipe.form.tasteRating': 'Tat & Puan',
-        'recipe.form.rating': 'Puan (1-10)',
-        'recipe.form.howDidItTaste': 'Nasıl tadı vardı?',
-        'recipe.form.selectPlaceholder': 'Seç...',
-        'recipe.form.dose': 'Doz (g)',
-        'recipe.form.extractionTime': 'Çıkarım Süresi (sn)',
-        'recipe.form.yield': 'Sonuç (ml)',
-        'recipe.form.temperature': 'Sıcaklık (°C)',
-        'recipe.form.tds': 'TDS (%)',
-        'recipe.form.tds.placeholder': 'ör. 1.35',
-        'recipe.form.mainBrewerPlaceholder': 'örn. 58mm portafiltre, 20g sepet',
-        'recipe.brewMethod': 'Demleme Yöntemi',
-        'recipe.drinkType': 'İçecek Türü',
-        'recipe.visibility': 'Görünürlük',
-        'recipe.productName': 'Ürün Adı',
-        'recipe.coffeeBrand': 'Kahve Markası',
-        'recipe.grinder': 'Öğütücü',
-        'recipe.grindSize': 'Öğütme Boyutu',
-        'recipe.mainBrewer': 'Ana Demleme Cihazı',
-        'recipe.roastDate': 'Kavurma Tarihi',
-        'recipe.packageOpenDate': 'Paket Açma Tarihi',
-        'recipe.grindDate': 'Öğütme Tarihi',
-        'recipe.tasteNotes': 'Tat Notları',
-        'recipe.preparationNotes': 'Hazırlama Notları',
-        'recipe.personalNotes': 'Kişisel Notlar',
-        'bean.processing': 'Kahve İşleme Yöntemi',
-      };
-      return map[k] ?? k;
-    },
-    locale: 'tr',
-    setLocale: vi.fn(),
-    availableLocales: ['en', 'tr'],
-  }),
-}));
-
-vi.mock('../../api/client.ts', () => ({
-  ApiError: class ApiError extends Error {
-    code = 'UNKNOWN_ERROR';
-    status = 500;
-  },
-}));
-
 vi.mock('../../api/index.ts', () => ({
+  beanApi: { list: vi.fn() },
   recipeApi: { get: vi.fn(), update: vi.fn() },
 }));
 
-import type { RecipeDetailOutput } from '@brewform/shared/schemas';
-import { recipeApi } from '../../api/index.ts';
+vi.mock('../../api/static-cache.ts', () => ({
+  getEquipmentCached: vi.fn(),
+}));
+
+import { ApiError } from '../../api/errors.ts';
+import { beanApi, recipeApi } from '../../api/index.ts';
+import { getEquipmentCached } from '../../api/static-cache.ts';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { action, loader } from './RecipeEditPage.data.ts';
 import { RecipeEditPage } from './RecipeEditPage.tsx';
 
 const mockRecipeApi = vi.mocked(recipeApi);
+const mockBeanApi = vi.mocked(beanApi);
+const mockEquipment = vi.mocked(getEquipmentCached);
 
 /** Minimal `RecipeDetailOutput` fixture cast through `unknown` — the edit
  * page reads only a subset of fields from `currentVersion` and the top-level
@@ -100,14 +51,6 @@ const recipe = {
   title: 'Test Recipe',
   authorId: 'u1',
   visibility: 'public',
-  likeCount: 0,
-  commentCount: 0,
-  forkCount: 0,
-  forkedFromId: null,
-  featured: false,
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-  versionCount: 1,
   currentVersion: {
     id: 'v1',
     versionNumber: 1,
@@ -116,61 +59,206 @@ const recipe = {
     productName: null,
     coffeeBrand: null,
     coffeeProcessing: null,
-    grinder: null,
+    grinder: 'Niche Zero',
     grindSize: null,
     brewerDetails: null,
-    groundWeightGrams: null,
+    groundWeightGrams: 18,
     extractionTimeSeconds: null,
     extractionVolumeMl: null,
     temperatureCelsius: null,
     tds: null,
-    brewRatio: null,
-    flowRate: null,
-    preInfusionTimeSeconds: null,
     personalNotes: null,
-    preparationNotes: '',
+    preparationNotes: 'Pull a shot',
     rating: null,
     emojiTag: null,
-    roastDate: null,
+    roastDate: '2024-01-02T00:00:00.000Z',
     packageOpenDate: null,
     grindDate: null,
-    brewDate: null,
-    bean: null,
   },
-  author: null,
-  tasteNotes: [],
+  tasteNotes: [{ id: 'tn-1', name: 'Cocoa', intensity: 3 }],
   equipment: [],
-  bean: null,
-  photos: [],
-  avgRating: null,
-  ratingCount: 0,
-  userRating: null,
-  userLiked: false,
-  userFavourited: false,
-  favouriteCount: 0,
 } as unknown as RecipeDetailOutput;
+
+/** Renders `/recipes/r1/edit` (plus a stand-in recipe page) through the real loader/action. */
+function renderPage(locale: 'en' | 'tr' = 'en') {
+  return renderWithAppProviders(
+    [
+      {
+        path: '/recipes/:id/edit',
+        loader,
+        action,
+        Component: RecipeEditPage,
+        errorElement: <RouteErrorState />,
+      },
+      { path: '/recipes/:slug', element: <div>RECIPE PAGE</div> },
+    ],
+    { initialEntries: ['/recipes/r1/edit'], auth: 'user', locale },
+  );
+}
+
+/** Runs the loader for recipe `id` and returns its result or what it threw. */
+function runLoader(id = 'r1') {
+  return loader({
+    params: { id },
+    request: new Request(`http://localhost/recipes/${id}/edit`),
+    context: undefined,
+  } as never).catch((err: unknown) => err);
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   mockRecipeApi.get.mockResolvedValue(recipe);
+  mockBeanApi.list.mockResolvedValue([{ id: 'b1' } as BeanOutput]);
+  mockEquipment.mockResolvedValue([{ id: 'eq-1' } as EquipmentOutput]);
 });
 
-describe('RecipeEditPage — tr locale spot-check', () => {
+describe('/recipes/:id/edit loader', () => {
+  it('loads the recipe, beans and equipment in parallel with request.signal', async () => {
+    const result = await runLoader();
+
+    expect(result).toEqual({
+      recipe,
+      beans: [{ id: 'b1' }],
+      equipment: [{ id: 'eq-1' }],
+    });
+    expect(mockRecipeApi.get).toHaveBeenCalledWith('r1', { signal: expect.any(AbortSignal) });
+    expect(mockBeanApi.list).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
+    expect(mockEquipment).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
+  });
+
+  it("logs 'RecipeEditPage loadRecipe failed' and rethrows when the recipe request rejects", async () => {
+    const err = new TypeError('Failed to fetch');
+    mockRecipeApi.get.mockRejectedValue(err);
+
+    await expect(runLoader()).resolves.toBe(err);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err }),
+      'RecipeEditPage loadRecipe failed',
+    );
+  });
+
+  it("logs 'RecipeEditPage loadBeans failed' and rethrows when the beans request rejects", async () => {
+    const err = new Error('beans down');
+    mockBeanApi.list.mockRejectedValue(err);
+
+    await expect(runLoader()).resolves.toBe(err);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err }),
+      'RecipeEditPage loadBeans failed',
+    );
+  });
+
+  it("logs 'RecipeEditPage loadEquipment failed' and rethrows when the equipment request rejects", async () => {
+    const err = new Error('equipment down');
+    mockEquipment.mockRejectedValue(err);
+
+    await expect(runLoader()).resolves.toBe(err);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err }),
+      'RecipeEditPage loadEquipment failed',
+    );
+  });
+
+  it('turns an API 404 into a 404 Response without an error log', async () => {
+    mockRecipeApi.get.mockRejectedValue(new ApiError('NOT_FOUND', 'missing', undefined, 404));
+
+    const result = await runLoader('gone');
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(404);
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+
+  it('renders the route error state inside the shell instead of a blank form', async () => {
+    mockRecipeApi.get.mockRejectedValue(new TypeError('Failed to fetch'));
+    renderPage();
+
+    expect(await screen.findByText(t('error.route.loadFailed'))).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t('common.saveChanges') })).toBeNull();
+  });
+});
+
+describe('RecipeEditPage', () => {
   it('renders the Turkish edit heading', async () => {
-    const router = createMemoryRouter(
-      [
-        {
-          path: '/recipes/:id/edit',
-          element: <RecipeEditPage />,
-        },
-      ],
-      { initialEntries: ['/recipes/r1/edit'] },
+    renderPage('tr');
+
+    expect(await screen.findByText(t('recipe.edit', 'tr'))).toBeInTheDocument();
+  });
+
+  it('pre-fills the form from the current version', async () => {
+    renderPage();
+
+    expect(await screen.findByDisplayValue('Test Recipe')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Niche Zero')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('18')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('2024-01-02')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Pull a shot')).toBeInTheDocument();
+  });
+
+  it('shows the no-versions message for a recipe without a current version', async () => {
+    mockRecipeApi.get.mockResolvedValue({ ...recipe, currentVersion: null } as never);
+    renderPage();
+
+    expect(await screen.findByText(t('recipe.editPage.noVersions'))).toBeInTheDocument();
+  });
+
+  it('saves through the action with request.signal and navigates to the recipe', async () => {
+    mockRecipeApi.update.mockResolvedValue({ slug: 'renamed' } as RecipeDetailOutput);
+    const user = userEvent.setup();
+    renderPage();
+    const title = await screen.findByDisplayValue('Test Recipe');
+
+    await user.clear(title);
+    await user.type(title, 'Renamed');
+    await user.click(screen.getByRole('button', { name: t('common.saveChanges') }));
+
+    expect(await screen.findByText('RECIPE PAGE')).toBeInTheDocument();
+    expect(mockRecipeApi.update).toHaveBeenCalledWith(
+      'r1',
+      expect.objectContaining({
+        title: 'Renamed',
+        bumpVersion: false,
+        grinder: 'Niche Zero',
+        groundWeightGrams: 18,
+        tds: null,
+        tasteNoteIds: ['tn-1'],
+        tasteNoteIntensities: { 'tn-1': 3 },
+        roastDate: '2024-01-02',
+      }),
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it('lists validation details as bullets and stays on the form when saving fails', async () => {
+    mockRecipeApi.update.mockRejectedValue(
+      new ApiError('VALIDATION_ERROR', 'Invalid', [{ field: 'title', message: 'Too long' }], 400),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByDisplayValue('Test Recipe');
+
+    await user.click(screen.getByRole('button', { name: t('common.saveChanges') }));
+
+    expect(await screen.findByText('• title: Too long')).toBeInTheDocument();
+    expect(screen.queryByText('RECIPE PAGE')).toBeNull();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ recipeId: 'r1' }),
+      'RecipeEditPage updateRecipe failed',
+    );
+  });
+
+  it('logs mount and unmount', async () => {
+    const { unmount } = renderPage();
+    await screen.findByDisplayValue('Test Recipe');
+    // The mount effect runs after the commit that renders the loader data.
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeEditPage mounted'),
     );
 
-    render(<RouterProvider router={router} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Tarifi Düzenle')).toBeInTheDocument();
-    });
+    unmount();
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeEditPage unmounted'),
+    );
   });
 });

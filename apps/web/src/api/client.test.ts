@@ -198,6 +198,71 @@ describe('api client', () => {
   });
 });
 
+describe('api.getText', () => {
+  it('returns the raw body text with the base URL, request id and caller signal', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('<svg xmlns="http://www.w3.org/2000/svg"/>', {
+        headers: { 'Content-Type': 'image/svg+xml' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const controller = new AbortController();
+
+    const text = await api.getText('/qrcode/recipe/x.svg', { signal: controller.signal });
+
+    expect(text).toBe('<svg xmlns="http://www.w3.org/2000/svg"/>');
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/qrcode\/recipe\/x\.svg$/);
+    expect(init.method).toBe('GET');
+    expect(init.signal).toBe(controller.signal);
+    expect(init.credentials).toBe('include');
+    expect((init.headers as Headers).get('X-Request-ID')).toBe(sessionId);
+  });
+
+  it('retries once after the shared session refresh on a 401', async () => {
+    let attempts = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string) => {
+        if (input.endsWith('/auth/refresh')) return json({ data: {} });
+        attempts++;
+        return attempts === 1
+          ? json({ error: { code: 'UNAUTHORIZED', message: 'expired' } }, 401)
+          : new Response('<svg/>');
+      }),
+    );
+
+    await expect(api.getText('/qrcode/recipe/x.svg')).resolves.toBe('<svg/>');
+    expect(attempts).toBe(2);
+  });
+
+  it('throws ApiError from the JSON error envelope of a failed response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(json({ error: { code: 'NOT_FOUND', message: 'No recipe' } }, 404)),
+    );
+
+    const error = await api.getText('/qrcode/recipe/missing.svg').catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).code).toBe('NOT_FOUND');
+    expect((error as ApiError).status).toBe(404);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint: '/qrcode/recipe/missing.svg' }),
+      'API request failed',
+    );
+  });
+
+  it('throws ApiError INVALID_RESPONSE for a non-JSON error body', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Bad Gateway', { status: 502 })));
+
+    const error = await api.getText('/qrcode/recipe/x.svg').catch((err: unknown) => err);
+
+    expect((error as ApiError).code).toBe('INVALID_RESPONSE');
+    expect((error as ApiError).status).toBe(502);
+  });
+});
+
 describe('rate-limited responses', () => {
   /** A 429 envelope response with an optional `Retry-After` header. */
   function tooMany(retryAfter?: string): Response {

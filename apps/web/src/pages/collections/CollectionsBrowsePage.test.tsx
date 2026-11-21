@@ -41,7 +41,8 @@ vi.mock('@/utils/logger.ts', () => ({
 import type { PaginatedResponse, PublicCollectionListItemOutput } from '@brewform/shared/schemas';
 import { collectionApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { CollectionsBrowsePage, loader } from './CollectionsBrowsePage.tsx';
+import { loader } from './CollectionsBrowsePage.data.ts';
+import { CollectionsBrowsePage } from './CollectionsBrowsePage.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockListPublic = vi.mocked(collectionApi.listPublic);
@@ -232,12 +233,34 @@ describe('CollectionsBrowsePage — URL pagination', () => {
 
     await waitFor(() => expect(router.state.location.search).toBe('?page=2'));
     await waitFor(() =>
-      expect(mockListPublic).toHaveBeenLastCalledWith({ page: '2', perPage: '20' }),
+      expect(mockListPublic).toHaveBeenLastCalledWith(
+        { page: '2', perPage: '20' },
+        { signal: expect.any(AbortSignal) },
+      ),
     );
   });
 
   it('the loader normalises an invalid page to 1', async () => {
-    await loader({ request: new Request('http://localhost/collections/browse?page=abc') });
-    expect(mockListPublic).toHaveBeenLastCalledWith({ page: '1', perPage: '20' });
+    await loader({
+      request: new Request('http://localhost/collections/browse?page=abc'),
+      params: {},
+      context: undefined,
+    } as never);
+    expect(mockListPublic).toHaveBeenLastCalledWith(
+      { page: '1', perPage: '20' },
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it('forwards the request signal to collectionApi.listPublic', async () => {
+    const controller = new AbortController();
+    await loader({
+      request: new Request('http://localhost/collections/browse', { signal: controller.signal }),
+      params: {},
+      context: undefined,
+    } as never);
+    const opts = mockListPublic.mock.calls[0][1];
+    controller.abort();
+    expect(opts?.signal?.aborted).toBe(true);
   });
 });

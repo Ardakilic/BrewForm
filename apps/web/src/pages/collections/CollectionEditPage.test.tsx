@@ -1,17 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { t } from '@brewform/shared/i18n';
+import type { CollectionDetailOutput } from '@brewform/shared/schemas';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter } from 'react-router';
-import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
 
 vi.mock('../../api/index.ts', () => ({
   collectionApi: { get: vi.fn(), update: vi.fn() },
-}));
-
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: vi.fn(),
 }));
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -23,50 +19,19 @@ vi.mock('@/utils/logger.ts', () => ({
     trace: vi.fn(),
     fatal: vi.fn(),
   }),
-  default: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
 }));
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
-import type { CollectionDetailOutput } from '@brewform/shared/schemas';
 import { ApiError } from '../../api/errors.ts';
 import { collectionApi } from '../../api/index.ts';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { CollectionEditPage, loader } from './CollectionEditPage.tsx';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { action, loader } from './CollectionEditPage.data.ts';
+import { CollectionEditPage } from './CollectionEditPage.tsx';
 
-const mockUseTranslation = vi.mocked(useTranslation);
 const mockGet = vi.mocked(collectionApi.get);
 const mockUpdate = vi.mocked(collectionApi.update);
-
-// ── Translation helper ─────────────────────────────────────────────────────
-
-const enT = (key: string) => {
-  const map: Record<string, string> = {
-    'collection.detail.edit': 'Edit Collection',
-    'collection.create.name': 'Name',
-    'collection.create.description': 'Description',
-    'collection.create.visibility': 'Visibility',
-    'collection.create.submit': 'Save',
-    'collection.create.creating': 'Saving…',
-    'collection.visibility.draft': 'Draft',
-    'collection.visibility.private': 'Private',
-    'collection.visibility.unlisted': 'Unlisted',
-    'collection.visibility.public': 'Public',
-  };
-  return map[key] ?? key;
-};
-
-const defaultTranslation = {
-  locale: 'en' as const,
-  setLocale: vi.fn(),
-  t: enT,
-  availableLocales: ['en', 'tr'],
-};
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
 
@@ -84,29 +49,37 @@ const mockCollection = {
   recipeCount: 0,
 } as CollectionDetailOutput;
 
-const HydrateFallback = () => null;
-
+/** Renders `/collections/:id/edit` through its real loader and action. */
 function renderEditPage(id = 'c1') {
-  const router = createMemoryRouter(
+  return renderWithAppProviders(
     [
       {
         path: '/collections/:id/edit',
-        element: <CollectionEditPage />,
         loader,
-        HydrateFallback,
+        action,
+        Component: CollectionEditPage,
+        errorElement: <RouteErrorState />,
       },
-      { path: '/collections/:id', element: null },
+      { path: '/collections/:id', element: <p>collection page</p> },
     ],
-    { initialEntries: [`/collections/${id}/edit`] },
+    { initialEntries: [`/collections/${id}/edit`], auth: 'user' },
   );
-  return { router, ...render(<RouterProvider router={router} />) };
+}
+
+/** Calls the loader for collection `id` (or with no id) and returns what it resolved or threw. */
+function runLoader(id?: string) {
+  return loader({
+    params: id ? { id } : {},
+    request: new Request(`http://localhost/collections/${id ?? ''}/edit`),
+    context: undefined,
+  } as never).catch((err: unknown) => err);
 }
 
 // ── Setup ──────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockUseTranslation.mockReturnValue(defaultTranslation);
+  localStorage.clear();
   mockGet.mockResolvedValue(mockCollection);
   mockUpdate.mockResolvedValue(mockCollection);
 });
@@ -117,10 +90,7 @@ describe('CollectionEditPage', () => {
   it('pre-fills name, description, and visibility from the loader data', async () => {
     const { container } = renderEditPage();
 
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('My Collection')).toBeInTheDocument();
-    });
-
+    expect(await screen.findByDisplayValue('My Collection')).toBeInTheDocument();
     expect(screen.getByDisplayValue('A test collection')).toBeInTheDocument();
     expect(container.querySelector('select')!).toHaveValue('public');
   });
@@ -128,9 +98,7 @@ describe('CollectionEditPage', () => {
   it('renders 4 visibility options in order with the current visibility selected', async () => {
     const { container } = renderEditPage();
 
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('My Collection')).toBeInTheDocument();
-    });
+    await screen.findByDisplayValue('My Collection');
 
     const select = container.querySelector('select')!;
     const options = Array.from(select.querySelectorAll('option'));
@@ -144,21 +112,25 @@ describe('CollectionEditPage', () => {
     expect(select).toHaveValue('public');
   });
 
-  it('submits name + visibility and omits description when unchanged', async () => {
+  it('submits name + visibility, omits an unchanged description, and opens the collection', async () => {
     const user = userEvent.setup();
-    renderEditPage();
+    const { router } = renderEditPage();
 
     const nameInput = await screen.findByDisplayValue('My Collection');
     await user.clear(nameInput);
     await user.type(nameInput, 'Renamed');
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: t('collection.create.submit') }));
 
     await waitFor(() => {
       expect(mockUpdate).toHaveBeenCalledTimes(1);
     });
-    expect(mockUpdate).toHaveBeenCalledWith('c1', { name: 'Renamed', visibility: 'public' });
-    const payload = mockUpdate.mock.calls[0][1];
-    expect(payload).not.toHaveProperty('description');
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'c1',
+      { name: 'Renamed', visibility: 'public' },
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(mockUpdate.mock.calls[0][1]).not.toHaveProperty('description');
+    await waitFor(() => expect(router.state.location.pathname).toBe('/collections/c1'));
   });
 
   it('includes a trimmed description in the payload when it was changed', async () => {
@@ -168,58 +140,65 @@ describe('CollectionEditPage', () => {
     const descInput = await screen.findByDisplayValue('A test collection');
     await user.clear(descInput);
     await user.type(descInput, '  New description  ');
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: t('collection.create.submit') }));
 
     await waitFor(() => {
-      expect(mockUpdate).toHaveBeenCalledWith('c1', {
-        name: 'My Collection',
-        visibility: 'public',
-        description: 'New description',
-      });
+      expect(mockUpdate).toHaveBeenCalledWith(
+        'c1',
+        { name: 'My Collection', visibility: 'public', description: 'New description' },
+        { signal: expect.any(AbortSignal) },
+      );
     });
+  });
+
+  it('shows the error inline and stays on the form when the update fails', async () => {
+    mockUpdate.mockRejectedValue(new ApiError('INTERNAL_ERROR', '', undefined, 500));
+    const user = userEvent.setup();
+    const { router } = renderEditPage();
+
+    await screen.findByDisplayValue('My Collection');
+    await user.click(screen.getByRole('button', { name: t('collection.create.submit') }));
+
+    expect(await screen.findByText(t('collection.error.save'))).toBeInTheDocument();
+    expect(screen.getByDisplayValue('My Collection')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/collections/c1/edit');
+  });
+
+  it('renders the not-found page when the collection does not exist', async () => {
+    mockGet.mockRejectedValue(new ApiError('COLLECTION_NOT_FOUND', 'Not found', undefined, 404));
+    renderEditPage('missing');
+
+    expect(await screen.findByText(t('error.404'))).toBeInTheDocument();
   });
 });
 
 describe('CollectionEditPage loader', () => {
+  it('forwards the request signal to collectionApi.get', async () => {
+    await runLoader('c1');
+    expect(mockGet).toHaveBeenCalledWith('c1', { signal: expect.any(AbortSignal) });
+  });
+
   it('throws a 404 Response when the API rejects with ApiError(404)', async () => {
     mockGet.mockRejectedValue(new ApiError('COLLECTION_NOT_FOUND', 'Not found', undefined, 404));
 
-    let caught: unknown;
-    try {
-      await loader({
-        params: { id: 'missing' },
-        request: new Request('http://localhost/collections/missing/edit'),
-      });
-    } catch (err) {
-      caught = err;
-    }
+    const caught = await runLoader('missing');
 
     expect(caught).toBeInstanceOf(Response);
     expect((caught as Response).status).toBe(404);
   });
 
   it('throws a 404 Response when the id param is missing', async () => {
-    let caught: unknown;
-    try {
-      await loader({ params: {}, request: new Request('http://localhost/collections//edit') });
-    } catch (err) {
-      caught = err;
-    }
+    const caught = await runLoader();
 
     expect(caught).toBeInstanceOf(Response);
     expect((caught as Response).status).toBe(404);
     expect(mockGet).not.toHaveBeenCalled();
   });
-});
 
-describe('CollectionEditPage loader — auth guard', () => {
   it('redirects a final 401 to /login with the encoded return path', async () => {
     mockGet.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
 
-    const thrown = await loader({
-      params: { id: 'c1' },
-      request: new Request('http://localhost/collections/c1/edit'),
-    }).catch((err: unknown) => err);
+    const thrown = await runLoader('c1');
 
     expect(thrown).toBeInstanceOf(Response);
     expect((thrown as Response).headers.get('Location')).toBe(

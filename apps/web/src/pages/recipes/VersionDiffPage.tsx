@@ -1,21 +1,19 @@
-import type { VersionDiffOutput } from '@brewform/shared/schemas';
 import { formatTemperature, formatVolume, formatWeight } from '@brewform/shared/utils';
-import { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router';
-import { recipeApi } from '../../api/index.ts';
+import { useEffect } from 'react';
+import { useLoaderData } from 'react-router';
 import { DiffHighlighter } from '../../components/recipe/DiffHighlighter.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';
-import { EmptyState } from '../../components/ui/EmptyState.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
 import { formatDate, formatDecimal, formatDuration } from '../../utils/format.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './VersionDiffPage.data.ts';
 
 const log = createLogger('VersionDiffPage');
 
+/** i18n label key for each diffed version field. */
 const FIELD_LABELS: Record<string, string> = {
   brewMethod: 'recipe.brewMethod',
   drinkType: 'recipe.drinkType',
@@ -39,6 +37,7 @@ const FIELD_LABELS: Record<string, string> = {
   emojiTag: 'recipe.emojiTag',
 };
 
+/** A labelled list of added (+), removed (-) and unchanged tags (taste notes, equipment). */
 function DiffTagList({
   items,
   label,
@@ -85,18 +84,16 @@ function DiffTagList({
 }
 
 /**
- * Displays a field-by-field diff between two recipe versions, with unit-aware
- * formatting for scalar fields and colored tag lists for taste notes/equipment.
+ * `/recipes/:slug/versions/diff?v1&v2`: a field-by-field diff between two recipe versions,
+ * with unit-aware formatting for scalar fields and colored tag lists for taste
+ * notes/equipment. The diff comes from the route loader (`VersionDiffPage.data.ts`); a failed
+ * load renders the route error state, never `common.noResults`. Never indexed: derived view
+ * (`noindex, nofollow`).
  */
 export function VersionDiffPage() {
-  const { slug } = useParams<{ slug: string }>();
-  const [searchParams] = useSearchParams();
-  const v1 = searchParams.get('v1') ?? '';
-  const v2 = searchParams.get('v2') ?? '';
+  const { slug, diff: data } = useLoaderData<typeof loader>();
   const { t, locale } = useTranslation();
   const unitSystem = useUnitSystem();
-  const [data, setData] = useState<VersionDiffOutput | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     log.debug({}, 'VersionDiffPage mounted');
@@ -105,23 +102,7 @@ export function VersionDiffPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!slug || !v1 || !v2) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setData(null);
-    recipeApi
-      .diffVersions(slug, v1, v2)
-      .then(setData)
-      .catch((err) => {
-        log.error({ err, slug }, 'VersionDiffPage loadDiff failed');
-        setData(null);
-      })
-      .finally(() => setLoading(false));
-  }, [slug, v1, v2]);
-
+  /** The display formatter for a diffed field, or `undefined` for the raw value. */
   const getFormatter = (field: string) => {
     if (field === 'groundWeightGrams') {
       return (v: string | number | null) => (v != null ? formatWeight(Number(v), unitSystem) : '-');
@@ -154,31 +135,15 @@ export function VersionDiffPage() {
     return undefined;
   };
 
-  if (loading) {
-    return (
-      <PageContainer width="4xl">
-        <LoadingState />
-      </PageContainer>
-    );
-  }
-
-  if (!data) {
-    return (
-      <PageContainer width="4xl">
-        <EmptyState message={t('common.noResults')} />
-      </PageContainer>
-    );
-  }
-
   return (
     <>
-      <SEOHead title={`${slug} – ${t('versionDiff.title')}`} />
+      <SEOHead title={`${slug} – ${t('versionDiff.title')}`} noIndex />
       <PageContainer width="4xl">
         <div className="mb-6">
           <Breadcrumb
             items={[
               { label: t('recipe.list.title'), to: '/recipes' },
-              { label: slug ?? '', to: `/recipes/${slug}` },
+              { label: slug, to: `/recipes/${slug}` },
               { label: t('versionDiff.title') },
             ]}
           />

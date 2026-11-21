@@ -1,32 +1,45 @@
-import type { EquipmentOutput } from '@brewform/shared/schemas';
-import type { EquipmentType } from '@brewform/shared/types';
 import { useEffect, useState } from 'react';
-import { equipmentApi } from '../../api/index.ts';
-import { invalidateStaticCache } from '../../api/static-cache.ts';
+import { useFetcher, useLoaderData } from 'react-router';
 import { Field } from '../../components/form/Field.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { useConfirm } from '../../components/ui/Modal.tsx';
 import { OwnedItemCard } from '../../components/ui/OwnedItemCard.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './EquipmentListPage.data.ts';
 
 const log = createLogger('EquipmentListPage');
 
+/** The empty create-form state. */
+const EMPTY_FORM = { name: '', type: '', brand: '', model: '' };
+
 /**
- * The user's equipment list with inline create/delete; changes
- * invalidate the static cache so loaders re-fetch fresh data.
+ * The user's equipment list with inline create/delete. The list comes from the `/equipment`
+ * route loader (`EquipmentListPage.data.ts`, through the static cache); create and delete
+ * submit `intent`s to the route action, which invalidates the static cache on success so the
+ * revalidated list (and other tabs) re-fetch. A failed create or delete shows an error toast;
+ * a failed load renders the route error state.
  */
 export function EquipmentListPage() {
-  const [equipment, setEquipment] = useState<EquipmentOutput[]>([]);
-  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
+  const { equipment } = useLoaderData<typeof loader>();
+  const createFetcher = useFetcher<typeof action>();
+  const deleteFetcher = useFetcher<typeof action>();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', type: '', brand: '', model: '' });
-  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const saving = createFetcher.state !== 'idle';
   const { t } = useTranslation();
   const { confirm } = useConfirm();
+
+  useActionFeedback(createFetcher, {
+    errorKey: 'equipment.error.createFailed',
+    onSuccess: () => {
+      setForm(EMPTY_FORM);
+      setShowForm(false);
+    },
+  });
+  useActionFeedback(deleteFetcher, { errorKey: 'equipment.error.deleteFailed' });
 
   useEffect(() => {
     log.debug({}, 'EquipmentListPage mounted');
@@ -35,51 +48,14 @@ export function EquipmentListPage() {
     };
   }, []);
 
-  useEffect(() => {
-    equipmentApi
-      .list()
-      .then((data) => {
-        setEquipment(data);
-        setStatus('ready');
-      })
-      .catch((err) => {
-        log.error({ err }, 'equipment list fetch failed');
-        setStatus('error');
-      });
-  }, []);
-
-  /**
-   * POST `/equipment`, append the created item to local state, and
-   * invalidate the static cache so the next loader run re-fetches.
-   */
-  async function handleCreate(e: React.FormEvent) {
+  /** Submits the create form as a `create` intent (name and type are required). */
+  function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim() || !form.type.trim() || saving) return;
-    setSaving(true);
-    log.debug({}, 'handleCreate started');
-    try {
-      const newEq = await equipmentApi.create({
-        name: form.name.trim(),
-        type: form.type.trim() as EquipmentType,
-        brand: form.brand || undefined,
-        model: form.model || undefined,
-      });
-      setEquipment((prev) => [...prev, newEq]);
-      log.debug({ equipmentId: newEq.id }, 'handleCreate completed');
-      setForm({ name: '', type: '', brand: '', model: '' });
-      setShowForm(false);
-      invalidateStaticCache();
-    } catch (err) {
-      log.error({ err, name: form.name, type: form.type }, 'handleCreate failed');
-    } finally {
-      setSaving(false);
-    }
+    createFetcher.submit({ intent: 'create', ...form }, { method: 'post' });
   }
 
-  /**
-   * DELETE `/equipment/:id`, remove the item from local state, and
-   * invalidate the static cache so the next loader run re-fetches.
-   */
+  /** Asks for confirmation, then submits the `delete` intent. */
   async function handleDelete(id: string) {
     if (
       !(await confirm({
@@ -89,19 +65,7 @@ export function EquipmentListPage() {
       }))
     )
       return;
-    log.debug({ equipmentId: id }, 'handleDelete started');
-    try {
-      await equipmentApi.delete(id);
-      setEquipment((prev) => prev.filter((e) => e.id !== id));
-      log.debug({ equipmentId: id }, 'handleDelete completed');
-      invalidateStaticCache();
-    } catch (err) {
-      log.error({ err, equipmentId: id }, 'handleDelete failed');
-    }
-  }
-
-  if (status === 'loading') {
-    return <LoadingState className="mx-auto max-w-4xl px-6" />;
+    deleteFetcher.submit({ intent: 'delete', id }, { method: 'post' });
   }
 
   return (
@@ -164,9 +128,7 @@ export function EquipmentListPage() {
         </form>
       )}
 
-      {status === 'error' ? (
-        <ErrorState message={t('equipment.error.loadFailed')} />
-      ) : equipment.length === 0 ? (
+      {equipment.length === 0 ? (
         <EmptyState message={t('equipment.noEquipment')} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

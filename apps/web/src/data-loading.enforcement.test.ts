@@ -112,51 +112,10 @@ function format(v: Violation): string {
  * (and removed) before the change is archived.
  */
 const PENDING = new Set<string>([
-  // useEffect fetch blocks (38 files; AuthContext is allowlisted)
-  'components/brew-log/BrewHistorySection.tsx',
-  'components/brew-log/RecipeBrewStats.tsx',
+  // useEffect fetch block: waits for task 9.13 (recipeVisibility prop) before task 15.13
   'components/collections/AddToCollectionModal.tsx',
-  'components/layout/NotificationBell.tsx',
-  'components/layout/NotificationDropdown.tsx',
-  'components/taste/TasteAutocomplete.tsx',
-  'pages/TasteNotesPage.tsx',
-  'pages/beans/BeanListPage.tsx',
-  'pages/coffee-varieties/CoffeeVarietiesPage.tsx',
-  'pages/coffee-varieties/CoffeeVarietyDetailPage.tsx',
-  'pages/equipment/EquipmentCatalogPage.tsx',
-  'pages/equipment/EquipmentDetailPage.tsx',
-  'pages/equipment/EquipmentListPage.tsx',
-  'pages/recipes/RecipeComparePage.tsx',
-  'pages/recipes/RecipeCreatePage.tsx',
-  'pages/recipes/RecipeEditPage.tsx',
-  'pages/recipes/RecipeFocusModePage.tsx',
-  'pages/recipes/RecipeForkPage.tsx',
-  'pages/recipes/RecipeVersionsPage.tsx',
-  'pages/recipes/VersionDiffPage.tsx',
-  'pages/recipes/useCoffeeVarietyFilter.tsx',
-  'pages/setups/SetupListPage.tsx',
-  // inline-loader page modules (13)
-  'pages/HomePage.tsx',
-  'pages/recipes/RecipeListPage.tsx',
-  'pages/recipes/StarredRecipesPage.tsx',
-  'pages/recipes/RecipeDetailPage.tsx',
-  'pages/collections/CollectionListPage.tsx',
-  'pages/collections/CollectionsBrowsePage.tsx',
-  'pages/collections/CollectionDetailPage.tsx',
-  'pages/collections/CollectionEditPage.tsx',
-  'pages/brew-logs/BrewLogListPage.tsx',
-  'pages/brew-logs/BrewLogFormPage.tsx',
-  'pages/users/UserProfilePage.tsx',
-  'pages/notifications/NotificationListPage.tsx',
-  // mutation-only modules (12)
-  'components/collections/CollectionRecipeList.tsx',
-  'components/layout/NotificationItem.tsx',
-  'components/photos/PhotoUpload.tsx',
+  // mutation-only module: moved onto the caller-scoped notes resource route by task 17.4
   'components/recipe/RecipeNotesSection.tsx',
-  'pages/collections/CollectionCreatePage.tsx',
-  // raw fetch( QR downloads (2)
-  'components/qrcode/RecipeQRCode.tsx',
-  'components/recipe/ShareSection.tsx',
 ]);
 
 describe('data-loading enforcement — self-check', () => {

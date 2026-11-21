@@ -30,7 +30,8 @@ import type { BrewLogListItemOutput, PaginatedResponse } from '@brewform/shared/
 import { ApiError } from '../../api/errors.ts';
 import { brewLogApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { BrewLogListPage, loader } from './BrewLogListPage.tsx';
+import { loader } from './BrewLogListPage.data.ts';
+import { BrewLogListPage } from './BrewLogListPage.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockList = vi.mocked(brewLogApi.list);
@@ -140,7 +141,7 @@ describe('BrewLogListPage', () => {
     renderListPage('/brew-logs?page=3');
 
     await waitFor(() => {
-      expect(mockList).toHaveBeenCalledWith({ page: 3 });
+      expect(mockList).toHaveBeenCalledWith({ page: 3 }, { signal: expect.any(AbortSignal) });
     });
   });
 
@@ -169,20 +170,20 @@ describe('BrewLogListPage — loader page parsing', () => {
     for (const bad of ['-2', '1.5', 'Infinity', '0', 'abc']) {
       mockList.mockClear();
       await loader({ request: new Request(`http://localhost/brew-logs?page=${bad}`) });
-      expect(mockList).toHaveBeenCalledWith({ page: 1 });
+      expect(mockList).toHaveBeenCalledWith({ page: 1 }, { signal: expect.any(AbortSignal) });
     }
   });
 
   it('defaults a missing page param to 1', async () => {
     mockList.mockClear();
     await loader({ request: new Request('http://localhost/brew-logs') });
-    expect(mockList).toHaveBeenCalledWith({ page: 1 });
+    expect(mockList).toHaveBeenCalledWith({ page: 1 }, { signal: expect.any(AbortSignal) });
   });
 
   it('passes a valid positive integer page through', async () => {
     mockList.mockClear();
     await loader({ request: new Request('http://localhost/brew-logs?page=4') });
-    expect(mockList).toHaveBeenCalledWith({ page: 4 });
+    expect(mockList).toHaveBeenCalledWith({ page: 4 }, { signal: expect.any(AbortSignal) });
   });
 });
 
@@ -211,7 +212,9 @@ describe('BrewLogListPage — canonical page URL', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     await waitFor(() => expect(router.state.location.search).toBe('?page=2'));
-    await waitFor(() => expect(mockList).toHaveBeenLastCalledWith({ page: 2 }));
+    await waitFor(() =>
+      expect(mockList).toHaveBeenLastCalledWith({ page: 2 }, { signal: expect.any(AbortSignal) }),
+    );
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Previous' })).not.toBeDisabled(),

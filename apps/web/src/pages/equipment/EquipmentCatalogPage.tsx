@@ -1,17 +1,16 @@
-import type { EquipmentOutput } from '@brewform/shared/schemas';
-import { useEffect, useState } from 'react';
-import { api } from '../../api/client.ts';
+import { useEffect } from 'react';
+import { useLoaderData, useLocation, useNavigation } from 'react-router';
 import { CatalogEntityCard } from '../../components/catalog/CatalogEntityCard.tsx';
 import { CategoryTabs } from '../../components/catalog/CategoryTabs.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { CardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useDebouncedUrlText, useListUrlState } from '../../hooks/useListUrlState.ts';
 import { parseEquipmentCatalogParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './EquipmentCatalogPage.data.ts';
 
 const log = createLogger('EquipmentCatalogPage');
 
@@ -20,7 +19,9 @@ const log = createLogger('EquipmentCatalogPage');
  * tabs, and debounced search; cards link to equipment detail pages. All
  * selections live in the URL (`page`, `type`, `q`; a legacy `search` link is
  * still read): tabs push history, the search box commits after a 300 ms pause
- * with `replace`, and page 1 is never written.
+ * with `replace`, and page 1 is never written. The cards come from the
+ * `/equipments` route loader (`EquipmentCatalogPage.data.ts`); a skeleton shows
+ * while a new URL state loads, and a failed load renders the route error state.
  */
 export function EquipmentCatalogPage() {
   const {
@@ -30,11 +31,11 @@ export function EquipmentCatalogPage() {
     clearAll,
   } = useListUrlState(parseEquipmentCatalogParams);
   const searchInput = useDebouncedUrlText('q', { legacyKeys: ['search'] });
-  const [equipment, setEquipment] = useState<EquipmentOutput[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [retryCounter, setRetryCounter] = useState(0);
+  const { equipment, totalPages } = useLoaderData<typeof loader>();
+  const navigation = useNavigation();
+  const location = useLocation();
+  const loading =
+    navigation.state === 'loading' && navigation.location.pathname === location.pathname;
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -55,36 +56,6 @@ export function EquipmentCatalogPage() {
     { value: 'scale_accessory', label: t('equipment.category.scale_accessory') },
     { value: 'roaster', label: t('equipment.category.roaster') },
   ];
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    const params = new URLSearchParams();
-    params.set('page', String(page));
-    params.set('perPage', '12');
-    if (type) params.set('type', type);
-    if (search) params.set('search', search);
-
-    api
-      .getWithMeta<{
-        data: EquipmentOutput[];
-        meta?: { pagination?: { total?: number; totalPages?: number } };
-      }>(`/equipment?${params.toString()}`)
-      .then((data) => {
-        const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-        setEquipment(items);
-        setTotalPages(
-          data?.meta?.pagination?.totalPages ||
-            Math.ceil((data?.meta?.pagination?.total ?? items.length) / 12) ||
-            1,
-        );
-      })
-      .catch((err) => {
-        log.error({ err }, 'EquipmentCatalogPage loadData failed');
-        setError(t('equipment.catalog.error.load'));
-      })
-      .finally(() => setLoading(false));
-  }, [page, type, search, retryCounter]);
 
   const hasActiveFilters = !!(type || search);
 
@@ -128,22 +99,6 @@ export function EquipmentCatalogPage() {
       {/* Content */}
       {loading ? (
         <CardSkeletonGrid variant="catalog" />
-      ) : error ? (
-        <div className="text-center py-12">
-          <ErrorState message={error} className="mb-4" />
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setLoading(true);
-              setPage(1);
-              setRetryCounter((c) => c + 1);
-            }}
-            className="btn-primary"
-          >
-            {t('common.retry')}
-          </button>
-        </div>
       ) : equipment.length === 0 ? (
         <EmptyState
           message={t('equipment.catalog.empty')}

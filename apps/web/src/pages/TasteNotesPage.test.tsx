@@ -2,14 +2,33 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { RouteErrorState } from '../components/RouteErrorState.tsx';
+import { loader, shouldRevalidate } from './TasteNotesPage.data.ts';
 import { TasteNotesPage } from './TasteNotesPage.tsx';
 
-/** Renders the page at `entry` inside a memory router (it reads and writes `?q=`). */
+/** Hydration fallback shown while the `/taste-notes` loader runs. */
+function Hydrating() {
+  return <p>hydrating</p>;
+}
+
+/**
+ * Renders `/taste-notes` at `entry` through its real loader inside a memory router (the page
+ * reads and writes `?q=`).
+ */
 function renderPage(entry = '/taste-notes') {
-  const router = createMemoryRouter([{ path: '/taste-notes', element: <TasteNotesPage /> }], {
-    initialEntries: ['/start', entry],
-    initialIndex: 1,
-  });
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/taste-notes',
+        loader,
+        shouldRevalidate,
+        element: <TasteNotesPage />,
+        errorElement: <RouteErrorState />,
+        HydrateFallback: Hydrating,
+      },
+    ],
+    { initialEntries: ['/start', entry], initialIndex: 1 },
+  );
   return { ...render(<RouterProvider router={router} />), router };
 }
 
@@ -249,13 +268,40 @@ describe('TasteNotesPage — logging', () => {
   });
 });
 
-describe('TasteNotesPage — loading state', () => {
-  it('renders loading text when data has not loaded yet', () => {
+describe('TasteNotesPage — loader', () => {
+  it('loads the hierarchy with request.signal', async () => {
+    const request = new Request('http://localhost/taste-notes?q=berry');
+    await expect(loader({ request, params: {}, context: undefined } as never)).resolves.toEqual({
+      hierarchy: mockHierarchy,
+    });
+    expect(mockHierarchyFn).toHaveBeenCalledWith({ signal: request.signal });
+  });
+
+  it('shows the hydrate fallback, not the page, while the loader runs', () => {
     mockHierarchyFn.mockReturnValue(new Promise(() => {}));
 
     renderPage();
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByText('hydrating')).toBeInTheDocument();
+    expect(screen.queryByText('Taste Notes')).not.toBeInTheDocument();
+  });
+
+  it('does not re-run the loader when only the search changes', () => {
+    const at = (url: string) => new URL(`http://localhost${url}`);
+    expect(
+      shouldRevalidate({
+        currentUrl: at('/taste-notes'),
+        nextUrl: at('/taste-notes?q=berry'),
+        defaultShouldRevalidate: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldRevalidate({
+        currentUrl: at('/taste-notes?q=berry'),
+        nextUrl: at('/taste-notes?q=berry'),
+        defaultShouldRevalidate: true,
+      }),
+    ).toBe(true);
   });
 });
 
@@ -438,28 +484,22 @@ describe('TasteNotesPage — leaf note chips', () => {
 });
 
 describe('TasteNotesPage — empty/error state', () => {
-  it('renders empty state when API returns an empty array', async () => {
+  it('renders the no-results state when the API returns an empty array', async () => {
     mockHierarchyFn.mockResolvedValue([]);
 
     renderPage();
 
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-    });
-
+    expect(await screen.findByText('No taste notes match your search.')).toBeInTheDocument();
     expect(screen.queryByText('Fruity')).not.toBeInTheDocument();
   });
 
-  it('handles API failure gracefully without crashing', async () => {
+  it('renders the route error state, not taste.noResults, when the load fails', async () => {
     mockHierarchyFn.mockRejectedValue(new Error('Network error'));
 
     renderPage();
 
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-    });
-
-    expect(screen.getByText('Taste Notes')).toBeInTheDocument();
+    expect(await screen.findByText('error.route.loadFailed')).toBeInTheDocument();
+    expect(screen.queryByText('No taste notes match your search.')).not.toBeInTheDocument();
     expect(mockLogger.error).toHaveBeenCalledWith(
       { err: expect.any(Error) },
       'TasteNotesPage loadData failed',
@@ -609,6 +649,8 @@ describe('TasteNotesPage — shareable search (?q=)', () => {
 
     await waitFor(() => expect(router.state.location.search).toBe('?q=berry'));
     expect(router.state.historyAction).toBe('REPLACE');
+    // The filter is client-side: committing ?q= does not refetch the hierarchy.
+    expect(mockHierarchyFn).toHaveBeenCalledTimes(1);
   });
 
   it('a shared ?q= link shows the filtered hierarchy and fills the box', async () => {

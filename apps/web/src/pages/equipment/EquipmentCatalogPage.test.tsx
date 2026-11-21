@@ -1,586 +1,232 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { t } from '@brewform/shared/i18n';
+import type { EquipmentOutput, PaginatedResponse } from '@brewform/shared/schemas';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { EquipmentCatalogPage } from './EquipmentCatalogPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
-  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  mockLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  },
 }));
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
-// ── External deps ──────────────────────────────────────────────────────────
-
-vi.mock('react-router', () => ({
-  Link: ({
-    to,
-    children,
-    ...props
-  }: {
-    to: string;
-    children: React.ReactNode;
-    [key: string]: unknown;
-  }) => (
-    <a href={to} {...props}>
-      {children}
-    </a>
-  ),
-  useSearchParams: vi.fn(),
+vi.mock('../../api/index.ts', () => ({
+  equipmentApi: { catalog: vi.fn() },
 }));
 
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: vi.fn(),
-}));
+import { equipmentApi } from '../../api/index.ts';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { loader } from './EquipmentCatalogPage.data.ts';
+import { EquipmentCatalogPage } from './EquipmentCatalogPage.tsx';
 
-vi.mock('../../api/client.ts', () => ({
-  api: { getWithMeta: vi.fn() },
-}));
+const mockCatalog = vi.mocked(equipmentApi.catalog);
 
-vi.mock('../../components/seo/SEOHead.tsx', () => ({
-  SEOHead: vi.fn(() => null),
-}));
-
-vi.mock('../../hooks/useDebounce.ts', () => ({
-  useDebounce: (value: string) => value,
-}));
-
-// ── Imports after mocks ────────────────────────────────────────────────────
-
-import { useSearchParams } from 'react-router';
-import { api } from '../../api/client.ts';
-import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-
-const mockUseSearchParams = vi.mocked(useSearchParams);
-const mockUseTranslation = vi.mocked(useTranslation);
-const mockApiGetWithMeta = vi.mocked(api.getWithMeta);
-const mockSEOHead = vi.mocked(SEOHead);
-
-// ── Translation helpers ────────────────────────────────────────────────────
-
-const enT = (key: string) => {
-  const map: Record<string, string> = {
-    'common.all': 'All',
-    'common.clearAll': 'Clear all',
-    'common.retry': 'Retry',
-    'common.clearSearch': 'Clear search',
-    'common.activeFilters': 'Active filters:',
-    'common.pagination': 'Page {page} of {total}',
-    'common.previous': 'Previous',
-    'common.next': 'Next',
-    'equipment.catalog.title': 'Coffee Equipment',
-    'equipment.catalog.subtitle': 'Browse machines, grinders, and tools',
-    'equipment.catalog.searchPlaceholder': 'Search by brand, model, or name...',
-    'equipment.catalog.error.load': 'Failed to load equipment',
-    'equipment.catalog.empty': 'No equipment found',
-    'equipment.category.espresso_machine': 'Espresso Machines',
-    'equipment.category.grinder': 'Grinders',
-    'equipment.category.pour_over_brewer': 'Pour-Over Brewers',
-    'equipment.category.immersion_brewer': 'Immersion Brewers',
-    'equipment.category.kettle': 'Kettles',
-    'equipment.category.milk_tool': 'Milk Tools',
-    'equipment.category.scale_accessory': 'Scales & Accessories',
-    'equipment.category.roaster': 'Roasters',
-  };
-  return map[key] ?? key;
-};
-
-const trT = (key: string) => {
-  const map: Record<string, string> = {
-    'common.all': 'Tümü',
-    'common.clearAll': 'Tümünü temizle',
-    'common.retry': 'Tekrar dene',
-    'common.clearSearch': 'Aramayı temizle',
-    'common.activeFilters': 'Aktif filtreler:',
-    'common.pagination': 'Sayfa {page} / {total}',
-    'common.previous': 'Önceki',
-    'common.next': 'İleri',
-    'equipment.catalog.title': 'Kahve Ekipmanları',
-    'equipment.catalog.subtitle': 'Makineleri, öğütücüleri ve araçları keşfedin',
-    'equipment.catalog.searchPlaceholder': 'Marka, model veya isme göre ara...',
-    'equipment.catalog.error.load': 'Ekipmanlar yüklenemedi',
-    'equipment.catalog.empty': 'Ekipman bulunamadı',
-    'equipment.category.espresso_machine': 'Espresso Makineleri',
-    'equipment.category.grinder': 'Öğütücüler',
-    'equipment.category.pour_over_brewer': 'Pour-Over Demleyiciler',
-    'equipment.category.immersion_brewer': 'Daldırma Demleyiciler',
-    'equipment.category.kettle': 'Su Isıtıcıları',
-    'equipment.category.milk_tool': 'Süt Araçları',
-    'equipment.category.scale_accessory': 'Teraziler ve Aksesuarlar',
-    'equipment.category.roaster': 'Kavurucular',
-  };
-  return map[key] ?? key;
-};
-
-const defaultTranslation = {
-  locale: 'en' as const,
-  setLocale: vi.fn(),
-  t: enT,
-  availableLocales: ['en', 'tr'],
-};
-
-function makeSearchParams(init: Record<string, string> = {}) {
-  const params = new URLSearchParams(init);
-  return [params, vi.fn()] as ReturnType<typeof useSearchParams>;
+/** Builds an equipment fixture. */
+function makeEquipment(overrides: Partial<EquipmentOutput> = {}): EquipmentOutput {
+  return {
+    id: 'eq-1',
+    name: 'Fellow Stagg',
+    brand: 'Fellow',
+    model: 'Stagg EKG',
+    type: 'kettle',
+    description: 'Electric pour-over kettle',
+    ...overrides,
+  } as EquipmentOutput;
 }
 
-function makePaginatedResponse(items: unknown[], total: number) {
+/** Builds the paginated envelope `GET /equipment` returns. */
+function page(items: EquipmentOutput[], total = items.length): PaginatedResponse<EquipmentOutput> {
   return {
+    success: true,
     data: items,
     meta: {
-      pagination: {
-        page: 1,
-        perPage: 12,
-        total,
-        totalPages: Math.ceil(total / 12),
-      },
+      requestId: 't',
+      pagination: { page: 1, perPage: 12, total, totalPages: Math.ceil(total / 12) },
     },
   };
 }
 
-// ── Setup ──────────────────────────────────────────────────────────────────
+/** Renders `/equipments` (with `search`) through its real loader. */
+function renderPage(search = '', locale: 'en' | 'tr' = 'en') {
+  return renderWithAppProviders(
+    [
+      {
+        path: '/equipments',
+        loader,
+        Component: EquipmentCatalogPage,
+        errorElement: <RouteErrorState />,
+      },
+    ],
+    { initialEntries: [`/equipments${search}`], locale },
+  );
+}
+
+/** Runs the loader for `url` with a fresh request. */
+function runLoader(url: string) {
+  const request = new Request(`http://localhost${url}`);
+  return { request, result: loader({ request, params: {}, context: undefined } as never) };
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLogger.debug.mockClear();
-  mockLogger.info.mockClear();
-  mockLogger.warn.mockClear();
-  mockLogger.error.mockClear();
-  mockUseTranslation.mockReturnValue(defaultTranslation);
-  mockUseSearchParams.mockReturnValue(makeSearchParams());
-  mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+  localStorage.clear();
+  mockCatalog.mockResolvedValue(page([]));
 });
 
-// ── Tests ──────────────────────────────────────────────────────────────────
+describe('/equipments loader', () => {
+  it('maps the URL state to catalogue params and forwards request.signal', async () => {
+    mockCatalog.mockResolvedValue(page([makeEquipment()], 25));
+    const { request, result } = runLoader('/equipments?page=2&type=kettle&q=Stagg');
 
-/** Tests for EquipmentCatalogPage — rendering, category filters, search, pagination, SEO, and i18n. */
+    await expect(result).resolves.toEqual({ equipment: [makeEquipment()], totalPages: 3 });
+    expect(mockCatalog).toHaveBeenCalledWith(
+      { page: '2', perPage: '12', type: 'kettle', search: 'Stagg' },
+      { signal: request.signal },
+    );
+  });
+
+  it('reads a legacy search link, clamps bad pages and omits empty filters', async () => {
+    runLoader('/equipments?page=-5&search=Fellow');
+    await waitFor(() => expect(mockCatalog).toHaveBeenCalled());
+    expect(mockCatalog).toHaveBeenCalledWith(
+      { page: '1', perPage: '12', search: 'Fellow' },
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it('reports at least one page for an empty catalogue', async () => {
+    await expect(runLoader('/equipments').result).resolves.toEqual({
+      equipment: [],
+      totalPages: 1,
+    });
+  });
+
+  it('logs and rethrows a failure', async () => {
+    const err = new Error('down');
+    mockCatalog.mockRejectedValue(err);
+    await expect(runLoader('/equipments').result).rejects.toBe(err);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err, page: 1, type: '' },
+      'EquipmentCatalogPage loadData failed',
+    );
+  });
+});
+
 describe('EquipmentCatalogPage', () => {
   it('logs mount and unmount', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    const { unmount } = render(<EquipmentCatalogPage />);
+    const { unmount } = renderPage();
+    await screen.findByRole('heading', { name: t('equipment.catalog.title') });
+    // The mount effect runs after the commit that renders the loader data.
     await waitFor(() =>
       expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentCatalogPage mounted'),
     );
     unmount();
-    await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentCatalogPage unmounted'),
-    );
+    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentCatalogPage unmounted');
   });
 
-  it('renders page title and subtitle — English', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByRole('heading', { name: 'Coffee Equipment' })).toBeInTheDocument();
-    expect(screen.getByText('Browse machines, grinders, and tools')).toBeInTheDocument();
-  });
-
-  it('renders page title and subtitle — Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByRole('heading', { name: 'Kahve Ekipmanları' })).toBeInTheDocument();
-    expect(screen.getByText('Makineleri, öğütücüleri ve araçları keşfedin')).toBeInTheDocument();
-  });
-
-  it('renders equipment items from API', async () => {
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'eq-1',
-            name: 'Fellow Stagg',
-            brand: 'Fellow',
-            model: 'Stagg EKG',
-            type: 'kettle',
-            description: 'Electric pour-over kettle',
-          },
-          {
-            id: 'eq-2',
-            name: 'Acaia Lunar',
-            brand: 'Acaia',
-            model: 'Lunar',
-            type: 'scale_accessory',
-            description: 'Precision scale',
-          },
-        ],
-        2,
-      ),
-    );
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Fellow')).toBeInTheDocument();
-    expect(screen.getByText('Stagg EKG')).toBeInTheDocument();
-    expect(screen.getByText('Lunar')).toBeInTheDocument();
-  });
-
-  it('shows loading skeleton while fetching', () => {
-    mockApiGetWithMeta.mockReturnValue(new Promise(() => {}));
-    render(<EquipmentCatalogPage />);
-
-    const skeletons = document.querySelectorAll('.animate-pulse');
-    expect(skeletons.length).toBeGreaterThan(0);
-  });
-
-  it('shows empty state when no results', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('No equipment found')).toBeInTheDocument();
-  });
-
-  it('shows empty state in Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Ekipman bulunamadı')).toBeInTheDocument();
-  });
-
-  it('shows error state with retry button', async () => {
-    mockApiGetWithMeta.mockRejectedValue(new Error('Network error'));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Failed to load equipment')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      { err: expect.any(Error) },
-      'EquipmentCatalogPage loadData failed',
-    );
-  });
-
-  it('shows error state with retry in Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockRejectedValue(new Error('Network error'));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Ekipmanlar yüklenemedi')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Tekrar dene' })).toBeInTheDocument();
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      { err: expect.any(Error) },
-      'EquipmentCatalogPage loadData failed',
-    );
-  });
-
-  it('renders category filter buttons', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Espresso Machines' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Grinders' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Kettles' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Roasters' })).toBeInTheDocument();
-  });
-
-  it('renders category filter buttons in Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByRole('button', { name: 'Tümü' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Espresso Makineleri' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Öğütücüler' })).toBeInTheDocument();
-  });
-
-  it('renders search input with placeholder', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByPlaceholderText('Search by brand, model, or name...')).toBeInTheDocument();
-  });
-
-  it('renders search input with Turkish placeholder', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByPlaceholderText('Marka, model veya isme göre ara...')).toBeInTheDocument();
-  });
-
-  it('shows active filters and clear all when filter is applied', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ type: 'kettle' }));
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Active filters:')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Clear all' })).toBeInTheDocument();
-  });
-
-  it('shows active filters in Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ type: 'kettle' }));
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Aktif filtreler:')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Tümünü temizle' })).toBeInTheDocument();
-  });
-
-  it('calls API with type filter', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ type: 'espresso_machine' }));
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
-      expect.stringContaining('type=espresso_machine'),
-    );
-  });
-
-  it('calls API with search filter', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ search: 'Stagg' }));
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('search=Stagg'));
-  });
-
-  it('calls API with both type and search filters', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ type: 'kettle', search: 'Fellow' }));
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('type=kettle'));
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('search=Fellow'));
-  });
-
-  it('shows pagination when multiple pages exist', async () => {
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'eq-1',
-            name: 'Test',
-            brand: null,
-            model: null,
-            type: 'kettle',
-            description: null,
-          },
-        ],
-        25,
-      ),
-    );
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText(/Page 1 of 3/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
-  });
-
-  it('shows pagination in Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'eq-1',
-            name: 'Test',
-            brand: null,
-            model: null,
-            type: 'kettle',
-            description: null,
-          },
-        ],
-        25,
-      ),
-    );
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText(/Sayfa 1 \/ 3/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'İleri' })).toBeInTheDocument();
-  });
-
-  it('navigates to next page when Next is clicked', async () => {
-    const setSearchParams = vi.fn();
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ page: '1' }));
-    // Override the second element of the tuple to capture calls
-    mockUseSearchParams.mockReturnValue([new URLSearchParams({ page: '1' }), setSearchParams]);
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'eq-1',
-            name: 'Test',
-            brand: null,
-            model: null,
-            type: 'kettle',
-            description: null,
-          },
-        ],
-        25,
-      ),
-    );
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-
-    expect(setSearchParams).toHaveBeenCalledTimes(1);
-    // useListUrlState applies a functional updater to the current params.
-    const [updater] = setSearchParams.mock.calls[0];
-    const params = updater(new URLSearchParams({ page: '1' }));
-    expect(params.get('page')).toBe('2');
-  });
-
-  it('navigates to previous page when Previous is clicked', async () => {
-    const setSearchParams = vi.fn();
-    mockUseSearchParams.mockReturnValue([new URLSearchParams({ page: '3' }), setSearchParams]);
-    mockApiGetWithMeta.mockResolvedValue(
-      makePaginatedResponse(
-        [
-          {
-            id: 'eq-1',
-            name: 'Test',
-            brand: null,
-            model: null,
-            type: 'kettle',
-            description: null,
-          },
-        ],
-        25,
-      ),
-    );
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
-
-    expect(setSearchParams).toHaveBeenCalledTimes(1);
-    const [updater] = setSearchParams.mock.calls[0];
-    const params = updater(new URLSearchParams({ page: '3' }));
-    expect(params.get('page')).toBe('2');
-  });
-
-  it('clamps negative page to 1', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ page: '-5' }));
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('page=1'));
-  });
-
-  it('floors non-integer page to integer', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ page: '2.7' }));
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('page=2'));
-  });
-
-  it('retries fetch when retry button is clicked', async () => {
-    mockApiGetWithMeta.mockRejectedValue(new Error('Network error'));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Failed to load equipment')).toBeInTheDocument();
-    expect(mockApiGetWithMeta).toHaveBeenCalledTimes(1);
-
-    // Reset mock to resolve on next call
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-
-    await waitFor(() => expect(mockApiGetWithMeta).toHaveBeenCalledTimes(2));
-  });
-
-  it('passes translated title to SEOHead', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    const calls = mockSEOHead.mock.calls;
-    const lastProps = calls[calls.length - 1][0] as { title?: string };
-    expect(lastProps.title).toBe('Coffee Equipment');
-  });
-
-  it('passes translated title to SEOHead — Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    const calls = mockSEOHead.mock.calls;
-    const lastProps = calls[calls.length - 1][0] as { title?: string };
-    expect(lastProps.title).toBe('Kahve Ekipmanları');
-  });
-});
-
-describe('EquipmentCatalogPage — shareable search (q, debounced replace)', () => {
-  beforeEach(() => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
-  });
-
-  it('reads the q param and sends it to the API as search', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ q: 'Stagg' }));
-    render(<EquipmentCatalogPage />);
-
-    await waitFor(() =>
-      expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('search=Stagg')),
-    );
+  it('renders the title, subtitle and SEO title in English', async () => {
+    renderPage();
     expect(
-      (screen.getByPlaceholderText('Search by brand, model, or name...') as HTMLInputElement).value,
-    ).toBe('Stagg');
+      await screen.findByRole('heading', { name: t('equipment.catalog.title') }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t('equipment.catalog.subtitle'))).toBeInTheDocument();
+    expect(document.title).toBe(`${t('equipment.catalog.title')} | BrewForm`);
   });
 
-  it('commits typed text once, after the pause, replacing history and dropping legacy search and page', async () => {
-    const setSearchParams = vi.fn();
-    mockUseSearchParams.mockReturnValue([
-      new URLSearchParams({ search: 'old', page: '3' }),
-      setSearchParams,
-    ]);
-    render(<EquipmentCatalogPage />);
-    const input = screen.getByPlaceholderText('Search by brand, model, or name...');
+  it('renders the title, tabs and placeholder in Turkish', async () => {
+    renderPage('', 'tr');
+    expect(
+      await screen.findByRole('heading', { name: t('equipment.catalog.title', 'tr') }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t('common.all', 'tr') })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t('equipment.category.grinder', 'tr') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(t('equipment.catalog.searchPlaceholder', 'tr')),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the equipment cards from the loader', async () => {
+    mockCatalog.mockResolvedValue(
+      page([
+        makeEquipment(),
+        makeEquipment({ id: 'eq-2', name: 'Acaia', brand: 'Acaia', model: 'Lunar' }),
+      ]),
+    );
+    renderPage();
+    expect(await screen.findByText('Stagg EKG')).toBeInTheDocument();
+    expect(screen.getByText('Lunar')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Stagg EKG/ })).toHaveAttribute(
+      'href',
+      '/equipment/eq-1',
+    );
+  });
+
+  it('shows the empty state when the catalogue page is empty', async () => {
+    renderPage();
+    expect(await screen.findByText(t('equipment.catalog.empty'))).toBeInTheDocument();
+  });
+
+  it('renders the route error state (not the empty state) when the load fails', async () => {
+    mockCatalog.mockRejectedValue(new Error('Network error'));
+    renderPage();
+    expect(await screen.findByText(t('error.route.loadFailed'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t('common.retry') })).toBeInTheDocument();
+    expect(screen.queryByText(t('equipment.catalog.empty'))).not.toBeInTheDocument();
+  });
+
+  it('shows active filters and clears them', async () => {
+    const { router } = renderPage('?type=kettle');
+    expect(await screen.findByText(t('common.activeFilters'))).toBeInTheDocument();
+
+    await userEvent.click(screen.getAllByRole('button', { name: t('common.clearAll') })[0]);
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+  });
+
+  it('a category tab pushes the type param and reloads through the loader', async () => {
+    const { router } = renderPage('?page=2');
+    await screen.findByRole('heading', { name: t('equipment.catalog.title') });
+
+    await userEvent.click(screen.getByRole('button', { name: t('equipment.category.grinder') }));
+
+    await waitFor(() => expect(router.state.location.search).toBe('?type=grinder'));
+    await waitFor(() =>
+      expect(mockCatalog).toHaveBeenLastCalledWith(
+        { page: '1', perPage: '12', type: 'grinder' },
+        { signal: expect.any(AbortSignal) },
+      ),
+    );
+  });
+
+  it('shows pagination and Next keeps the filters', async () => {
+    mockCatalog.mockResolvedValue(page([makeEquipment()], 25));
+    const { router } = renderPage('?type=kettle');
+    expect(await screen.findByText(/Page 1 of 3/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: t('common.next') }));
+
+    await waitFor(() => expect(router.state.location.search).toBe('?type=kettle&page=2'));
+  });
+
+  it('reads q into the search box and commits typing once, replacing history', async () => {
+    const { router } = renderPage('?search=old&page=3');
+    const input = await screen.findByPlaceholderText(t('equipment.catalog.searchPlaceholder'));
+    expect((input as HTMLInputElement).value).toBe('old');
 
     fireEvent.change(input, { target: { value: 'o' } });
     fireEvent.change(input, { target: { value: 'Stagg' } });
-    expect(setSearchParams).not.toHaveBeenCalled();
 
-    await waitFor(() => expect(setSearchParams).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    const [updater, options] = setSearchParams.mock.calls[0];
-    expect(options).toEqual({ replace: true, preventScrollReset: true });
-    expect(updater(new URLSearchParams({ search: 'old', page: '3' })).toString()).toBe('q=Stagg');
+    await waitFor(() => expect(router.state.location.search).toBe('?q=Stagg'), {
+      timeout: 2000,
+    });
+    expect(router.state.historyAction).toBe('REPLACE');
   });
 });

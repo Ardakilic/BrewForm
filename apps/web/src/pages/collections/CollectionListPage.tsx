@@ -1,57 +1,24 @@
-import type { CollectionListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
 import { Link, useLoaderData } from 'react-router';
-import { collectionApi } from '../../api/index.ts';
 import { CollectionCard } from '../../components/collections/CollectionCard.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useListUrlState } from '../../hooks/useListUrlState.ts';
-import { requireAuth } from '../../routes/auth-guards.ts';
 import { parsePageOnlyParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './CollectionListPage.data.ts';
 
 const log = createLogger('CollectionListPage');
 
-/** Collections per page on `/collections`. */
-const PER_PAGE = 20;
-
-/** Loader payload for {@link CollectionListPage}. */
-export interface CollectionListLoaderData {
-  collectionsResponse: PaginatedResponse<CollectionListItemOutput>;
-}
-
-/**
- * React Router data loader for `/collections` — fetches the authenticated
- * user's collections (all visibilities) for the requested `?page`. Wrapped in
- * `requireAuth`, so a final 401 redirects to `/login?next=…`.
- */
-export const loader = requireAuth(
-  async ({ request }: { request: Request }): Promise<CollectionListLoaderData> => {
-    const { page } = parsePageOnlyParams(new URL(request.url).searchParams);
-    log.debug({ page }, 'CollectionListPage loader started');
-    try {
-      const collectionsResponse = await collectionApi.list({
-        page: String(page),
-        perPage: String(PER_PAGE),
-      });
-      log.debug({ page }, 'CollectionListPage loader completed');
-      return { collectionsResponse };
-    } catch (err) {
-      log.error({ err, page }, 'CollectionListPage loader failed');
-      throw err;
-    }
-  },
-);
-
 /**
  * Page component for `/collections` — displays a grid of the user's
- * collections with a "Create Collection" button and URL pagination
- * (`?page`, omitted for page 1).
+ * collections (from the `/collections` route loader in `CollectionListPage.data.ts`) with a
+ * "Create Collection" button and URL pagination (`?page`, omitted for page 1).
  */
 export function CollectionListPage() {
-  const { collectionsResponse } = useLoaderData() as CollectionListLoaderData;
+  const { collectionsResponse } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
   const { setPage } = useListUrlState(parsePageOnlyParams);
   const { page, totalPages } = collectionsResponse.meta.pagination;

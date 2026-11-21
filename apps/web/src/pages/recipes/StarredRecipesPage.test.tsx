@@ -104,7 +104,8 @@ function makeEmptyStarredResponse(): PaginatedResponse<RecipeListItemOutput> {
 }
 
 import { ApiError } from '../../api/errors.ts';
-import { loader, StarredRecipesPage } from './StarredRecipesPage.tsx';
+import { loader } from './StarredRecipesPage.data.ts';
+import { StarredRecipesPage } from './StarredRecipesPage.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -301,6 +302,7 @@ describe('StarredRecipesPage', () => {
 
     expect(mockRecipeApiStarred).toHaveBeenCalledWith(
       expect.objectContaining({ brewMethod: 'espresso_machine' }),
+      { signal: expect.any(AbortSignal) },
     );
   });
 
@@ -340,5 +342,23 @@ describe('StarredRecipesPage loader — auth guard', () => {
     expect((thrown as Response).headers.get('Location')).toBe(
       '/login?next=%2Frecipes%2Fstarred%3FsortBy%3Drating',
     );
+  });
+});
+
+describe('StarredRecipesPage loader — request.signal', () => {
+  it('forwards request.signal to the starred list and both cached lookups', async () => {
+    mockRecipeApiStarred.mockResolvedValue(makeEmptyStarredResponse());
+    mockGetEquipmentCached.mockResolvedValue([]);
+    mockGetTasteNotesCached.mockResolvedValue([]);
+    const controller = new AbortController();
+
+    await loader({
+      request: new Request('http://localhost/recipes/starred', { signal: controller.signal }),
+    });
+
+    const signalOpts = { signal: expect.any(AbortSignal) };
+    expect(mockRecipeApiStarred).toHaveBeenCalledWith(expect.any(Object), signalOpts);
+    expect(mockGetEquipmentCached).toHaveBeenCalledWith(signalOpts);
+    expect(mockGetTasteNotesCached).toHaveBeenCalledWith(signalOpts);
   });
 });

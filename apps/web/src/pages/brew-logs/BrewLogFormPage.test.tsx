@@ -33,7 +33,8 @@ import { ApiError } from '../../api/errors.ts';
 import { brewLogApi, recipeApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { renderWithAppProviders } from '../../test-utils/render.tsx';
-import { BrewLogFormPage, loader } from './BrewLogFormPage.tsx';
+import { action, loader } from './BrewLogFormPage.data.ts';
+import { BrewLogFormPage } from './BrewLogFormPage.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockCreate = vi.mocked(brewLogApi.create);
@@ -104,20 +105,28 @@ const sampleLog: BrewLogOutput = {
 
 const HydrateFallback = () => null;
 
+/** Renders the create route (real loader and action) next to a stub journal page. */
 function renderCreatePage(initialEntry = '/brew-logs/new?recipeId=r1&recipeVersionId=v2') {
   return renderWithAppProviders(
     [
-      { path: '/brew-logs/new', element: <BrewLogFormPage />, loader, HydrateFallback },
+      { path: '/brew-logs/new', element: <BrewLogFormPage />, loader, action, HydrateFallback },
       { path: '/brew-logs', element: <div>journal page</div> },
     ],
     { initialEntries: [initialEntry], auth: 'user' },
   );
 }
 
+/** Renders the edit route for log `bl1` (real loader and action) next to a stub journal page. */
 function renderEditPage() {
   return renderWithAppProviders(
     [
-      { path: '/brew-logs/:id/edit', element: <BrewLogFormPage />, loader, HydrateFallback },
+      {
+        path: '/brew-logs/:id/edit',
+        element: <BrewLogFormPage />,
+        loader,
+        action,
+        HydrateFallback,
+      },
       { path: '/brew-logs', element: <div>journal page</div> },
     ],
     { initialEntries: ['/brew-logs/bl1/edit'], auth: 'user' },
@@ -150,7 +159,7 @@ describe('BrewLogFormPage — loader', () => {
       request: new Request('http://localhost/brew-logs/new?recipeId=r1'),
     });
 
-    expect(mockRecipeGet).toHaveBeenCalledWith('r1');
+    expect(mockRecipeGet).toHaveBeenCalledWith('r1', { signal: expect.any(AbortSignal) });
   });
 
   it('fetches the log in edit mode', async () => {
@@ -159,7 +168,7 @@ describe('BrewLogFormPage — loader', () => {
       request: new Request('http://localhost/brew-logs/bl1/edit'),
     });
 
-    expect(mockGetLog).toHaveBeenCalledWith('bl1');
+    expect(mockGetLog).toHaveBeenCalledWith('bl1', { signal: expect.any(AbortSignal) });
     expect(data).toEqual({ mode: 'edit', logId: 'bl1', editLog: sampleLog });
     expect(mockRecipeGet).not.toHaveBeenCalled();
   });
@@ -230,12 +239,30 @@ describe('BrewLogFormPage — create mode', () => {
     });
 
     expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(mockCreate.mock.calls[0][1]).toEqual({ signal: expect.any(AbortSignal) });
     const payload = mockCreate.mock.calls[0][0];
     expect(payload.recipeId).toBe('r1');
     expect(payload.recipeVersionId).toBe('v2');
     expect(payload.doseActual).toBe(18);
     expect(payload.yieldActual).toBe(36);
     expect(payload.notes).toBe('Great shot');
+  });
+
+  it('shows an error toast and keeps the typed values when the create action fails', async () => {
+    mockCreate.mockRejectedValue(new ApiError('SERVER_ERROR', 'boom', undefined, 500));
+    renderCreatePage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Log Brew' })).toBeInTheDocument();
+    });
+    await user.type(screen.getByLabelText('Notes'), 'Great shot');
+    await user.click(screen.getByRole('button', { name: 'Log Brew' }));
+
+    expect(await screen.findByText('Failed to log brew.')).toBeInTheDocument();
+    expect(screen.queryByText('journal page')).not.toBeInTheDocument();
+    expect((screen.getByLabelText('Notes') as HTMLTextAreaElement).value).toBe('Great shot');
+    expect(mockRecipeGet).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -279,6 +306,20 @@ describe('BrewLogFormPage — edit mode', () => {
     expect(patch.brewedAt).toBeTypeOf('string');
   });
 
+  it('shows an error toast and stays on the page when the update action fails', async () => {
+    mockUpdate.mockRejectedValue(new Error('network down'));
+    renderEditPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Update' })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('button', { name: 'Update' }));
+
+    expect(await screen.findByText('Failed to update brew log.')).toBeInTheDocument();
+    expect(screen.queryByText('journal page')).not.toBeInTheDocument();
+  });
+
   it('redirects to /brew-logs when the log fetch fails with 404', async () => {
     mockGetLog.mockRejectedValue(new ApiError('NOT_FOUND', 'not found', undefined, 404));
     renderEditPage();
@@ -286,5 +327,74 @@ describe('BrewLogFormPage — edit mode', () => {
     await waitFor(() => {
       expect(screen.getByText('journal page')).toBeInTheDocument();
     });
+  });
+});
+
+describe('BrewLogFormPage — action', () => {
+  /** Runs the action with a JSON body for the given route params. */
+  function runAction(params: Record<string, string>, body: unknown) {
+    return action({
+      params,
+      request: new Request('http://localhost/brew-logs/new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+      context: undefined,
+    } as never);
+  }
+
+  const values = {
+    brewedAt: '2026-03-15T09:30:00.000Z',
+    yieldActual: 36,
+    doseActual: null,
+    notes: null,
+    personalRating: 7,
+  };
+
+  it('creates the log with request.signal and returns { ok: true }', async () => {
+    await expect(runAction({}, { values, recipeId: 'r1', recipeVersionId: 'v2' })).resolves.toEqual(
+      {
+        ok: true,
+        mode: 'create',
+      },
+    );
+    expect(mockCreate).toHaveBeenCalledWith(
+      {
+        recipeId: 'r1',
+        recipeVersionId: 'v2',
+        brewedAt: values.brewedAt,
+        yieldActual: 36,
+        doseActual: undefined,
+        notes: undefined,
+        personalRating: 7,
+      },
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it('updates log :id and returns { ok: true }', async () => {
+    await expect(runAction({ id: 'bl1' }, { values })).resolves.toEqual({ ok: true, mode: 'edit' });
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'bl1',
+      { ...values },
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it('returns { ok: false } instead of throwing when the API fails', async () => {
+    mockUpdate.mockRejectedValue(new ApiError('VALIDATION_ERROR', 'bad', undefined, 400));
+
+    await expect(runAction({ id: 'bl1' }, { values })).resolves.toMatchObject({
+      ok: false,
+      mode: 'edit',
+      error: 'bad',
+      code: 'VALIDATION_ERROR',
+    });
+  });
+
+  it('returns { ok: false } for a create without a recipe id', async () => {
+    await expect(runAction({}, { values })).resolves.toMatchObject({ ok: false, mode: 'create' });
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 });

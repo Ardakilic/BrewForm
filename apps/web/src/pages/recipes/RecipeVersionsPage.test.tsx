@@ -1,39 +1,36 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { t } from '@brewform/shared/i18n';
+import type { RecipeVersionRow } from '@brewform/shared/schemas';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/utils/logger.ts', () => ({
-  createLogger: () => ({
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     trace: vi.fn(),
     fatal: vi.fn(),
-  }),
+  },
 }));
-
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: () => ({
-    t: (k: string) => k,
-    locale: 'en',
-    setLocale: vi.fn(),
-    availableLocales: ['en', 'tr'],
-  }),
-}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('../../hooks/useUnitSystem.ts', () => ({
   useUnitSystem: () => 'metric',
 }));
 
-vi.mock('../../api/client.ts', () => ({
-  api: { get: vi.fn() },
+vi.mock('../../api/index.ts', () => ({
+  recipeApi: { versions: vi.fn() },
 }));
 
-import { api } from '../../api/client.ts';
+import { ApiError } from '../../api/errors.ts';
+import { recipeApi } from '../../api/index.ts';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { loader } from './RecipeVersionsPage.data.ts';
 import { RecipeVersionsPage } from './RecipeVersionsPage.tsx';
 
-const mockApiGet = vi.mocked(api.get);
+const mockVersionsApi = vi.mocked(recipeApi.versions);
 
 const mockVersions = [
   {
@@ -66,40 +63,86 @@ const mockVersions = [
     extractionTimeSeconds: 240,
     temperatureCelsius: 96,
   },
-];
+] as unknown as RecipeVersionRow[];
 
+/** Renders `/recipes/test-recipe/versions` through the real loader. */
 function renderPage() {
-  const router = createMemoryRouter(
-    [{ path: '/recipes/:slug/versions', element: <RecipeVersionsPage /> }],
+  return renderWithAppProviders(
+    [
+      {
+        path: '/recipes/:slug/versions',
+        loader,
+        Component: RecipeVersionsPage,
+        errorElement: <RouteErrorState />,
+      },
+    ],
     { initialEntries: ['/recipes/test-recipe/versions'] },
   );
-  render(<RouterProvider router={router} />);
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockApiGet.mockResolvedValue({
+  localStorage.clear();
+  mockVersionsApi.mockResolvedValue({
     title: 'Test Recipe',
     slug: 'test-recipe',
     versions: mockVersions,
   });
 });
 
+describe('/recipes/:slug/versions loader', () => {
+  it('loads the version history with request.signal', async () => {
+    renderPage();
+
+    expect(await screen.findByText('v3')).toBeInTheDocument();
+    expect(mockVersionsApi).toHaveBeenCalledWith('test-recipe', {
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it('renders the route error state with a retry control on HTTP 500, not common.noResults', async () => {
+    mockVersionsApi.mockRejectedValue(new ApiError('INTERNAL_ERROR', 'boom', undefined, 500));
+    renderPage();
+
+    expect(await screen.findByText(t('error.route.loadFailed'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t('common.retry') })).toBeInTheDocument();
+    expect(screen.queryByText(t('common.noResults'))).not.toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: 'test-recipe' }),
+      'RecipeVersionsPage loadData failed',
+    );
+  });
+
+  it('renders the not-found page for an unknown recipe', async () => {
+    mockVersionsApi.mockRejectedValue(new ApiError('NOT_FOUND', 'missing', undefined, 404));
+    renderPage();
+
+    expect(await screen.findByText(t('error.404'))).toBeInTheDocument();
+  });
+});
+
 describe('RecipeVersionsPage', () => {
+  it('is never indexed (derived view): sets robots noindex, nofollow', async () => {
+    renderPage();
+    await screen.findByText('v3');
+
+    await waitFor(() =>
+      expect(document.head.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe(
+        'noindex, nofollow',
+      ),
+    );
+  });
+
   it('renders version rows after loading', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('v3')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('v3')).toBeInTheDocument();
     expect(screen.getByText('v2')).toBeInTheDocument();
     expect(screen.getByText('v1')).toBeInTheDocument();
   });
 
   it('selects a version when checkbox is clicked', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('v3')).toBeInTheDocument();
-    });
+    await screen.findByText('v3');
     const checkboxes = screen.getAllByRole('checkbox');
     fireEvent.click(checkboxes[0]);
     expect(checkboxes[0]).toBeChecked();
@@ -107,9 +150,7 @@ describe('RecipeVersionsPage', () => {
 
   it('disables third checkbox when 2 are selected', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('v3')).toBeInTheDocument();
-    });
+    await screen.findByText('v3');
     const checkboxes = screen.getAllByRole('checkbox');
     fireEvent.click(checkboxes[0]);
     fireEvent.click(checkboxes[1]);
@@ -118,41 +159,50 @@ describe('RecipeVersionsPage', () => {
 
   it('shows compare link only when exactly 2 selected', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('v3')).toBeInTheDocument();
-    });
-    expect(screen.queryByText('versionDiff.compareSelected')).not.toBeInTheDocument();
+    await screen.findByText('v3');
+    const compare = t('versionDiff.compareSelected');
+    expect(screen.queryByText(compare)).not.toBeInTheDocument();
     const checkboxes = screen.getAllByRole('checkbox');
     fireEvent.click(checkboxes[0]);
-    expect(screen.queryByText('versionDiff.compareSelected')).not.toBeInTheDocument();
+    expect(screen.queryByText(compare)).not.toBeInTheDocument();
     fireEvent.click(checkboxes[1]);
-    expect(screen.getByText('versionDiff.compareSelected')).toBeInTheDocument();
+    expect(screen.getByText(compare)).toBeInTheDocument();
   });
 
   it('compare link points to correct diff URL', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('v3')).toBeInTheDocument();
-    });
+    await screen.findByText('v3');
     const checkboxes = screen.getAllByRole('checkbox');
     fireEvent.click(checkboxes[0]);
     fireEvent.click(checkboxes[1]);
-    const link = screen.getByText('versionDiff.compareSelected').closest('a');
+    const link = screen.getByText(t('versionDiff.compareSelected')).closest('a');
     expect(link).toHaveAttribute('href', '/recipes/test-recipe/versions/diff?v1=v1-id&v2=v2-id');
   });
 
   it('formats extraction times compactly (150s → 2m 30s, 43200s → 12h)', async () => {
-    mockApiGet.mockResolvedValue({
+    mockVersionsApi.mockResolvedValue({
       title: 'Test Recipe',
       slug: 'test-recipe',
       versions: [{ ...mockVersions[0], extractionTimeSeconds: 43200 }, ...mockVersions.slice(1)],
     });
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('12h')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('12h')).toBeInTheDocument();
     expect(screen.getByText('2m 20s')).toBeInTheDocument();
     expect(screen.getByText('4m')).toBeInTheDocument();
     expect(screen.queryByText('43200s')).not.toBeInTheDocument();
+  });
+
+  it('logs mount and unmount', async () => {
+    const { unmount } = renderPage();
+    await screen.findByText('v3');
+    // The mount effect runs after the commit that renders the loader data.
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeVersionsPage mounted'),
+    );
+
+    unmount();
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeVersionsPage unmounted'),
+    );
   });
 });

@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
 import { commentApi } from '../api/index.ts';
+import { withDataLog } from './data-logging.ts';
 
 const logger = createLogger('comments');
 
@@ -17,7 +18,9 @@ const logger = createLogger('comments');
  * `result.meta.pagination` without a second fetch.
  *
  * Registered on the same route object as `createCommentAction` — React
- * Router dispatches GET to this loader and POST to the action.
+ * Router dispatches GET to this loader and POST to the action. The request
+ * carries `request.signal`, so a superseded "Load More" aborts it; entry,
+ * exit and failure are logged with the ids only.
  *
  * @throws {Response} 400 with body `'Missing recipe id'` when `params.recipeId`
  *   is not a non-empty string.
@@ -29,9 +32,11 @@ export const listCommentsLoader = async ({ params, request }: LoaderFunctionArgs
   }
   const url = new URL(request.url);
   const pageParam = url.searchParams.get('page');
-  const page = pageParam ? parseInt(pageParam, 10) : 1;
-  logger.debug({ recipeId, page }, 'listCommentsLoader started');
-  return commentApi.list(recipeId, isNaN(page) ? 1 : page);
+  const parsed = pageParam ? parseInt(pageParam, 10) : 1;
+  const page = Number.isNaN(parsed) ? 1 : parsed;
+  return withDataLog(logger, 'listCommentsLoader', { recipeId, page }, () =>
+    commentApi.list(recipeId, page, { signal: request.signal }),
+  );
 };
 
 /**

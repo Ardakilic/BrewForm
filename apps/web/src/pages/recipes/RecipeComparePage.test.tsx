@@ -1,43 +1,19 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { t } from '@brewform/shared/i18n';
+import type { RecipeDetailOutput } from '@brewform/shared/schemas';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/utils/logger.ts', () => ({
-  createLogger: () => ({
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     trace: vi.fn(),
     fatal: vi.fn(),
-  }),
+  },
 }));
-
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: () => ({
-    t: (k: string) => {
-      const map: Record<string, string> = {
-        'recipe.compareTitle': 'Tarifleri Karşılaştır',
-        'compare.notFound': 'Bir veya iki tarif bulunamadı.',
-        'common.loading': 'Yükleniyor...',
-        'recipe.brewMethod': 'Demleme Yöntemi',
-        'recipe.drinkType': 'İçecek Türü',
-        'recipe.dose': 'Doz',
-        'recipe.yield': 'Verim',
-        'recipe.time': 'Süre',
-        'recipe.temperature': 'Sıcaklık',
-        'recipe.ratio': 'Oran',
-        'recipe.rating': 'Puan',
-        'recipe.tasteNotes': 'Tat Notları',
-        'equipment.title': 'Ekipman',
-      };
-      return map[k] ?? k;
-    },
-    locale: 'tr',
-    setLocale: vi.fn(),
-    availableLocales: ['en', 'tr'],
-  }),
-}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('../../api/index.ts', () => ({
   recipeApi: {
@@ -46,11 +22,15 @@ vi.mock('../../api/index.ts', () => ({
   },
 }));
 
-import type { RecipeDetailOutput } from '@brewform/shared/schemas';
+import { ApiError } from '../../api/errors.ts';
 import { recipeApi } from '../../api/index.ts';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { action, loader } from './RecipeComparePage.data.ts';
 import { RecipeComparePage } from './RecipeComparePage.tsx';
 
 const mockRecipeApi = vi.mocked(recipeApi);
+const tr = (key: string) => t(key, 'tr');
 
 /** Minimal `RecipeDetailOutput` mock for the compare page (only the fields the
  * page reads: `id`, `slug`, `title`, `currentVersion`, `tasteNotes`,
@@ -87,20 +67,31 @@ function makeRecipe(overrides: {
   } as unknown as RecipeDetailOutput;
 }
 
+/** Renders the compare page (plus a stand-in edit page) through the real loader and action. */
 function renderPage() {
-  const router = createMemoryRouter(
+  return renderWithAppProviders(
     [
-      { path: '/recipes/compare/:slug1/:slug2', element: <RecipeComparePage /> },
+      {
+        path: '/recipes/compare/:slug1/:slug2',
+        loader,
+        action,
+        Component: RecipeComparePage,
+        errorElement: <RouteErrorState />,
+      },
       { path: '/recipes/:id/edit', element: <div>EDIT PAGE</div> },
     ],
-    { initialEntries: ['/recipes/compare/recipe-1/recipe-2'] },
+    { initialEntries: ['/recipes/compare/recipe-1/recipe-2'], auth: 'user', locale: 'tr' },
   );
-  render(<RouterProvider router={router} />);
-  return router;
+}
+
+/** Opens the merge dialog once the page has loaded. */
+async function openMerge() {
+  fireEvent.click(await screen.findByText(tr('merge.button')));
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   mockRecipeApi.get.mockImplementation((slug: string) =>
     Promise.resolve(
       slug === 'recipe-1'
@@ -116,20 +107,65 @@ beforeEach(() => {
   );
 });
 
+describe('/recipes/compare/:slug1/:slug2 loader', () => {
+  it('loads both recipes in parallel with request.signal', async () => {
+    renderPage();
+
+    expect(await screen.findByText(tr('recipe.compareTitle'))).toBeInTheDocument();
+    expect(mockRecipeApi.get).toHaveBeenCalledWith('recipe-1', {
+      signal: expect.any(AbortSignal),
+    });
+    expect(mockRecipeApi.get).toHaveBeenCalledWith('recipe-2', {
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it('renders the not-found page when a recipe does not exist', async () => {
+    mockRecipeApi.get.mockImplementation((slug: string) =>
+      slug === 'recipe-1'
+        ? Promise.resolve(makeRecipe({}))
+        : Promise.reject(new ApiError('NOT_FOUND', 'missing', undefined, 404)),
+    );
+    renderPage();
+
+    expect(await screen.findByText(tr('error.404'))).toBeInTheDocument();
+    expect(screen.queryByText(tr('merge.button'))).not.toBeInTheDocument();
+  });
+
+  it('renders the route error state (not compare.notFound) when a load fails', async () => {
+    mockRecipeApi.get.mockRejectedValue(new Error('down'));
+    renderPage();
+
+    expect(await screen.findByText(tr('error.route.loadFailed'))).toBeInTheDocument();
+    expect(screen.queryByText(tr('compare.notFound'))).not.toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ slug1: 'recipe-1', slug2: 'recipe-2' }),
+      'RecipeComparePage loadData failed',
+    );
+  });
+});
+
 describe('RecipeComparePage', () => {
   it('renders the Turkish compare title', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('Tarifleri Karşılaştır')).toBeInTheDocument();
-    });
+    expect(await screen.findByText(tr('recipe.compareTitle'))).toBeInTheDocument();
+  });
+
+  it('is never indexed (derived view): sets robots noindex, nofollow', async () => {
+    renderPage();
+    await screen.findByText(tr('recipe.compareTitle'));
+
+    await waitFor(() =>
+      expect(document.head.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe(
+        'noindex, nofollow',
+      ),
+    );
   });
 
   it('highlights differing values in the diff view', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('18g')).toBeInTheDocument();
-    });
-    const row = screen.getByText('18g').closest('.grid') as HTMLElement;
+    const differing = await screen.findByText('18g');
+    const row = differing.closest('.grid') as HTMLElement;
     expect(row.style.backgroundColor).toBe('var(--diff-highlight, rgba(255, 200, 0, 0.1))');
     const sameRow = screen.getAllByText('36ml')[0].closest('.grid') as HTMLElement;
     expect(sameRow.style.backgroundColor).toBe('transparent');
@@ -137,57 +173,7 @@ describe('RecipeComparePage', () => {
 
   it('shows the merge button when both recipes loaded', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('merge.button')).toBeInTheDocument();
-    });
-  });
-
-  it('hides the merge button when a recipe fails to load', async () => {
-    mockRecipeApi.get.mockImplementation(((slug: string) =>
-      slug === 'recipe-1'
-        ? Promise.resolve(makeRecipe({}))
-        : Promise.resolve(null)) as typeof mockRecipeApi.get);
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('Bir veya iki tarif bulunamadı.')).toBeInTheDocument();
-    });
-    expect(screen.queryByText('merge.button')).not.toBeInTheDocument();
-  });
-
-  it('merge flow calls the API and navigates to the edit page', async () => {
-    mockRecipeApi.merge.mockResolvedValue({ id: 'merged-1' } as RecipeDetailOutput);
-    const router = renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('merge.button')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByText('merge.button'));
-    fireEvent.click(screen.getAllByRole('radio')[0]);
-    fireEvent.click(screen.getByText('merge.create'));
-    await waitFor(() => {
-      expect(mockRecipeApi.merge).toHaveBeenCalledWith({
-        recipeVersionId1: 'ver-1',
-        recipeVersionId2: 'ver-2',
-        title: 'Recipe One + Recipe Two',
-        selections: { brewMethod: 'v1' },
-      });
-    });
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/recipes/merged-1/edit');
-    });
-    expect(screen.getByText('EDIT PAGE')).toBeInTheDocument();
-  });
-
-  it('shows an error message when the merge API fails', async () => {
-    mockRecipeApi.merge.mockRejectedValue(new Error('merge failed'));
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('merge.button')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByText('merge.button'));
-    fireEvent.click(screen.getByText('merge.create'));
-    await waitFor(() => {
-      expect(screen.getByText('merge failed')).toBeInTheDocument();
-    });
+    expect(await screen.findByText(tr('merge.button'))).toBeInTheDocument();
   });
 
   it('formats the ratio rounded to one decimal and long durations compactly (tr)', async () => {
@@ -199,13 +185,53 @@ describe('RecipeComparePage', () => {
       ),
     );
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('1:2,2')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('1:2,2')).toBeInTheDocument();
     expect(screen.getByText('1:2')).toBeInTheDocument();
     expect(screen.getByText('12 sa')).toBeInTheDocument();
     expect(screen.getByText('28 sn')).toBeInTheDocument();
     expect(screen.queryByText(/2[.,]2222/)).not.toBeInTheDocument();
     expect(screen.queryByText('43200s')).not.toBeInTheDocument();
+  });
+});
+
+describe('/recipes/compare/:slug1/:slug2 merge action', () => {
+  it('merges through the action with request.signal and opens the editor', async () => {
+    mockRecipeApi.merge.mockResolvedValue({ id: 'merged-1' } as RecipeDetailOutput);
+    const { router } = renderPage();
+
+    await openMerge();
+    fireEvent.click(screen.getAllByRole('radio')[0]);
+    fireEvent.click(screen.getByText(tr('merge.create')));
+
+    await waitFor(() => {
+      expect(mockRecipeApi.merge).toHaveBeenCalledWith(
+        {
+          recipeVersionId1: 'ver-1',
+          recipeVersionId2: 'ver-2',
+          title: 'Recipe One + Recipe Two',
+          selections: { brewMethod: 'v1' },
+        },
+        { signal: expect.any(AbortSignal) },
+      );
+    });
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/recipes/merged-1/edit');
+    });
+    expect(screen.getByText('EDIT PAGE')).toBeInTheDocument();
+  });
+
+  it('shows an error message and stays on the page when the merge fails', async () => {
+    mockRecipeApi.merge.mockRejectedValue(new Error('merge failed'));
+    renderPage();
+
+    await openMerge();
+    fireEvent.click(screen.getByText(tr('merge.create')));
+
+    expect(await screen.findByText('merge failed')).toBeInTheDocument();
+    expect(screen.queryByText('EDIT PAGE')).not.toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ recipeVersionId1: 'ver-1', recipeVersionId2: 'ver-2' }),
+      'RecipeComparePage mergeRecipes failed',
+    );
   });
 });

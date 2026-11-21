@@ -1,377 +1,224 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { t } from '@brewform/shared/i18n';
+import type { RecipeDetailOutput } from '@brewform/shared/schemas';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { RecipeForkPage } from './RecipeForkPage.tsx';
 
-const mockNavigateFn = vi.fn();
-
-vi.mock('react-router', () => ({
-  useNavigate: () => mockNavigateFn,
-  useParams: vi.fn(),
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  },
 }));
-
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: vi.fn(),
-}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('../../api/index.ts', () => ({
   recipeApi: { get: vi.fn(), fork: vi.fn() },
 }));
 
-vi.mock('../../components/seo/SEOHead.tsx', () => ({
-  SEOHead: vi.fn(() => null),
-}));
-
-import type { RecipeDetailOutput } from '@brewform/shared/schemas';
-import { useParams } from 'react-router';
+import { ApiError } from '../../api/errors.ts';
 import { recipeApi } from '../../api/index.ts';
-import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { action, loader } from './RecipeForkPage.data.ts';
+import { RecipeForkPage } from './RecipeForkPage.tsx';
 
-const mockUseParams = vi.mocked(useParams);
-const mockUseTranslation = vi.mocked(useTranslation);
 const mockRecipeApi = vi.mocked(recipeApi);
-const mockSEOHead = vi.mocked(SEOHead);
 
-const enT = (key: string) => {
-  const map: Record<string, string> = {
-    'recipe.fork': 'Fork Recipe',
-    'recipe.forkDescription':
-      'Forking creates your own personal copy of this recipe that you can freely modify and build upon.',
-    'recipe.forkAriaLabel': 'Fork recipe',
-    'common.loading': 'Loading...',
-    'common.cancel': 'Cancel',
-    'recipe.fork.title': 'Fork Title',
-    'recipe.fork.ofTitle': 'Fork of {title}',
-    'recipe.fork.forking': 'Forking:',
-    'recipe.fork.create': 'Create Fork',
-    'recipe.fork.creating': 'Creating Fork...',
-    'recipe.fork.seoTitle': 'Fork: {title}',
-    'recipe.fork.loadError': 'Failed to load recipe',
-    'recipe.fork.forkError': 'Failed to fork recipe',
-  };
-  return map[key] ?? key;
-};
+const SOURCE = { id: 'recipe-99', title: 'Classic Espresso' } as RecipeDetailOutput;
+const DEFAULT_TITLE = t('recipe.fork.ofTitle').replace('{title}', 'Classic Espresso');
 
-const defaultTranslation = {
-  locale: 'en' as const,
-  setLocale: vi.fn(),
-  t: enT,
-  availableLocales: ['en', 'tr'],
-};
+/** Renders `/recipes/recipe-99/fork` (plus stand-in pages) through the real loader/action. */
+function renderPage(locale: 'en' | 'tr' = 'en') {
+  return renderWithAppProviders(
+    [
+      { path: '/', element: <div>HOME</div> },
+      {
+        path: '/recipes/:id/fork',
+        loader,
+        action,
+        Component: RecipeForkPage,
+        errorElement: <RouteErrorState />,
+      },
+      { path: '/recipes/:id/edit', element: <div>EDIT PAGE</div> },
+    ],
+    { initialEntries: ['/', '/recipes/recipe-99/fork'], auth: 'user', locale },
+  );
+}
 
-const sampleRecipe = {
-  id: 'recipe-99',
-  title: 'Classic Espresso',
-};
+/** Waits for the form, then clicks "Create Fork". */
+async function submitFork(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: t('recipe.fork.create') }));
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockUseParams.mockReturnValue({ id: 'recipe-99' });
-  mockUseTranslation.mockReturnValue(defaultTranslation);
-  mockNavigateFn.mockReset();
-  mockRecipeApi.get.mockResolvedValue(sampleRecipe as unknown as RecipeDetailOutput);
-  mockRecipeApi.fork.mockResolvedValue({ id: 'forked-42' } as unknown as RecipeDetailOutput);
+  localStorage.clear();
+  mockRecipeApi.get.mockResolvedValue(SOURCE);
+  mockRecipeApi.fork.mockResolvedValue({ id: 'forked-42' } as RecipeDetailOutput);
 });
 
-describe('RecipeForkPage — loading state', () => {
-  it('shows loading text while fetching source recipe', () => {
-    mockRecipeApi.get.mockReturnValue(new Promise(() => {}));
+describe('/recipes/:id/fork loader', () => {
+  it('loads the source recipe with request.signal', async () => {
+    renderPage();
 
-    render(<RecipeForkPage />);
-
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
-  });
-});
-
-describe('RecipeForkPage — error state', () => {
-  it('shows error message when recipeApi.get fails', async () => {
-    mockRecipeApi.get.mockRejectedValue(new Error('Not found'));
-
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Failed to load recipe')).toBeInTheDocument();
+    expect(await screen.findByText('Classic Espresso')).toBeInTheDocument();
+    expect(mockRecipeApi.get).toHaveBeenCalledWith('recipe-99', {
+      signal: expect.any(AbortSignal),
     });
+  });
+
+  it('renders the not-found page for an unknown recipe', async () => {
+    mockRecipeApi.get.mockRejectedValue(new ApiError('NOT_FOUND', 'missing', undefined, 404));
+    renderPage();
+
+    expect(await screen.findByText(t('error.404'))).toBeInTheDocument();
+    expect(mockLogger.error).not.toHaveBeenCalledWith(
+      expect.anything(),
+      'RecipeForkPage loadSourceRecipe failed',
+    );
+  });
+
+  it('renders the route error state and logs when the source recipe fails to load', async () => {
+    mockRecipeApi.get.mockRejectedValue(new Error('down'));
+    renderPage();
+
+    expect(await screen.findByText(t('error.route.loadFailed'))).toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ recipeId: 'recipe-99' }),
+      'RecipeForkPage loadSourceRecipe failed',
+    );
   });
 });
 
 describe('RecipeForkPage — loaded state', () => {
-  it('renders the fork heading via t()', async () => {
-    render(<RecipeForkPage />);
+  it('renders the heading, source title and the pre-filled fork title', async () => {
+    renderPage();
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Fork Recipe' })).toBeInTheDocument();
-    });
-  });
-
-  it('displays the source recipe title in the preview text', async () => {
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Forking:', { exact: false })).toBeInTheDocument();
-    });
+    expect(await screen.findByRole('heading', { name: t('recipe.fork') })).toBeInTheDocument();
+    expect(screen.getByText(t('recipe.fork.forking'), { exact: false })).toBeInTheDocument();
     expect(screen.getByText('Classic Espresso')).toBeInTheDocument();
+    const input = screen.getByLabelText(t('recipe.fork.title')) as HTMLInputElement;
+    expect(input.value).toBe(DEFAULT_TITLE);
+    expect(input).toHaveAttribute('maxLength', '200');
   });
 
-  it('pre-fills the fork title input with "Fork of <source title>"', async () => {
-    render(<RecipeForkPage />);
+  it('is never indexed', async () => {
+    renderPage();
+    await screen.findByText('Classic Espresso');
 
-    await waitFor(() => {
-      const input = screen.getByRole('textbox') as HTMLInputElement;
-      expect(input.value).toBe('Fork of Classic Espresso');
-    });
+    await waitFor(() =>
+      expect(document.head.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe(
+        'noindex, nofollow',
+      ),
+    );
   });
 
-  it('renders the Fork Title label', async () => {
-    render(<RecipeForkPage />);
+  it('renders the Turkish heading', async () => {
+    renderPage('tr');
 
-    await waitFor(() => {
-      expect(screen.getByLabelText('Fork Title')).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByRole('heading', { name: t('recipe.fork', 'tr') }),
+    ).toBeInTheDocument();
   });
 
-  it('input has maxLength of 200', async () => {
-    render(<RecipeForkPage />);
+  it('navigates back when Cancel is clicked', async () => {
+    const user = userEvent.setup();
+    renderPage();
 
-    await waitFor(() => {
-      const input = screen.getByRole('textbox');
-      expect(input).toHaveAttribute('maxLength', '200');
-    });
-  });
+    await user.click(await screen.findByRole('button', { name: t('common.cancel') }));
 
-  it('renders Cancel button', async () => {
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-    });
+    expect(await screen.findByText('HOME')).toBeInTheDocument();
   });
 });
 
-describe('RecipeForkPage — fork submission', () => {
-  it('calls recipeApi.fork with recipe id and trimmed title', async () => {
-    const user = userEvent.setup({ delay: null });
+describe('/recipes/:id/fork action', () => {
+  it('forks with the pre-filled title and request.signal, then opens the editor', async () => {
+    const user = userEvent.setup();
+    renderPage();
 
-    render(<RecipeForkPage />);
+    await submitFork(user);
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Create Fork' })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Create Fork' }));
-
-    await waitFor(() => {
-      expect(mockRecipeApi.fork).toHaveBeenCalledWith('recipe-99', 'Fork of Classic Espresso');
+    expect(await screen.findByText('EDIT PAGE')).toBeInTheDocument();
+    expect(mockRecipeApi.fork).toHaveBeenCalledWith('recipe-99', DEFAULT_TITLE, {
+      signal: expect.any(AbortSignal),
     });
   });
 
-  it('calls recipeApi.fork with custom title when user changes input', async () => {
-    const user = userEvent.setup({ delay: null });
+  it('sends a custom, trimmed title', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const input = await screen.findByLabelText(t('recipe.fork.title'));
 
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('textbox')).toBeInTheDocument();
-    });
-
-    const input = screen.getByRole('textbox');
     await user.clear(input);
-    await user.type(input, 'My Custom Fork');
+    await user.type(input, '  My Custom Fork  ');
+    await submitFork(user);
 
-    await user.click(screen.getByRole('button', { name: 'Create Fork' }));
-
-    await waitFor(() => {
-      expect(mockRecipeApi.fork).toHaveBeenCalledWith('recipe-99', 'My Custom Fork');
-    });
+    await waitFor(() =>
+      expect(mockRecipeApi.fork).toHaveBeenCalledWith('recipe-99', 'My Custom Fork', {
+        signal: expect.any(AbortSignal),
+      }),
+    );
   });
 
-  it('passes undefined as title when input is empty or only whitespace', async () => {
-    const user = userEvent.setup({ delay: null });
+  it('sends no title when the input is blank', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const input = await screen.findByLabelText(t('recipe.fork.title'));
 
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('textbox')).toBeInTheDocument();
-    });
-
-    const input = screen.getByRole('textbox');
     await user.clear(input);
     await user.type(input, '   ');
+    await submitFork(user);
 
-    await user.click(screen.getByRole('button', { name: 'Create Fork' }));
-
-    await waitFor(() => {
-      expect(mockRecipeApi.fork).toHaveBeenCalledWith('recipe-99', undefined);
-    });
-  });
-
-  it('navigates to edit page on successful fork', async () => {
-    const user = userEvent.setup({ delay: null });
-
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Create Fork' })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Create Fork' }));
-
-    await waitFor(() => {
-      expect(mockNavigateFn).toHaveBeenCalledWith('/recipes/forked-42/edit');
-    });
-  });
-});
-
-describe('RecipeForkPage — fork failure', () => {
-  it('shows error message when recipeApi.fork fails', async () => {
-    const user = userEvent.setup({ delay: null });
-    mockRecipeApi.fork.mockRejectedValue(new Error('RECIPE_NOT_FOUND'));
-
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Create Fork' })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Create Fork' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('RECIPE_NOT_FOUND')).toBeInTheDocument();
-    });
-  });
-
-  it('shows fallback error message for non-Error rejection', async () => {
-    const user = userEvent.setup({ delay: null });
-    mockRecipeApi.fork.mockRejectedValue('unknown error');
-
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Create Fork' })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Create Fork' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Failed to fork recipe')).toBeInTheDocument();
-    });
-  });
-});
-
-describe('RecipeForkPage — button states during fork', () => {
-  it('disables the submit button while forking', async () => {
-    const user = userEvent.setup({ delay: null });
-    mockRecipeApi.fork.mockReturnValue(new Promise(() => {}));
-
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Create Fork' })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Create Fork' }));
-
-    expect(screen.getByRole('button', { name: 'Creating Fork...' })).toBeDisabled();
-  });
-
-  it('shows "Creating Fork..." text while forking', async () => {
-    const user = userEvent.setup({ delay: null });
-    mockRecipeApi.fork.mockReturnValue(new Promise(() => {}));
-
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Create Fork' })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Create Fork' }));
-
-    expect(screen.getByRole('button', { name: 'Creating Fork...' })).toBeInTheDocument();
-  });
-});
-
-describe('RecipeForkPage — Cancel button', () => {
-  it('navigates back when Cancel is clicked', async () => {
-    const user = userEvent.setup({ delay: null });
-
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
-
-    expect(mockNavigateFn).toHaveBeenCalledWith(-1);
-  });
-});
-
-describe('RecipeForkPage — SEO', () => {
-  it('passes noIndex to SEOHead', async () => {
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Classic Espresso')).toBeInTheDocument();
-    });
-
-    const calls = mockSEOHead.mock.calls;
-    // SEOHead is rendered in the JSX on every render but mock is cleared each test
-    // We just verify at least one call includes noIndex
-    const callsWithNoIndex = calls.filter(
-      (call) => call[0] && (call[0] as { noIndex?: boolean }).noIndex === true,
+    await waitFor(() =>
+      expect(mockRecipeApi.fork).toHaveBeenCalledWith('recipe-99', undefined, {
+        signal: expect.any(AbortSignal),
+      }),
     );
-    expect(callsWithNoIndex.length).toBeGreaterThan(0);
   });
-});
 
-describe('RecipeForkPage — i18n', () => {
-  it('renders heading in Turkish when locale is tr', async () => {
-    const trT = (key: string) => {
-      const map: Record<string, string> = {
-        'recipe.fork': 'Tarifi Çatalla',
-      };
-      return map[key] ?? key;
-    };
+  it('disables the button and shows the pending label while forking', async () => {
+    mockRecipeApi.fork.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    renderPage();
 
-    mockUseTranslation.mockReturnValue({
-      ...defaultTranslation,
-      locale: 'tr',
-      t: trT,
-    });
+    await submitFork(user);
 
-    render(<RecipeForkPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Tarifi Çatalla' })).toBeInTheDocument();
-    });
+    expect(await screen.findByRole('button', { name: t('recipe.fork.creating') })).toBeDisabled();
   });
-});
 
-describe('RecipeForkPage — missing id param', () => {
-  it('shows loading when id param is missing (never loads)', () => {
-    mockUseParams.mockReturnValue({ id: undefined });
+  it('shows the API error in a themed alert and stays on the page', async () => {
+    mockRecipeApi.fork.mockRejectedValue(
+      new ApiError('NOT_FOUND', 'RECIPE_NOT_FOUND', undefined, 404),
+    );
+    const user = userEvent.setup();
+    renderPage();
 
-    render(<RecipeForkPage />);
+    await submitFork(user);
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
-    expect(mockRecipeApi.get).not.toHaveBeenCalled();
+    const alert = (await screen.findByText('RECIPE_NOT_FOUND')).closest(
+      '[role="alert"]',
+    ) as HTMLElement | null;
+    expect(alert).toBeInTheDocument();
+    expect(alert?.style.backgroundColor).toBe('var(--error-bg)');
+    expect(screen.queryByText('EDIT PAGE')).toBeNull();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ recipeId: 'recipe-99' }),
+      'RecipeForkPage forkRecipe failed',
+    );
   });
-});
 
-describe('RecipeForkPage — title error container', () => {
-  it('error banner is a themed role=alert ErrorState', async () => {
-    mockRecipeApi.get.mockRejectedValue(new Error('Not found'));
+  it('falls back to the localised error for a non-Error rejection', async () => {
+    mockRecipeApi.fork.mockRejectedValue('unknown error');
+    const user = userEvent.setup();
+    renderPage();
 
-    render(<RecipeForkPage />);
+    await submitFork(user);
 
-    await waitFor(() => {
-      const errorDiv = screen
-        .getByText('Failed to load recipe')
-        .closest('[role="alert"]') as HTMLElement | null;
-      expect(errorDiv).toBeInTheDocument();
-      expect(errorDiv!.style.backgroundColor).toBe('var(--error-bg)');
-      expect(errorDiv!.style.color).toBe('var(--error)');
-    });
+    expect(await screen.findByText(t('recipe.fork.forkError'))).toBeInTheDocument();
   });
 });

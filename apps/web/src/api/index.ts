@@ -267,6 +267,15 @@ export const coffeeVarietyApi = {
     api.get<RecipeWithVersionsOutput[]>(`/coffee-varieties/${id}/recipes${toQuery(params)}`, opts),
 };
 
+/**
+ * QR-code API client — the recipe share QR code as SVG text (`GET /qrcode/recipe/<slug>.svg`,
+ * read through `api.getText`, so the runtime `VITE_API_URL` base and session refresh apply).
+ */
+export const qrcodeApi = {
+  recipeSvg: (slug: string, opts?: RequestOptions) =>
+    api.getText(`/qrcode/recipe/${encodeURIComponent(slug)}.svg`, opts),
+};
+
 /** Badge API client — the badge catalogue. */
 export const badgeApi = {
   list: (opts?: RequestOptions) => api.get<BadgeOutput[]>('/badges', opts),

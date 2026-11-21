@@ -1,22 +1,38 @@
+import type { TasteNoteOutput } from '@brewform/shared/schemas';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 
+import { tasteNotesLoader } from '../../routes/resources/taste-notes.ts';
 import { TasteAutocomplete } from './TasteAutocomplete.tsx';
 
-// ── Mock API ───────────────────────────────────────────────────────────────
+// ── Mock the static cache behind the resources/taste-notes route ───────────
 
-vi.mock('../../api/index.ts', () => ({
-  api: { get: vi.fn() },
+vi.mock('../../api/static-cache.ts', () => ({
+  getTasteNotesCached: vi.fn(),
 }));
 
-import { api } from '../../api/index.ts';
+import { getTasteNotesCached } from '../../api/static-cache.ts';
 
-const mockApiGet = vi.mocked(api.get);
+const mockGetTasteNotes = vi.mocked(getTasteNotesCached);
+
+/** Renders `ui` with the real `resources/taste-notes` resource route registered. */
+function renderWithRouter(ui: ReactElement) {
+  const router = createMemoryRouter(
+    [
+      { path: '/', element: ui },
+      { path: '/resources/taste-notes', loader: tasteNotesLoader },
+    ],
+    { initialEntries: ['/'] },
+  );
+  return render(<RouterProvider router={router} />);
+}
 
 // ── Taste note fixtures ────────────────────────────────────────────────────
 
@@ -35,7 +51,7 @@ function setup(props: Partial<React.ComponentProps<typeof TasteAutocomplete>> = 
   const onSelectionChange = vi.fn();
   const onIntensitiesChange = vi.fn();
 
-  const utils = render(
+  const utils = renderWithRouter(
     <TasteAutocomplete
       selectedIds={[]}
       onSelectionChange={onSelectionChange}
@@ -51,8 +67,8 @@ function setup(props: Partial<React.ComponentProps<typeof TasteAutocomplete>> = 
 
 describe('TasteAutocomplete', () => {
   beforeEach(() => {
-    mockApiGet.mockReset();
-    mockApiGet.mockResolvedValue(tasteNotes);
+    mockGetTasteNotes.mockReset();
+    mockGetTasteNotes.mockResolvedValue(tasteNotes as TasteNoteOutput[]);
   });
 
   it('shows all notes grouped by category on focus', async () => {
@@ -132,7 +148,7 @@ describe('TasteAutocomplete', () => {
 
     // Clicking a category should not trigger selection
     const onSelectionChange = vi.fn();
-    render(<TasteAutocomplete selectedIds={[]} onSelectionChange={onSelectionChange} />);
+    renderWithRouter(<TasteAutocomplete selectedIds={[]} onSelectionChange={onSelectionChange} />);
 
     const input2 = screen.getAllByPlaceholderText('Search SCAA taste notes...')[1];
     await user.click(input2);
@@ -248,7 +264,7 @@ describe('TasteAutocomplete', () => {
   });
 
   it('shows loading state when taste notes have not loaded yet', async () => {
-    mockApiGet.mockImplementation(() => new Promise(() => {})); // never resolves
+    mockGetTasteNotes.mockImplementation(() => new Promise(() => {})); // never resolves
     setup();
 
     const input = screen.getByPlaceholderText('Search SCAA taste notes...');
@@ -257,6 +273,25 @@ describe('TasteAutocomplete', () => {
     await waitFor(() => {
       expect(screen.getByText('Loading taste notes...')).toBeInTheDocument();
     });
+  });
+
+  it('loads the notes once through the resource route, forwarding the request signal', async () => {
+    setup();
+
+    await waitFor(() => {
+      expect(mockGetTasteNotes).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
+    });
+    expect(mockGetTasteNotes).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays in the loading state when the lookup fails', async () => {
+    mockGetTasteNotes.mockRejectedValue(new Error('down'));
+    setup();
+
+    fireEvent.focus(screen.getByPlaceholderText('Search SCAA taste notes...'));
+
+    await waitFor(() => expect(mockGetTasteNotes).toHaveBeenCalled());
+    expect(screen.getByText('Loading taste notes...')).toBeInTheDocument();
   });
 
   it('toggles a note on click', async () => {

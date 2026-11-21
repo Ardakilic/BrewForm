@@ -1,9 +1,10 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { createElement, type ReactNode } from 'react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { loader, RecipeDetailPage } from './RecipeDetailPage.tsx';
+import { loader } from './RecipeDetailPage.data.ts';
+import { RecipeDetailPage } from './RecipeDetailPage.tsx';
 
 // ── Partial mock of react-router: override only useNavigation ─────────────
 
@@ -54,8 +55,24 @@ vi.mock('../../hooks/useUnitSystem.ts', () => ({
 
 // ── UI component mocks ────────────────────────────────────────────────────
 
-vi.mock('../../components/seo/SEOHead.tsx', () => ({ SEOHead: vi.fn(() => null) }));
-vi.mock('../../components/seo/JsonLd.tsx', () => ({ RecipeJsonLd: () => null }));
+/** When `real` is true, the SEO head and JSON-LD mocks render the real components. */
+const { seoMode } = vi.hoisted(() => ({ seoMode: { real: false } }));
+
+vi.mock('../../components/seo/SEOHead.tsx', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../components/seo/SEOHead.tsx')>();
+  return {
+    SEOHead: vi.fn((props: Parameters<typeof actual.SEOHead>[0]) =>
+      seoMode.real ? createElement(actual.SEOHead, props) : null,
+    ),
+  };
+});
+vi.mock('../../components/seo/JsonLd.tsx', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../components/seo/JsonLd.tsx')>();
+  return {
+    RecipeJsonLd: (props: Parameters<typeof actual.RecipeJsonLd>[0]) =>
+      seoMode.real ? createElement(actual.RecipeJsonLd, props) : null,
+  };
+});
 vi.mock('../../components/recipe/LikeButton.tsx', () => ({ LikeButton: () => null }));
 vi.mock('../../components/recipe/FavouriteButton.tsx', () => ({ FavouriteButton: () => null }));
 vi.mock('../../components/recipe/CommentSection.tsx', () => ({ CommentSection: () => null }));
@@ -116,6 +133,7 @@ import type {
   RecipeCollectionsOutput,
   RecipeDetailOutput,
 } from '@brewform/shared/schemas';
+import { ApiError } from '../../api/errors.ts';
 import { collectionApi, commentApi, recipeApi } from '../../api/index.ts';
 import { getTasteNotesCached } from '../../api/static-cache.ts';
 import { StarRating } from '../../components/recipe/StarRating.tsx';
@@ -264,6 +282,10 @@ function renderDetailPage(slug = 'my-espresso', opts: RenderOpts = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  seoMode.real = false;
+  for (const el of document.head.querySelectorAll('meta[name="robots"], link[rel="canonical"]')) {
+    el.remove();
+  }
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockUseAuth.mockReturnValue(guestAuth as ReturnType<typeof useAuth>);
   mockRecipeApiGet.mockResolvedValue(sampleRecipe);
@@ -906,5 +928,121 @@ describe('RecipeDetailPage — rating form (wave-6 t6, task 19.17)', () => {
     const readOnly = mockStarRating.mock.calls.map(([props]) => props).filter((p) => !p.onRate);
     expect(readOnly.length).toBeGreaterThan(0);
     for (const props of readOnly) expect(props.interactive).toBe(false);
+  });
+});
+
+// ── QR landing and head rules (wave-6 t3/t5, tasks 15.11-15.12) ─────────────
+
+/** Runs the detail loader for `url` and returns its result or what it threw. */
+function runLoader(url: string, slug = 'my-espresso') {
+  return Promise.resolve()
+    .then(() =>
+      loader({
+        params: { slug },
+        request: new Request(`http://localhost${url}`),
+        context: undefined,
+      } as never),
+    )
+    .catch((err: unknown) => err);
+}
+
+const notFoundError = () => new ApiError('NOT_FOUND', 'Recipe not found', undefined, 404);
+
+describe('RecipeDetailPage loader — QR landing (15.11 a-c)', () => {
+  it('(a) returns data for an unlisted recipe opened with ?from=qr instead of redirecting', async () => {
+    mockRecipeApiGet.mockResolvedValue({ ...sampleRecipe, visibility: 'unlisted' });
+
+    const result = await runLoader('/recipes/my-espresso?from=qr');
+
+    expect(result).not.toBeInstanceOf(Response);
+    expect((result as { recipe: RecipeDetailOutput }).recipe.visibility).toBe('unlisted');
+  });
+
+  it('(b) redirects ?from=qr to /recipes/unavailable when the recipe 404s', async () => {
+    mockRecipeApiGet.mockRejectedValue(notFoundError());
+
+    const result = await runLoader('/recipes/my-espresso?from=qr');
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(302);
+    expect((result as Response).headers.get('Location')).toBe('/recipes/unavailable');
+  });
+
+  it('(c) throws the 404 Response for a missing recipe without from=qr', async () => {
+    mockRecipeApiGet.mockRejectedValue(notFoundError());
+
+    const result = await runLoader('/recipes/my-espresso');
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(404);
+    expect((result as Response).headers.get('Location')).toBeNull();
+  });
+
+  it('forwards request.signal to every request it makes', async () => {
+    await runLoader('/recipes/my-espresso');
+
+    const signalOpts = { signal: expect.any(AbortSignal) };
+    expect(mockRecipeApiGet).toHaveBeenCalledWith('my-espresso', signalOpts);
+    expect(mockGetTasteNotesCached).toHaveBeenCalledWith(signalOpts);
+    expect(mockCommentApiList).toHaveBeenCalledWith('recipe-1', 1, signalOpts);
+    expect(mockCollectionApiListByRecipe).toHaveBeenCalledWith('recipe-1', signalOpts);
+  });
+});
+
+describe('RecipeDetailPage — head rules by visibility (15.11 d-f)', () => {
+  const ownerAuth = {
+    ...guestAuth,
+    user: {
+      id: 'author-1',
+      email: 'alice@example.com',
+      emailVerifiedAt: null,
+      username: 'alice',
+      displayName: 'Alice',
+      avatarUrl: null,
+      isAdmin: false,
+      onboardingCompleted: true,
+    },
+    isAuthenticated: true,
+  };
+
+  /** Renders the page with the real SEO head and JSON-LD and waits for the title. */
+  async function renderWithRealHead() {
+    seoMode.real = true;
+    renderDetailPage();
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+  }
+
+  const robots = () => document.head.querySelector('meta[name="robots"]')?.getAttribute('content');
+  const canonical = () => document.head.querySelector('link[rel="canonical"]');
+  const jsonLd = () => document.querySelector('script[type="application/ld+json"]');
+
+  it('(d) an unlisted recipe is noindex, has no canonical link and no JSON-LD', async () => {
+    mockRecipeApiGet.mockResolvedValue({ ...sampleRecipe, visibility: 'unlisted' });
+
+    await renderWithRealHead();
+
+    await waitFor(() => expect(robots()).toBe('noindex, nofollow'));
+    expect(canonical()).toBeNull();
+    expect(jsonLd()).toBeNull();
+  });
+
+  it('(e) a draft recipe viewed by its author is noindex, has no canonical link and no JSON-LD', async () => {
+    mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
+    mockRecipeApiGet.mockResolvedValue({ ...sampleRecipe, visibility: 'draft' });
+
+    await renderWithRealHead();
+
+    await waitFor(() => expect(robots()).toBe('noindex, nofollow'));
+    expect(canonical()).toBeNull();
+    expect(jsonLd()).toBeNull();
+  });
+
+  it('(f) a public recipe has no robots meta, a canonical link and the JSON-LD script', async () => {
+    await renderWithRealHead();
+
+    await waitFor(() => expect(canonical()).not.toBeNull());
+    expect(canonical()?.getAttribute('href')).toMatch(/\/recipes\/my-espresso$/);
+    expect(robots()).toBeUndefined();
+    expect(jsonLd()).not.toBeNull();
   });
 });

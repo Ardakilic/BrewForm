@@ -1,15 +1,7 @@
 import { EMOJI_TAGS_LIST } from '@brewform/shared/constants';
-import type {
-  CommentWithRepliesOutput,
-  PaginatedResponse,
-  RecipeCollectionsOutput,
-  RecipeDetailOutput,
-  TasteNoteOutput,
-} from '@brewform/shared/schemas';
 import { useEffect, useRef } from 'react';
 import {
   Link,
-  redirect,
   useFetcher,
   useLoaderData,
   useNavigate,
@@ -17,9 +9,6 @@ import {
   useParams,
 } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
-import { ApiError } from '../../api/errors.ts';
-import { collectionApi, commentApi, recipeApi } from '../../api/index.ts';
-import { getTasteNotesCached } from '../../api/static-cache.ts';
 import { BrewHistorySection } from '../../components/brew-log/BrewHistorySection.tsx';
 import { RecipeBrewStats } from '../../components/brew-log/RecipeBrewStats.tsx';
 import { AddToCollectionButton } from '../../components/collections/AddToCollectionButton.tsx';
@@ -43,59 +32,18 @@ import { RecipeDetailSkeleton } from '../../components/ui/Skeleton.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
+import type { loader } from './RecipeDetailPage.data.ts';
 
 const log = createLogger('RecipeDetailPage');
 
-/** Loader data for the recipe detail page — recipe, taste notes, comments, and collections. */
-export interface DetailLoaderData {
-  recipe: RecipeDetailOutput;
-  tasteNotes: TasteNoteOutput[];
-  comments: PaginatedResponse<CommentWithRepliesOutput>;
-  collections: RecipeCollectionsOutput;
-}
-
 /**
- * Fetches recipe `:slug` (404s propagate as a 404 Response), then the
- * cached taste-note list, first comments page, and containing collections
- * (D99.5/US-9) in parallel; QR visits (`?from=qr`) to non-public recipes
- * redirect to `/recipes/unavailable`.
- * Returns `{ recipe, tasteNotes, comments, collections }`.
- */
-export const loader = async ({
-  params,
-  request,
-}: {
-  params: Record<string, string | undefined>;
-  request: Request;
-}): Promise<DetailLoaderData> => {
-  const slug = params.slug;
-  if (!slug) throw new Response('Not Found', { status: 404 });
-  const fromQr = new URL(request.url).searchParams.get('from') === 'qr';
-  let recipe: RecipeDetailOutput;
-  try {
-    recipe = await recipeApi.get(slug);
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      throw new Response('Not Found', { status: 404 });
-    }
-    throw err;
-  }
-  if (fromQr && recipe.visibility !== 'public') {
-    throw redirect('/recipes/unavailable');
-  }
-  const [tasteNotes, comments, collections] = await Promise.all([
-    getTasteNotesCached(),
-    commentApi.list(recipe.id, 1),
-    // collections outage must not 500 the recipe page
-    collectionApi.listByRecipe(recipe.id).catch(() => []),
-  ]);
-  return { recipe, tasteNotes, comments, collections };
-};
-
-/**
- * Full recipe detail view: SEO/JSON-LD head, stat cards, bean, timeline,
- * equipment, tasting notes, comments, and share/QR/fork side cards, with
- * owner-only edit and rating controls.
+ * Full recipe detail view for `/recipes/:slug`, rendered from the route loader
+ * (`RecipeDetailPage.data.ts`): SEO head, stat cards, bean, timeline, equipment, tasting
+ * notes, comments, and share/QR/fork side cards, with owner-only edit and rating controls.
+ * Only a `public` recipe is indexable: it gets a canonical link and the Recipe JSON-LD.
+ * Any other visibility the viewer may open (an `unlisted` recipe reached by link or QR code,
+ * or the author's own `draft`/`private` recipe) renders `noindex, nofollow`, with no
+ * canonical link and no JSON-LD.
  */
 export function RecipeDetailPage() {
   const {
@@ -103,7 +51,7 @@ export function RecipeDetailPage() {
     tasteNotes: allTasteNotes,
     comments: initialComments,
     collections,
-  } = useLoaderData() as DetailLoaderData;
+  } = useLoaderData<typeof loader>();
   const { slug } = useParams();
   const navigate = useNavigate();
   const navigation = useNavigation();
@@ -131,6 +79,8 @@ export function RecipeDetailPage() {
   const isOwner = user?.id === recipe.authorId;
   const v = recipe.currentVersion;
   const emojiInfo = v?.emojiTag ? EMOJI_TAGS_LIST.find((e) => e.value === v.emojiTag) : null;
+  const isPublic = recipe.visibility === 'public';
+  const recipeUrl = `${globalThis.location.origin}/recipes/${recipe.slug}`;
   const tasteNotes = Array.isArray(recipe.tasteNotes) ? recipe.tasteNotes : [];
   const equipment = Array.isArray(recipe.equipment) ? recipe.equipment : [];
 
@@ -145,34 +95,37 @@ export function RecipeDetailPage() {
           }`
         }
         image={recipe.photos?.[0]?.url}
-        url={`${globalThis.location.origin}/recipes/${recipe.slug}`}
-        canonical={`${globalThis.location.origin}/recipes/${recipe.slug}`}
+        url={recipeUrl}
+        noIndex={!isPublic}
+        canonical={isPublic ? recipeUrl : undefined}
       />
-      <RecipeJsonLd
-        title={recipe.title}
-        description={
-          v?.personalNotes?.trim() ||
-          [v?.brewMethod, v?.drinkType, 'recipe'].filter(Boolean).join(' ')
-        }
-        slug={recipe.slug}
-        authorName={recipe.author?.displayName || recipe.author?.username || ''}
-        authorUsername={recipe.author?.username}
-        datePublished={recipe.createdAt}
-        image={recipe.photos?.[0]?.url}
-        extractionTimeSeconds={v?.extractionTimeSeconds}
-        extractionVolumeMl={v?.extractionVolumeMl}
-        groundWeightGrams={v?.groundWeightGrams}
-        grindSize={v?.grindSize}
-        productName={v?.productName}
-        brewMethod={v?.brewMethod}
-        drinkType={v?.drinkType}
-        preparationNotes={v?.preparationNotes}
-        temperatureCelsius={v?.temperatureCelsius}
-        tasteNoteNames={tasteNotes.map((tn) => tn.name).filter((n): n is string => Boolean(n))}
-        additionalPreparations={v?.additionalPreparations}
-        avgRating={recipe.avgRating}
-        ratingCount={recipe.ratingCount}
-      />
+      {isPublic && (
+        <RecipeJsonLd
+          title={recipe.title}
+          description={
+            v?.personalNotes?.trim() ||
+            [v?.brewMethod, v?.drinkType, 'recipe'].filter(Boolean).join(' ')
+          }
+          slug={recipe.slug}
+          authorName={recipe.author?.displayName || recipe.author?.username || ''}
+          authorUsername={recipe.author?.username}
+          datePublished={recipe.createdAt}
+          image={recipe.photos?.[0]?.url}
+          extractionTimeSeconds={v?.extractionTimeSeconds}
+          extractionVolumeMl={v?.extractionVolumeMl}
+          groundWeightGrams={v?.groundWeightGrams}
+          grindSize={v?.grindSize}
+          productName={v?.productName}
+          brewMethod={v?.brewMethod}
+          drinkType={v?.drinkType}
+          preparationNotes={v?.preparationNotes}
+          temperatureCelsius={v?.temperatureCelsius}
+          tasteNoteNames={tasteNotes.map((tn) => tn.name).filter((n): n is string => Boolean(n))}
+          additionalPreparations={v?.additionalPreparations}
+          avgRating={recipe.avgRating}
+          ratingCount={recipe.ratingCount}
+        />
+      )}
 
       {/* ── Header section ── */}
       <div

@@ -108,6 +108,12 @@ vi.mock('../../api/index.ts', () => ({
   },
 }));
 
+// The bell loads its badge through a fetcher (a data-router hook this file's react-router mock
+// does not provide); its behaviour is covered by NotificationBell.test.tsx.
+vi.mock('./NotificationBell.tsx', () => ({
+  NotificationBell: () => <span data-testid="notification-bell" />,
+}));
+
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';

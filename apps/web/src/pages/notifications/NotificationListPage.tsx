@@ -1,55 +1,34 @@
-import type { NotificationOutput, PaginatedResponse } from '@brewform/shared/schemas';
+import type { NotificationOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { useLoaderData } from 'react-router';
-import { notificationApi } from '../../api/index.ts';
+import { useFetcher, useLoaderData } from 'react-router';
 import { NotificationItem } from '../../components/layout/NotificationItem.tsx';
 import { PaginationControls } from '../../components/recipe-list/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { useListUrlState } from '../../hooks/useListUrlState.ts';
-import { requireAuth } from '../../routes/auth-guards.ts';
+import {
+  MARK_ALL_READ_PATH,
+  type markAllReadAction,
+} from '../../routes/resources/notifications.ts';
 import { parseNotificationListParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
-import { notifyNotificationsChanged } from '../../utils/notification-events.ts';
+import type { loader } from './NotificationListPage.data.ts';
 
 const log = createLogger('NotificationListPage');
 
-/** Loader payload for {@link NotificationListPage}. */
-export interface NotificationListLoaderData {
-  notificationsResponse: PaginatedResponse<NotificationOutput>;
-}
-
-/**
- * React Router data loader for `/notifications` — fetches the authenticated
- * user's notifications for the requested `?page` (newest first, paginated).
- * Wrapped in `requireAuth`, so a final 401 redirects to `/login?next=…`.
- */
-export const loader = requireAuth(
-  async ({ request }: { request: Request }): Promise<NotificationListLoaderData> => {
-    log.debug({}, 'NotificationListPage loader started');
-    const url = new URL(request.url);
-    const { page, unreadOnly } = parseNotificationListParams(url.searchParams);
-    try {
-      const notificationsResponse = await notificationApi.list(page, unreadOnly);
-      log.debug({ page, unreadOnly }, 'NotificationListPage loader completed');
-      return { notificationsResponse };
-    } catch (err) {
-      log.error({ err }, 'NotificationListPage loader failed');
-      throw err;
-    }
-  },
-);
-
 /**
  * Full-page notification list for `/notifications`: a paginated feed of the
- * user's @mention notifications with per-item mark-as-read (via
- * {@link NotificationItem}), a bulk "mark all read" action, an empty state,
- * and pagination controls. Read-state changes broadcast
- * {@link notifyNotificationsChanged} so the navbar bell badge refreshes.
+ * user's notifications (from the route loader in `NotificationListPage.data.ts`) with
+ * per-item mark-as-read (via {@link NotificationItem}), a bulk "mark all read" action
+ * submitted through a fetcher to `resources/notifications/read-all` (toast on
+ * `{ ok: false }`), an empty state, and pagination controls. The read-state actions broadcast
+ * `brewform:notifications-changed`, so the navbar bell badge refreshes.
  */
 export function NotificationListPage() {
-  const { notificationsResponse } = useLoaderData() as NotificationListLoaderData;
+  const { notificationsResponse } = useLoaderData<typeof loader>();
+  const markAllFetcher = useFetcher<typeof markAllReadAction>();
   const { t } = useTranslation();
   const {
     state: { unreadOnly },
@@ -62,6 +41,14 @@ export function NotificationListPage() {
   useEffect(() => {
     setItems(notificationsResponse.data);
   }, [notificationsResponse]);
+
+  useActionFeedback(markAllFetcher, {
+    errorKey: 'notifications.markAllReadError',
+    onSuccess: () => {
+      const readAt = new Date().toISOString();
+      setItems((prev) => prev.map((n) => (n.readAt ? n : { ...n, readAt })));
+    },
+  });
 
   useEffect(() => {
     log.debug({}, 'NotificationListPage mounted');
@@ -94,20 +81,18 @@ export function NotificationListPage() {
     setFilter('unreadOnly', next === 'unread');
   }
 
+  /** Marks one item read locally after its mark-read action succeeded. */
   function handleItemRead(id: string) {
     const readAt = new Date().toISOString();
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, readAt } : n)));
   }
 
-  async function handleMarkAllRead() {
-    try {
-      await notificationApi.markAllRead();
-      const readAt = new Date().toISOString();
-      setItems((prev) => prev.map((n) => (n.readAt ? n : { ...n, readAt })));
-      notifyNotificationsChanged();
-    } catch (err) {
-      log.error({ err }, 'markAllRead failed');
-    }
+  /** Submits the mark-all-read action (no loader revalidation; the list updates locally). */
+  function handleMarkAllRead() {
+    markAllFetcher.submit(
+      {},
+      { method: 'post', action: MARK_ALL_READ_PATH, defaultShouldRevalidate: false },
+    );
   }
 
   return (
@@ -119,7 +104,12 @@ export function NotificationListPage() {
           {t('notifications.title')}
         </h1>
         {hasUnread && (
-          <button type="button" onClick={handleMarkAllRead} className="btn-secondary text-sm">
+          <button
+            type="button"
+            onClick={handleMarkAllRead}
+            disabled={markAllFetcher.state !== 'idle'}
+            className="btn-secondary text-sm"
+          >
             {t('notifications.markAllRead')}
           </button>
         )}
