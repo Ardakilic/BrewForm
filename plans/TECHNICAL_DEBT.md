@@ -3,7 +3,7 @@
 > Status ledger for technical-debt items. Issues categorised by severity and area.
 > Last full audit: **2026-07-19** (verification audit of the 2026-07-13 state + fresh sweeps — type-safety, raw SQL/error handling, frontend duplication + consistency, dependencies, docblocks, measured coverage, architecture map; 15-agent audit. Prior audits: 2026-07-13 verification, 2026-07-04 baseline). Resolved dates come from `openspec/changes/archive/` directory names; items implemented outside the spec-driven flow have no archive entry and are marked "date unknown".
 
-**D01–D43 and D99.1–.19 are resolved.** Open since 2026-11-21: **D44** (D28 phase 2, [`D44-remove-taste-note-id-phase-2.md`](D44-remove-taste-note-id-phase-2.md)) and **D99.20–.56** (wave-6 follow-ups from the 2026-11-18 audit, [`plans/D99-debts.md`](D99-debts.md)); [`ROADMAP.md`](ROADMAP.md) is the status table. _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1. Wave 3 resolved 2026-07-06: D36, D37, D40. Wave 4 resolved 2026-07-07: D35, D42, D43, D39 Tier 2/3 — via `wave-4-independent-fillers`. Wave 5 resolved 2026-07-27: D99.1,.3,.5,.6,.7,.9,.10–.16,.19 — via `wave-5-debt-clearance`. Remaining-debt-clearance resolved 2026-07-27: D99.4,.8,.17,.18.)_
+**D01–D43 and D99.1–.19 are resolved.** Open since 2026-11-21: **D44** (D28 phase 2, [`D44-remove-taste-note-id-phase-2.md`](D44-remove-taste-note-id-phase-2.md)) and **D99.20–.62** (wave-6 follow-ups from the 2026-11-18 audit, [`plans/D99-debts.md`](D99-debts.md)); [`ROADMAP.md`](ROADMAP.md) is the status table. _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1. Wave 3 resolved 2026-07-06: D36, D37, D40. Wave 4 resolved 2026-07-07: D35, D42, D43, D39 Tier 2/3 — via `wave-4-independent-fillers`. Wave 5 resolved 2026-07-27: D99.1,.3,.5,.6,.7,.9,.10–.16,.19 — via `wave-5-debt-clearance`. Remaining-debt-clearance resolved 2026-07-27: D99.4,.8,.17,.18.)_
 
 ---
 
@@ -291,7 +291,7 @@ _(Corrected 2026-07-19: the previous table here still listed D36/D42/D39/D35/D37
 | **P3** | [D99.19](D99-debts.md) AGENTS.md middleware-order doc drift | Docs | Trivial | Wave 5 — Track 11 |
 | **P2** | [D99.21](D99-debts.md) (§3.11) `SetupUpdateSchema` `.partial()` keeps `isDefault: false` (a setup PATCH clears the default flag) — **open** | Shared/API | Low | Unscheduled (wave-6 follow-up) |
 | **P3** | [D99.20](D99-debts.md) (§3.10) Recipe merge drops taste-note intensities, `tds` and coffee variety — **open** | Both | Medium | Unscheduled (wave-6 follow-up) |
-| — | D44 and D99.22–.56 (the other wave-6 follow-ups) — **open** | All | — | [`ROADMAP.md`](ROADMAP.md) → Remaining Debt |
+| — | D44 and D99.22–.62 (the other wave-6 follow-ups) — **open** | All | — | [`ROADMAP.md`](ROADMAP.md) → Remaining Debt |
 
 **All deferred items through D99.19 resolved** (the wave-6 follow-ups D44 and D99.20+ above are open). The 2026-07-19 audit re-verified all open D99 items against code; wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19 (2026-07-27) and remaining-debt-clearance resolved D99.4,.8,.17,.18 (2026-07-27). The D99 ledger is fully closed.
 

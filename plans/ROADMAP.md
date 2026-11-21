@@ -42,7 +42,7 @@ fixed them in one pull request. After merge, the change is archived under
 ### Open items
 
 Ledgered debt D01–D43 and D99.1–.19 stays resolved (see [`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md)).
-The open items are D44 and D99.20–.56. They come from three sources: what wave 6 deferred
+The open items are D44 and D99.20–.62. They come from three sources: what wave 6 deferred
 (its `proposal.md` → Non-Goals), the audit findings it had no owner for, and follow-ups found
 while implementing it.
 
@@ -62,6 +62,8 @@ while implementing it.
 | **P2** | [D99.44](D99-debts.md) | Like/follow toggles send a new notification and email every time | Low–Medium |
 | **P2** | [D99.45](D99-debts.md) | Cron and email are not multi-instance safe (needed before F29/F30 on more than one replica) | Medium |
 | **P2** | [D99.47](D99-debts.md) | Web edge: no security headers, publicly served sourcemaps, no immutable asset caching | Low–Medium |
+| **P2** | [D99.57](D99-debts.md) | Shared recipe links never reach the API's Open Graph renderer (the edge does not proxy `/recipes/*`) | Low |
+| **P2** | [D99.59](D99-debts.md) | Reply button shown to the thread author, but the API answers 403 | Low |
 | **P3** | [D44](D44-remove-taste-note-id-phase-2.md) | Remove the deprecated `tasteNoteId` filter (D28 phase 2) once the sunset criterion is met | Low |
 | **P3** | [D99.20](D99-debts.md) | Recipe merge drops intensities, `tds` and coffee variety; it copies other users' brewer notes | Medium |
 | **P3** | [D99.23](D99-debts.md) | Author-only "My recipes" listing | Medium |
@@ -79,6 +81,9 @@ while implementing it.
 | **P3** | [D99.48](D99-debts.md) | Renovate configuration fixes (release age, JSON5) | Low |
 | **P3** | [D99.49](D99-debts.md) | Recipe GET returns `tds` `'1.4'` for a stored `1.40` | Low |
 | **P3** | [D99.50](D99-debts.md) | `/ready` reports `cache: "ok"` while Valkey is down | Low |
+| **P3** | [D99.58](D99-debts.md) | robots.txt `Sitemap:` URL falls back to the SPA on split domains without `API_UPSTREAM` | Low |
+| **P3** | [D99.60](D99-debts.md) | `grindSize` accepts 100 characters, the column holds 50 | Trivial |
+| **P3** | [D99.61](D99-debts.md) | Taste-note search uses an unescaped, case-sensitive `like` | Low |
 | **P4** | [D99.22](D99-debts.md) | "My notes" listing; an `amendedAt` marker for in-place amends | Medium |
 | **P4** | [D99.51](D99-debts.md) | Unused `recipe/model.ts#update` | Trivial |
 | **P4** | [D99.52](D99-debts.md) | Demo accounts seeded in production (accepted by the user on 2026-11-19; revisit before public sign-ups) | Low |
@@ -86,6 +91,7 @@ while implementing it.
 | **P4** | [D99.54](D99-debts.md) | Log conventions: `durationMs` on exit logs; entity-named id keys instead of a bare `id` | Low–Medium |
 | **P4** | [D99.55](D99-debts.md) | Log sampling and slow-query logging | Medium |
 | **P4** | [D99.56](D99-debts.md) | Web telemetry: navigation timing and `unhandledrejection` logging | Low |
+| **P4** | [D99.62](D99-debts.md) | `make ci` runs the web tests twice | Trivial |
 
 ---
 
@@ -165,7 +171,7 @@ the 2026-11-21 wave-6 refresh. Ship dates are the merge dates of the linked pull
   readiness probes, and one CI workflow with a gated image publish.
 - **Wave 6** (2026-11-18 audit → 2026-11-21): `wave-6-audit-remediation` fixed the
   [audit](AUDIT-2026-11-18.md) findings (see Remaining Debt → Wave 6). Deferrals, unowned
-  findings and implementation follow-ups are ledgered as D44 and D99.20–.56. The plans were
+  findings and implementation follow-ups are ledgered as D44 and D99.20–.62. The plans were
   refreshed for Node, pnpm, Vitest and sharp (F07, F16, F17, F23, F27, F29, F30). F03, F20, F25,
   F26 and F28 got F02 refresh notes, F24 was cut to immutability guards, F15 was split into
   F15a/F15b, and F31 got its frame-header note.

@@ -1,7 +1,7 @@
 # D99 — Deferred Technical Debt (Post-Feature Batch)
 
 **Severity:** Mixed (Low–High)
-**Status:** D99.1–.19 resolved 2026-07-27 (wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19; remaining-debt-clearance resolved D99.4,.8,.17,.18). **D99.20–.56 open** since 2026-11-21: deferrals and unowned findings of `wave-6-audit-remediation` (2026-11-18 audit); see [Wave-6 follow-ups](#wave-6-follow-ups-d9920) and the status table in [`ROADMAP.md`](ROADMAP.md).
+**Status:** D99.1–.19 resolved 2026-07-27 (wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19; remaining-debt-clearance resolved D99.4,.8,.17,.18). **D99.20–.62 open** since 2026-11-21: deferrals and unowned findings of `wave-6-audit-remediation` (2026-11-18 audit); see [Wave-6 follow-ups](#wave-6-follow-ups-d9920) and the status table in [`ROADMAP.md`](ROADMAP.md).
 **Relationship:** Aggregates deferred items discovered during F01-recipe-collections implementation, other recent feature work, the 2026-07-19 full audit (D99.10–D99.19) and the 2026-11-18 audit ([`AUDIT-2026-11-18.md`](AUDIT-2026-11-18.md), D99.20+). These are non-blocking polish/hardening tasks; items marked **Scheduled** are carried by the `wave-5-debt-clearance` OpenSpec change (which holds the full task-level detail — this ledger is the index), items marked **Deferred** wait for a future trigger. Individual items may be split into their own D-plan files when picked up.
 
 ---
@@ -990,3 +990,51 @@ Added 2026-11-21 by `wave-6-audit-remediation` (task 27.1). Each entry is a defe
 **Fix:** register both in `apps/web/src/main.tsx` through the web logger (`error` for rejections with the reason's name and message only, `debug` for navigation timing), and test them with jsdom events. Error tracking itself stays with D99.46.
 
 The other `TODO_logs.md` items were already done when it was deleted: every P1/P2 target has logging (`d26-expand-logging`), API error logs serialize `err` with pino's standard serializer plus `toLoggableError` for database errors, and the HTTP access log (method, path, status, duration) is part of D99.46.
+
+## D99.57 — Shared recipe links never reach the API's Open Graph renderer — Open
+
+**Found during wave 6** (group 26, docs checked against code). **Priority:** P2 · **Effort:** Low.
+
+**Evidence:** `apps/web/src/components/recipe/ShareSection.tsx` builds every share link as `${location.origin}/recipes/${slug}`, and the OG HTML for that path comes from the API's `crawlerMiddleware` (`apps/api/src/middleware/crawler.ts`). The web Caddy edge (`apps/web/Caddyfile`, snippet written by `docker-web-entrypoint.sh`) proxies only `/api/*`, `/uploads/*`, `/share/*` and the exact path `/health`, so a crawler fetching `/recipes/:slug` always gets the SPA's `index.html` without recipe OG tags. The API's `/share/:slug` page (`apps/api/src/routes/share.ts`) has the tags but nothing links to it.
+
+**Fix:** either point the share buttons at `/share/:slug` (it already redirects browsers to `/recipes/:slug`), or route crawler user agents on `/recipes/*` to the API in the edge snippet; add a test that pins the chosen URL.
+
+## D99.58 — robots.txt `Sitemap:` URL falls back to the SPA on split domains — Open
+
+**Found during wave 6** (group 26, docs checked against code). **Priority:** P3 · **Effort:** Low.
+
+**Evidence:** the `build-robots-txt` plugin in `apps/web/vite.config.ts` and the `PUBLIC_APP_URL` rewrite in `docker-web-entrypoint.sh` both write `Sitemap: <web origin>/api/v1/sitemap.xml`. On Coolify's split domains (web and API on separate hosts, `docs/deployment_coolify.md`) the web container serves static files only unless `API_UPSTREAM` is set, so that URL returns `index.html` instead of the sitemap.
+
+**Fix:** derive the `Sitemap:` line from the API origin when no same-origin proxy is configured (for example from `VITE_API_URL`), or document `API_UPSTREAM` as required for the sitemap; extend `apps/web/src/robots.test.ts` and `scripts/ci/web-entrypoint.test.sh` to cover it.
+
+## D99.59 — Reply button shown to the thread author, but the API answers 403 — Open
+
+**Found during wave 6** (group 26, docs checked against code). **Priority:** P2 · **Effort:** Low.
+
+**Evidence:** `canReplyToComment` in `apps/web/src/components/recipe/CommentSection.tsx` (`:263-269`) also returns `true` when the viewer authored the top-level comment, but `createComment` in `apps/api/src/modules/comment/service.ts` (`:72-74`) lets only the recipe author or an admin reply and throws `FORBIDDEN`, which `apps/api/src/modules/comment/index.ts` returns as 403 "Only the recipe author can reply to comments".
+
+**Fix:** decide the rule once (`docs/comments.md` and `docs/architecture.md` describe the API rule and record this mismatch), then align the other side and add a component test plus a service test for a thread author replying.
+
+## D99.60 — `grindSize` accepts 100 characters, the column holds 50 — Open
+
+**Found during wave 6** (group 26, docs checked against code). **Priority:** P3 · **Effort:** Trivial.
+
+**Evidence:** `recipeFields.grindSize` in `packages/shared/src/schemas/recipe.ts` is `z.string().max(100)`, but `recipe_version.grind_size` in `packages/db/src/schema.ts` is `varchar(50)`. A 51-100 character value passes validation and then fails in Postgres (SQLSTATE `22001`), which `apps/api/src/middleware/errorHandler.ts` maps to a generic 400 "A value is invalid for this field" instead of a field-level Zod error.
+
+**Fix:** lower the schema limit to 50 (and the web input's `maxLength`), with a schema test at 50 and 51 characters.
+
+## D99.61 — Taste-note search uses an unescaped, case-sensitive `like` — Open
+
+**Found during wave 6** (group 26, docs checked against code). **Priority:** P3 · **Effort:** Low.
+
+**Evidence:** `searchByName` in `apps/api/src/modules/taste/model.ts` filters with `like(tasteNotes.name, \`%${query}%\`)`: `%` and `_` in the query act as wildcards, and "fruity" does not match "Fruity". Recipe search already escapes its patterns with `toContainsPattern` (`apps/api/src/modules/recipe/model.ts`).
+
+**Fix:** reuse the escaping helper with a case-insensitive match (`ilike`, as the other catalog searches do), and add model tests for mixed case and a literal `%`.
+
+## D99.62 — `make ci` runs the web tests twice — Open
+
+**Found during wave 6** (group 26, docs checked against code). **Priority:** P4 · **Effort:** Trivial.
+
+**Evidence:** the `ci` target in `Makefile` runs `test-coverage` and then `test-web`, and the root `test-coverage` script (`package.json`) already ends with `pnpm --filter @brewform/web run test --coverage`; the root `ci` script repeats the same pair (`test-coverage`, then `pnpm --filter @brewform/web run test`).
+
+**Fix:** drop the second web run from both, and keep `make test-web` as the standalone target.
