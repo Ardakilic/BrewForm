@@ -853,6 +853,26 @@ describe('RecipeListPage — coffee variety typeahead (fetcher)', () => {
     });
   });
 
+  it('selecting a variety builds on the router URL, not the render-time params', async () => {
+    mockCoffeeVarietyApi.search.mockResolvedValue([GESHA]);
+    const setSearchParamsMock = vi.fn();
+    // The render-time params are empty; the router URL carries a filter and a page.
+    mockUseSearchParams.mockReturnValue([new URLSearchParams(), setSearchParamsMock] as ReturnType<
+      typeof useSearchParams
+    >);
+
+    renderRecipeListPage(['/recipes?brewMethod=v60&page=3']);
+    const input = await screen.findByPlaceholderText('Search varieties...');
+    await userEvent.type(input, 'gesha');
+    await userEvent.click(await screen.findByRole('button', { name: /Gesha/ }));
+
+    expect(setSearchParamsMock).toHaveBeenCalledTimes(1);
+    const params = setSearchParamsMock.mock.calls[0][0] as URLSearchParams;
+    expect(params.get('brewMethod')).toBe('v60');
+    expect(params.get('coffeeVarietyId')).toBe('v-gesha');
+    expect(params.get('page')).toBeNull();
+  });
+
   it('shows only the latest query results when an earlier response arrives late', async () => {
     let resolveGe: (value: (typeof GEISHA_OLD)[]) => void = () => undefined;
     mockCoffeeVarietyApi.search.mockImplementation((query: string) =>

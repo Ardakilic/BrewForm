@@ -429,9 +429,8 @@ describe('UserProfilePage — brews tab (F02)', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'common.next' }));
 
     expect(setParams).toHaveBeenCalledTimes(1);
-    // Page params are set through a functional updater applied to the current params.
-    const updater = setParams.mock.calls[0][0] as (prev: URLSearchParams) => URLSearchParams;
-    const next = updater(new URLSearchParams({ tab: 'brews' }));
+    // Page params are built on the latest URL (here the router's `?tab=brews`) and passed as a value.
+    const next = setParams.mock.calls[0][0] as URLSearchParams;
     expect(next.get('brewsPage')).toBe('2');
     expect(next.get('tab')).toBe('brews');
   });
@@ -452,10 +451,8 @@ describe('UserProfilePage — brews tab (F02)', () => {
 
     await userEvent.setup().click(await screen.findByRole('button', { name: 'common.next' }));
 
-    const updater = setParams.mock.calls[0][0] as (prev: URLSearchParams) => URLSearchParams;
-    expect(updater(new URLSearchParams({ tab: 'collections' })).toString()).toBe(
-      'tab=collections&collectionsPage=2',
-    );
+    const next = setParams.mock.calls[0][0] as URLSearchParams;
+    expect(next.toString()).toBe('tab=collections&collectionsPage=2');
   });
 
   it("hides the brews tab on another user's profile", async () => {

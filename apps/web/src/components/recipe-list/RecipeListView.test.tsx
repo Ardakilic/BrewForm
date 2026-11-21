@@ -339,14 +339,17 @@ describe('RecipeListView', () => {
       new URLSearchParams({ author: 'Alice' }),
       setSearchParams,
     ] as ReturnType<typeof useSearchParams>);
-    renderView({ recipesResponse: { data: [], meta: {} } });
+    renderView({
+      recipesResponse: { data: [], meta: {} },
+      initialEntries: ['/?author=Alice&brewMethod=v60'],
+    });
     expect(screen.getByText('Alice')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Remove Author filter' }));
     expect(setSearchParams).toHaveBeenCalledTimes(1);
-    // useListUrlState updates through a functional updater applied to the current params.
-    const updater = setSearchParams.mock.calls[0][0] as (prev: URLSearchParams) => URLSearchParams;
-    const passed = updater(new URLSearchParams({ author: 'Alice' }));
+    // useListUrlState passes the params built on the latest (router) URL as a value.
+    const passed = setSearchParams.mock.calls[0][0] as URLSearchParams;
     expect(passed.get('author')).toBeNull();
+    expect(passed.get('brewMethod')).toBe('v60');
   });
 });
 

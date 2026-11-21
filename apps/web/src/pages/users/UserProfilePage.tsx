@@ -8,6 +8,7 @@ import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { FollowButton } from '../../components/user/FollowButton.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useLatestSearchParams } from '../../hooks/useListUrlState.ts';
 import { withParams } from '../../utils/list-params.ts';
 import { createLogger } from '../../utils/logger.ts';
 import type { FollowRecord, loader } from './UserProfilePage.data.ts';
@@ -57,6 +58,7 @@ export function UserProfilePage() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const latest = useLatestSearchParams();
   const { profile, followData, collectionsData, brewsData } = useLoaderData<typeof loader>();
   // Follower-count adjustment for follows made since this profile was loaded; tied to the
   // loaded profile object, so a fresh load (which already counts them) starts from zero.
@@ -82,9 +84,12 @@ export function UserProfilePage() {
   ];
   // The brew journal is private — its tab is only valid on the viewer's own profile.
   const validTabs: readonly Tab[] = isSelf ? [...ALLOWED_TABS, 'brews'] : ALLOWED_TABS;
-  /** Sets a per-tab page param (`collectionsPage`, `brewsPage`), keeping the rest; page 1 is omitted. */
+  /**
+   * Sets a per-tab page param (`collectionsPage`, `brewsPage`), keeping the rest; page 1 is
+   * omitted. Builds on the latest URL (a same-path navigation still loading counts).
+   */
   const setPageParam = (key: string, nextPage: number) =>
-    setSearchParams((prev) => withParams(prev, { [key]: nextPage > 1 ? nextPage : null }));
+    setSearchParams(withParams(latest().params, { [key]: nextPage > 1 ? nextPage : null }));
   const rawTab = searchParams.get('tab') ?? 'recipes';
   const tab: Tab = (validTabs as readonly string[]).includes(rawTab) ? (rawTab as Tab) : 'recipes';
 

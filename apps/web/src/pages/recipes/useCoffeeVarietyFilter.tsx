@@ -4,6 +4,7 @@ import type { CoffeeVarietySearchResult } from '../../api/types.ts';
 import { Field } from '../../components/form/Field.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useDebounce } from '../../hooks/useDebounce.ts';
+import { useLatestSearchParams } from '../../hooks/useListUrlState.ts';
 import {
   coffeeVarietySearchHref,
   type coffeeVarietySearchLoader,
@@ -29,14 +30,17 @@ export interface CoffeeVarietyFilterState {
  * `resources/coffee-varieties/search` resource route with `useFetcher().load()`, so a newer
  * query cancels the previous request and a late response for an old query is discarded. The
  * selected variety's name is resolved by the `/recipes` loader (`selectedName`, from
- * `RecipeListPage.data.ts`) rather than fetched here. Returns the sidebar slot JSX plus the
- * badge value and clear callback that `RecipeListPage` forwards to `RecipeListView`.
+ * `RecipeListPage.data.ts`) rather than fetched here. Selecting and clearing build on the latest
+ * URL (`useLatestSearchParams`), so a filter chosen while a load runs is kept. Returns the sidebar
+ * slot JSX plus the badge value and clear callback that `RecipeListPage` forwards to
+ * `RecipeListView`.
  *
  * @param selectedName - The loader-resolved name of `?coffeeVarietyId`, or `null`.
  */
 export function useCoffeeVarietyFilter(selectedName: string | null): CoffeeVarietyFilterState {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const latest = useLatestSearchParams();
   const [varietySearch, setVarietySearch] = useState('');
   const [varietyDropdownOpen, setVarietyDropdownOpen] = useState(false);
   const varietyRef = useRef<HTMLDivElement>(null);
@@ -68,21 +72,26 @@ export function useCoffeeVarietyFilter(selectedName: string | null): CoffeeVarie
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  /** Removes `?coffeeVarietyId` (and `page`) from the URL and resets the search input. */
+  /**
+   * Removes `?coffeeVarietyId` (and `page`) from the latest URL and resets the search input.
+   */
   function clear(): void {
     setVarietySearch('');
     setVarietyDropdownOpen(false);
-    const params = new URLSearchParams(searchParams);
+    const params = latest().params;
     params.delete('coffeeVarietyId');
     params.delete('page');
     setSearchParams(params);
   }
 
-  /** Applies variety `v` as the `?coffeeVarietyId` filter (the loader resolves its name). */
+  /**
+   * Applies variety `v` as the `?coffeeVarietyId` filter on the latest URL (the loader resolves
+   * its name).
+   */
   function select(v: CoffeeVarietySearchResult): void {
     setVarietySearch('');
     setVarietyDropdownOpen(false);
-    const params = new URLSearchParams(searchParams);
+    const params = latest().params;
     params.set('coffeeVarietyId', v.id);
     params.delete('page');
     setSearchParams(params);

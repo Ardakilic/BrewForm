@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter, RouterProvider } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createMemoryRouter, Link, RouterProvider } from 'react-router';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readBoolean, readEnum, readPage, readText } from '../utils/list-params.ts';
 import { useDebouncedUrlText, useListUrlState } from './useListUrlState.ts';
 
@@ -33,11 +33,26 @@ function parseList(sp: URLSearchParams) {
 const DEFAULTS = { sort: 'createdAt' };
 
 let loaderCalls: ReturnType<typeof parseList>[] = [];
+/** While set, every loader waits for it (a slow load); `release` resolves it. */
+let gate: Promise<void> | null = null;
+let release: () => void = () => undefined;
+
+/** Holds every loader open until {@link release} is called. */
+function holdLoaders() {
+  gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+}
 
 /** Loader for the test list route: records what it parsed from the URL. */
 function listLoader({ request }: { request: Request }) {
   loaderCalls.push(parseList(new URL(request.url).searchParams));
-  return null;
+  return gate ? gate.then(() => null) : null;
+}
+
+/** Loader for the `/elsewhere` route: slow while {@link gate} is set. */
+function elsewhereLoader() {
+  return gate ? gate.then(() => null) : null;
 }
 
 /** A list page wired the way real pages use the hooks. */
@@ -46,12 +61,18 @@ function ListPage() {
     defaults: DEFAULTS,
   });
   const search = useDebouncedUrlText('q', { legacyKeys: ['search'] });
+  const author = useDebouncedUrlText('author');
   return (
     <div>
       <input
         aria-label="search"
         value={search.value}
         onChange={(e) => search.setValue(e.target.value)}
+      />
+      <input
+        aria-label="author"
+        value={author.value}
+        onChange={(e) => author.setValue(e.target.value)}
       />
       <select
         aria-label="category"
@@ -88,6 +109,7 @@ function ListPage() {
       <button type="button" onClick={clearAll}>
         clear
       </button>
+      <Link to="/elsewhere">go elsewhere</Link>
     </div>
   );
 }
@@ -99,7 +121,7 @@ function renderList(entry: string) {
   const router = createMemoryRouter(
     [
       { path: '/list', element: <ListPage />, loader: listLoader, HydrateFallback },
-      { path: '/elsewhere', element: <p>elsewhere</p> },
+      { path: '/elsewhere', element: <p>elsewhere</p>, loader: elsewhereLoader, HydrateFallback },
     ],
     { initialEntries: ['/elsewhere', entry], initialIndex: 1 },
   );
@@ -117,6 +139,7 @@ async function settled(router: ReturnType<typeof createMemoryRouter>) {
 
 beforeEach(() => {
   loaderCalls = [];
+  gate = null;
 });
 
 describe('useListUrlState — the URL is the source of truth', () => {
@@ -302,5 +325,164 @@ describe('useDebouncedUrlText — debounced, replacing text input', () => {
     await userEvent.type(screen.getByLabelText('search'), 's');
 
     await waitFor(() => expect(router.state.location.search).toBe('?q=geshas'), { timeout: 2000 });
+  });
+});
+
+/** The current URL's search params (compare them as a set, not as a string). */
+function currentParams(router: ReturnType<typeof createMemoryRouter>) {
+  return new URLSearchParams(router.state.location.search);
+}
+
+/** Waits (advancing the fake timers) until the router is idle. */
+async function settledFake(router: ReturnType<typeof createMemoryRouter>) {
+  await vi.waitFor(() => {
+    expect(router.state.initialized).toBe(true);
+    expect(router.state.navigation.state).toBe('idle');
+  });
+}
+
+/** Waits until a navigation is loading and the page has re-rendered with it. */
+async function loading(router: ReturnType<typeof createMemoryRouter>) {
+  await vi.waitFor(() => expect(router.state.navigation.state).toBe('loading'));
+  // Flush the re-render that carries the pending navigation.
+  await act(() => Promise.resolve());
+}
+
+describe('URL writes build on the latest URL (fake timers)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  });
+
+  afterEach(() => {
+    release();
+    vi.useRealTimers();
+  });
+
+  it('a filter chosen during the typing pause is kept', async () => {
+    const router = renderList('/list');
+    await settledFake(router);
+
+    fireEvent.change(screen.getByLabelText('search'), { target: { value: 'latte' } });
+    fireEvent.change(screen.getByLabelText('category'), { target: { value: 'arabica' } });
+    await settledFake(router);
+    await act(() => vi.advanceTimersByTimeAsync(350));
+    await settledFake(router);
+
+    const params = currentParams(router);
+    expect(params.get('q')).toBe('latte');
+    expect(params.get('category')).toBe('arabica');
+  });
+
+  it("two debounced inputs keep each other's text", async () => {
+    const router = renderList('/list');
+    await settledFake(router);
+
+    fireEvent.change(screen.getByLabelText('search'), { target: { value: 'kenya' } });
+    await act(() => vi.advanceTimersByTimeAsync(100));
+    fireEvent.change(screen.getByLabelText('author'), { target: { value: 'ali' } });
+    // The search box commits at 300 ms and the page renders it before the author box commits.
+    await act(() => vi.advanceTimersByTimeAsync(200));
+    await settledFake(router);
+    await act(() => vi.advanceTimersByTimeAsync(150));
+    await settledFake(router);
+
+    const params = currentParams(router);
+    expect(params.get('q')).toBe('kenya');
+    expect(params.get('author')).toBe('ali');
+  });
+
+  it('a filter selected while a slow load runs is kept when the pause ends', async () => {
+    const router = renderList('/list');
+    await settledFake(router);
+    holdLoaders();
+
+    fireEvent.change(screen.getByLabelText('search'), { target: { value: 'latte' } });
+    fireEvent.change(screen.getByLabelText('category'), { target: { value: 'arabica' } });
+    await loading(router);
+    await act(() => vi.advanceTimersByTimeAsync(350));
+    release();
+    await settledFake(router);
+
+    const params = currentParams(router);
+    expect(params.get('q')).toBe('latte');
+    expect(params.get('category')).toBe('arabica');
+  });
+
+  it('two quick discrete changes during a slow load keep both', async () => {
+    const router = renderList('/list');
+    await settledFake(router);
+    holdLoaders();
+
+    fireEvent.change(screen.getByLabelText('category'), { target: { value: 'arabica' } });
+    await loading(router);
+    fireEvent.change(screen.getByLabelText('sort'), { target: { value: 'rating' } });
+    await loading(router);
+    release();
+    await settledFake(router);
+
+    const params = currentParams(router);
+    expect(params.get('category')).toBe('arabica');
+    expect(params.get('sort')).toBe('rating');
+  });
+
+  it('leaving the page drops a pending commit', async () => {
+    const router = renderList('/list');
+    await settledFake(router);
+    holdLoaders();
+
+    fireEvent.change(screen.getByLabelText('search'), { target: { value: 'latte' } });
+    fireEvent.click(screen.getByText('go elsewhere'));
+    await loading(router);
+    await act(() => vi.advanceTimersByTimeAsync(350));
+    release();
+    await settledFake(router);
+
+    expect(router.state.location.pathname).toBe('/elsewhere');
+    expect(currentParams(router).get('q')).toBeNull();
+  });
+
+  it('clear-all during the typing pause drops the text when the URL had none', async () => {
+    const router = renderList('/list');
+    await settledFake(router);
+
+    fireEvent.change(screen.getByLabelText('search'), { target: { value: 'kenya' } });
+    fireEvent.click(screen.getByText('clear'));
+    await act(() => vi.advanceTimersByTimeAsync(350));
+    await settledFake(router);
+
+    expect(router.state.location.search).toBe('');
+    expect((screen.getByLabelText('search') as HTMLInputElement).value).toBe('');
+  });
+
+  it('typing after clear-all still commits', async () => {
+    const router = renderList('/list');
+    await settledFake(router);
+
+    fireEvent.change(screen.getByLabelText('search'), { target: { value: 'kenya' } });
+    fireEvent.click(screen.getByText('clear'));
+    await act(() => vi.advanceTimersByTimeAsync(350));
+    await settledFake(router);
+
+    fireEvent.change(screen.getByLabelText('search'), { target: { value: 'ali' } });
+    await act(() => vi.advanceTimersByTimeAsync(350));
+    await settledFake(router);
+
+    expect(router.state.location.search).toBe('?q=ali');
+  });
+
+  it('clear-all drops the pending text of two inputs', async () => {
+    const router = renderList('/list');
+    await settledFake(router);
+
+    fireEvent.change(screen.getByLabelText('search'), { target: { value: 'kenya' } });
+    fireEvent.change(screen.getByLabelText('author'), { target: { value: 'ali' } });
+    await act(() => vi.advanceTimersByTimeAsync(100));
+    fireEvent.click(screen.getByText('clear'));
+    await act(() => vi.advanceTimersByTimeAsync(350));
+    await settledFake(router);
+
+    expect(router.state.location.search).toBe('');
+    expect((screen.getByLabelText('search') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('author') as HTMLInputElement).value).toBe('');
   });
 });
