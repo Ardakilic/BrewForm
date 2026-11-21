@@ -1353,24 +1353,25 @@ How to use this task list
 
 ## 29. Final verification and pull request
 
-- [ ] 29.1 Run `make check` and `make check-tests`; both exit 0.
-- [ ] 29.2 Run `make lint`. It exits 0 with `noExplicitAny`, `useAwait` and `noEmptyBlockStatements` at error level and the web `noRestrictedImports` boundary at error level.
-- [ ] 29.3 Run `make test-db-provision` (idempotent). `brewform_test` must have the `user_recipe_note` table, the `pg_trgm` extension, the three trigram indexes and the `user_email_lower_unique`, `user_username_lower_unique` and `setup_user_default_unique` indexes.
-- [ ] 29.4 Run each suite separately and check each exit code. Never use `make test | tail`, because the pipe takes `tail`'s exit code and masks failures.
+- [x] 29.1 Run `make check` and `make check-tests`; both exit 0.
+- [x] 29.2 Run `make lint`. It exits 0 with `noExplicitAny`, `useAwait` and `noEmptyBlockStatements` at error level and the web `noRestrictedImports` boundary at error level.
+- [x] 29.3 Run `make test-db-provision` (idempotent). `brewform_test` must have the `user_recipe_note` table, the `pg_trgm` extension, the three trigram indexes and the `user_email_lower_unique`, `user_username_lower_unique` and `setup_user_default_unique` indexes.
+- [x] 29.4 Run each suite separately and check each exit code. Never use `make test | tail`, because the pipe takes `tail`'s exit code and masks failures.
   - `make test-api`
   - `make test-shared`
   - `make test-web`
   - the db workspace: `docker compose run --rm -e DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform_test app pnpm run test:db`
 
   Investigate every failure, and record any environment-only failure (host ICU, the known flaky Navbar keyboard test) in the PR description.
-- [ ] 29.5 Run `make db-generate` and confirm it prints "No schema changes, nothing to migrate". This covers the per-track schema-freshness checks (t1, t3, t4a, t7).
-- [ ] 29.6 Run `make docs-check` (the doc-drift script and docblock scan). Then run `pnpm --filter @brewform/api run docs:api` inside the `app` container and confirm `git diff --exit-code docs/api-reference.md` is clean.
-- [ ] 29.7 Run `make fmt`, then `make fmt-check` (`pnpm run fmt-check`), and confirm it is clean. Also run `sh -n docker-entrypoint.sh docker-web-entrypoint.sh scripts/ci/*.sh`, and confirm `docker compose config` renders both compose files.
-- [ ] 29.8 Build and boot-test both images exactly as CI does, and check each exit code: `make images`, `scripts/ci/compose-config-check.sh`, `scripts/ci/smoke-images.sh` (both images become `healthy` through their own `HEALTHCHECK`; `/health`, `/ready`, `/healthz` and the edge proxy answer), `make prod-smoke` (the full `compose.production.yml` stack with the `:local` images; uploads survive an api recreate; backup and graceful shutdown) and `scripts/ci/check-publish-needs.sh` (exit 0; `publish.needs` is `[quality, test, images, doc-drift]`). Paste the image sizes and the smoke summaries into the PR description.
-- [ ] 29.9 Run `openspec validate --all --strict` and `node scripts/doc-drift-check.ts`; both exit 0.
-- [ ] 29.10 Run `make ci` once end to end.
-- [ ] 29.11 Read `AGENTS.md` and `README.md` once more against the `Makefile`, the root `package.json`, `biome.json` and `.github/workflows/ci.yml`, and fix any mismatch (t8 verification).
+- [x] 29.5 Run `make db-generate` and confirm it prints "No schema changes, nothing to migrate". This covers the per-track schema-freshness checks (t1, t3, t4a, t7).
+- [x] 29.6 Run `make docs-check` (the doc-drift script and docblock scan). Then run `pnpm --filter @brewform/api run docs:api` inside the `app` container and confirm `git diff --exit-code docs/api-reference.md` is clean.
+- [x] 29.7 Run `make fmt`, then `make fmt-check` (`pnpm run fmt-check`), and confirm it is clean. Also run `sh -n docker-entrypoint.sh docker-web-entrypoint.sh scripts/ci/*.sh`, and confirm `docker compose config` renders both compose files.
+- [x] 29.8 Build and boot-test both images exactly as CI does, and check each exit code: `make images`, `scripts/ci/compose-config-check.sh`, `scripts/ci/smoke-images.sh` (both images become `healthy` through their own `HEALTHCHECK`; `/health`, `/ready`, `/healthz` and the edge proxy answer), `make prod-smoke` (the full `compose.production.yml` stack with the `:local` images; uploads survive an api recreate; backup and graceful shutdown) and `scripts/ci/check-publish-needs.sh` (exit 0; `publish.needs` is `[quality, test, images, doc-drift]`). Paste the image sizes and the smoke summaries into the PR description.
+- [x] 29.9 Run `openspec validate --all --strict` and `node scripts/doc-drift-check.ts`; both exit 0.
+- [x] 29.10 Run `make ci` once end to end.
+- [x] 29.11 Read `AGENTS.md` and `README.md` once more against the `Makefile`, the root `package.json`, `biome.json` and `.github/workflows/ci.yml`, and fix any mismatch (t8 verification).
 - [ ] 29.12 Commit the remaining changes with conventional commit messages, each ending with the `Co-Authored-By` attribution line, and push the `wave-6-audit-remediation` branch.
+  - Status 2026-11-21: commits done, push pending user approval.
 - [ ] 29.13 Open ONE pull request against `main` with `gh pr create`. The description contains:
   - a summary per track and the **BREAKING** list from `proposal.md`
   - upgrade notes: run the identifier check first (`make prod-check-identifiers` for compose, the one-off `docker run` from the Coolify guide); Coolify `TRUST_PROXY`, the `CMD` API health check and the HTTP `/healthz` web check; for compose, the photo rescue, `make prod-fix-uploads-owner` (or `UPLOADS_SOURCE` for a host folder) and `COMPOSE_PROJECT_NAME`; the S3 photo storage security check
