@@ -362,6 +362,7 @@ export function RecipeDetailPage() {
                   <StarRating
                     value={recipe.userRating ?? null}
                     busy={ratingFetcher.state !== 'idle'}
+                    result={ratingFetcher.data}
                     label={recipe.userRating ? t('recipe.yourRating') : t('recipe.rateThis')}
                     onRate={(rating) => {
                       ratingFetcher.submit(

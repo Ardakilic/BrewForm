@@ -329,13 +329,13 @@ describe('StarRating — interactive slider', () => {
     expect(onRate).toHaveBeenLastCalledWith(4);
   });
 
-  it('drops a committed draft when busy clears', async () => {
+  it('drops a committed draft when its submission settles with a result', async () => {
     const user = userEvent.setup();
     const onRate = vi.fn();
-    /** Re-renders the slider with the given saved value and busy flag. */
-    const view = (value: number, busy: boolean) => (
+    /** Re-renders the slider with the given saved value, busy flag and action result. */
+    const view = (value: number, busy: boolean, result?: object) => (
       <I18nProvider>
-        <StarRating value={value} onRate={onRate} busy={busy} />
+        <StarRating value={value} onRate={onRate} busy={busy} result={result} />
       </I18nProvider>
     );
     const { rerender } = renderInLocale(<StarRating value={6} onRate={onRate} />);
@@ -349,12 +349,67 @@ describe('StarRating — interactive slider', () => {
     expect(slider).toHaveAttribute('aria-valuenow', '8');
 
     // Failed (the saved value did not change): back to the saved rating.
-    rerender(view(6, false));
+    rerender(view(6, false, { ok: false, error: 'boom' }));
     expect(slider).toHaveAttribute('aria-valuenow', '6');
 
     // Succeeded (the loader returned the new value): the new rating.
-    rerender(view(6, true));
-    rerender(view(8, false));
+    await user.keyboard('{ArrowRight}{Enter}');
+    rerender(view(6, true, { ok: false, error: 'boom' }));
+    rerender(view(8, false, { ok: true, rating: 8 }));
+    expect(slider).toHaveAttribute('aria-valuenow', '8');
+  });
+
+  it('a failure that settles without a busy render after an earlier success rolls back (B3)', async () => {
+    const user = userEvent.setup();
+    const onRate = vi.fn();
+    /** Re-renders the slider with the given saved value, busy flag and action result. */
+    const view = (value: number | null, busy: boolean, result?: object) => (
+      <I18nProvider>
+        <StarRating value={value} onRate={onRate} busy={busy} result={result} />
+      </I18nProvider>
+    );
+    const { rerender } = renderInLocale(<StarRating value={null} onRate={onRate} />);
+    const slider = screen.getByRole('slider');
+    slider.focus();
+
+    // First rating succeeds: pending, then the loader's new value arrives with the result.
+    await user.keyboard('4{Enter}');
+    expect(onRate).toHaveBeenLastCalledWith(8);
+    rerender(view(null, true));
+    rerender(view(8, false, { ok: true, rating: 8 }));
+    expect(slider).toHaveAttribute('aria-valuenow', '8');
+
+    // Second rating: the committed value shows until a new result arrives.
+    await user.keyboard('{ArrowLeft}{Enter}');
+    expect(onRate).toHaveBeenLastCalledWith(6);
+    expect(slider).toHaveAttribute('aria-valuenow', '6');
+
+    // It fails at once: the failure result arrives with no busy render in between.
+    rerender(view(8, false, { ok: false, error: 'Failed to fetch' }));
+    expect(slider).toHaveAttribute('aria-valuenow', '8');
+  });
+
+  it('keeps the committed value while a result arrives during the revalidation (still busy)', async () => {
+    const user = userEvent.setup();
+    const onRate = vi.fn();
+    /** Re-renders the slider with the given saved value, busy flag and action result. */
+    const view = (value: number, busy: boolean, result?: object) => (
+      <I18nProvider>
+        <StarRating value={value} onRate={onRate} busy={busy} result={result} />
+      </I18nProvider>
+    );
+    const { rerender } = renderInLocale(<StarRating value={6} onRate={onRate} />);
+    const slider = screen.getByRole('slider');
+    slider.focus();
+    await user.keyboard('{ArrowRight}{Enter}');
+
+    // The fetcher is `loading` (revalidating) with the action data already set.
+    const result = { ok: true, rating: 8 };
+    rerender(view(6, true, result));
+    expect(slider).toHaveAttribute('aria-valuenow', '8');
+
+    // Idle with the revalidated value: no flash of the old rating in between.
+    rerender(view(8, false, result));
     expect(slider).toHaveAttribute('aria-valuenow', '8');
   });
 

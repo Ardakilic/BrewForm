@@ -107,6 +107,9 @@ let requests: string[] = [];
 /** How the stub answers `POST /recipes/:id/rate`: success, an HTTP 500 or a network failure. */
 let rateOutcome: 'ok' | 'error' | 'network' = 'ok';
 
+/** The viewer's saved rating the stubbed recipe returns (a successful rate stores 8). */
+let savedRating: number | null = null;
+
 /** A JSON success envelope. */
 function ok(data: unknown, meta?: unknown): Response {
   return new Response(JSON.stringify({ success: true, data, ...(meta ? { meta } : {}) }), {
@@ -134,7 +137,8 @@ function respond(input: RequestInfo | URL, init?: RequestInit): Response | null 
   const path = url.pathname.replace(/^\/api\/v1/, '');
   const method = init?.method ?? 'GET';
   requests.push(`${method} ${path}${url.search}`);
-  if (method === 'GET' && path === `/recipes/${SLUG}`) return ok(RECIPE);
+  if (method === 'GET' && path === `/recipes/${SLUG}`)
+    return ok({ ...RECIPE, userRating: savedRating });
   if (method === 'GET' && path === '/taste-notes/flat') return ok([]);
   if (method === 'GET' && path === `/recipes/${RECIPE_ID}/collections`) return ok([]);
   if (method === 'GET' && path === `/comments/recipe/${RECIPE_ID}`) {
@@ -155,6 +159,7 @@ function respond(input: RequestInfo | URL, init?: RequestInit): Response | null 
         { status: 500, headers: { 'Content-Type': 'application/json' } },
       );
     }
+    savedRating = 8;
     return ok({ rating: 8, avgRating: 8, ratingCount: 1 });
   }
   return new Response(JSON.stringify({ success: false, error: { code: 'NOT_FOUND' } }), {
@@ -205,6 +210,7 @@ async function waitForIdle(router: ReturnType<typeof renderWithAppProviders>['ro
 beforeEach(() => {
   requests = [];
   rateOutcome = 'ok';
+  savedRating = null;
   localStorage.clear();
   clearStaticCache();
   stubApi();
@@ -291,4 +297,30 @@ describe('RecipeDetailPage revalidation scope', () => {
       expect(screen.queryByText(t('error.route.loadFailed'))).toBeNull();
     },
   );
+
+  it('a network failure after an earlier successful rating returns to the saved stars (B3)', async () => {
+    const { router } = await renderDetail();
+    const slider = screen.getByRole('slider', { name: t('recipe.rateThis') });
+
+    // First rating succeeds and the revalidated loader returns the saved 8.
+    fireEvent.keyDown(slider, { key: '4' });
+    fireEvent.keyDown(slider, { key: 'Enter' });
+    await waitFor(() => expect(requests).toContain(`GET /recipes/${SLUG}`));
+    await waitForIdle(router);
+    expect(slider).toHaveAttribute('aria-valuenow', '8');
+
+    // Second rating fails at once (offline): the toast, no reload, and the saved 8 again.
+    rateOutcome = 'network';
+    requests = [];
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' });
+    fireEvent.keyDown(slider, { key: 'Enter' });
+    expect(await screen.findByText(t('recipe.rating.saveError'))).toBeInTheDocument();
+    await waitForIdle(router);
+
+    expect(requests).toEqual([`POST /recipes/${RECIPE_ID}/rate`]);
+    expect(screen.getByRole('slider', { name: t('recipe.yourRating') })).toHaveAttribute(
+      'aria-valuenow',
+      '8',
+    );
+  });
 });

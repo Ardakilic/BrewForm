@@ -14,6 +14,11 @@ interface Props {
   interactive?: boolean;
   /** A submission is in flight: the slider keeps focus but is `aria-disabled` and ignores input */
   busy?: boolean;
+  /**
+   * The latest submission result (the fetcher's `data`). Each new result seen while not `busy`
+   * means a submission settled: the committed value is dropped and the saved `value` shows.
+   */
+  result?: unknown;
   /** Accessible name of the interactive slider (default: the "Rating" label) */
   label?: string;
 }
@@ -118,10 +123,13 @@ interface Draft {
  *   commits an uncommitted value once. Pointer hover previews and a click
  *   commits the half or whole star under the pointer. While `busy`, the
  *   slider keeps focus with `aria-disabled="true"` and ignores input.
- * - A committed value is shown while its submission is pending; when `busy`
- *   clears the committed draft is dropped, so a failed submission shows the
- *   saved rating again (the rollback) and a successful one shows the new
- *   saved value from the parent.
+ * - A committed value is shown while its submission is pending; each new
+ *   `result` seen while not `busy` drops the committed draft, so a failed
+ *   submission shows the saved rating again (the rollback) and a successful
+ *   one shows the new saved value from the parent. Keying on the result's
+ *   identity, not on a `busy` true → false render, also catches a failure that
+ *   settles before a busy render was committed (router updates are
+ *   transitions, so React may skip the intermediate state).
  */
 export function StarRating({
   value,
@@ -129,6 +137,7 @@ export function StarRating({
   onRate,
   interactive = true,
   busy = false,
+  result,
   label,
 }: Props) {
   const t = useSafeT();
@@ -136,12 +145,13 @@ export function StarRating({
   const hintId = useId();
   const [hovered, setHovered] = useState(0);
   const [draft, setDraft] = useState<Draft | null>(null);
-  // "Store information from previous renders": when a submission settles (busy → idle), drop
-  // the committed draft so the slider shows the saved value (rolled back after a failure).
-  const [wasBusy, setWasBusy] = useState(busy);
-  if (wasBusy !== busy) {
-    setWasBusy(busy);
-    if (wasBusy) setDraft((d) => (d && !d.dirty ? null : d));
+  // "Store information from previous renders": a new result while idle means a submission
+  // settled, so drop the committed draft and show the saved value (rolled back after a failure).
+  // A result that arrives while still busy (the fetcher revalidating) waits for idle.
+  const [settledResult, setSettledResult] = useState(result);
+  if (!busy && result !== settledResult) {
+    setSettledResult(result);
+    setDraft((d) => (d && !d.dirty ? null : d));
   }
 
   const saved = normalizeRating(value);
