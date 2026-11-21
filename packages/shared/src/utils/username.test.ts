@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { generateUniqueUsername, isReservedUsername, RESERVED_USERNAMES } from './username.ts';
 
-async function neverTaken(_username: string): Promise<boolean> {
-  return false;
+/** Availability check stub: every username is free. */
+function neverTaken(_username: string): Promise<boolean> {
+  return Promise.resolve(false);
 }
 
-async function alwaysTaken(_username: string): Promise<boolean> {
-  return true;
+/** Availability check stub: every username is taken. */
+function alwaysTaken(_username: string): Promise<boolean> {
+  return Promise.resolve(true);
 }
 
 function makeTakenSet(set: Set<string>): (username: string) => Promise<boolean> {
