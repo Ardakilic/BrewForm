@@ -3,7 +3,7 @@
 > Status ledger for technical-debt items. Issues categorised by severity and area.
 > Last full audit: **2026-07-19** (verification audit of the 2026-07-13 state + fresh sweeps — type-safety, raw SQL/error handling, frontend duplication + consistency, dependencies, docblocks, measured coverage, architecture map; 15-agent audit. Prior audits: 2026-07-13 verification, 2026-07-04 baseline). Resolved dates come from `openspec/changes/archive/` directory names; items implemented outside the spec-driven flow have no archive entry and are marked "date unknown".
 
-**All ledgered D-items are resolved.** The D99 deferred-debt ledger ([`plans/D99-debts.md`](D99-debts.md)) is fully closed: D99.1–.19 all resolved. _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1. Wave 3 resolved 2026-07-06: D36, D37, D40. Wave 4 resolved 2026-07-07: D35, D42, D43, D39 Tier 2/3 — via `wave-4-independent-fillers`. Wave 5 resolved 2026-07-27: D99.1,.3,.5,.6,.7,.9,.10–.16,.19 — via `wave-5-debt-clearance`. Remaining-debt-clearance resolved 2026-07-27: D99.4,.8,.17,.18.)_
+**D01–D43 and D99.1–.19 are resolved.** Open since 2026-11-21: **D44** (D28 phase 2, [`D44-remove-taste-note-id-phase-2.md`](D44-remove-taste-note-id-phase-2.md)) and **D99.20–.52** (wave-6 follow-ups from the 2026-11-18 audit, [`plans/D99-debts.md`](D99-debts.md)); [`ROADMAP.md`](ROADMAP.md) is the status table. _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1. Wave 3 resolved 2026-07-06: D36, D37, D40. Wave 4 resolved 2026-07-07: D35, D42, D43, D39 Tier 2/3 — via `wave-4-independent-fillers`. Wave 5 resolved 2026-07-27: D99.1,.3,.5,.6,.7,.9,.10–.16,.19 — via `wave-5-debt-clearance`. Remaining-debt-clearance resolved 2026-07-27: D99.4,.8,.17,.18.)_
 
 ---
 
@@ -145,13 +145,13 @@
 - **PRD**: [`plans/D29-recipe-service-drizzle-orm-import.md`](D29-recipe-service-drizzle-orm-import.md)
 
 ### 3.10 Recipe Merge Drops Taste-Note Intensities, `tds` and Coffee Variety — **OPEN** (found 2026-11-18, wave-6 audit W13)
-- **Status: Open** — deferred by `wave-6-audit-remediation` (it fixed create, amend, bump and fork, but merge needs a merge-selection schema change).
+- **Status: Open** — deferred by `wave-6-audit-remediation` (it fixed create, amend, bump and fork, but merge needs a merge-selection schema change). Ledgered as [**D99.20**](D99-debts.md).
 - **Files**: `apps/api/src/modules/recipe/service.ts` `mergeRecipes` (builds the new recipe with `tasteNoteIds` only, through `getMergedIds`); `packages/shared/src/schemas/recipe.ts` `RecipeMergeSchema.selections` (no `tds` or coffee-variety choice).
 - **Issue**: a merged recipe's taste notes all get intensity `1` (the picked side's intensities are dropped), and its `tds`, `coffeeVarietyId` and `coffeeVarietyName` are always empty, although both source versions persist them since wave 6. The other version paths share `copyVersionColumns`/`versionColumnsFrom`, so merge is the only path without field parity.
 - **Fix**: add `tds` and `coffeeVariety` to `RecipeMergeSchema.selections` (and the merge UI), pass `tasteNoteIntensities` from the picked versions (both sides for `both`), carry `coffeeVarietyId` so the service resolves the name, and add merge regression tests next to the bump/fork ones. Decide in the same change whether merge should stop copying another user's public brewer notes (`personalNotes` picked from a public version the caller does not own).
 
 ### 3.11 `SetupUpdateSchema` `.partial()` Keeps the `isDefault` Default — **OPEN** (found 2026-11-18, wave-6 audit)
-- **Status: Open** — the same Zod 4 trap wave 6 fixed for `RecipeUpdateSchema`; not fixed for setups in that change.
+- **Status: Open** — the same Zod 4 trap wave 6 fixed for `RecipeUpdateSchema`; not fixed for setups in that change. Ledgered as [**D99.21**](D99-debts.md).
 - **Files**: `packages/shared/src/schemas/setup.ts:17` (`isDefault: z.boolean().default(false)` in `SetupCreateSchema`) and `:24` (`SetupUpdateSchema = SetupCreateSchema.partial()`); consumed by `PATCH /api/v1/setups/:id` → `setup/model.ts update` (`db.update(setups).set(data)`).
 - **Issue**: Zod 4 keeps `.default()` through `.partial()`, so every parsed setup PATCH carries `isDefault: false`. Editing the default setup's name or grinder without sending `isDefault` silently clears its default flag.
 - **Fix**: build `SetupUpdateSchema` field by field with no `.default()` (as `RecipeUpdateObjectSchema` and `UserPreferencesPatchSchema` do), add a shared test that `SetupUpdateSchema.parse({})` is `{}`, and a service test that a name-only PATCH keeps `isDefault: true`.
@@ -265,7 +265,7 @@ The following work was executed through OpenSpec changes only — there are no `
 - **d32** — deploy-plan / local-dev sync for Deno 2.9 + workspaces (archived 2026-06-27)
 - **d33** — workspace dependency refresh (react-router v8, zod-openapi v6)
 
-Also resolved without a ledger section above: **D21** rating-scale CHECK constraint (2026-06-11), **D28** deprecated `tasteNoteId` removal with `Deprecation` headers (2026-06-22).
+Also resolved without a ledger section above: **D21** rating-scale CHECK constraint (2026-06-11), **D28** phase 1 (deprecation headers) resolved 2026-06-22; phase 2 removal tracked as **D44** ([`D44-remove-taste-note-id-phase-2.md`](D44-remove-taste-note-id-phase-2.md)).
 
 ---
 
@@ -289,10 +289,11 @@ _(Corrected 2026-07-19: the previous table here still listed D36/D42/D39/D35/D37
 | **P3** | [D99.14](D99-debts.md) Docblock gaps — 196 undocumented exported symbols | All | Medium | Wave 5 — Track 9 |
 | **P3** | [D99.15](D99-debts.md) Dependency refresh — 15 safe bumps, Deno/CI version sync, renovate blind spots, gated TypeScript 7 | Tooling | Medium | Wave 5 — Track 10 |
 | **P3** | [D99.19](D99-debts.md) AGENTS.md middleware-order doc drift | Docs | Trivial | Wave 5 — Track 11 |
-| **P2** | §3.11 `SetupUpdateSchema` `.partial()` keeps `isDefault: false` (a setup PATCH clears the default flag) — **open** | Shared/API | Low | Unscheduled (wave-6 follow-up) |
-| **P3** | §3.10 Recipe merge drops taste-note intensities, `tds` and coffee variety — **open** | Both | Medium | Unscheduled (wave-6 follow-up) |
+| **P2** | [D99.21](D99-debts.md) (§3.11) `SetupUpdateSchema` `.partial()` keeps `isDefault: false` (a setup PATCH clears the default flag) — **open** | Shared/API | Low | Unscheduled (wave-6 follow-up) |
+| **P3** | [D99.20](D99-debts.md) (§3.10) Recipe merge drops taste-note intensities, `tds` and coffee variety — **open** | Both | Medium | Unscheduled (wave-6 follow-up) |
+| — | D44 and D99.22–.52 (the other wave-6 follow-ups) — **open** | All | — | [`ROADMAP.md`](ROADMAP.md) → Remaining Debt |
 
-**All deferred items resolved.** The 2026-07-19 audit re-verified all open D99 items against code; wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19 (2026-07-27) and remaining-debt-clearance resolved D99.4,.8,.17,.18 (2026-07-27). The D99 ledger is fully closed.
+**All deferred items through D99.19 resolved** (the wave-6 follow-ups D44 and D99.20+ above are open). The 2026-07-19 audit re-verified all open D99 items against code; wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19 (2026-07-27) and remaining-debt-clearance resolved D99.4,.8,.17,.18 (2026-07-27). The D99 ledger is fully closed.
 
 **New findings (2026-07-19 audit), ledgered as D99.10–D99.19:**
 
