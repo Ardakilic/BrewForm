@@ -1,7 +1,7 @@
 # D99 — Deferred Technical Debt (Post-Feature Batch)
 
 **Severity:** Mixed (Low–High)
-**Status:** D99.1–.19 resolved 2026-07-27 (wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19; remaining-debt-clearance resolved D99.4,.8,.17,.18). **D99.20–.52 open** since 2026-11-21: deferrals and unowned findings of `wave-6-audit-remediation` (2026-11-18 audit); see [Wave-6 follow-ups](#wave-6-follow-ups-d9920) and the status table in [`ROADMAP.md`](ROADMAP.md).
+**Status:** D99.1–.19 resolved 2026-07-27 (wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19; remaining-debt-clearance resolved D99.4,.8,.17,.18). **D99.20–.56 open** since 2026-11-21: deferrals and unowned findings of `wave-6-audit-remediation` (2026-11-18 audit); see [Wave-6 follow-ups](#wave-6-follow-ups-d9920) and the status table in [`ROADMAP.md`](ROADMAP.md).
 **Relationship:** Aggregates deferred items discovered during F01-recipe-collections implementation, other recent feature work, the 2026-07-19 full audit (D99.10–D99.19) and the 2026-11-18 audit ([`AUDIT-2026-11-18.md`](AUDIT-2026-11-18.md), D99.20+). These are non-blocking polish/hardening tasks; items marked **Scheduled** are carried by the `wave-5-debt-clearance` OpenSpec change (which holds the full task-level detail — this ledger is the index), items marked **Deferred** wait for a future trigger. Individual items may be split into their own D-plan files when picked up.
 
 ---
@@ -954,3 +954,39 @@ Added 2026-11-21 by `wave-6-audit-remediation` (task 27.1). Each entry is a defe
 **Evidence:** the image's first-install bootstrap (`docker-entrypoint.sh`: when the users table is empty, it runs `node src/seed.ts`) seeds five verified demo users with the shared `defaultPassword` (`packages/db/src/seed-users-recipes.ts`), even with `APP_ENV=production`.
 
 **Revisit when:** public sign-ups open or anyone else deploys the image. **Fix then:** split `seed:base`/`seed:demo`, refuse the demo seed in production, and add a runbook step that soft-deletes `@example.com` accounts.
+
+## D99.53 — Missing entry/exit (API) and mount/unmount (web) debug logs — Open
+
+**Moved from `TODO_logs.md`** (its P3 list, never completed, plus the services its "complete" banner missed; audit §"Entry/exit logging is missing in several services"; wave-6 task 26.20). **Priority:** P4 · **Effort:** Low.
+
+**Evidence (API):** AGENTS.md → Logging asks for entry/exit debug logs on every public service function, but `apps/api/src/modules/badge/service.ts` has none (0 of 4 exports), `comment/service.ts` 1 of 4, `follow/service.ts` 1 of 6, `photo/service.ts` 1 of 3 and `recipe/service.ts` 14 of 25 (counted as exported functions vs `'… started'` logs on 2026-11-21).
+
+**Evidence (web):** `apps/web/src/pages/recipes/RecipeNotAvailablePage.tsx`, `apps/web/src/pages/ContactPage.tsx` (it logs only in `ContactPage.data.ts`), `apps/web/src/pages/admin/AdminLayout.tsx`, `apps/web/src/components/CookieConsent.tsx` and `apps/web/src/components/EmailVerificationBanner.tsx` have no `createLogger` mount/unmount `useEffect`, which AGENTS.md → Logging asks of every page. (`TermsPage`, `PrivacyPage` and `ErrorPage` have it; `NotFoundPage` no longer exists, 404s render through `ErrorPage`/`RouteErrorState`.)
+
+**Fix:** add the `started`/`completed` debug pair (ids only) to each uncovered service export and the `'<Name> mounted'`/`'<Name> unmounted'` pair to each web file, with `vi.spyOn(log, 'debug')` assertions.
+
+## D99.54 — Log conventions: latency on exit logs and one id-key vocabulary — Open
+
+**Moved from `TODO_logs.md`** (cross-cutting items; wave-6 task 26.20). **Priority:** P4 · **Effort:** Low–Medium.
+
+**Evidence:** no service measures its own duration (`performance.now()` appears nowhere in `apps/api/src`), so the entry/exit debug pairs carry no latency. 37 log calls in seven services (`coffee-variety`, `bean`, `setup`, `report`, `taste`, `equipment`, `vendor` `service.ts`) log a bare `id` instead of an entity-named key (`beanId`, `setupId`, …), so a log query cannot follow one entity across modules.
+
+**Fix:** add `durationMs` to the `completed` debug logs (a small helper next to `createLogger`), rename the bare `id` keys, and pin both with logger-spy assertions in the existing service tests.
+
+## D99.55 — Log volume controls and slow-query logging — Open
+
+**Moved from `TODO_logs.md`** (cross-cutting items; wave-6 task 26.20). **Priority:** P4 · **Effort:** Medium. Related: D99.46 (access logs and metrics).
+
+**Evidence:** `apps/api/src/utils/logger/index.ts` configures level, redaction and the `err` serializer only: there is no sampling (`LOG_SAMPLE_RATE` does not exist in `apps/api/src/config/env.ts`), and no `db` logger reports slow statements (nothing hooks the `postgres-js` client in `packages/db/src/index.ts`; only the server-side `statement_timeout` from `DB_STATEMENT_TIMEOUT_MS` bounds them).
+
+**Fix:** an optional debug-level sampling setting, and a `db` module logger that warns on statements slower than a configurable threshold (default 100 ms) with the statement kind and duration but no parameters (see `toLoggableError` in `apps/api/src/utils/errors.ts` for what must not be logged).
+
+## D99.56 — Web runtime telemetry: navigation timing and unhandled rejections — Open
+
+**Moved from `TODO_logs.md`** (cross-cutting items; wave-6 task 26.20). **Priority:** P4 · **Effort:** Low.
+
+**Evidence:** `apps/web/src` registers no `unhandledrejection` listener and never reads `performance.getEntriesByType('navigation')`; an error thrown outside a React render or a route loader/action reaches only the browser console, and page-load timing is not logged.
+
+**Fix:** register both in `apps/web/src/main.tsx` through the web logger (`error` for rejections with the reason's name and message only, `debug` for navigation timing), and test them with jsdom events. Error tracking itself stays with D99.46.
+
+The other `TODO_logs.md` items were already done when it was deleted: every P1/P2 target has logging (`d26-expand-logging`), API error logs serialize `err` with pino's standard serializer plus `toLoggableError` for database errors, and the HTTP access log (method, path, status, duration) is part of D99.46.

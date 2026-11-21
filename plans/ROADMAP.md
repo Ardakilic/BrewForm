@@ -42,7 +42,7 @@ fixed them in one pull request. After merge, the change is archived under
 ### Open items
 
 Ledgered debt D01–D43 and D99.1–.19 stays resolved (see [`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md)).
-The open items are D44 and D99.20–.52. They come from three sources: what wave 6 deferred
+The open items are D44 and D99.20–.56. They come from three sources: what wave 6 deferred
 (its `proposal.md` → Non-Goals), the audit findings it had no owner for, and follow-ups found
 while implementing it.
 
@@ -82,6 +82,10 @@ while implementing it.
 | **P4** | [D99.22](D99-debts.md) | "My notes" listing; an `amendedAt` marker for in-place amends | Medium |
 | **P4** | [D99.51](D99-debts.md) | Unused `recipe/model.ts#update` | Trivial |
 | **P4** | [D99.52](D99-debts.md) | Demo accounts seeded in production (accepted by the user on 2026-11-19; revisit before public sign-ups) | Low |
+| **P4** | [D99.53](D99-debts.md) | Entry/exit logs missing in five API services; mount/unmount logs missing in five web files | Low |
+| **P4** | [D99.54](D99-debts.md) | Log conventions: `durationMs` on exit logs; entity-named id keys instead of a bare `id` | Low–Medium |
+| **P4** | [D99.55](D99-debts.md) | Log sampling and slow-query logging | Medium |
+| **P4** | [D99.56](D99-debts.md) | Web telemetry: navigation timing and `unhandledrejection` logging | Low |
 
 ---
 
@@ -161,7 +165,7 @@ the 2026-11-21 wave-6 refresh. Ship dates are the merge dates of the linked pull
   readiness probes, and one CI workflow with a gated image publish.
 - **Wave 6** (2026-11-18 audit → 2026-11-21): `wave-6-audit-remediation` fixed the
   [audit](AUDIT-2026-11-18.md) findings (see Remaining Debt → Wave 6). Deferrals, unowned
-  findings and implementation follow-ups are ledgered as D44 and D99.20–.52. The plans were
+  findings and implementation follow-ups are ledgered as D44 and D99.20–.56. The plans were
   refreshed for Node, pnpm, Vitest and sharp (F07, F16, F17, F23, F27, F29, F30). F03, F20, F25,
   F26 and F28 got F02 refresh notes, F24 was cut to immutability guards, F15 was split into
   F15a/F15b, and F31 got its frame-header note.
