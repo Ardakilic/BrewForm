@@ -119,7 +119,8 @@ PostgreSQL features accessible.
 **Trade-off — and the rule it imposes.** Postgres-specific features are used via native SQL expressions where needed.
 All IDs are UUID strings generated in code or by `gen_random_uuid()`, all structured data is relational. See
 `architecture.md` §"Database rules" (the database rules in `AGENTS.md`; approved raw-SQL fragments are
-listed in ADR-017).
+listed in the accepted-exception registry of the `lint-style` spec, `openspec/specs/lint-style/spec.md`,
+which `packages/shared/src/lint-policy.test.ts` enforces per file).
 
 **Trade-off — schema drift.** Drizzle schema is TypeScript-first; no code generation step needed.
 Models use Drizzle's typed query API; `as any` is used sparingly for complex subqueries. Encapsulating Drizzle in

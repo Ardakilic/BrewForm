@@ -1,7 +1,7 @@
 import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions } from '@brewform/db/schema';
 import type { CoffeeVarietyCategory } from '@brewform/shared';
-import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, count, countDistinct, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
 import { visibleIdentity } from '../../utils/public-identity/index.ts';
 import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
 import { listableRecipeCondition, maskUnlistableForkSources } from '../recipe/model.ts';
@@ -127,7 +127,7 @@ export async function getRecipesUsingVariety(varietyId: string, page: number, pe
       offset,
     }),
     db
-      .select({ count: sql<number>`count(distinct ${recipes.id})` })
+      .select({ count: countDistinct(recipes.id) })
       .from(recipes)
       .innerJoin(recipeVersions, eq(recipes.currentVersionId, recipeVersions.id))
       .where(and(eq(recipeVersions.coffeeVarietyId, varietyId), recipeConditions)),

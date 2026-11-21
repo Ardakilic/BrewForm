@@ -337,6 +337,7 @@ export const recipeVersions = pgTable(
       'gin',
       table.personalNotes.op('gin_trgm_ops'),
     ),
+    // D03 raw-SQL exception: check() takes an SQL expression by API; it interpolates columns only.
     check('recipe_version_rating_check', sql`${table.rating} BETWEEN 1 AND 10`),
   ],
 );
@@ -365,6 +366,7 @@ export const recipeTasteNotes = pgTable(
     ),
     index('recipe_taste_note_recipe_version_id_idx').on(table.recipeVersionId),
     index('recipe_taste_note_taste_note_id_idx').on(table.tasteNoteId),
+    // D03 raw-SQL exception: check() takes an SQL expression by API; it interpolates columns only.
     check('recipe_taste_note_intensity_check', sql`${table.intensity} BETWEEN 1 AND 3`),
   ],
 );
@@ -707,6 +709,8 @@ export const setups = pgTable(
      * sorts by createdAt DESC.
      */
     index('setup_user_created_idx').on(table.userId, table.createdAt),
+    // D03 raw-SQL exception: an index's .where() takes an SQL expression by API, and DDL cannot
+    // carry bound parameters; the partial predicate interpolates columns only.
     uniqueIndex('setup_user_default_unique')
       .on(table.userId)
       .where(sql`${table.isDefault} = true and ${table.deletedAt} is null`),
@@ -866,6 +870,7 @@ export const userRecipeRatings = pgTable(
     unique('user_recipe_rating_user_id_recipe_id_unique').on(table.userId, table.recipeId),
     index('user_recipe_rating_user_id_idx').on(table.userId),
     index('user_recipe_rating_recipe_id_idx').on(table.recipeId),
+    // D03 raw-SQL exception: check() takes an SQL expression by API; it interpolates columns only.
     check('user_recipe_rating_rating_check', sql`${table.rating} BETWEEN 1 AND 10`),
   ],
 );
@@ -904,6 +909,7 @@ export const userRecipeNotes = pgTable(
   (table) => [
     unique('user_recipe_note_user_id_recipe_id_unique').on(table.userId, table.recipeId),
     index('user_recipe_note_recipe_id_idx').on(table.recipeId),
+    // D03 raw-SQL exception: check() takes an SQL expression by API; it interpolates columns only.
     check('user_recipe_note_notes_length_check', sql`char_length(${table.notes}) <= 10000`),
   ],
 );
@@ -1202,6 +1208,8 @@ export const brewLogs = pgTable(
     index('brew_log_user_brewed_idx').on(table.userId, table.brewedAt),
     index('brew_log_recipe_brewed_idx').on(table.recipeId, table.userId, table.brewedAt),
     index('brew_log_deleted_at_idx').on(table.deletedAt),
+    // D03 raw-SQL exception: check() takes an SQL expression by API; it interpolates columns only
+    // (covers the three brew_log checks below).
     check('brew_log_personal_rating_check', sql`${table.personalRating} BETWEEN 1 AND 10`),
     check('brew_log_yield_actual_check', sql`${table.yieldActual} > 0`),
     check('brew_log_dose_actual_check', sql`${table.doseActual} > 0`),

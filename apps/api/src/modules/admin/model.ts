@@ -28,7 +28,19 @@ import {
   vendors,
 } from '@brewform/db/schema';
 import { hashSync } from 'bcryptjs';
-import { and, asc, count, desc, eq, gte, ilike, isNull, or, type SQL, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  gte,
+  ilike,
+  isNull,
+  or,
+  type SQL,
+} from 'drizzle-orm';
 import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
 import { userIdentifierConflict } from '../auth/model.ts';
 
@@ -721,7 +733,7 @@ export async function deleteCoffeeVariety(id: string) {
 /** Count distinct non-deleted recipes whose current version uses the given coffee variety. */
 export async function getVarietyRecipeCount(varietyId: string) {
   const [result] = await db
-    .select({ count: sql<number>`count(distinct ${recipes.id})` })
+    .select({ count: countDistinct(recipes.id) })
     .from(recipes)
     .innerJoin(recipeVersions, eq(recipes.currentVersionId, recipeVersions.id))
     .where(and(eq(recipeVersions.coffeeVarietyId, varietyId), isNull(recipes.deletedAt)));

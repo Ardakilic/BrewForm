@@ -6,7 +6,19 @@ import {
   recipes,
   recipeVersions,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, ilike, isNull, or, type SQL, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  ilike,
+  isNull,
+  or,
+  type SQL,
+  sql,
+} from 'drizzle-orm';
 import { visibleIdentity } from '../../utils/public-identity/index.ts';
 import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
 import { listableRecipeCondition, maskUnlistableForkSources } from '../recipe/model.ts';
@@ -144,7 +156,7 @@ export async function findManyWithFilters(params: {
 export async function getRecipesUsingEquipment(equipmentId: string, page: number, perPage: number) {
   const offset = (page - 1) * perPage;
   const recipeConditions = listableRecipeCondition(null);
-  // NOTE: Drizzle's `exists()` combinator generates a subquery that references
+  // D03 raw-SQL exception: Drizzle's `exists()` combinator generates a subquery that references
   // the physical table name ("recipe_equipment"."recipe_version_id"), but the
   // relational `db.query.recipes.findMany` API aliases the outer table as
   // `"recipe" "recipes"`. The correlation against `recipes.currentVersionId`
@@ -167,7 +179,7 @@ export async function getRecipesUsingEquipment(equipmentId: string, page: number
       offset,
     }),
     db
-      .select({ count: sql<number>`count(distinct ${recipes.id})` })
+      .select({ count: countDistinct(recipes.id) })
       .from(recipes)
       .innerJoin(recipeVersions, eq(recipes.currentVersionId, recipeVersions.id))
       .innerJoin(recipeEquipment, eq(recipeVersions.id, recipeEquipment.recipeVersionId))

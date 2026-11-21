@@ -1129,6 +1129,8 @@ export async function forkRecipe(
       .where(eq(recipes.id, newRecipe.id));
     await tx
       .update(recipes)
+      // D03 raw-SQL exception: Drizzle has no arithmetic SET builder; an in-place increment keeps
+      // concurrent forks of the same source from losing a count.
       .set({ forkCount: sql`${recipes.forkCount} + 1` })
       .where(eq(recipes.id, sourceId));
 
@@ -1497,6 +1499,8 @@ export async function findCoffeeVariety(id: string): Promise<{ id: string; name:
 export async function incrementComments(id: string) {
   const [result] = await db
     .update(recipes)
+    // D03 raw-SQL exception: Drizzle has no arithmetic SET builder; an in-place increment keeps
+    // concurrent comments from losing a count.
     .set({ commentCount: sql`${recipes.commentCount} + 1` })
     .where(eq(recipes.id, id))
     .returning();
@@ -1627,6 +1631,8 @@ export function toggleLike(userId: string, recipeId: string) {
     if (inserted.length > 0) {
       await tx
         .update(recipes)
+        // D03 raw-SQL exception: Drizzle has no arithmetic SET builder; an in-place increment
+        // keeps concurrent likes from losing a count.
         .set({ likeCount: sql`${recipes.likeCount} + 1` })
         .where(eq(recipes.id, recipeId));
       return { liked: true };
@@ -1640,6 +1646,8 @@ export function toggleLike(userId: string, recipeId: string) {
     if (deleted.length > 0) {
       await tx
         .update(recipes)
+        // D03 raw-SQL exception: Drizzle has no arithmetic SET builder; an in-place decrement
+        // keeps concurrent unlikes from losing a count.
         .set({ likeCount: sql`${recipes.likeCount} - 1` })
         .where(eq(recipes.id, recipeId));
     }
