@@ -33,7 +33,7 @@
 # Copies only manifest files, prefetches the pnpm store, then copies the full
 # source and installs offline. Used as the base for the dev containers (source
 # is volume-mounted at runtime; node_modules survives via a named volume).
-FROM node:26.13.0-trixie-slim AS deps
+FROM node:26.13.1-trixie-slim AS deps
 WORKDIR /app
 RUN npm install -g --allow-scripts=pnpm pnpm@12.18.0
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
@@ -73,7 +73,7 @@ RUN rm -rf node_modules apps/*/node_modules packages/*/node_modules \
 # Minimal non-root production image. tini (PID 1, `-g` forwards signals to the
 # entrypoint's process group) runs docker-entrypoint.sh, which migrates, seeds a
 # fresh database and then execs `node src/main.ts`.
-FROM node:26.13.0-trixie-slim AS runner
+FROM node:26.13.1-trixie-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production UPLOAD_DIR=/app/uploads
 RUN apt-get update \
