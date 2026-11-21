@@ -1174,8 +1174,8 @@ How to use this task list
 
 ## 22. Deploy: Makefile, CI workflow, deployment docs and env templates (t4b, refine U4)
 
-- [ ] 22.1 Remove the `app-prod`/`web-prod` services and their comments from `compose.yml` (lines 214-246).
-- [ ] 22.2 In `Makefile`:
+- [x] 22.1 Remove the `app-prod`/`web-prod` services and their comments from `compose.yml` (lines 214-246).
+- [x] 22.2 In `Makefile`:
   - `images` tags `brewform-api:local`/`brewform-web:local`.
   - Add `PROD_COMPOSE` and a `prod-env-check` prerequisite.
   - Add the targets `prod-up`, `prod-down`, `prod-logs`, `prod-ps`, `prod-pull`, `prod-backup` (`$(PROD_COMPOSE) run --rm -e BACKUP_ONESHOT=1 backup`), `prod-backup-export` (`DEST ?= ./backup-export`; `mkdir -p $(DEST) && $(PROD_COMPOSE) cp backup:/backups/. $(DEST)`) and `prod-restore`. `prod-restore` takes `DUMP`/`UPLOADS` and runs `$(PROD_COMPOSE) stop api web`, then `$(PROD_COMPOSE) --profile restore run --rm -e RESTORE_DB_DUMP=$(DUMP) -e RESTORE_UPLOADS_ARCHIVE=$(UPLOADS) restore`, then `$(PROD_COMPOSE) up -d`.
@@ -1184,7 +1184,7 @@ How to use this task list
   - Each target gets a `##` help line.
   - Delete `images-push`, `release` and `prod-up-build`, and update `.PHONY` and the "Production Images & Deploy" comment block.
   - Check `make help`, plus `make prod-up` without `.env.production` (expect a clear error) and `make release` (expect no such target).
-- [ ] 22.3 Add `scripts/ci/smoke-images.sh` (throwaway network, `trap` cleanup, log dump on failure). It runs these checks:
+- [x] 22.3 Add `scripts/ci/smoke-images.sh` (throwaway network, `trap` cleanup, log dump on failure). It runs these checks:
   - Start `postgres:18-trixie`. Start the API with `APP_ENV=production`, test secrets and a named volume at `/app/uploads`, without a health-check override, and wait ≤180 s for the API container's own health status to become `healthy`.
   - Assert that `id -u` is `1000`, that `GET /health` returns `{"status":"ok"}`, and that `GET /ready` returns 200 with exactly the keys `status, db, cache, rateLimitStore, storage, shuttingDown` and `status: "ready"` (checked with `jq`).
   - Start the web image with `API_UPSTREAM`, wait for `healthy`, and assert: `/healthz` returns 200; `/` contains `id="root"`; `/health` through the edge returns the API JSON; `/api/v1/sitemap.xml` is XML.
@@ -1193,7 +1193,7 @@ How to use this task list
   - Positive bind-mount check: same container with the directory chowned to `1000:1000` (`sudo chown 1000:1000`) and the real database; it must become `healthy`.
   - Run `scripts/ci/web-entrypoint.test.sh`.
   - Run the script locally against the `:local` images.
-- [ ] 22.4 Add `scripts/ci/smoke-compose.sh` (POSIX sh, `set -eu`, `trap` that prints `docker compose logs` on failure and always runs `down -v`). It takes the env file and project name as arguments (defaults `scripts/ci/compose-smoke.env`, `brewform-ci`) and does the following:
+- [x] 22.4 Add `scripts/ci/smoke-compose.sh` (POSIX sh, `set -eu`, `trap` that prints `docker compose logs` on failure and always runs `down -v`). It takes the env file and project name as arguments (defaults `scripts/ci/compose-smoke.env`, `brewform-ci`) and does the following:
   - Runs `docker compose … up -d`. It then polls `docker compose ps --format json` until `postgres`, `valkey`, `api`, `web` and `backup` are `healthy` and `migrate` has exited with code 0, and fails after 300 s.
   - Checks through `http://127.0.0.1:${WEB_PORT}` that `/healthz` returns 200 and `/health` returns `{"status":"ok"}`.
   - Runs `docker compose exec -T api node /app/healthcheck.mjs /ready`, which must exit 0.
@@ -1202,15 +1202,15 @@ How to use this task list
   - Runs `docker compose run --rm -e BACKUP_ONESHOT=1 backup`. In the backup container, `ls /backups` must show `db-*.dump` and `uploads-*.tar.gz`, `pg_restore --list` must succeed on the dump, and `tar -tzf` must list `ci-probe.png`.
   - Runs `docker compose stop api`. The api exit code (`docker inspect`) must be 0, and its logs must contain `Graceful shutdown complete`.
   - Run it locally against the `:local` images with `IMAGE_TAG=local`.
-- [ ] 22.5 Rewrite `.github/workflows/ci.yml`:
+- [x] 22.5 Rewrite `.github/workflows/ci.yml`:
   - Basics: `name: CI`; triggers `pull_request` (main) and `push` (main, tags `v*`); top-level `permissions: contents: read`; concurrency group `ci-${{ github.event.pull_request.number || github.ref }}` with `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`.
   - Keep `quality` and `test`. Only `test` gets `actions: read` and `pull-requests: write`.
   - Add `images` (`needs: quality`, `timeout-minutes: 40`): set up buildx; run `docker/metadata-action` for OCI labels only; two `docker/build-push-action` builds with `load: true`, tags `brewform-api:ci`/`brewform-web:ci`, per-image gha cache scopes (`cache-to … mode=max,ignore-error=true`), and the web build args `${{ github.event_name == 'push' && secrets.VITE_API_URL || '/api/v1' }}` / `${{ github.event_name == 'push' && secrets.VITE_PUBLIC_APP_URL || 'http://localhost:8080' }}`; then run `scripts/ci/compose-config-check.sh`, `scripts/ci/smoke-images.sh` and `scripts/ci/smoke-compose.sh`; on `push` events only, record both image IDs as job outputs (`docker image inspect --format '{{.Id}}'`), then `docker save brewform-api:ci brewform-web:ci | gzip > images.tar.gz` and `actions/upload-artifact` (name `images-${{ github.sha }}`, `retention-days: 1`).
   - Add `publish` (`needs: [quality, test, images]`, `if: github.event_name == 'push'` with no `always()`, `permissions: contents: read, packages: write`, `timeout-minutes: 20`): `actions/download-artifact`, `gunzip -c images.tar.gz | docker load`, then fail unless both loaded IDs equal `needs.images.outputs.*`; `docker/login-action` to GHCR; `docker/metadata-action` per image (`images: ghcr.io/${{ github.repository_owner }}/brewform-<img>`; tags `type=raw,value=latest,enable={{is_default_branch}}`, `type=sha,format=long,prefix=`, `type=ref,event=tag`); a shell loop that runs `docker tag` and `docker push` for every tag. No build step. Task 28.6 appends `doc-drift` to `needs` when it adds that job (the job cannot exist earlier, because the doc-drift check passes only after the wave-6 archive).
   - Remove the stale "Images are deployed via the Release workflow" comment.
-- [ ] 22.6 Add `scripts/ci/check-publish-needs.sh` (POSIX sh, `set -eu`, workflow path as the first argument, default `.github/workflows/ci.yml`). With `yq`, it collects every job id except `publish` and jobs whose `if:` is exactly `github.event_name == 'pull_request'`, compares them with `.jobs.publish.needs`, and exits 1 printing each missing id (`ci-image-publishing` requirement "Images are published only after CI succeeds", completeness guard). Add a `quality`-job step that runs it. Test it locally: a scratch copy of `ci.yml` without `images` in `publish.needs` exits 1 naming `images`, and the real file exits 0.
-- [ ] 22.7 Pin `pnpm/action-setup` and `dawidd6/action-download-artifact` to full commit SHAs with `# vX.Y.Z` comments (look up the current release SHAs); confirm `renovate.json` keeps digests updated (add `helpers:pinGitHubActionDigests` if missing).
-- [ ] 22.8 Delete `.github/workflows/pr.yml` and `.github/workflows/release.yml`.
+- [x] 22.6 Add `scripts/ci/check-publish-needs.sh` (POSIX sh, `set -eu`, workflow path as the first argument, default `.github/workflows/ci.yml`). With `yq`, it collects every job id except `publish` and jobs whose `if:` is exactly `github.event_name == 'pull_request'`, compares them with `.jobs.publish.needs`, and exits 1 printing each missing id (`ci-image-publishing` requirement "Images are published only after CI succeeds", completeness guard). Add a `quality`-job step that runs it. Test it locally: a scratch copy of `ci.yml` without `images` in `publish.needs` exits 1 naming `images`, and the real file exits 0.
+- [x] 22.7 Pin `pnpm/action-setup` and `dawidd6/action-download-artifact` to full commit SHAs with `# vX.Y.Z` comments (look up the current release SHAs); confirm `renovate.json` keeps digests updated (add `helpers:pinGitHubActionDigests` if missing).
+- [x] 22.8 Delete `.github/workflows/pr.yml` and `.github/workflows/release.yml`.
 - [ ] 22.9 Create `docs/deployment_compose.md` (self-hosting with compose): topology diagram (proxy → web edge → api/postgres/valkey), first install, required and optional vars, `TRUSTED_PROXIES` guidance, `make prod-*`, health and limits, backups (settings, off-host copy with `rsync`/`rclone`), the restore runbook (`pg_restore --clean --if-exists --no-owner`, uploads tar extract plus `chown 1000:1000`), upgrade (`prod-pull` + `prod-up`), rollback via `IMAGE_TAG`, the single-replica rule and expand/contract, and **Upgrading from the pre-wave-6 compose file** (rescue `/app/apps/api/uploads` with `docker compose cp` before pulling, then copy into the volume and `chown`; set `COMPOSE_PROJECT_NAME` to keep old volumes). Also include:
   - A **Data storage** section: the `UPLOADS_SOURCE`/`POSTGRES_DATA_SOURCE`/`BACKUPS_SOURCE` table and Compose's `/`, `.`, `~` rule; named-volume defaults and where Docker keeps them; host-folder setup (`sudo install -d -o 1000 -g 1000 -m 0750 ./data/uploads`; Postgres needs no chown); SELinux `chcon -Rt container_file_t` and the rootless/userns UID note; `make prod-fix-uploads-owner`; `docker compose down -v` deletes named volumes but not host folders.
   - A **Health checks** section: the per-service table (test, interval, timeout, retries, start period); `/health` versus `/ready` semantics and the `/ready` JSON keys; uptime monitors use `https://<WEB_DOMAIN>/health` and `/healthz`, never `/ready`.

@@ -1,18 +1,53 @@
-name: CI & Deploy
+name: CI
 
+# The single workflow for pull requests, `main` and version tags (pr.yml and release.yml
+# were merged into it). Job order:
+#
+#   quality ──┬── test ─────┬── publish   (push events only)
+#             └── images ───┘
+#
+# - `images` builds both Docker images WITHOUT pushing and boot-tests them (compose config
+#   check, standalone image smoke test, full production compose smoke test). It runs on
+#   every pull request too, so a broken Dockerfile, entrypoint or edge config fails the PR.
+# - `publish` runs only for pushes (main, v* tags), only after EVERY job it needs
+#   succeeded (no always()), and pushes the exact images `images` smoke-tested (handed
+#   over as an artifact and verified by image ID); it never builds.
+# - Every job must be listed in `publish.needs`: scripts/ci/check-publish-needs.sh (run in
+#   `quality`) fails CI when one is missing.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+    tags: ['v*']
+
+# Least privilege by default; `test` and `publish` opt into the extra scopes they need.
+permissions:
+  contents: read
+
+# Superseded pull-request runs are cancelled; main and tag runs always finish.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# `shell: bash` runs every step with -eo pipefail (the implicit default has no pipefail).
+defaults:
+  run:
+    shell: bash
 
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v6
+      - name: Check that publish.needs lists every job
+        run: scripts/ci/check-publish-needs.sh .github/workflows/ci.yml
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 12.18.0
           run_install: false
@@ -48,6 +83,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: quality
+    timeout-minutes: 30
     permissions:
       actions: read
       contents: read
@@ -80,8 +116,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 12.18.0
           run_install: false
@@ -116,7 +154,7 @@ jobs:
       - name: Download main coverage (API)
         if: github.event_name == 'pull_request'
         continue-on-error: true
-        uses: dawidd6/action-download-artifact@v28
+        uses: dawidd6/action-download-artifact@a92c7ae74cf1df8810783758581e485ac3aaa309 # v28
         with:
           workflow: ci.yml
           branch: main
@@ -128,7 +166,7 @@ jobs:
       - name: Download main coverage (shared)
         if: github.event_name == 'pull_request'
         continue-on-error: true
-        uses: dawidd6/action-download-artifact@v28
+        uses: dawidd6/action-download-artifact@a92c7ae74cf1df8810783758581e485ac3aaa309 # v28
         with:
           workflow: ci.yml
           branch: main
@@ -140,7 +178,7 @@ jobs:
       - name: Download main coverage (db)
         if: github.event_name == 'pull_request'
         continue-on-error: true
-        uses: dawidd6/action-download-artifact@v28
+        uses: dawidd6/action-download-artifact@a92c7ae74cf1df8810783758581e485ac3aaa309 # v28
         with:
           workflow: ci.yml
           branch: main
@@ -152,7 +190,7 @@ jobs:
       - name: Download main coverage (web)
         if: github.event_name == 'pull_request'
         continue-on-error: true
-        uses: dawidd6/action-download-artifact@v28
+        uses: dawidd6/action-download-artifact@a92c7ae74cf1df8810783758581e485ac3aaa309 # v28
         with:
           workflow: ci.yml
           branch: main
@@ -239,32 +277,204 @@ jobs:
 
       # Written from main pushes only, so PRs can compare against a trustworthy baseline.
       - name: Upload main API coverage summary
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
           name: coverage-main-api
           path: apps/api/coverage/coverage-summary.json
 
       - name: Upload main shared coverage summary
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
           name: coverage-main-shared
           path: packages/shared/coverage/coverage-summary.json
 
       - name: Upload main db coverage summary
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
           name: coverage-main-db
           path: packages/db/coverage/coverage-summary.json
 
       - name: Upload main web coverage summary
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
           name: coverage-main-web
           path: apps/web/coverage/coverage-summary.json
 
-  # Images are deployed to GHCR via the Release workflow; Coolify pulls from there.
-  # No manual deploy steps needed in CI.
+  # Builds both images without pushing (no registry login, no secrets on pull requests)
+  # and boot-tests them; runs in parallel with `test`. On push events it hands the tested
+  # images to `publish` as a 1-day artifact plus their image IDs.
+  images:
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      api-image-id: ${{ steps.image-ids.outputs.api }}
+      web-image-id: ${{ steps.image-ids.outputs.web }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@v4
+
+      # OCI labels only (source, revision, created, version); tags are set in `publish`.
+      - name: OCI labels
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          tags: |
+            type=ref,event=tag
+            type=sha,format=long,prefix=
+
+      # provenance: false keeps each image a single manifest, so the ID recorded here
+      # survives the docker save/load hand-off to `publish` unchanged.
+      - name: Build API image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          push: false
+          provenance: false
+          tags: brewform-api:ci
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max,ignore-error=true
+
+      # Pull requests (including forks) always bake the fallbacks; only push events read
+      # the optional VITE_* secrets. The runtime VITE_API_URL / PUBLIC_APP_URL of the web
+      # container override both values.
+      - name: Build web image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile.web
+          load: true
+          push: false
+          provenance: false
+          tags: brewform-web:ci
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_API_URL=${{ github.event_name == 'push' && secrets.VITE_API_URL || '/api/v1' }}
+            VITE_PUBLIC_APP_URL=${{ github.event_name == 'push' && secrets.VITE_PUBLIC_APP_URL || 'http://localhost:8080' }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max,ignore-error=true
+
+      - name: Check compose.production.yml
+        run: scripts/ci/compose-config-check.sh
+
+      - name: Smoke-test both images standalone
+        run: scripts/ci/smoke-images.sh brewform-api:ci brewform-web:ci
+
+      # scripts/ci/compose-smoke.env selects brewform-api:ci / brewform-web:ci.
+      - name: Smoke-test the production compose stack
+        run: scripts/ci/smoke-compose.sh scripts/ci/compose-smoke.env brewform-ci
+
+      - name: Record the tested image IDs
+        id: image-ids
+        if: github.event_name == 'push'
+        run: |
+          echo "api=$(docker image inspect --format '{{.Id}}' brewform-api:ci)" >> "$GITHUB_OUTPUT"
+          echo "web=$(docker image inspect --format '{{.Id}}' brewform-web:ci)" >> "$GITHUB_OUTPUT"
+
+      - name: Save the tested images
+        if: github.event_name == 'push'
+        run: docker save brewform-api:ci brewform-web:ci | gzip > images.tar.gz
+
+      - name: Upload the tested images
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: images-${{ github.sha }}
+          path: images.tar.gz
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
+  # Pushes the images `images` smoke-tested, after every other job succeeded. No build
+  # step: a cache miss can never publish an untested image. Keep `needs` complete (every
+  # job of this workflow; scripts/ci/check-publish-needs.sh enforces it) and never add
+  # always()/failure()/cancelled() to `if`.
+  publish:
+    needs: [quality, test, images]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download the tested images
+        uses: actions/download-artifact@v8
+        with:
+          name: images-${{ github.sha }}
+
+      - name: Load the images and verify they are the tested ones
+        env:
+          EXPECTED_API_ID: ${{ needs.images.outputs.api-image-id }}
+          EXPECTED_WEB_ID: ${{ needs.images.outputs.web-image-id }}
+        run: |
+          gunzip -c images.tar.gz | docker load
+          api_id=$(docker image inspect --format '{{.Id}}' brewform-api:ci)
+          web_id=$(docker image inspect --format '{{.Id}}' brewform-web:ci)
+          if [ -z "$EXPECTED_API_ID" ] || [ "$api_id" != "$EXPECTED_API_ID" ]; then
+            echo "::error::brewform-api:ci is $api_id, but the images job tested '$EXPECTED_API_ID'"
+            exit 1
+          fi
+          if [ -z "$EXPECTED_WEB_ID" ] || [ "$web_id" != "$EXPECTED_WEB_ID" ]; then
+            echo "::error::brewform-web:ci is $web_id, but the images job tested '$EXPECTED_WEB_ID'"
+            exit 1
+          fi
+          echo "Loaded the tested images: api $api_id, web $web_id"
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # latest only on the default branch (tag pushes never move it), the full commit SHA,
+      # and the version tag on v* pushes. flavor latest=false stops metadata-action from
+      # adding `latest` for tag events on its own. Image names are lowercased.
+      - name: API image tags
+        id: meta-api
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/brewform-api
+          flavor: latest=false
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=long,prefix=
+            type=ref,event=tag
+
+      - name: Web image tags
+        id: meta-web
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/brewform-web
+          flavor: latest=false
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=long,prefix=
+            type=ref,event=tag
+
+      - name: Tag and push every tag
+        env:
+          API_TAGS: ${{ steps.meta-api.outputs.tags }}
+          WEB_TAGS: ${{ steps.meta-web.outputs.tags }}
+        run: |
+          # Tag the local image $1 with every non-empty line of $2 and push each tag.
+          push_tags() {
+            local tag
+            while IFS= read -r tag; do
+              [ -n "$tag" ] || continue
+              docker tag "$1" "$tag"
+              docker push "$tag"
+            done <<< "$2"
+          }
+          push_tags brewform-api:ci "$API_TAGS"
+          push_tags brewform-web:ci "$WEB_TAGS"

@@ -1,3 +1,6 @@
+# Development, preview and local infrastructure only. Production self-hosting uses
+# compose.production.yml (`make prod-*`, docs/deployment_compose.md); this file defines
+# no production services.
 services:
   # ── API — development (hot reload) ─────────────────────────────────────────
   # Runs the Hono API with `tsx --watch` for hot reload.
@@ -218,40 +221,6 @@ services:
         condition: service_started
     profiles:
       - preview
-
-  # ── API — production (pulls published image) ──────────────────────────────
-  # Started via `make prod-up` (profile: prod). Pulls ghcr.io/ardakilic/brewform-api:latest.
-  # For local image builds, use `make prod-up-build` (--build overrides the image:).
-  app-prod:
-    image: ghcr.io/ardakilic/brewform-api:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    profiles:
-      - prod
-
-  # ── Web — production (pulls published image) ────────────────────────────────
-  # Caddy serving the pre-built SPA on :80. No runtime env (VITE_* baked in at
-  # image build). Host 8080 → container 80 (the prod Caddyfile listens on :80).
-  web-prod:
-    image: ghcr.io/ardakilic/brewform-web:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.web
-    ports:
-      - "8080:80"
-    depends_on:
-      app-prod:
-        condition: service_started
-    profiles:
-      - prod
 
 volumes:
   postgres_data:
