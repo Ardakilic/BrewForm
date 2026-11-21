@@ -8,8 +8,7 @@
  * - `scripts/doc-drift-check.ts` against `__fixtures__/doc-drift/<case>` (one passing tree and one
  *   failing tree per rule: token, allowlist reason, stale allowlist entry, archived capability,
  *   Purpose placeholder, broken link, code remnant, stale idiom);
- * - one run of each script against the repository root. The doc-drift repository case fails
- *   until the wave-6 archive (tasks.md group 28) syncs the specs and backfills every Purpose.
+ * - one run of each script against the repository root, which must report no findings.
  */
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -287,8 +286,7 @@ describe('scripts/doc-drift-check.ts', () => {
     SPAWN_TIMEOUT_MS,
   );
 
-  // Expected to fail until the wave-6 archive (tasks.md group 28): the deltas must reach
-  // openspec/specs and every "Purpose: TBD" must be backfilled first.
+  // The real repository: docs, plans and openspec/specs must stay free of findings.
   it(
     'passes on the repository root',
     () => {

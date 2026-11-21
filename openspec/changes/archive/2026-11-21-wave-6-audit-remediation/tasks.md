@@ -1349,7 +1349,7 @@ How to use this task list
 - [x] 28.4 Replace every "Purpose: TBD - created by archiving change …" in `openspec/specs/*/spec.md` (46 after the wave-6 archive per the 2026-11-19 sandbox run: the 26 pre-existing placeholders that survive the deletion of the three retired folders, plus one for each of the 20 capabilities wave 6 creates) with a 2-4 sentence purpose, and rewrite the Deno-era Purpose text of `lint-style`, `local-dev-environment` and `deployment-guide`. The `container-deployment` "Deno KV no longer…" remark was already rephrased at integration
 - [x] 28.5 Run `node scripts/doc-drift-check.ts` and fix every remaining finding until it exits 0
 - [x] 28.6 Add the `doc-drift` job to `.github/workflows/ci.yml` (no `needs:`, checkout, `setup-node` with `node-version-file: '.nvmrc'`, `node scripts/doc-drift-check.ts`, `node scripts/docblock-scan.ts --check`, no dependency install) and append it to the `publish` job's `needs:` (giving `[quality, test, images, doc-drift]`); `scripts/ci/check-publish-needs.sh` must still exit 0. The `doc-drift` job runs on `push` and `pull_request` alike (no pull-request-only `if:`), because `publish` needs it.
-- [ ] 28.7 Run `openspec validate --all --strict` and confirm every spec passes
+- [x] 28.7 Run `openspec validate --all --strict` and confirm every spec passes
 
 ## 29. Final verification and pull request
 
