@@ -46,6 +46,7 @@ export { NotificationOutputSchema, UnreadCountOutputSchema } from './notificatio
 export { PhotoOutputSchema } from './photo.ts';
 export { UserPreferencesOutputSchema } from './preference.ts';
 export {
+  AdminRecipeListItemOutputSchema,
   DiffFieldSchema,
   DiffStatusSchema,
   FeedRecipeOutputSchema,

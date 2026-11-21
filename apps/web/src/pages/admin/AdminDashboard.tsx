@@ -9,9 +9,10 @@ import type { loader } from './AdminDashboard.data.ts';
 const log = createLogger('AdminDashboard');
 
 /**
- * Admin landing page: stat cards for user/recipe/comment/photo totals and recent activity.
- * The totals come from the `/admin` route loader (`AdminDashboard.data.ts`); a failed load
- * renders the route error state inside `AdminLayout`.
+ * Admin landing page: one tile per counter of `GET /admin/stats` (users, recipes, comments and
+ * reports in total, then today's new users and recipes and the pending reports). The counters
+ * come from the `/admin` route loader (`AdminDashboard.data.ts`); a failed load renders the
+ * route error state inside `AdminLayout`.
  */
 export function AdminDashboard() {
   const { t, locale } = useTranslation();
@@ -31,7 +32,7 @@ export function AdminDashboard() {
         {t('admin.dashboard')}
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label={t('admin.dashboard.totalUsers')}
           value={formatNumber(stats.totalUsers, locale)}
@@ -45,16 +46,20 @@ export function AdminDashboard() {
           value={formatNumber(stats.totalComments, locale)}
         />
         <StatCard
-          label={t('admin.dashboard.totalPhotos')}
-          value={formatNumber(stats.totalPhotos, locale)}
+          label={t('admin.dashboard.totalReports')}
+          value={formatNumber(stats.totalReports, locale)}
         />
         <StatCard
-          label={t('admin.dashboard.recentSignups')}
-          value={formatNumber(stats.recentSignups, locale)}
+          label={t('admin.dashboard.newUsersToday')}
+          value={formatNumber(stats.newUsersToday, locale)}
         />
         <StatCard
-          label={t('admin.dashboard.recentRecipes')}
-          value={formatNumber(stats.recentRecipes, locale)}
+          label={t('admin.dashboard.newRecipesToday')}
+          value={formatNumber(stats.newRecipesToday, locale)}
+        />
+        <StatCard
+          label={t('admin.dashboard.pendingReports')}
+          value={formatNumber(stats.pendingReports, locale)}
         />
       </div>
     </div>

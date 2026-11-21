@@ -54,7 +54,7 @@ implementing it, and the follow-ups `wave-6-review-remediation` recorded (D99.63
 | **P2** | [D99.21](D99-debts.md) | `SetupUpdateSchema` keeps `isDefault: false`, so a setup PATCH clears the default flag | Low |
 | **P2** | [D99.25](D99-debts.md) | Like, favourite, rate and the photo list skip visibility checks for draft/private recipes | Low–Medium |
 | **P2** | [D99.29](D99-debts.md) | EXIF/GPS metadata is served with public photos (ships with F23) | Medium |
-| **P2** | [D99.36](D99-debts.md) | 37 admin routes have no OpenAPI metadata, so `docs/api-reference.md` omits them | Medium |
+| **P2** | [D99.36](D99-debts.md) | 36 admin routes have no OpenAPI metadata, so `docs/api-reference.md` omits them | Medium |
 | **P2** | [D99.39](D99-debts.md) | Equipment lookups stop at 20 items; admin equipment and recipe lists are unpaginated | Medium |
 | **P2** | [D99.40](D99-debts.md) | Undefined `.input` CSS class on 13 form fields | Low |
 | **P2** | [D99.41](D99-debts.md) | Photos are never shown: `PhotoUpload` is unmounted and there is no gallery | Medium |

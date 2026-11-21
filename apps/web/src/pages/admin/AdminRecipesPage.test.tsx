@@ -33,7 +33,7 @@ const RECIPE: AdminRecipe = {
   title: 'Test Recipe',
   slug: 'test-recipe',
   visibility: 'public',
-  author: { username: 'alice' },
+  author: { id: 'u1', username: 'alice', displayName: null },
   likeCount: 0,
   commentCount: 0,
   createdAt: '2025-01-01T00:00:00Z',
@@ -83,6 +83,18 @@ describe('AdminRecipesPage', () => {
       { perPage: '50' },
       { signal: expect.any(AbortSignal) },
     );
+  });
+
+  it("shows the author's username in the Author column", async () => {
+    renderPage();
+
+    const title = await screen.findByText('Test Recipe');
+    const row = title.closest('tr') as HTMLElement;
+    const authorIndex = screen
+      .getAllByRole('columnheader')
+      .findIndex((th) => th.textContent === t('admin.recipes.author'));
+    expect(authorIndex).toBeGreaterThan(-1);
+    expect(within(row).getAllByRole('cell')[authorIndex]).toHaveTextContent('alice');
   });
 
   it('changes visibility through the action', async () => {

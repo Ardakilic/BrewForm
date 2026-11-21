@@ -852,6 +852,7 @@ describe('softDeleteUser', () => {
 describe('listAllRecipes', () => {
   let userId: string;
   const recipeIds: string[] = [];
+  const extraUserIds: string[] = [];
 
   beforeEach(async () => {
     userId = crypto.randomUUID();
@@ -879,7 +880,48 @@ describe('listAllRecipes', () => {
       await db.delete(recipes).where(eq(recipes.id, id));
     }
     recipeIds.length = 0;
-    await db.delete(users).where(eq(users.id, userId));
+    for (const id of [userId, ...extraUserIds]) {
+      await db.delete(users).where(eq(users.id, id));
+    }
+    extraUserIds.length = 0;
+  });
+
+  it('returns the author { id, username, displayName } on every row, a soft-deleted author included (E11: admin keeps names)', async () => {
+    const goneId = crypto.randomUUID();
+    extraUserIds.push(goneId);
+    await db.insert(users).values({
+      id: goneId,
+      email: `lrec-gone-${goneId}@example.com`,
+      username: `lrecgone-${goneId}`,
+      displayName: 'Gone Barista',
+      passwordHash: 'hash',
+      deletedAt: new Date(),
+    });
+    const goneRecipeId = crypto.randomUUID();
+    recipeIds.push(goneRecipeId);
+    await db.insert(recipes).values({
+      id: goneRecipeId,
+      slug: `lrec-${goneRecipeId}`,
+      title: 'Recipe by a deleted account',
+      authorId: goneId,
+      visibility: 'public',
+    });
+
+    const result = await model.listAllRecipes(1, 50);
+    const byId = new Map(result.recipes.map((r) => [r.id, r]));
+
+    for (const id of recipeIds.slice(0, 3)) {
+      expect(byId.get(id)?.author).toEqual({
+        id: userId,
+        username: `lrecuser-${userId}`,
+        displayName: null,
+      });
+    }
+    expect(byId.get(goneRecipeId)?.author).toEqual({
+      id: goneId,
+      username: `lrecgone-${goneId}`,
+      displayName: 'Gone Barista',
+    });
   });
 
   it('should return paginated recipes', async () => {

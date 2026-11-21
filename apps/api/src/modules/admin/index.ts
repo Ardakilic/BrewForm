@@ -3,6 +3,7 @@ import {
   AdminCreateUserSchema,
   AdminFlushCacheSchema,
   AdminModifyRecipeVisibilitySchema,
+  AdminRecipeListItemOutputSchema,
   AdminSetRoleSchema,
   AdminUpdateUserSchema,
   BrewMethodCompatibilityCreateSchema,
@@ -14,6 +15,7 @@ import {
   EquipmentUpdateSchema,
   ErrorEnvelopeSchema,
   PaginationSchema,
+  paginatedEnvelope,
   ReportFilterSchema,
   successEnvelope,
   TasteNoteCreateSchema,
@@ -310,6 +312,47 @@ admin.delete('/users/:id', async (c) => {
 // --- Recipes ---
 admin.get(
   '/recipes',
+  describeRoute({
+    tags: ['Admin'],
+    summary: 'List recipes for moderation',
+    description:
+      'One page of non-deleted recipes of every visibility, newest first, each with its author `{ id, username, displayName }` (also for an account that was deleted). Requires admin role.',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
+      {
+        name: 'perPage',
+        in: 'query',
+        required: false,
+        schema: { type: 'integer', minimum: 1, maximum: 100 },
+      },
+      {
+        name: 'visibility',
+        in: 'query',
+        required: false,
+        schema: { type: 'string', enum: ['draft', 'private', 'unlisted', 'public'] },
+      },
+    ],
+    responses: {
+      200: {
+        description: 'Paginated list of recipes with their authors',
+        content: {
+          'application/json': {
+            schema: resolver(paginatedEnvelope(AdminRecipeListItemOutputSchema)),
+          },
+        },
+      },
+      400: { description: 'Invalid page, perPage or visibility' },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      403: {
+        description: 'Admin access required',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+    },
+  }),
   zValidator(
     'query',
     PaginationSchema.extend({

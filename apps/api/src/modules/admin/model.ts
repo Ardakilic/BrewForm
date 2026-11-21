@@ -35,6 +35,7 @@ import {
   countDistinct,
   desc,
   eq,
+  getTableColumns,
   gte,
   ilike,
   isNull,
@@ -247,7 +248,14 @@ function isValidVisibility(v: string): v is RecipeVisibility {
   return RECIPE_VISIBILITIES.includes(v);
 }
 
-/** List all non-deleted recipes with optional visibility filter, ordered by newest first. */
+/**
+ * List one page of non-deleted recipes for moderation, newest first, with an optional visibility
+ * filter. Each row is the full recipe row plus `author: { id, username, displayName }`, joined in
+ * the same bounded query. The join does not filter `users.deletedAt`, so a recipe of a soft-deleted
+ * account keeps its author's name here (admin pages keep names, E11); every recipe has an
+ * `author_id` (NOT NULL foreign key), so the inner join neither adds nor drops rows and the count
+ * query needs no join.
+ */
 export async function listAllRecipes(page: number, perPage: number, visibility?: string) {
   const where =
     visibility && isValidVisibility(visibility)
@@ -255,8 +263,12 @@ export async function listAllRecipes(page: number, perPage: number, visibility?:
       : isNull(recipes.deletedAt);
   const [data, totalResult] = await Promise.all([
     db
-      .select()
+      .select({
+        ...getTableColumns(recipes),
+        author: { id: users.id, username: users.username, displayName: users.displayName },
+      })
       .from(recipes)
+      .innerJoin(users, eq(recipes.authorId, users.id))
       .where(where)
       .orderBy(desc(recipes.createdAt), asc(recipes.id))
       .limit(perPage)

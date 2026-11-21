@@ -101,7 +101,7 @@ function RecipeRow({ recipe }: { recipe: AdminRecipe }) {
         {recipe.title}
       </td>
       <td className="py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-        {recipe.author?.username}
+        {recipe.author.username}
       </td>
       <td className="py-2 px-3">
         <select

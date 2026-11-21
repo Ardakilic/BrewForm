@@ -82,9 +82,10 @@ const OBJECT_FIXTURES: Record<string, unknown> = {
     totalUsers: 0,
     totalRecipes: 0,
     totalComments: 0,
-    totalPhotos: 0,
-    recentSignups: 0,
-    recentRecipes: 0,
+    totalReports: 0,
+    pendingReports: 0,
+    newUsersToday: 0,
+    newRecipesToday: 0,
   },
   '/auth/registration-status': { enabled: true },
   '/preferences': {

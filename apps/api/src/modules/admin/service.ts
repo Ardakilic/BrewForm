@@ -189,7 +189,10 @@ export async function softDeleteUser(adminId: string, userId: string) {
 
 // --- Recipes ---
 
-/** Pass-through: list all non-deleted recipes with optional visibility filter. */
+/**
+ * Pass-through: one page of non-deleted recipes with an optional visibility filter, each with its
+ * author `{ id, username, displayName }` (kept for a deleted account; see `model.listAllRecipes`).
+ */
 export async function listAllRecipes(
   page: number,
   perPage: number,

@@ -8,14 +8,14 @@
 > rate limits, deprecations) live in [api.md](api.md). The interactive reference is the
 > Scalar UI at `/api/v1/docs` (when `OPENAPI_ENABLED=true`).
 
-BrewForm API 1.0.0: 125 operations in 24 sections. Auth `Bearer` means the route requires `Authorization: Bearer <access token>`; `—` means it is public. Path parameters are always required.
+BrewForm API 1.0.0: 126 operations in 24 sections. Auth `Bearer` means the route requires `Authorization: Bearer <access token>`; `—` means it is public. Path parameters are always required.
 
 ## Contents
 
 - [Auth](#auth) (9)
 - [Recipes](#recipes) (19)
 - [Users](#users) (4)
-- [Admin](#admin) (7)
+- [Admin](#admin) (8)
 - [Health](#health) (2)
 - [Beans](#beans) (5)
 - [Badges](#badges) (3)
@@ -100,6 +100,7 @@ Privileged admin operations (requires admin role)
 | `GET` | `/api/v1/admin/analytics/top-recipes` | Top recipes leaderboard | Bearer | — | 200 |
 | `GET` | `/api/v1/admin/analytics/top-users` | Top users leaderboard | Bearer | — | 200 |
 | `GET` | `/api/v1/admin/analytics/users` | User signup growth over a window of days | Bearer | — | 200 |
+| `GET` | `/api/v1/admin/recipes` | List recipes for moderation | Bearer | `page` (query, integer)<br>`perPage` (query, integer)<br>`visibility` (query, draft \| private \| unlisted \| public) | 200, 400, 401, 403 |
 | `GET` | `/api/v1/admin/stats` | Dashboard summary stats | Bearer | — | 200 |
 | `PATCH` | `/api/v1/admin/users/{id}/admin` | Set or clear admin role on a user | Bearer | `id` (path, string) | 200, 401, 404 |
 | `POST` | `/api/v1/admin/users/{id}/ban` | Ban or unban a user | Bearer | `id` (path, string) | 200, 401, 404 |

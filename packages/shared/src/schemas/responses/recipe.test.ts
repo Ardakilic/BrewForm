@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AdminRecipeListItemOutputSchema,
   FeedRecipeOutputSchema,
   RecipeDetailOutputSchema,
   RecipeListItemOutputSchema,
@@ -272,6 +273,23 @@ describe('RecipeListItemOutputSchema', () => {
     expect(result.success).toBe(false);
   });
 });
+describe('AdminRecipeListItemOutputSchema', () => {
+  it('parses an admin row (recipe row + author { id, username, displayName }) and round-trips', () => {
+    const payload = {
+      ...recipeRow,
+      author: { id: 'user-1', username: 'barista', displayName: null },
+    };
+    const result = AdminRecipeListItemOutputSchema.safeParse(wire(payload));
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual(wire(payload));
+  });
+
+  it('rejects author: null (admin pages keep a deleted account name)', () => {
+    const payload = { ...recipeRow, author: null };
+    expect(AdminRecipeListItemOutputSchema.safeParse(wire(payload)).success).toBe(false);
+  });
+});
+
 describe('RecipeDetailOutputSchema', () => {
   it('parses a full recipe detail payload with nested relations and round-trips', () => {
     const result = RecipeDetailOutputSchema.safeParse(wire(detailPayload));

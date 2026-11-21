@@ -197,6 +197,36 @@ describe('Admin router — auth surface', () => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/v1/admin/stats — the web dashboard (`AdminDashboardStats`) reads these exact keys.
+// ---------------------------------------------------------------------------
+describe('GET /api/v1/admin/stats', () => {
+  afterEach(() => {
+    restoreDeps();
+  });
+
+  it('answers exactly the seven dashboard counters, each a non-negative integer', async () => {
+    const app = createTestApp({ id: crypto.randomUUID(), isAdmin: true });
+    const res = await app.request('/api/v1/admin/stats');
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(Object.keys(body.data).sort()).toEqual([
+      'newRecipesToday',
+      'newUsersToday',
+      'pendingReports',
+      'totalComments',
+      'totalRecipes',
+      'totalReports',
+      'totalUsers',
+    ]);
+    for (const value of Object.values(body.data)) {
+      expect(Number.isInteger(value) && (value as number) >= 0).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // POST /api/v1/admin/users
 // ---------------------------------------------------------------------------
 describe('POST /api/v1/admin/users', () => {

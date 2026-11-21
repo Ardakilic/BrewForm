@@ -144,6 +144,7 @@ export type { UserPreferencesOutput } from './responses/preference.ts';
 // file declares `export type X = z.infer<typeof XSchema>;`; mirror that here so
 // `import type { RecipeDetailOutput } from '@brewform/shared/schemas'` resolves.
 export type {
+  AdminRecipeListItemOutput,
   DiffField,
   DiffStatus,
   FeedRecipeOutput,

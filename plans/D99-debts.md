@@ -823,9 +823,9 @@ Added 2026-11-21 by `wave-6-audit-remediation` (task 27.1). Each entry is a defe
 
 **Deferred:** wave-6 Non-Goals (t8). Admin parallel CRUD itself stays as it is, by user decision. **Priority:** P2 · **Effort:** Medium.
 
-**Evidence:** 37 of the 44 routes in `apps/api/src/modules/admin/index.ts` have no `describeRoute()`, so `/api/v1/openapi.json` and the generated `docs/api-reference.md` omit them (found again in wave-6 group 24). `apps/api/src/routes/openapi.coverage.test.ts` `IN_SCOPE_BASE_PATHS` leaves out `/api/v1/admin`, `/api/v1/auth` and `/api/v1/recipes`. Auth and recipe routes are all documented today, but nothing enforces it.
+**Evidence:** 36 of the 44 routes in `apps/api/src/modules/admin/index.ts` have no `describeRoute()`, so `/api/v1/openapi.json` and the generated `docs/api-reference.md` omit them (found again in wave-6 group 24; the wave-6 review remediation documented `GET /admin/recipes` when it added the author to its rows). `apps/api/src/routes/openapi.coverage.test.ts` `IN_SCOPE_BASE_PATHS` leaves out `/api/v1/admin`, `/api/v1/auth` and `/api/v1/recipes`. Auth and recipe routes are all documented today, but nothing enforces it.
 
-**Fix:** add `describeRoute()` with admin output schemas to the 37 routes, add the three prefixes to `IN_SCOPE_BASE_PATHS`, and regenerate `docs/api-reference.md`.
+**Fix:** add `describeRoute()` with admin output schemas to the 36 routes, add the three prefixes to `IN_SCOPE_BASE_PATHS`, and regenerate `docs/api-reference.md`.
 
 ## D99.37 — Top-level error boundary above the providers, and safe `localStorage` access — Open
 

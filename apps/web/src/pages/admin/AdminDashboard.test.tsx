@@ -29,14 +29,27 @@ import { AdminDashboard } from './AdminDashboard.tsx';
 
 const mockGetStats = vi.mocked(adminApi.getStats);
 
+/** Shaped exactly like `getDashboardStats` in `apps/api/src/modules/admin/model.ts` returns it. */
 const STATS = {
   totalUsers: 12345,
   totalRecipes: 1500,
   totalComments: 42,
-  totalPhotos: 0,
-  recentSignups: 7,
-  recentRecipes: 3,
+  totalReports: 9,
+  pendingReports: 2,
+  newUsersToday: 7,
+  newRecipesToday: 3,
 };
+
+/** Each tile's label key and the value it must show, grouped for `tr` (STATS above). */
+const TILES: [string, string][] = [
+  ['admin.dashboard.totalUsers', '12.345'],
+  ['admin.dashboard.totalRecipes', '1.500'],
+  ['admin.dashboard.totalComments', '42'],
+  ['admin.dashboard.totalReports', '9'],
+  ['admin.dashboard.newUsersToday', '7'],
+  ['admin.dashboard.newRecipesToday', '3'],
+  ['admin.dashboard.pendingReports', '2'],
+];
 
 /** Renders `/admin` through its real loader inside the app providers. */
 function renderDashboard() {
@@ -60,6 +73,17 @@ describe('AdminDashboard', () => {
     expect(screen.getByText('12.345')).toBeInTheDocument();
     expect(screen.getByText('1.500')).toBeInTheDocument();
     expect(screen.queryByText('12345')).not.toBeInTheDocument();
+  });
+
+  it('shows every counter of the stats response as a formatted tile', async () => {
+    mockGetStats.mockResolvedValue(STATS);
+    renderDashboard();
+
+    await screen.findByText(t('admin.dashboard', 'tr'));
+    for (const [key, value] of TILES) {
+      const label = screen.getByText(t(key, 'tr'));
+      expect(label.previousElementSibling).toHaveTextContent(value);
+    }
   });
 
   it('passes the request signal to the API', async () => {

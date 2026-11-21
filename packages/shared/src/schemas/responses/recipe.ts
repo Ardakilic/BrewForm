@@ -147,6 +147,22 @@ export const RecipeListItemOutputSchema = FeedRecipeOutputSchema;
 export type RecipeListItemOutput = z.infer<typeof RecipeListItemOutputSchema>;
 
 /**
+ * Admin recipe-moderation row (`GET /admin/recipes`, `admin/model.ts listAllRecipes`): the full
+ * recipe row plus the author `{ id, username, displayName }`. Unlike the public list items the
+ * author is never `null`: admin pages keep the name of a deleted account (E11).
+ */
+export const AdminRecipeListItemOutputSchema = RecipeRowSchema.extend({
+  author: z.object({
+    id: z.string(),
+    username: z.string(),
+    displayName: z.string().nullable(),
+  }),
+});
+
+/** Inferred type of {@link AdminRecipeListItemOutputSchema}. */
+export type AdminRecipeListItemOutput = z.infer<typeof AdminRecipeListItemOutputSchema>;
+
+/**
  * Author projection for the recipe detail payload (`recipe/model.ts findById`).
  * Unlike `RecipeAuthorMiniSchema`, this includes `id`.
  */

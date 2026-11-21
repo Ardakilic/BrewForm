@@ -66,23 +66,31 @@ export interface AdminUserDetail extends AdminUser {
   followingCount?: number;
 }
 
-/** Admin dashboard totals returned by `GET /admin/stats`. */
+/**
+ * Admin dashboard counters returned by `GET /admin/stats` (`getDashboardStats` in
+ * `apps/api/src/modules/admin/model.ts`; the keys are pinned by the route test in
+ * `apps/api/src/modules/admin/index.test.ts`). "Today" starts at the server's local midnight.
+ */
 export interface AdminDashboardStats {
   totalUsers: number;
   totalRecipes: number;
   totalComments: number;
-  totalPhotos: number;
-  recentSignups: number;
-  recentRecipes: number;
+  totalReports: number;
+  pendingReports: number;
+  newUsersToday: number;
+  newRecipesToday: number;
 }
 
-/** Admin recipe-moderation row returned by `GET /admin/recipes`. */
+/**
+ * Admin recipe-moderation row returned by `GET /admin/recipes`. The author is always present:
+ * admin pages keep the name of a deleted account.
+ */
 export interface AdminRecipe {
   id: string;
   title: string;
   slug: string;
   visibility: string;
-  author: { username: string };
+  author: { id: string; username: string; displayName: string | null };
   likeCount: number;
   commentCount: number;
   createdAt: string;
