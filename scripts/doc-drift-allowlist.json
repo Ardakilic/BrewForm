@@ -1,0 +1,57 @@
+{
+  "entries": [
+    {
+      "path": "docs/history/**",
+      "reason": "Superseded documents kept for history; they describe the stack as it was and are not edited."
+    },
+    {
+      "path": "docs/decisions.md",
+      "reason": "ADR history: superseded ADRs (including ADR-001's runtime choice) are kept verbatim."
+    },
+    {
+      "path": "plans/D*.md",
+      "reason": "Resolved-debt history: each D-plan records the stack it was written against."
+    },
+    {
+      "path": "plans/TECHNICAL_DEBT.md",
+      "reason": "Resolved-debt history: entries keep the tooling names they were resolved under."
+    },
+    {
+      "path": "plans/AUDIT-*.md",
+      "reason": "Audit evidence: findings quote the drift they report."
+    },
+    {
+      "path": "openspec/specs/node-runtime/spec.md",
+      "reason": "Defines absence checks for the removed runtime, so it must name its files, APIs and tokens."
+    },
+    {
+      "path": "openspec/specs/doc-drift-check/spec.md",
+      "reason": "Defines the removed-tooling token pattern and the stale idioms this script rejects."
+    },
+    {
+      "path": "openspec/specs/cache-driver/spec.md",
+      "reason": "Defines absence checks, for example that the removed KV value of CACHE_DRIVER is rejected."
+    },
+    {
+      "path": "packages/shared/src/workspace.test.ts",
+      "reason": "Negative-assertion test (node-runtime): asserts the removed runtime's config files stay deleted."
+    },
+    {
+      "path": "packages/shared/src/compose-config.test.ts",
+      "reason": "Negative-assertion test (node-runtime): asserts the compose files and package scripts carry no removed-runtime commands."
+    },
+    {
+      "path": "apps/api/src/config/env.test.ts",
+      "reason": "Negative-assertion test (node-runtime): asserts the removed KV cache driver value is rejected."
+    },
+    {
+      "path": "apps/api/src/utils/cache/cache.test.ts",
+      "reason": "Negative-assertion test (node-runtime): asserts no removed-runtime KV backend can be built."
+    }
+  ],
+  "retiredCapabilities": {
+    "deno-runtime": "wave-6-audit-remediation",
+    "deno-workspace-management": "wave-6-audit-remediation",
+    "remote-cache": "wave-6-audit-remediation"
+  }
+}

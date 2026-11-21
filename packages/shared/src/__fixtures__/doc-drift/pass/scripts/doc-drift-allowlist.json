@@ -1,0 +1,15 @@
+{
+  "entries": [
+    {
+      "path": "docs/history/**",
+      "reason": "Superseded documents kept for history."
+    },
+    {
+      "path": "packages/demo/absence-check.sh",
+      "reason": "Negative assertion: proves the removed runtime is gone, so it must name it."
+    }
+  ],
+  "retiredCapabilities": {
+    "old-thing": "fixture-retirement"
+  }
+}
