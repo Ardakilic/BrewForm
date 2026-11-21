@@ -247,6 +247,9 @@ POST /api/v1/auth/logout
 Clears both auth cookies; no token is required. Because JWTs are stateless, a token copied before
 logout stays valid until it expires; if one is compromised, an admin can ban the user.
 
+In the web app, signing out (`useSignOut()`) lands on `/` before the session store clears the user.
+Other open tabs follow: they leave the page for `/` and re-read the session.
+
 ## Environment Configuration
 
 JWT behaviour is configured via environment variables:

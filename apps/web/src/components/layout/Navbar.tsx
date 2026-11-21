@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
 import { useMediaQuery } from '../../hooks/useMediaQuery.ts';
+import { useSignOut } from '../../hooks/useSignOut.ts';
 import type { rootLoader } from '../../routes/root.ts';
 import { NotificationBell } from './NotificationBell.tsx';
 
@@ -178,12 +179,14 @@ const NAV_ITEMS = [
 
 /**
  * Top navigation bar with auth-aware links, theme toggle, and a
- * focus-trapped mobile hamburger menu. Hides the register link when
+ * focus-trapped mobile hamburger menu. Both Logout buttons sign out through `useSignOut`
+ * (land on `/` before the user is cleared). Hides the register link when
  * registration is disabled server-side (read once by the root route loader
  * via `useRouteLoaderData('root')`; outside the root route it defaults to shown).
  */
 export function Navbar() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const signOut = useSignOut();
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -283,7 +286,7 @@ export function Navbar() {
           {isAuthenticated ? (
             <button
               type="button"
-              onClick={logout}
+              onClick={() => void signOut()}
               className="btn-secondary text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]"
             >
               {t('nav.logout')}
@@ -454,8 +457,8 @@ export function Navbar() {
                 <button
                   type="button"
                   onClick={() => {
-                    logout();
                     setIsMenuOpen(false);
+                    void signOut();
                   }}
                   className="btn-secondary text-sm w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]"
                 >

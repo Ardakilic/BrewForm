@@ -168,6 +168,8 @@ function respond(input: RequestInfo | URL, init?: RequestInit): Response {
 
 /** Props the page renders the modal with (reset before each test). */
 let modalProps: { open: boolean; recipeVisibility?: string } = { open: true };
+/** The modal's `onClose` (receives whether a membership change was confirmed). */
+const onCloseSpy = vi.fn();
 
 /** The page route (real detail `shouldRevalidate`) plus the real collections resource route. */
 function routesWith(element: () => ReactElement): RouteObject[] {
@@ -192,7 +194,7 @@ function routesWith(element: () => ReactElement): RouteObject[] {
 
 /** The page: the modal for {@link RECIPE_ID} with {@link modalProps}. */
 function ModalPage() {
-  return <AddToCollectionModal recipeId={RECIPE_ID} onClose={() => undefined} {...modalProps} />;
+  return <AddToCollectionModal recipeId={RECIPE_ID} onClose={onCloseSpy} {...modalProps} />;
 }
 
 /** Renders the modal page on `/recipes/my-espresso`, signed in. */
@@ -242,6 +244,7 @@ beforeEach(() => {
   createStatus = 201;
   pageLoaderRuns = 0;
   modalProps = { open: true };
+  onCloseSpy.mockReset();
   localStorage.clear();
   stubApi();
 });
@@ -430,6 +433,95 @@ describe('AddToCollectionModal — create', () => {
     await screen.findByText('Weekend brews');
     await waitForIdle(router);
     expect(isChecked('Weekend brews')).toBe(false);
+  });
+});
+
+describe('AddToCollectionModal — onClose(changed)', () => {
+  /** Clicks the modal's × button. */
+  async function closeWithX() {
+    await userEvent.setup().click(screen.getByRole('button', { name: t('common.close') }));
+  }
+
+  it('closing after a confirmed add calls onClose(true)', async () => {
+    const { router } = renderModal();
+    await screen.findByText('Beta');
+    await waitForIdle(router);
+
+    await userEvent.setup().click(rowOf('Beta'));
+    await waitFor(() => expect(isChecked('Beta')).toBe(true));
+    await waitForIdle(router);
+    await closeWithX();
+
+    expect(onCloseSpy).toHaveBeenCalledTimes(1);
+    expect(onCloseSpy).toHaveBeenCalledWith(true);
+  });
+
+  it('closing after a failed add calls onClose(false)', async () => {
+    addStatus = 500;
+    const { router } = renderModal();
+    await screen.findByText('Beta');
+    await waitForIdle(router);
+
+    await userEvent.setup().click(rowOf('Beta'));
+    expect(await screen.findByText(t('collection.error.add'))).toBeInTheDocument();
+    await waitForIdle(router);
+    await closeWithX();
+
+    expect(onCloseSpy).toHaveBeenCalledWith(false);
+  });
+
+  it('closing with no change (Escape) calls onClose(false)', async () => {
+    const { router } = renderModal();
+    await screen.findByText('Alpha');
+    await waitForIdle(router);
+
+    await userEvent.setup().keyboard('{Escape}');
+
+    expect(onCloseSpy).toHaveBeenCalledTimes(1);
+    expect(onCloseSpy).toHaveBeenCalledWith(false);
+  });
+
+  it('a 409 add counts as a change', async () => {
+    addStatus = 409;
+    const { router } = renderModal();
+    await screen.findByText('Beta');
+    await waitForIdle(router);
+
+    await userEvent.setup().click(rowOf('Beta'));
+    await waitFor(() => expect(lines()).toContain('POST /collections/c2/recipes'));
+    await waitForIdle(router);
+    await closeWithX();
+
+    expect(onCloseSpy).toHaveBeenCalledWith(true);
+  });
+
+  it('a successful create counts as a change', async () => {
+    const { router } = renderModal();
+    await screen.findByText('Alpha');
+    await waitForIdle(router);
+    const user = userEvent.setup();
+
+    await user.type(screen.getByPlaceholderText(t('collection.create.name')), 'Weekend brews');
+    await user.click(screen.getByRole('button', { name: t('collection.create.submit') }));
+    await screen.findByText('Weekend brews');
+    await waitForIdle(router);
+    await closeWithX();
+
+    expect(onCloseSpy).toHaveBeenCalledWith(true);
+  });
+
+  it('the change flag resets after each close', async () => {
+    const { router } = renderModal();
+    await screen.findByText('Beta');
+    await waitForIdle(router);
+
+    await userEvent.setup().click(rowOf('Beta'));
+    await waitFor(() => expect(isChecked('Beta')).toBe(true));
+    await waitForIdle(router);
+    await closeWithX();
+    await closeWithX();
+
+    expect(onCloseSpy.mock.calls).toEqual([[true], [false]]);
   });
 });
 

@@ -214,8 +214,14 @@ describe('SettingsPage', () => {
   });
 
   describe('Delete Account', () => {
-    it('logs out and navigates home on successful deletion', async () => {
+    it('logs out and lands on / on successful deletion (navigating before the user clears)', async () => {
       const user = userEvent.setup();
+      let pathAfterLeave = '';
+      // Like the real logout: the server logout, then `leave`, then the user is cleared.
+      mockLogout.mockImplementation(async (leave?: () => Promise<void> | void) => {
+        await leave?.();
+        pathAfterLeave = router.state.location.pathname;
+      });
       const { router } = renderSettingsPage();
 
       await waitFor(() => {
@@ -232,6 +238,9 @@ describe('SettingsPage', () => {
         expect(mockLogout).toHaveBeenCalledOnce();
         expect(router.state.location.pathname).toBe('/');
       });
+      expect(mockLogout).toHaveBeenCalledWith(expect.any(Function));
+      expect(pathAfterLeave).toBe('/');
+      expect(router.state.location.search).toBe('');
     });
 
     it('does nothing when dialog is cancelled', async () => {

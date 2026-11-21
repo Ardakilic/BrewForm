@@ -1,5 +1,5 @@
 import type { CollectionListItemOutput } from '@brewform/shared/schemas';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
@@ -20,7 +20,12 @@ const log = createLogger('AddToCollectionModal');
 interface AddToCollectionModalProps {
   recipeId: string;
   open: boolean;
-  onClose: () => void;
+  /**
+   * Called when the modal closes (× button, Escape or backdrop) with `changed`: whether at least
+   * one membership change was confirmed since it opened (an `ok` toggle, a 409 "already in the
+   * collection" or a successful create), so the page can refresh its "In collections" card once.
+   */
+  onClose: (changed: boolean) => void;
   /**
    * The current recipe's visibility. When it is `draft`, `private` or `unlisted`, the modal
    * explains that only the author sees the recipe in their collections until it is public.
@@ -63,6 +68,8 @@ interface CollectionToggleRowProps {
   recipeId: string;
   /** Sets the row's membership in the modal's list (optimistic flip, rollback or 409 keep). */
   onMembershipChange: (collectionId: string, contains: boolean) => void;
+  /** Called when the server confirmed a membership change (an `ok` result or a 409 kept add). */
+  onConfirmed: () => void;
 }
 
 /**
@@ -73,12 +80,14 @@ interface CollectionToggleRowProps {
  * false`), so rows toggle independently and each row is disabled only while its own submission
  * is pending. A `{ ok: false }` result rolls the checkmark back and toasts
  * `collection.error.add` / `collection.error.remove`, except that a 409 `CONFLICT` on `add`
- * (the recipe is already in the collection) keeps the checkmark without a toast.
+ * (the recipe is already in the collection) keeps the checkmark without a toast. A success and
+ * the kept 409 call `onConfirmed`.
  */
 function CollectionToggleRow({
   collection,
   recipeId,
   onMembershipChange,
+  onConfirmed,
 }: CollectionToggleRowProps) {
   const { t } = useTranslation();
   const toast = useToast();
@@ -92,6 +101,7 @@ function CollectionToggleRow({
         { collectionId: collection.id, recipeId, intent: result.intent },
         'AddToCollectionModal membership saved',
       );
+      onConfirmed();
     },
     onError: (result) => {
       if (result.ok) return;
@@ -101,6 +111,7 @@ function CollectionToggleRow({
           'AddToCollectionModal recipe already in collection; membership kept',
         );
         onMembershipChange(collection.id, true);
+        onConfirmed();
         return;
       }
       log.debug(
@@ -174,7 +185,9 @@ function CollectionToggleRow({
  * the recipe; on success it clears the name and reloads the list, on failure it toasts
  * `collection.error.save` (or `collection.error.add` when only the add failed, reloading the
  * list so the new collection still shows) and keeps the typed name. No submission revalidates
- * the page's loaders, and the modal never imports the API client.
+ * the page's loaders, and the modal never imports the API client. Instead it records confirmed
+ * membership changes (an `ok` toggle, a 409 kept add, a successful create) in a ref and closes
+ * with `onClose(changed)`, so the page can revalidate once.
  *
  * When `recipeVisibility` is `draft`, `private` or `unlisted`, a note under the collection list
  * (`collection.modal.hiddenRecipeNote`) explains that the recipe stays hidden from other viewers
@@ -196,6 +209,12 @@ export function AddToCollectionModal({
   const [newName, setNewName] = useState('');
   const [newVisibility, setNewVisibility] = useState('private');
   const creating = createFetcher.state !== 'idle';
+  /** Whether a membership change was confirmed since the modal last closed. */
+  const changedRef = useRef(false);
+  // The latest `onClose`, so `handleClose` stays stable (`Modal` re-runs its focus effect when
+  // its `onClose` changes, which would move focus out of the name input on every keystroke).
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     log.debug({ recipeId }, 'AddToCollectionModal mounted');
@@ -231,6 +250,7 @@ export function AddToCollectionModal({
       !result.ok && result.collectionId ? 'collection.error.add' : 'collection.error.save',
     onSuccess: (result) => {
       log.debug({ collectionId: result.collectionId, recipeId }, 'AddToCollectionModal created');
+      changedRef.current = true;
       setNewName('');
       void load(myCollectionsPath(recipeId));
     },
@@ -240,6 +260,19 @@ export function AddToCollectionModal({
       void load(myCollectionsPath(recipeId));
     },
   });
+
+  /** Records a confirmed membership change (used by the rows). */
+  function markChanged() {
+    changedRef.current = true;
+  }
+
+  /** Closes the modal, reporting (and resetting) whether a membership change was confirmed. */
+  const handleClose = useCallback(() => {
+    const changed = changedRef.current;
+    changedRef.current = false;
+    log.debug({ recipeId, changed }, 'AddToCollectionModal closed');
+    onCloseRef.current(changed);
+  }, [recipeId]);
 
   /** Sets one collection's membership in the list (used by the rows). */
   function setMembership(collectionId: string, contains: boolean) {
@@ -267,7 +300,7 @@ export function AddToCollectionModal({
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       ariaLabel={t('collection.modal.title')}
       panelClassName="max-w-md p-6 max-h-[80vh] overflow-y-auto"
     >
@@ -275,7 +308,12 @@ export function AddToCollectionModal({
         <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('collection.modal.title')}
         </h2>
-        <button type="button" onClick={onClose} className="text-xl" aria-label={t('common.close')}>
+        <button
+          type="button"
+          onClick={handleClose}
+          className="text-xl"
+          aria-label={t('common.close')}
+        >
           ×
         </button>
       </div>
@@ -306,6 +344,7 @@ export function AddToCollectionModal({
                 collection={col}
                 recipeId={recipeId}
                 onMembershipChange={setMembership}
+                onConfirmed={markChanged}
               />
             ))
           )}

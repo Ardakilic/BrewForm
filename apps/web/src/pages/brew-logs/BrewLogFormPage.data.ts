@@ -7,11 +7,12 @@ import type {
 import { type ActionFunctionArgs, type LoaderFunctionArgs, redirect } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
 import { ApiError } from '../../api/errors.ts';
-import { brewLogApi, recipeApi } from '../../api/index.ts';
+import { brewLogApi } from '../../api/index.ts';
 import type { BrewLogFormValues } from '../../components/brew-log/BrewLogForm.tsx';
 import { type ActionFailure, toActionFailure } from '../../routes/action-result.ts';
 import { requireAuth } from '../../routes/auth-guards.ts';
 import { withDataLog } from '../../routes/data-logging.ts';
+import { getRecipeOr404 } from '../recipes/recipe-common.data.ts';
 
 const log = createLogger('BrewLogFormPage');
 
@@ -31,7 +32,8 @@ export interface BrewLogFormLoaderData {
 /**
  * `/brew-logs/new` and `/brew-logs/:id/edit` loader. Create mode requires `?recipeId`
  * (redirects to `/brew-logs` without it) and fetches the recipe to prefill dose/yield from the
- * version. Edit mode fetches the existing log (the API rejects non-owners with 404); a 404
+ * version; a recipe that no longer exists ("Brew again" on a deleted recipe) throws a 404
+ * `Response` through `getRecipeOr404`, so the route renders the not-found page. Edit mode fetches the existing log (the API rejects non-owners with 404); a 404
  * redirects to `/brew-logs`, a final 401 redirects to `/login?next=…` (`requireAuth`), and any
  * other error propagates to the route error element. Every request carries `request.signal`.
  */
@@ -67,7 +69,7 @@ export const loader = requireAuth(
       log,
       'BrewLogFormPage loadRecipe',
       { recipeId, recipeVersionId },
-      () => recipeApi.get(recipeId, opts),
+      () => getRecipeOr404(recipeId, opts),
     );
     return { mode: 'create', recipe, recipeId, recipeVersionId };
   },

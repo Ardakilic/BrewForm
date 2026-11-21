@@ -1,8 +1,17 @@
 import type { AuthUser } from '@brewform/shared/types';
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  startTransition,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { createLogger } from '@/utils/logger.ts';
 import { ApiError, isAbortError } from '../api/errors.ts';
 import { authApi, userApi } from '../api/index.ts';
+import { broadcastAuthChange } from '../utils/auth-broadcast.ts';
 
 const log = createLogger('AuthContext');
 
@@ -20,7 +29,12 @@ export interface AuthContextType {
     password: string;
     displayName?: string;
   }) => Promise<void>;
-  logout: () => Promise<void>;
+  /**
+   * Signs out: the server logout (errors ignored), then `leave` (the caller navigates away from
+   * the private page in it; `useSignOut` passes a `replace` navigation to `/`), then the user is
+   * cleared, even when `leave` throws. Components call `useSignOut()`, never this directly.
+   */
+  logout: (leave?: () => Promise<void> | void) => Promise<void>;
   refreshUser: () => Promise<void>;
   /** Clear `sessionError` to null without retrying — for the banner's dismiss action. */
   clearSessionError: () => void;
@@ -43,7 +57,9 @@ function isBannedError(err: unknown): boolean {
 /**
  * Owns the authenticated-user state: restores the session on mount via
  * `userApi.me()` and exposes login/register/logout/refreshUser. Banned
- * accounts and expired sessions resolve to a logged-out state.
+ * accounts and expired sessions resolve to a logged-out state. A successful login,
+ * registration or logout is announced to the other open tabs (`broadcastAuthChange`), which
+ * follow it through `useAuthTabSync`; `refreshUser` and the bootstrap never broadcast.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -56,14 +72,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /**
    * Loads the current user (`userApi.me`) and maps failures to the session state. With a
    * `signal` (the bootstrap effect), an aborted request returns without touching any state.
+   * With `asTransition` (every {@link refreshUser} call) the resulting state is applied inside
+   * `startTransition`, so it commits with or after a router navigation that is still being
+   * committed: `useAuthTabSync` navigates to `/` and then re-reads the session, and an urgent
+   * "signed out" update would otherwise render the old guarded page first and bounce to `/login`.
    */
-  const loadUser = useCallback(async (signal?: AbortSignal) => {
+  const loadUser = useCallback(async (signal?: AbortSignal, asTransition = false) => {
     log.debug({}, 'AuthContext token refresh started');
+    let next: { user: AuthUser | null; sessionError: 'network' | 'server' | null };
     try {
       setSessionError(null);
       const userData = await userApi.me({ signal });
       log.debug({}, 'AuthContext token refresh completed');
-      setUser(userData);
+      next = { user: userData, sessionError: null };
     } catch (err) {
       if (isAbortError(err)) {
         log.debug({}, 'AuthContext token refresh aborted');
@@ -71,32 +92,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (isBannedError(err)) {
         log.warn({ err }, 'AuthContext user account is banned');
-        setUser(null);
-        setSessionError(null);
+        next = { user: null, sessionError: null };
       } else if (err instanceof ApiError && err.status === 401) {
         log.warn({ err }, 'AuthContext session expired or not authenticated');
-        setUser(null);
-        setSessionError(null);
+        next = { user: null, sessionError: null };
       } else if (err instanceof ApiError && err.status >= 500) {
         log.error({ err }, 'Session restore failed — server error');
-        setUser(null);
-        setSessionError('server');
+        next = { user: null, sessionError: 'server' };
       } else if (!(err instanceof ApiError)) {
         log.error({ err }, 'Session restore failed — network error');
-        setUser(null);
-        setSessionError('network');
+        next = { user: null, sessionError: 'network' };
       } else {
         // Other 4xx (403, 404) — treat as auth-state issue, not server health
         log.warn({ err }, 'AuthContext token refresh failed');
-        setUser(null);
-        setSessionError(null);
+        next = { user: null, sessionError: null };
       }
     }
-    setIsLoading(false);
+    const apply = () => {
+      setUser(next.user);
+      setSessionError(next.sessionError);
+      setIsLoading(false);
+    };
+    if (asTransition) startTransition(apply);
+    else apply();
   }, []);
 
-  /** Re-reads the current user (after login-affecting changes such as verifying an email). */
-  const refreshUser = useCallback(() => loadUser(), [loadUser]);
+  /**
+   * Re-reads the current user (after login-affecting changes such as verifying an email, or a
+   * sign-in or sign-out in another tab); the new state is applied as a transition.
+   */
+  const refreshUser = useCallback(() => loadUser(undefined, true), [loadUser]);
 
   // Session bootstrap (the one allowlisted effect fetch): aborted on unmount, so StrictMode's
   // throwaway mount does not race the real one.
@@ -106,11 +131,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, [loadUser]);
 
+  /**
+   * Signs in and stores the user, then announces the sign-in to the other open tabs
+   * (`broadcastAuthChange('login')`). A failure is logged and rethrown, without a broadcast.
+   */
   async function login(email: string, password: string, rememberMe = false) {
     try {
       const response = await authApi.login({ email, password, rememberMe });
       log.info({ userId: response.user.id }, 'AuthContext user logged in');
       setUser(response.user);
+      broadcastAuthChange('login');
     } catch (err) {
       if (isBannedError(err)) {
         log.warn({ err }, 'AuthContext user account is banned');
@@ -121,6 +151,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /**
+   * Registers and stores the new (signed-in) user, then announces the sign-in to the other open
+   * tabs (`broadcastAuthChange('login')`). A failure is logged and rethrown, without a broadcast.
+   */
   async function register(data: {
     email: string;
     username: string;
@@ -131,20 +165,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authApi.register(data);
       log.info({ userId: response.user.id }, 'AuthContext user registered');
       setUser(response.user);
+      broadcastAuthChange('login');
     } catch (err) {
       log.error({ err }, 'AuthContext registration failed');
       throw err;
     }
   }
 
-  async function logout() {
+  /**
+   * Clears the session cookies on the server (errors ignored: the cookies may already be gone),
+   * announces the sign-out to the other open tabs (`broadcastAuthChange('logout')`, whether or
+   * not the server logout succeeded), awaits `leave` so the caller leaves the private page while the user is still set (no loader
+   * runs with the old session and no render guard bounces to `/login`), then clears the user in
+   * `finally`. The user is cleared inside `startTransition`: the router commits its location
+   * updates as transitions, so an urgent `setUser(null)` could render the old page signed out
+   * (and `RequireAuth` would redirect to `/login`) before the navigation of `leave` commits; as
+   * a transition it commits with or after that navigation.
+   */
+  async function logout(leave?: () => Promise<void> | void) {
     log.info({}, 'AuthContext user logged out');
     try {
       await authApi.logout();
     } catch {
       // Ignore errors — cookies may already be cleared
     }
-    setUser(null);
+    broadcastAuthChange('logout');
+    try {
+      await leave?.();
+    } finally {
+      startTransition(() => setUser(null));
+    }
   }
 
   return (

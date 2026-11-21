@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,13 +10,20 @@ const { mockNavState } = vi.hoisted(() => {
   const mockNavState: {
     activePath: string;
     rootData: { registrationEnabled: boolean } | undefined;
-  } = { activePath: '/', rootData: { registrationEnabled: true } };
+    navigate: (to: string, opts?: unknown) => Promise<void>;
+  } = {
+    activePath: '/',
+    rootData: { registrationEnabled: true },
+    navigate: () => Promise.resolve(),
+  };
   return { mockNavState };
 });
 
 vi.mock('react-router', () => ({
   // The root route loader's data (`{ registrationEnabled }`), controlled per test.
   useRouteLoaderData: () => mockNavState.rootData,
+  // Sign-out navigates to `/` (useSignOut); the test records the call.
+  useNavigate: () => mockNavState.navigate,
   Link: ({
     to,
     children,
@@ -317,19 +324,46 @@ describe('Navbar — authenticated state', () => {
     expect(screen.getByText('Çıkış Yap')).toBeInTheDocument();
   });
 
-  it('calls logout when Log Out button is clicked', async () => {
-    const logout = vi.fn();
+  /** A fixed-auth `logout` that runs `leave` like the real one (server logout, leave, clear). */
+  function signedInWithLeavingLogout() {
+    const navigate = vi.fn(() => Promise.resolve());
+    mockNavState.navigate = navigate;
+    const logout = vi.fn(async (leave?: () => Promise<void> | void) => {
+      await leave?.();
+    });
     mockUseAuth.mockReturnValue({
       ...defaultAuth,
       user: authenticatedUser,
       isAuthenticated: true,
       logout,
     } as ReturnType<typeof useAuth>);
+    return { navigate, logout };
+  }
+
+  it('the desktop Log Out button signs out and lands on /', async () => {
+    const { navigate, logout } = signedInWithLeavingLogout();
 
     render(<Navbar />);
 
     await userEvent.click(screen.getByText('Log Out'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/', { replace: true }));
     expect(logout).toHaveBeenCalledOnce();
+    expect(logout).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('the mobile-menu Log Out button signs out and lands on /', async () => {
+    const { navigate, logout } = signedInWithLeavingLogout();
+
+    render(<Navbar />);
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: enTranslations['nav.menuToggle'] }));
+    });
+    const dialog = screen.getByRole('dialog');
+    await userEvent.click(within(dialog).getByText('Log Out'));
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/', { replace: true }));
+    expect(logout).toHaveBeenCalledOnce();
+    expect(logout).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it('shows unauthenticated links when logged out', () => {

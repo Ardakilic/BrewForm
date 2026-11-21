@@ -29,6 +29,8 @@ const { mockNavState } = vi.hoisted(() => {
 vi.mock('react-router', () => ({
   // The root route loader's data (`{ registrationEnabled }`), controlled per test.
   useRouteLoaderData: () => mockNavState.rootData,
+  // The Logout buttons sign out through useSignOut, which navigates.
+  useNavigate: () => () => Promise.resolve(),
   Link: ({
     to,
     children,

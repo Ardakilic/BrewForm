@@ -162,6 +162,18 @@ describe('BrewLogFormPage — loader', () => {
     expect(mockRecipeGet).toHaveBeenCalledWith('r1', { signal: expect.any(AbortSignal) });
   });
 
+  it('throws a 404 Response when the create-mode recipe is gone', async () => {
+    mockRecipeGet.mockRejectedValue(new ApiError('NOT_FOUND', 'Recipe not found', undefined, 404));
+
+    const thrown = await loader({
+      params: {},
+      request: new Request('http://localhost/brew-logs/new?recipeId=gone'),
+    }).catch((err: unknown) => err);
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).status).toBe(404);
+  });
+
   it('fetches the log in edit mode', async () => {
     const data = await loader({
       params: { id: 'bl1' },

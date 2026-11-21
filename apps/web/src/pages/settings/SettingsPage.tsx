@@ -1,6 +1,6 @@
 import type { UserPreferences } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { useFetcher, useLoaderData, useNavigate } from 'react-router';
+import { useFetcher, useLoaderData } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
 import { Field } from '../../components/form/Field.tsx';
 import { Section } from '../../components/form/Section.tsx';
@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
 import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
+import { useSignOut } from '../../hooks/useSignOut.ts';
 import type { action, loader, SettingsActionInput } from './SettingsPage.data.ts';
 
 const log = createLogger('SettingsPage');
@@ -20,14 +21,15 @@ const log = createLogger('SettingsPage');
  * unit/timezone/date-format and email-notification preferences, plus account deletion.
  * Preferences come from the route loader; saving and deleting submit the `save-preferences`
  * and `delete-account` intents to the route action (`SettingsPage.data.ts`) through a fetcher
- * that does not revalidate the page, and the result drives the shared banner.
+ * that does not revalidate the page, and the result drives the shared banner. A successful
+ * deletion signs out through `useSignOut` and lands on `/`.
  */
 export function SettingsPage() {
-  const { user, refreshUser, logout } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const signOut = useSignOut();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, availableLocales, t } = useTranslation();
   const { confirm } = useConfirm();
-  const navigate = useNavigate();
   const { preferences } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const [prefs, setPrefs] = useState<UserPreferences>(preferences);
@@ -78,13 +80,12 @@ export function SettingsPage() {
   }
 
   /**
-   * After the account is deleted: clear the auth state ({@link logout} sets the user to null,
-   * then attempts the server-side logout, which is expected to fail) and go to the public home
-   * page.
+   * After the account is deleted: sign out through `useSignOut` (the server-side logout, which
+   * may fail, then a `replace` navigation to the public home page, then the user is cleared), so
+   * the guarded settings page never bounces to `/login`.
    */
   async function finishDeletion() {
-    await logout();
-    navigate('/');
+    await signOut();
   }
 
   /** Submit the `save-preferences` intent with the current form state. */
