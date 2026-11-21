@@ -89,11 +89,11 @@ export const reportStatusEnum = pgEnum('report_status', [...REPORT_STATUS_VALUES
  * User accounts, soft-deleted via `deletedAt`.
  *
  * `email` and `username` are unique twice over: the exact `user_email_unique` /
- * `user_username_unique` constraints (kept so the seed's `onConflictDoNothing({ target:
- * users.email })` still infers a constraint) and the case-insensitive expression indexes
- * `user_email_lower_unique` / `user_username_lower_unique` on `lower(<col>)`. Both cover
- * soft-deleted rows, so identifiers of deleted accounts stay reserved. Emails are stored
- * lower-cased by the shared `EmailSchema`; usernames keep the display case the user chose.
+ * `user_username_unique` constraints (the original constraints, kept alongside) and the
+ * case-insensitive expression indexes `user_email_lower_unique` / `user_username_lower_unique`
+ * on `lower(<col>)`. Both cover soft-deleted rows, so identifiers of deleted accounts stay
+ * reserved. Emails are stored lower-cased by the shared `EmailSchema`; usernames keep the display
+ * case the user chose.
  */
 export const users = pgTable(
   'user',

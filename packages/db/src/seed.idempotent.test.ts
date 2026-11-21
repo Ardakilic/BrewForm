@@ -31,7 +31,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { count } from 'drizzle-orm';
+import { count, inArray } from 'drizzle-orm';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { client, db } from './index.ts';
@@ -61,7 +61,7 @@ import {
   users,
   vendors,
 } from './schema.ts';
-import { seedBrewMethodCompatibility } from './seed.ts';
+import { normalizeAdminEmail, seedBrewMethodCompatibility } from './seed.ts';
 import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
 import { equipmentCatalogSeedData } from './seed-equipment-catalog.ts';
 import {
@@ -254,5 +254,65 @@ describe('Seed idempotency — collection sortOrder (D99.3)', () => {
       const expected = Array.from({ length: sorted.length }, (_, i) => i);
       expect(sorted).toEqual(expected);
     }
+  });
+});
+
+/**
+ * Re-running the seed on a database whose admin or demo accounts differ from the seed's
+ * identities only in letter case (an older install, or data written before the wave-6
+ * `user_email_lower_unique`/`user_username_lower_unique` expression indexes) must reuse those
+ * rows. `onConflictDoNothing({ target: users.email })` infers only the exact `user_email_unique`
+ * constraint, so such a row used to abort the seed transaction with a unique violation.
+ */
+describe('Seed idempotency — case-insensitive user identifiers', () => {
+  beforeAll(resetDatabase);
+
+  it('reuses accounts whose email or username differs only in case and seeds twice', async () => {
+    const [alice, bob] = userSeedData;
+    const legacy = [
+      {
+        email: normalizeAdminEmail(process.env.ADMIN_EMAIL).toUpperCase(),
+        username: 'legacy-admin',
+      },
+      { email: alice.email.toUpperCase(), username: `${alice.username}-legacy` },
+      { email: `legacy-${bob.email}`, username: bob.username.toUpperCase() },
+    ];
+    const preexisting = await db
+      .insert(users)
+      .values(legacy.map((identity) => ({ ...identity, passwordHash: 'legacy-hash' })))
+      .returning({ id: users.id });
+
+    const { main } = await import('./seed.ts');
+    await main();
+    await main();
+
+    expect((await db.select({ count: count() }).from(users))[0].count).toBe(
+      userSeedData.length + 1,
+    );
+    expect((await db.select({ count: count() }).from(userPreferences))[0].count).toBe(
+      userSeedData.length + 1,
+    );
+    const reused = await db
+      .select({ email: users.email, username: users.username })
+      .from(users)
+      .where(
+        inArray(
+          users.id,
+          preexisting.map((row) => row.id),
+        ),
+      );
+    // The seed never rewrites an existing account: the legacy identities are kept as they were.
+    expect(reused).toHaveLength(legacy.length);
+    expect(reused).toEqual(expect.arrayContaining(legacy));
+    const reusedPreferences = await db
+      .select({ count: count() })
+      .from(userPreferences)
+      .where(
+        inArray(
+          userPreferences.userId,
+          preexisting.map((row) => row.id),
+        ),
+      );
+    expect(reusedPreferences[0].count).toBe(legacy.length);
   });
 });
