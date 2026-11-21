@@ -92,7 +92,7 @@ function findEffectFetches(source: string): number[] {
  * removes its files, and a listed file whose effects no longer fetch fails the test. Must be
  * empty (and removed) before the change is archived.
  */
-const PENDING = new Set<string>(['components/collections/AddToCollectionModal.tsx']);
+const PENDING = new Set<string>([]);
 
 describe('architecture — useEffect fetch scanner self-check', () => {
   it('flags a direct client call in an effect', () => {

@@ -111,10 +111,7 @@ function format(v: Violation): string {
  * removes its files, and a listed file that no longer violates fails the test. Must be empty
  * (and removed) before the change is archived.
  */
-const PENDING = new Set<string>([
-  // useEffect fetch block: waits for task 9.13 (recipeVisibility prop) before task 15.13
-  'components/collections/AddToCollectionModal.tsx',
-]);
+const PENDING = new Set<string>([]);
 
 describe('data-loading enforcement — self-check', () => {
   const rulesOf = (file: string, source: string) => checkModule(file, source).map((v) => v.rule);

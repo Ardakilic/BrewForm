@@ -841,6 +841,8 @@
   "collection.error.save": "Koleksiyon kaydedilemedi. Lütfen tekrar deneyin.",
   "collection.error.reorder": "Tarifler yeniden sıralanamadı. Lütfen tekrar deneyin.",
   "collection.error.remove": "Tarif koleksiyondan kaldırılamadı.",
+  "collection.error.add": "Tarif koleksiyona eklenemedi.",
+  "collection.error.load": "Koleksiyonların yüklenemedi.",
   "collection.inCollections": "Koleksiyonlarda",
   "user.collections": "Koleksiyonlar",
   "user.noCollections": "Henüz koleksiyon yok.",

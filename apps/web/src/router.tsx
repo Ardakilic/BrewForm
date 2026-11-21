@@ -88,6 +88,11 @@ import {
   shouldRevalidateCoffeeVarietySearch,
 } from './routes/resources/coffee-varieties.ts';
 import {
+  myCollectionsAction,
+  myCollectionsLoader,
+  shouldRevalidateMyCollections,
+} from './routes/resources/collections.ts';
+import {
   markAllReadAction,
   markReadAction,
   notificationsPageLoader,
@@ -490,6 +495,12 @@ export const routes: RouteObject[] = [
         shouldRevalidate: shouldRevalidateCoffeeVarietySearch,
       },
       { path: 'collections/:id/reorder', action: collectionReorderAction },
+      {
+        path: 'resources/collections/mine',
+        loader: myCollectionsLoader,
+        action: myCollectionsAction,
+        shouldRevalidate: shouldRevalidateMyCollections,
+      },
       {
         path: 'resources/notifications',
         loader: notificationsPageLoader,

@@ -841,6 +841,8 @@
   "collection.error.save": "Could not save the collection. Please try again.",
   "collection.error.reorder": "Could not reorder the recipes. Please try again.",
   "collection.error.remove": "Could not remove the recipe from the collection.",
+  "collection.error.add": "Could not add the recipe to the collection.",
+  "collection.error.load": "Could not load your collections.",
   "collection.inCollections": "In Collections",
   "user.collections": "Collections",
   "user.noCollections": "No collections yet.",
