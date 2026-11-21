@@ -38,6 +38,9 @@ const { mockLogger } = vi.hoisted(() => ({
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('@base-ui/react/popover', () => {
+  /** The `displayName` of an element's component type (`undefined` for host elements). */
+  const displayNameOf = (type: unknown): unknown =>
+    typeof type === 'function' && 'displayName' in type ? type.displayName : undefined;
   const PopoverRoot = ({ children }: { children: React.ReactNode }) => {
     const [open, setOpen] = React.useState(false);
     return (
@@ -47,19 +50,14 @@ vi.mock('@base-ui/react/popover', () => {
         onMouseLeave={() => setOpen(false)}
       >
         {React.Children.map(children, (child) => {
-          if (
-            // biome-ignore lint/suspicious/noExplicitAny: test cast
-            React.isValidElement(child) &&
-            (child.type as any)?.displayName === 'PopoverTrigger'
-          ) {
+          if (React.isValidElement(child) && displayNameOf(child.type) === 'PopoverTrigger') {
             // biome-ignore lint/suspicious/noExplicitAny: test any usage
             return React.cloneElement(child as React.ReactElement<any>, {
               onClick: () => setOpen((prev: boolean) => !prev),
               'data-open': open,
             });
           }
-          // biome-ignore lint/suspicious/noExplicitAny: test cast
-          if (React.isValidElement(child) && (child.type as any)?.displayName === 'PopoverPortal') {
+          if (React.isValidElement(child) && displayNameOf(child.type) === 'PopoverPortal') {
             return open ? child : null;
           }
           return child;
@@ -278,7 +276,7 @@ describe('TasteNotesPage — loader', () => {
   });
 
   it('shows the hydrate fallback, not the page, while the loader runs', () => {
-    mockHierarchyFn.mockReturnValue(new Promise(() => {}));
+    mockHierarchyFn.mockReturnValue(new Promise(() => undefined));
 
     renderPage();
 
