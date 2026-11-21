@@ -7,13 +7,12 @@ the same recipe under the recipe's view rules and returns a shared, OpenAPI-docu
 schema. The web `VersionDiffPage`, the `DiffHighlighter` extension and version selection on
 `RecipeVersionsPage` present it with themeable CSS variables and localized strings, backed by tests
 and docblocks.
-
 ## Requirements
 ### Requirement: Diff endpoint
 
 The system SHALL expose `GET /api/v1/recipes/:slug/versions/diff?v1=<uuid>&v2=<uuid>`.
 
-- Auth: optional (public recipes viewable by anyone; private/draft only by author or admin)
+- Auth: optional (public and unlisted recipes viewable by anyone; private/draft only by the author, with no admin bypass, as for the recipe detail)
 - The endpoint SHALL return a JSON envelope with the diff payload
 - Query params `v1` and `v2` MUST be required UUIDs identifying two `recipe_version` rows
 - Both versions MUST belong to the recipe identified by `:slug`
@@ -22,28 +21,20 @@ The system SHALL expose `GET /api/v1/recipes/:slug/versions/diff?v1=<uuid>&v2=<u
 - The route MUST be registered BEFORE the catch-all `/:slugOrId` route (same ordering as `/:slug/versions`)
 
 #### Scenario: Public recipe diff by anonymous user
-
-- Given a public recipe with 3 versions
-- When an anonymous user requests diff between v1 and v3
-- Then the response is 200 with the full diff payload
+- **WHEN** an anonymous user requests the diff between v1 and v3 of a public recipe with 3 versions
+- **THEN** the response is 200 with the full diff payload
 
 #### Scenario: Private recipe diff by non-author
-
-- Given a private recipe owned by user A
-- When user B requests a version diff
-- Then the response is 404 NOT_FOUND (existence-hiding)
+- **WHEN** user B requests a version diff of a private recipe owned by user A
+- **THEN** the response is 404 NOT_FOUND (existence-hiding)
 
 #### Scenario: Missing query params
-
-- Given a public recipe
-- When a request omits `v2`
-- Then the response is 400 VALIDATION_ERROR
+- **WHEN** a request for a public recipe omits `v2`
+- **THEN** the response is 400 VALIDATION_ERROR
 
 #### Scenario: Same version requested twice
-
-- Given a public recipe with version v1
-- When a request sets both `v1` and `v2` to the same UUID
-- Then the response is 400 VALIDATION_ERROR
+- **WHEN** a request for a public recipe sets both `v1` and `v2` to the same UUID
+- **THEN** the response is 400 VALIDATION_ERROR
 
 ### Requirement: Diff payload structure
 
@@ -83,14 +74,16 @@ Where `DiffField`:
 
 ### Requirement: Authorization
 
-The system SHALL use `canViewRecipe(recipe, userId, isAdmin)` for authorization — same as sibling `/:slug/versions` route.
+The system SHALL authorize the diff with `canViewRecipe(recipe, userId)` and no admin flag, exactly like the sibling `GET /:slug/versions` and `GET /:slugOrId` routes, so `draft` and `private` recipes are diffable only by their author.
 Non-visible recipes SHALL return 404 (existence-hiding), not 403.
 
-#### Scenario: Admin views private recipe diff
+#### Scenario: Admin cannot diff another user's private recipe
+- **WHEN** an admin who is not the author requests a version diff of a private recipe
+- **THEN** the response is 404 `NOT_FOUND` "Recipe not found", the same answer the recipe detail and version list give that admin
 
-- Given a private recipe and an admin user
-- When the admin requests a version diff
-- Then the response is 200 (admin bypass via canViewRecipe)
+#### Scenario: Author diffs their own private recipe
+- **WHEN** the author requests a version diff of their private recipe
+- **THEN** the response is 200 with the diff payload
 
 ### Requirement: Error responses
 

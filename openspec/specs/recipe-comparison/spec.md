@@ -6,7 +6,6 @@ Defines the recipe compare-and-merge flow. A shared Zod schema describes merge p
 /api/v1/recipes/merge` merges two versions the caller may view into a new draft, and the web compare
 page shows a side-by-side diff with a per-field merge selector. Its strings exist in both locales,
 diff colours are themeable, logs carry ids only, and the behaviour has regression tests.
-
 ## Requirements
 ### Requirement: Shared Zod schema for merge payloads
 `packages/shared/src/schemas/recipe.ts` SHALL export `RecipeMergeSchema` and its inferred type `RecipeMerge` (re-exported from `packages/shared/src/schemas/index.ts`) describing a merge request as `recipeVersionId1` and `recipeVersionId2` (`z.uuid()`), `title` (`z.string().min(1).max(200)`) and a `selections` object defaulting to `{}` in which every scalar field (`brewMethod`, `drinkType`, `grindSize`, `groundWeightGrams`, `extractionTimeSeconds`, `extractionVolumeMl`, `temperatureCelsius`, `brewerDetails`, `grinder`, `preparationNotes`, `personalNotes`) is an optional `z.enum(['v1', 'v2'])` and every list field (`tasteNotes`, `equipment`, `additionalPreparations`) is an optional `z.enum(['v1', 'v2', 'both', 'none'])`.
@@ -43,7 +42,7 @@ The schema SHALL reject a payload whose two version ids are equal, reporting the
 ### Requirement: Service merges two accessible versions into a new draft
 `mergeRecipes(authorId, data)` in `apps/api/src/modules/recipe/service.ts` SHALL load both versions through the model, throw `RECIPE_NOT_FOUND` when either version is missing or its recipe is soft-deleted, throw `FORBIDDEN` when the caller may not view either source recipe under the shared visibility predicate (`canViewRecipe`: public and unlisted recipes are viewable by anyone, draft and private recipes only by their author), and otherwise create a new recipe through `createRecipe` with `visibility: 'draft'`, `isFavourite: false`, the requested `title` and the selected field values.
 
-Unselected scalar fields SHALL be empty except `brewMethod` and `drinkType`, which fall back to version 1's values, and `preparationNotes`, which falls back to `'Merged recipe'`. List fields SHALL follow their selection (`v1`, `v2`, `both` = de-duplicated union, `none` or unset = empty), computed by the exported helpers `getMergedIds` and `getMergedPreparations`. Taste-note intensities are not carried over (they default to 1 in `createRecipe`). The service SHALL NOT import `drizzle-orm` or `@brewform/db`.
+Unselected scalar fields SHALL be empty except `brewMethod` and `drinkType`, which fall back to version 1's values, and `preparationNotes`, which falls back to `'Merged recipe'`. List fields SHALL follow their selection (`v1`, `v2`, `both` = de-duplicated union, `none` or unset = empty), computed by the exported helpers `getMergedIds` and `getMergedPreparations`. Taste notes and equipment whose catalog row is soft-deleted SHALL be dropped from the merged lists before `createRecipe` runs (the relation rows loaded by `fetchRecipeVersionWithRelations` carry the row's `deletedAt`), so a merge never fails on a record deleted after it was linked. Taste-note intensities are not carried over (they default to 1 in `createRecipe`). The service SHALL NOT import `drizzle-orm` or `@brewform/db`.
 
 #### Scenario: Selected fields come from the chosen version
 - **WHEN** `mergeRecipes(authorId, { …, selections: { brewMethod: 'v1', temperatureCelsius: 'v2' } })` is called on two viewable versions
@@ -52,6 +51,10 @@ Unselected scalar fields SHALL be empty except `brewMethod` and `drinkType`, whi
 #### Scenario: Taste notes are unioned with 'both'
 - **WHEN** version 1 has taste notes [A, B], version 2 has [B, C] and `selections.tasteNotes` is `'both'`
 - **THEN** the merged recipe has taste notes A, B and C exactly once each
+
+#### Scenario: Soft-deleted taste notes and equipment are dropped
+- **WHEN** version 1 links taste note A and soft-deleted taste note D, version 2 links B, and `selections.tasteNotes` is `'both'`
+- **THEN** the merge succeeds and the merged recipe has taste notes A and B only
 
 #### Scenario: Missing or deleted source returns not found
 - **WHEN** `recipeVersionId1` does not exist, or belongs to a recipe whose `deletedAt` is set

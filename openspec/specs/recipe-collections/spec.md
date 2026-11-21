@@ -8,7 +8,6 @@ profile tab, i18n keys and seed data. Collections follow the recipe visibility r
 counts show only recipes the viewer may list, cached reads re-check visibility, and a non-public
 recipe added to a shared collection stays hidden from other viewers. Logging, docblocks and tests
 are required throughout.
-
 ## Requirements
 ### Requirement: Database tables for collections and collection items
 
@@ -230,7 +229,7 @@ export const CollectionItemOutputSchema = z.object({
 export type CollectionItemOutput = z.infer<typeof CollectionItemOutputSchema>;
 
 export const CollectionDetailOutputSchema = CollectionOutputSchema.extend({
-  author: RecipeAuthorMiniSchema,
+  author: RecipeAuthorMiniSchema.nullable(), // null when the owner's account was deleted (account-deletion)
   items: z.array(CollectionItemOutputSchema),
   recipeCount: z.number().int(),
 });
@@ -254,7 +253,10 @@ and the inferred types from `packages/shared/src/schemas/index.ts` via explicit
 - **WHEN** `CollectionListItemOutputSchema.safeParse({ ...collectionRow })` is called without `recipeCount`
 - **THEN** `result.success` is `false`
 
----
+#### Scenario: CollectionDetailOutputSchema accepts a deleted owner
+
+- **WHEN** a detail payload whose owner account was deleted (`author: null`) is passed through `wire()` and then `CollectionDetailOutputSchema.safeParse()`
+- **THEN** `result.success` is `true`
 
 ### Requirement: API model layer — pure Drizzle data-access
 
@@ -295,9 +297,6 @@ export async function removeItem(collectionId: string, recipeId: string);
 /** Reorder all items in a collection by assigning sortOrder = index in a transaction. */
 export async function reorderItems(collectionId: string, itemIds: string[]);
 
-/** Fetch all collection_items for a collection, with nested recipe (excluding soft-deleted recipes), ordered by sortOrder. */
-export async function getItems(collectionId: string);
-
 /** Fetch public collections that contain a given recipe (for RecipeDetailPage). */
 export async function getCollectionsForRecipe(recipeId: string);
 ```
@@ -316,20 +315,15 @@ violation of this requirement. The
 `getRecipeVisibilityStates` function SHALL select only `id`, `visibility`, `authorId` and `deletedAt`
 from `recipes` with `inArray(recipes.id, recipeIds)` (returning `[]` without querying when the list
 is empty) and SHALL deliberately NOT filter `deletedAt`, so callers can detect deletions. It is an
-exempt unit in the `recipe-visibility` enforcement test. The `getItems` function SHALL join `recipes` and filter `isNull(recipes.deletedAt)` so
-soft-deleted recipes do not appear. The `create` function uses `db.insert(collections).values(data).returning()`.
+exempt unit in the `recipe-visibility` enforcement test. Collection items are read only through
+`findById` (unfiltered) and filtered by the service with `getRecipeVisibilityStates`; the model has
+no separate item-list function. The `create` function uses `db.insert(collections).values(data).returning()`.
 The `softDelete` function applies `isNull(collections.deletedAt)` in the WHERE to prevent double-soft-delete.
 
 #### Scenario: findById excludes soft-deleted collections
 
 - **WHEN** `findById('some-id')` is called for a collection with `deletedAt` set
 - **THEN** the function returns `undefined`
-
-#### Scenario: getItems excludes soft-deleted recipes
-
-- **WHEN** a collection contains an item whose recipe has `deletedAt` set
-- **AND** `getItems(collectionId)` is called
-- **THEN** the soft-deleted recipe's item is NOT in the returned array
 
 #### Scenario: removeItem hard-deletes the join row
 

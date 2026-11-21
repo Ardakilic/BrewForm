@@ -208,7 +208,7 @@ interface AuthContextType {
   sessionError: 'network' | 'server' | null;  // new
   login: (...) => Promise<void>;
   register: (...) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: (leave?: () => Promise<void> | void) => Promise<void>;  // leave runs between the server logout and clearing the user (web-data-loading)
   refreshUser: () => Promise<void>;
   clearSessionError: () => void;  // new
 }
@@ -509,6 +509,16 @@ The API SHALL NOT write `DrizzleQueryError` parameters, its parameter-bearing `m
   `params`, `parameters` and `detail`.
 - In non-production environments the `500` response message SHALL NOT echo a `DrizzleQueryError`
   message (it embeds parameters); it SHALL use `Database error` instead.
+- Every other log entry that carries a caught error which can come from a database query SHALL
+  pass it as `err: toLoggableError(err)`: the catches of `notification/service.ts` (its `notify*`
+  email helpers swallow mail errors and throw only recipient-lookup errors), the side-effect
+  handlers and catches of the comment, recipe and follow services, `evaluateAllBadges`,
+  `listAllPublicCollections`, the brew-log service, the `FLUSH_CACHE` audit write, the auth
+  middleware, the crawler middleware, the hourly cron job and the `apps/api/src/setup.ts` admin
+  bootstrap (a failed admin insert carries the email and the password hash).
+  `apps/api/src/utils/db-error-logging.enforcement.test.ts` lists these files and fails when a log
+  call in one of them passes a raw `err`; mail-send errors use `toLoggableMailError` instead
+  ("Email send failures are logged without recipient addresses").
 
 #### Scenario: Re-registration conflict does not log the password hash
 
@@ -519,6 +529,16 @@ The API SHALL NOT write `DrizzleQueryError` parameters, its parameter-bearing `m
 
 - **WHEN** `APP_ENV=development` and an unmapped `DrizzleQueryError` reaches the handler
 - **THEN** the response `error.message` is `Database error` and does not contain the `params:` text
+
+#### Scenario: A failed notification insert does not log its parameters
+
+- **WHEN** the insert of `createFollowNotification` fails with a Drizzle-wrapped error whose message and `params` carry bound values
+- **THEN** the `follow notification create failed` entry's `err` equals `toLoggableError` of that error and no logged argument contains a bound value
+
+#### Scenario: A raw caught error in a listed file fails the enforcement test
+
+- **WHEN** a log call in one of the files listed by `db-error-logging.enforcement.test.ts` passes `{ err, … }`
+- **THEN** the test fails and names the file and line
 
 ### Requirement: Unique-violation detection uses one shared helper
 
@@ -625,4 +645,23 @@ Routes whose reachable error statuses change in this change SHALL document them 
 
 - **WHEN** `apps/api/src/routes/openapi.coverage.test.ts` runs after the change
 - **THEN** it passes and the generated spec at `/api/v1/openapi.json` lists `409` for `POST /api/v1/recipes`
+
+### Requirement: Email send failures are logged without recipient addresses
+
+Every log entry for a failed email send, and for any error caught around one, SHALL pass the error through `toLoggableMailError` from `apps/api/src/utils/errors.ts`, which keeps only the error name, `code`, `command`, `responseCode` and the stack frames for mail errors (database errors go through `toLoggableError`), because nodemailer puts recipient addresses into `message`, `response`, `rejected` and `rejectedErrors[].recipient`.
+
+- This covers `apps/api/src/modules/auth/email.ts`, the verification and password-reset catches in
+  `auth/service.ts`, the welcome-email catch in `admin/service.ts`, the notification `sendEmail` in
+  `apps/api/src/utils/notify/index.ts` and the contact route.
+
+#### Scenario: A rejected recipient does not reach the logs
+
+- **WHEN** the SMTP server rejects every recipient of a welcome email to `victim@example.com` (nodemailer `EENVELOPE` with `rejected: ['victim@example.com']` and the reply `550 5.1.1 <victim@example.com>` in its message)
+- **THEN** the error log entry has `code: 'EENVELOPE'`, `command: 'RCPT TO'` and `responseCode: 550`
+- **AND** no log entry contains `victim@example.com`
+
+#### Scenario: Database errors keep the database-safe shape
+
+- **WHEN** the verification-token insert fails during registration with a Drizzle-wrapped Postgres error
+- **THEN** the warn log carries the same `err` object `toLoggableError` produces (no query parameters)
 

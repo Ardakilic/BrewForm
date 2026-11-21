@@ -8,7 +8,6 @@ the database level, identifiers of soft-deleted accounts stay reserved with conf
 and reserved usernames are refused at self-registration. It also allows one active default setup per
 user, lets join rows be re-created after removal, and requires existing conflicts to be found and
 remediated before stricter constraints apply.
-
 ## Requirements
 ### Requirement: Email addresses are normalized before validation, storage and lookup
 
@@ -22,8 +21,11 @@ The system SHALL trim and lowercase every account email address before validatin
   `PasswordResetSchema` (`packages/shared/src/schemas/auth.ts`), and in the admin create and update
   user schemas (`packages/shared/src/schemas/admin.ts`). The contact-form email is not an account
   identifier and SHALL stay as it is.
-- Lowercasing is safe because Zod's default email pattern accepts only ASCII, where JavaScript
-  `toLowerCase()` and Postgres `lower()` agree.
+- Lowercasing in JavaScript before storage is safe because Zod's default email pattern accepts only
+  ASCII: the stored value is already lower-case, and Postgres `lower()` leaves lower-case ASCII
+  unchanged under every database locale. Lookups still lower both sides in SQL (see "Email and
+  username lookups are case-insensitive"), because Postgres `lower()` of an upper-case ASCII letter
+  depends on the locale (`lower('I')` is `ı` under `tr_TR`).
 - `packages/db/src/seed.ts` SHALL apply the same `trim().toLowerCase()` to `ADMIN_EMAIL` before
   inserting or selecting the admin user.
 
@@ -41,9 +43,11 @@ The system SHALL trim and lowercase every account email address before validatin
 
 The system SHALL enforce case-insensitive uniqueness of `user.email` and `user.username` with expression unique indexes declared in `packages/db/src/schema.ts`: `uniqueIndex('user_email_lower_unique').on(lower(table.email))` and `uniqueIndex('user_username_lower_unique').on(lower(table.username))`.
 
-- `lower(column: AnyPgColumn): SQL` SHALL be exported from `packages/db/src/schema.ts` as
-  `` sql`lower(${column})` ``, with a `// D03 raw-SQL exception:` comment that says Drizzle has no
-  `lower()` builder. Models import it from `@brewform/db/schema`. Services never import it.
+- `lower(value: AnyPgColumn | SQLWrapper | string): SQL<string>` SHALL be exported from
+  `packages/db/src/schema.ts` as `` sql`lower(${value})` ``, with a `// D03 raw-SQL exception:` comment
+  that says Drizzle has no `lower()` builder. A column or SQL expression is embedded; a string is sent
+  as a bound parameter, so a lookup can lower both sides with the database's own rules. Models import
+  it from `@brewform/db/schema`. Services never import it.
 - The existing exact constraints `user_email_unique` and `user_username_unique` SHALL be kept, so
   the seed's `onConflictDoNothing({ target: users.email })` keeps a matching constraint and the
   existing constraint names stay valid.
@@ -51,7 +55,9 @@ The system SHALL enforce case-insensitive uniqueness of `user.email` and `user.u
   SQL). It creates both indexes inside Drizzle's single migration transaction, so if existing data
   violates an index, the whole migration rolls back and the database is unchanged (see the
   identifier-check requirement).
-- Usernames keep the letter case the user chose. Only uniqueness and lookups ignore case.
+- Usernames keep the letter case the user chose. Only uniqueness and lookups ignore case, with the
+  database's case rules: on a database whose locale lowers `I` to `ı` (`tr_TR`, `az_AZ`), `Ilker` and
+  `ilker` are different identifiers.
 - `citext` and other extensions SHALL NOT be used.
 
 #### Scenario: Case variants cannot both exist
@@ -68,15 +74,14 @@ The system SHALL enforce case-insensitive uniqueness of `user.email` and `user.u
 
 ### Requirement: Email and username lookups are case-insensitive
 
-The system SHALL compare emails and usernames with `eq(lower(<column>), value.toLowerCase())` (or `inArray(lower(<column>), values.map(toLowerCase))`) in every identifier lookup, so the comparison matches the expression unique indexes and is served by them.
+The system SHALL compare emails and usernames with `eq(lower(<column>), lower(value))` (or `inArray(lower(<column>), values.map((v) => lower(v)))`) in every identifier lookup, so the database lowers both sides with the same rules the expression unique indexes use, on any database locale, and the comparison is served by those indexes.
 
 The lookups this requirement covers:
 
-- `auth/model.ts`: `findUserByEmail` (login, forgot password), `findUserByUsername`,
-  `isEmailTaken` and `isUsernameTaken`;
-- `admin/model.ts`: `isEmailTaken` and `isUsernameTaken`;
+- `auth/model.ts`: `findUserByEmail` (login, forgot password), `isEmailTaken` and `isUsernameTaken`;
 - `user/model.ts`: `findByUsername` (`GET /api/v1/users/:username`);
-- `notification/model.ts`: `findMentionTargets` (comment mentions).
+- `notification/model.ts`: `findMentionTargets` (comment mentions);
+- `packages/db/src/seed.ts`: `findSeedUser`.
 
 Related changes:
 
@@ -88,6 +93,8 @@ Related changes:
   loader's brews-tab check), not by comparing usernames with the URL parameter.
 - Rows written before this change may hold mixed-case emails. Lookups through `lower()` find them,
   so no backfill is required.
+- An enforcement test (`apps/api/src/modules/auth/identifier.enforcement.test.ts`) SHALL fail when a
+  model or the seed compares `lower(<column>)` with a value that is not wrapped in `lower()`.
 
 #### Scenario: Login ignores letter case, including legacy rows
 
@@ -105,21 +112,26 @@ Related changes:
 - **WHEN** the signed-in user `Arda<m>` opens `/u/arda<m>?tab=brews`
 - **THEN** the page treats the profile as the viewer's own and loads the brew journal
 
+#### Scenario: Both sides are lowered in SQL and the index serves the lookup
+
+- **WHEN** a username lookup built with `eq(lower(users.username), lower('Arda'))` is compiled and explained with sequential scans disabled
+- **THEN** its SQL contains `lower("user"."username") = lower($1)` and the plan uses `user_username_lower_unique`
+
 ### Requirement: Identifiers of soft-deleted accounts stay reserved and conflicts map to 409
 
-The system SHALL treat the email and username of a soft-deleted account as taken. The availability checks `isEmailTaken` and `isUsernameTaken` (auth and admin models) SHALL NOT filter `deletedAt`, so that they agree with the global unique indexes, and registration and admin writes SHALL answer a taken identifier with `409` and the existing messages instead of relying on a failed insert.
+The system SHALL treat the email and username of a soft-deleted account as taken. The availability checks `isEmailTaken` and `isUsernameTaken` in `apps/api/src/modules/auth/model.ts` SHALL NOT filter `deletedAt`, so that they agree with the global unique indexes, and registration SHALL answer a taken identifier with `409` and the existing messages before it reaches the user insert. Admin create and update SHALL rely on the unique indexes: the `23505` of their insert or update SHALL map to `409` with the existing admin messages.
 
 - This is a deliberate exception to the soft-delete filtering rule. Each function's docblock, and
   the `auth/model.ts` module docblock (which says every user query filters soft-deletes), SHALL
   state the exception and the reason: the unique indexes cover soft-deleted rows, and keeping a
   deleted account's username reserved stops a new account from inheriting its old profile links and
   mentions.
-- A `23505` from the user insert or update is only a race fallback. It SHALL map to
-  `EMAIL_ALREADY_EXISTS` for `user_email_unique` or `user_email_lower_unique`, and to
-  `USERNAME_ALREADY_EXISTS` for `user_username_unique` or `user_username_lower_unique`, through
-  `isUniqueViolation`. The constraint names SHALL be exported as `USER_EMAIL_CONSTRAINTS` and
-  `USER_USERNAME_CONSTRAINTS` from `apps/api/src/modules/auth/model.ts` and reused by
-  `admin/model.ts#throwIfUniqueViolation`.
+- A `23505` from the registration insert is only a race fallback; for admin create and update it is
+  the normal conflict path. It SHALL map to `EMAIL_ALREADY_EXISTS` for `user_email_unique` or
+  `user_email_lower_unique`, and to `USERNAME_ALREADY_EXISTS` for `user_username_unique` or
+  `user_username_lower_unique`, through `isUniqueViolation`. The constraint names SHALL be exported as
+  `USER_EMAIL_CONSTRAINTS` and `USER_USERNAME_CONSTRAINTS` from `apps/api/src/modules/auth/model.ts`
+  and reused by `admin/model.ts#throwIfUniqueViolation`.
 - Statuses and messages: registration returns `409 CONFLICT` with `Email already registered` or
   `Username already taken`. Admin create and update keep their existing `409` messages. Login with
   a deleted account's email stays `401 INVALID_CREDENTIALS`. Forgot-password for it stays a silent
@@ -206,9 +218,12 @@ The system SHALL ship an operator script, `packages/db/src/check-identifiers.ts`
 
 - Pure, unit-tested functions SHALL do the grouping over plain row arrays:
   `groupCaseInsensitiveDuplicates(rows, key)` for `email` and `username`, and
-  `findMultipleDefaults(rows)` for setups. The script loads only `id`, `email`, `username`,
-  `deletedAt` and `createdAt` from `user`, `id`, `userId` and `updatedAt` from active default
-  setups, and `id` from recipes whose slug is `''`.
+  `findMultipleDefaults(rows)` for setups. Case duplicates SHALL be grouped on keys lowered by the
+  database (`lower(email)` and `lower(username)`, loaded through the `lower()` helper), so the report
+  matches what the expression indexes reject on that database's locale. The script loads only `id`,
+  `lower(email)`, `username`, `lower(username)`, `deletedAt` and `createdAt` from `user` (never the raw
+  email), `id`, `userId` and `updatedAt` from active default setups, and `id` from recipes whose slug
+  is `''`.
 - The report SHALL print counts, user ids and usernames (usernames are public), and SHALL NEVER
   print email addresses. It SHALL exit `1` when a blocking issue exists (email or username case
   duplicates, multiple active defaults), and `0` otherwise. Empty legacy slugs are reported as a
@@ -236,8 +251,8 @@ The system SHALL ship an operator script, `packages/db/src/check-identifiers.ts`
 
 #### Scenario: Grouping finds case duplicates without leaking emails
 
-- **WHEN** `groupCaseInsensitiveDuplicates` receives rows with emails `A@x.io` (active), `a@x.io` (soft-deleted) and `b@x.io`, and the report formatter renders the result
-- **THEN** one group with both ids is returned, its soft-deleted member is marked fixable, and the rendered report contains neither `a@x.io` nor `A@x.io`
+- **WHEN** `groupCaseInsensitiveDuplicates` receives three rows whose database-lowered email keys are `a@x.io` (active), `a@x.io` (soft-deleted) and `b@x.io`, and the report formatter renders the result
+- **THEN** one group with the first two ids is returned, its soft-deleted member is marked fixable, and the rendered report does not contain `a@x.io`
 
 #### Scenario: Multiple defaults are found and fixed
 

@@ -6,7 +6,6 @@ Defines how API service modules log: one module-scoped logger, entry and exit de
 functions, an error log before every throw, and logs for cache interactions, moderation actions and
 async side effects. Logs carry traceable ids only and never the request payload, so service
 behaviour can be followed in production without exposing user data.
-
 ## Requirements
 ### Requirement: Standard service functions log entry and exit at debug level
 
@@ -79,11 +78,6 @@ Service functions that read from or write to a cache SHALL include cache hit/mis
 - **WHEN** `createTasteNote(data, cache)` successfully creates a taste note
 - **THEN** the system SHALL emit `log.debug({ name }, 'flushing taste note cache after create')` before calling `flushCache(cache)`
 
-#### Scenario: Default-clearing side effect in setup service is logged
-
-- **WHEN** `createSetup(userId, data)` is called with `data.isDefault = true`
-- **THEN** the system SHALL emit `log.debug({ userId }, 'createSetup clearing defaults for user')` before calling `model.clearDefaultForUser(userId)`
-
 ### Requirement: Logger is module-scoped and follows naming convention
 
 Each service file SHALL import `createLogger` from the API logger utility and instantiate a module-scoped logger using the kebab-case domain name suffixed with `-service`.
@@ -141,18 +135,7 @@ Service functions whose parameters include `data: any` (bean service `createBean
 
 ### Requirement: Services with async side effects log the side effect execution
 
-Service functions that trigger async side effects such as `clearDefaultForUser` (setup service) or `flushCache` (taste service) SHALL emit a `log.debug` call immediately before executing each side effect, and SHALL include relevant identifiers in the log context.
-
-#### Scenario: setDefault logs the clearDefaultForUser side effect before executing it
-
-- **WHEN** `setDefault(userId, id)` is called and the setup passes ownership and existence guards
-- **THEN** the system SHALL emit `log.debug({ userId }, 'setDefault clearing previous defaults')` before calling `model.clearDefaultForUser(userId)`
-- **AND** the side effect SHALL execute after the log call
-
-#### Scenario: updateSetup logs the clearDefaultForUser side effect when isDefault is true
-
-- **WHEN** `updateSetup(userId, id, data)` is called with `data.isDefault = true`
-- **THEN** the system SHALL emit `log.debug({ userId }, 'updateSetup clearing defaults for user')` before calling `model.clearDefaultForUser(userId)`
+Service functions that trigger async side effects such as `flushCache` (taste service) SHALL emit a `log.debug` call immediately before executing each side effect, and SHALL include relevant identifiers in the log context. Work that a model performs inside its own transaction (for example the setup default switch in `setup/model.ts`) is not a service side effect and SHALL NOT get a separate service log line.
 
 #### Scenario: createTasteNote logs the cache flush side effect
 
@@ -174,6 +157,11 @@ Service functions that trigger async side effects such as `clearDefaultForUser` 
 - **WHEN** `flushCache(cache)` (the private function in taste service) is called
 - **THEN** the system SHALL emit `log.debug({}, 'flushCache started')` on entry
 - **AND** SHALL emit `log.debug({}, 'flushCache completed')` on exit after all cache keys are deleted
+
+#### Scenario: Setup default switch logs only entry and exit
+
+- **WHEN** `setDefault(userId, id)` succeeds
+- **THEN** the setup service emits exactly the `setDefault started` and `setDefault completed` debug logs
 
 ### Requirement: Vendor service needs only error-path logging added, not duplicate entry/exit
 
