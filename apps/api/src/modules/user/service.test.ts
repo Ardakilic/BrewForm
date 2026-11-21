@@ -1,7 +1,7 @@
 import '../../test-setup.ts';
 import { db } from '@brewform/db';
-import { users } from '@brewform/db/schema';
-import { eq } from 'drizzle-orm';
+import { recipes, userFollows, users } from '@brewform/db/schema';
+import { eq, inArray, or } from 'drizzle-orm';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VisibilityFixtures, type VisibilityScenario } from '../recipe/test-helpers.ts';
 import * as recipeNoteService from '../recipe-note/service.ts';
@@ -70,6 +70,78 @@ describe('User Service', () => {
   });
 
   describe('getPublicProfile', () => {
+    /** Accounts and recipes a follow-state case creates besides the profile user. */
+    const extraUserIds: string[] = [];
+    const extraRecipeIds: string[] = [];
+
+    /** Insert a live account and remember it for cleanup. */
+    async function insertUser(prefix: string): Promise<string> {
+      const id = crypto.randomUUID();
+      await db.insert(users).values({
+        id,
+        email: `${prefix}-${id}@example.com`,
+        username: `${prefix}-${id.slice(0, 8)}`,
+        passwordHash: 'hash',
+      });
+      extraUserIds.push(id);
+      return id;
+    }
+
+    /** Insert a recipe of the profile user with the given visibility. */
+    async function insertRecipe(visibility: 'public' | 'draft'): Promise<string> {
+      const id = crypto.randomUUID();
+      await db.insert(recipes).values({
+        id,
+        slug: `profile-${id.slice(0, 8)}`,
+        title: `Profile ${visibility}`,
+        authorId: userId,
+        visibility,
+      });
+      extraRecipeIds.push(id);
+      return id;
+    }
+
+    afterEach(async () => {
+      const ids = [userId, ...extraUserIds];
+      await db
+        .delete(userFollows)
+        .where(or(inArray(userFollows.followerId, ids), inArray(userFollows.followingId, ids)));
+      if (extraRecipeIds.length) {
+        await db.delete(recipes).where(inArray(recipes.id, extraRecipeIds));
+      }
+      if (extraUserIds.length) {
+        await db.delete(users).where(inArray(users.id, extraUserIds));
+      }
+      extraUserIds.length = 0;
+      extraRecipeIds.length = 0;
+    });
+
+    it('reports isFollowing true for a follower, false for another signed-in user, and exact counts', async () => {
+      const follower = await insertUser('profile-follower');
+      const bystander = await insertUser('profile-bystander');
+      const followee = await insertUser('profile-followee');
+      await db.insert(userFollows).values([
+        { followerId: follower, followingId: userId },
+        { followerId: userId, followingId: followee },
+        { followerId: bystander, followingId: followee },
+      ]);
+      const publicIds = [await insertRecipe('public'), await insertRecipe('public')];
+      await insertRecipe('draft');
+
+      const asFollower = await getPublicProfile(username, follower);
+      expect(asFollower.isFollowing).toBe(true);
+      expect(asFollower.followerCount).toBe(1);
+      expect(asFollower.followingCount).toBe(1);
+      expect(asFollower.recipeCount).toBe(2);
+      expect(asFollower.recipes.map((r) => r.id).sort()).toEqual(publicIds.sort());
+
+      const asBystander = await getPublicProfile(username, bystander);
+      expect(asBystander.isFollowing).toBe(false);
+      expect(asBystander.followerCount).toBe(1);
+      expect(asBystander.followingCount).toBe(1);
+      expect(asBystander.recipeCount).toBe(2);
+    });
+
     it('should log entry/exit when username is found', async () => {
       const result = await getPublicProfile(username);
 

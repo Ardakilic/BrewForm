@@ -162,16 +162,6 @@ export async function softDeleteReplies(parentId: string, recipeId: string): Pro
   return rows.map((row) => row.id);
 }
 
-/** Get the author ID of a recipe (for permission checks). */
-export async function getRecipeAuthorId(recipeId: string) {
-  const result = await db
-    .select({ authorId: recipes.authorId })
-    .from(recipes)
-    .where(eq(recipes.id, recipeId))
-    .limit(1);
-  return result[0]?.authorId ?? null;
-}
-
 /** Get minimal recipe info (id, slug, title, authorId) for notification context. */
 export async function getRecipeForNotification(recipeId: string) {
   const result = await db

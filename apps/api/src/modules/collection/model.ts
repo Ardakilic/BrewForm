@@ -389,32 +389,6 @@ export async function reorderItems(
 }
 
 /**
- * Fetch all collection_items for a collection, with nested recipe, ordered by sortOrder.
- * Soft-deleted recipes are filtered out after the join.
- */
-export async function getItems(collectionId: string) {
-  const items = await db.query.collectionItems.findMany({
-    where: and(eq(collectionItems.collectionId, collectionId)),
-    orderBy: asc(collectionItems.sortOrder),
-    with: {
-      recipe: {
-        with: {
-          author: { columns: { id: true, username: true, displayName: true } },
-          // Load the latest recipe version (highest versionNumber) so
-          // callers can read brewMethod/drinkType for the current version.
-          versions: {
-            orderBy: desc(recipeVersions.versionNumber),
-            limit: 1,
-            columns: { brewMethod: true, drinkType: true },
-          },
-        },
-      },
-    },
-  });
-  return items.filter((item) => item.recipe && !item.recipe.deletedAt);
-}
-
-/**
  * Fetch collections that contain a given recipe, visibility-filtered for the
  * viewer (for RecipeDetailPage, US-9/D99.5): public collections for anyone,
  * plus the viewer's OWN collections of any visibility. Others' non-public

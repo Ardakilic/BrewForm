@@ -413,12 +413,6 @@ export function buildListRecipesWhere(
   return conditions.length > 1 ? and(...conditions) : conditions[0];
 }
 
-/** Insert a new recipe row and return it with all database-generated fields. */
-export async function create(data: typeof recipes.$inferInsert) {
-  const [recipe] = await db.insert(recipes).values(data).returning();
-  return recipe;
-}
-
 /** Author columns of the recipe detail reads; `deletedAt` feeds {@link visibleIdentity}. */
 const DETAIL_AUTHOR_COLUMNS = {
   id: true,
@@ -718,12 +712,6 @@ export function findMany(
   sortOrder: string = 'desc',
 ) {
   return findListPage({ where, page, perPage, sortBy, sortOrder });
-}
-
-/** Patch a recipe row with partial data, identified by UUID. Returns the updated row or null. */
-export async function update(id: string, data: Partial<typeof recipes.$inferInsert>) {
-  const [result] = await db.update(recipes).set(data).where(eq(recipes.id, id)).returning();
-  return result ?? null;
 }
 
 /** Soft-delete a recipe by setting its `deletedAt` timestamp. Returns the updated row or null. */
@@ -1503,26 +1491,6 @@ export async function findCoffeeVariety(id: string): Promise<{ id: string; name:
     .where(and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)))
     .limit(1);
   return row ?? null;
-}
-
-/** Atomically increment a recipe's `likeCount` by 1. Returns the updated row or null. */
-export async function incrementLikes(id: string) {
-  const [result] = await db
-    .update(recipes)
-    .set({ likeCount: sql`${recipes.likeCount} + 1` })
-    .where(eq(recipes.id, id))
-    .returning();
-  return result ?? null;
-}
-
-/** Atomically decrement a recipe's `likeCount` by 1. Returns the updated row or null. */
-export async function decrementLikes(id: string) {
-  const [result] = await db
-    .update(recipes)
-    .set({ likeCount: sql`${recipes.likeCount} - 1` })
-    .where(eq(recipes.id, id))
-    .returning();
-  return result ?? null;
 }
 
 /** Atomically increment a recipe's `commentCount` by 1. Returns the updated row or null. */

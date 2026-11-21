@@ -22,7 +22,6 @@ import {
   generateSlug,
 } from '@brewform/shared/utils';
 import { and, eq, inArray } from 'drizzle-orm';
-import fc from 'fast-check';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 import * as service from './service.ts';
@@ -63,53 +62,6 @@ describe('Recipe Service Logic', () => {
     it('should return null when extraction volume is zero', () => {
       const ratio = computeBrewRatio(18, null as unknown as number);
       expect(ratio).toBeNull();
-    });
-  });
-
-  describe('Recipe visibility checks', () => {
-    it('should prevent forking of private recipes by non-authors', () => {
-      const recipe = { visibility: 'private', authorId: 'user-1' };
-      const currentUserId = 'user-2';
-      const canFork =
-        recipe.visibility === 'public' ||
-        recipe.visibility === 'unlisted' ||
-        recipe.authorId === currentUserId;
-      expect(canFork).toBe(false);
-    });
-
-    it('should allow forking of public recipes by anyone', () => {
-      const recipe = { visibility: 'public', authorId: 'user-1' };
-      const currentUserId = 'user-2';
-      const canFork =
-        recipe.visibility === 'public' ||
-        recipe.visibility === 'unlisted' ||
-        recipe.authorId === currentUserId;
-      expect(canFork).toBe(true);
-    });
-
-    it('should allow author to fork their own private recipe', () => {
-      const recipe = { visibility: 'private', authorId: 'user-1' };
-      const currentUserId = 'user-1';
-      const canFork =
-        recipe.visibility === 'public' ||
-        recipe.visibility === 'unlisted' ||
-        recipe.authorId === currentUserId;
-      expect(canFork).toBe(true);
-    });
-  });
-
-  describe('Recipe fork title generation', () => {
-    it('should use custom title when provided', () => {
-      const customTitle = 'My Version';
-      const sourceTitle = 'Original Recipe';
-      const forkTitle = customTitle || `Fork of ${sourceTitle}`;
-      expect(forkTitle).toBe('My Version');
-    });
-
-    it('should generate fork title when custom title not provided', () => {
-      const sourceTitle = 'Original Recipe';
-      const forkTitle = `Fork of ${sourceTitle}`;
-      expect(forkTitle).toBe('Fork of Original Recipe');
     });
   });
 
@@ -352,121 +304,6 @@ describe('Recipe schema — new fields (recipe-detail-redesign)', () => {
         expect(result.success).toBe(true);
       });
     }
-  });
-});
-
-describe('tasteNoteIds AND logic filtering', () => {
-  // ---------------------------------------------------------------------------
-  // Minimal Drizzle-ORM-like condition builders (no real DB needed)
-  // ---------------------------------------------------------------------------
-  type Condition = { type: string; column: string; value: unknown };
-
-  function eq(column: string, value: unknown): Condition {
-    return { type: 'eq', column, value };
-  }
-
-  function inArray(column: string, _subquery: unknown): Condition {
-    return { type: 'inArray', column, value: _subquery };
-  }
-
-  function and(...conditions: Condition[]): { type: 'and'; conditions: Condition[] } {
-    return { type: 'and', conditions };
-  }
-
-  let capturedConditions: Condition[] = [];
-
-  const mockModel = {
-    findMany: (
-      where: unknown,
-      _page: number,
-      _perPage: number,
-      _sortBy: string,
-      _sortOrder: string,
-    ) => {
-      if ((where as { type: string }).type === 'and') {
-        capturedConditions = (where as { type: string; conditions: Condition[] }).conditions;
-      } else if (Array.isArray(where)) {
-        capturedConditions = where as Condition[];
-      } else {
-        capturedConditions = [where as Condition];
-      }
-      return Promise.resolve({ data: [], meta: { page: 1, perPage: 20, total: 0, totalPages: 0 } });
-    },
-  };
-
-  const recipes = {
-    visibility: 'recipes.visibility',
-    currentVersionId: 'recipes.currentVersionId',
-  };
-
-  const recipeTasteNotes = {
-    recipeVersionId: 'recipeTasteNotes.recipeVersionId',
-    tasteNoteId: 'recipeTasteNotes.tasteNoteId',
-  };
-
-  // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
-  const db: any = {
-    select: () => ({
-      // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
-      from: (_table: any) => ({
-        where: (cond: unknown) => cond,
-      }),
-    }),
-  };
-
-  // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
-  function listRecipes_withTasteNoteFilters(filters: any, page: number, perPage: number) {
-    // biome-ignore lint/suspicious/noExplicitAny: test mock array
-    const conditions: any[] = [eq(recipes.visibility, 'public')];
-
-    if (filters.tasteNoteIds) {
-      const ids = filters.tasteNoteIds.split(',').map((id: string) => id.trim());
-      // AND logic: recipe's current version must have ALL specified taste notes
-      for (const noteId of ids) {
-        conditions.push(
-          inArray(
-            recipes.currentVersionId,
-            db
-              .select({ id: recipeTasteNotes.recipeVersionId })
-              .from(recipeTasteNotes)
-              .where(eq(recipeTasteNotes.tasteNoteId, noteId)),
-          ),
-        );
-      }
-    }
-
-    const where = conditions.length > 1 ? and(...conditions) : conditions[0];
-    return mockModel.findMany(where, page, perPage, 'createdAt', 'desc');
-  }
-
-  it('PBT: for any subset of 1–10 taste note IDs, parsing splits correctly and generates the right number of conditions', async () => {
-    await fc.assert(
-      fc.asyncProperty(fc.array(fc.uuid(), { minLength: 1, maxLength: 10 }), async (ids) => {
-        capturedConditions = [];
-        const tasteNoteIds = ids.join(',');
-        await listRecipes_withTasteNoteFilters({ tasteNoteIds }, 1, 20);
-
-        // First condition is visibility eq
-        expect(capturedConditions.length).toBe(1 + ids.length);
-
-        const tasteNoteConditions = capturedConditions.filter(
-          (c) => c.type === 'inArray' && c.column === 'recipes.currentVersionId',
-        );
-        expect(tasteNoteConditions.length).toBe(ids.length);
-
-        // Verify each ID appears in exactly one condition
-        ids.forEach((noteId) => {
-          const matching = tasteNoteConditions.filter(
-            (c) =>
-              (c.value as Condition).type === 'eq' &&
-              (c.value as Condition).column === 'recipeTasteNotes.tasteNoteId' &&
-              (c.value as Condition).value === noteId,
-          );
-          expect(matching.length).toBe(1);
-        });
-      }),
-      { numRuns: 100 },
-    );
   });
 });
 

@@ -13,8 +13,9 @@
  * - Rule B, listings use a helper: each file is split into top-level units at every column-0
  *   `function` / `async function` / `export function` / `export async function` /
  *   `export const` declaration. A unit whose code contains `.query.recipes.findMany(`,
- *   `.from(recipes)`, `.innerJoin(recipes` or `.leftJoin(recipes` must reference a helper,
- *   unless it is a key of {@link EXEMPT_UNITS}.
+ *   `.from(recipes)`, `.innerJoin(recipes`, `.leftJoin(recipes` or a relational recipe load
+ *   (`recipe: true` / `recipe: {` inside a `with`, such as the collection items' nested recipe)
+ *   must reference a helper, unless it is a key of {@link EXEMPT_UNITS}.
  * - Rule C, required references: {@link REQUIRED_UNITS} must exist and reference a helper.
  * - Stale exemptions: every {@link EXEMPT_UNITS} key must name an existing unit that still
  *   matches a Rule B pattern and does not reference a helper, so the map stays minimal.
@@ -45,7 +46,6 @@ const HELPER_UNITS = new Set([
  */
 const EXEMPT_UNITS: Record<string, string> = {
   // Point lookups whose callers apply canViewRecipe.
-  'comment/model.ts#getRecipeAuthorId': 'point lookup; the comment service applies canViewRecipe',
   'comment/model.ts#getRecipeForNotification':
     'point lookup; the comment service applies canViewRecipe',
   'comment/model.ts#getRecipeForAccessCheck':
@@ -56,6 +56,10 @@ const EXEMPT_UNITS: Record<string, string> = {
     'point lookup; the notes service applies canViewRecipe',
   'recipe/model.ts#updateRecipeWithVersion':
     "point lookup; the author's write locks its own recipe row",
+  'recipe/model.ts#fetchRecipeVersionWithRelations':
+    'point lookup by version id; merge, diff and brew-log callers apply canViewRecipe to the parent recipe',
+  'collection/model.ts#findById':
+    'relational point load; the collection service filters items with canListRecipe over fresh getRecipeVisibilityStates',
   // Executors and fragments: they run or build part of a WHERE composed by a helper-using unit.
   'recipe/model.ts#buildListPageQuery': 'executor',
   'recipe/model.ts#buildListCountQuery': 'executor',
@@ -97,6 +101,8 @@ const RECIPE_QUERY_PATTERNS = [
   /\.from\(\s*recipes\s*\)/,
   /\.innerJoin\(\s*recipes\b/,
   /\.leftJoin\(\s*recipes\b/,
+  // A relational load of the nested recipe (`with: { recipe: true }` / `with: { recipe: { … } }`).
+  /\brecipe:\s*(?:true\b|\{)/,
 ];
 
 /** A reference to one of the shared helpers. */
@@ -322,6 +328,31 @@ describe('recipe visibility enforcement — scanner self-test', () => {
       'Rule C: fixture/model.ts#adminList (line 12) must reference a shared helper',
     );
     expect(violations).toContain('Rule C: fixture/model.ts#gone does not exist');
+  });
+
+  it('reports a relational recipe load (`recipe: true` / `recipe: {`) under Rule B', () => {
+    const relational: SourceFile = {
+      path: 'fixture/model.ts',
+      source: [
+        'export function listWithItems() {',
+        '  return db.query.collectionItems.findMany({ with: { recipe: true } });',
+        '}',
+        '',
+        'export function listWithNested() {',
+        '  return db.query.collectionItems.findMany({',
+        '    with: { recipe: { with: { author: true } } },',
+        '  });',
+        '}',
+        '',
+        'export function listItemIds() {',
+        '  return db.query.collectionItems.findMany({ columns: { recipeId: true } });',
+        '}',
+      ].join('\n'),
+    };
+    expect(scan([relational], {}, [])).toEqual([
+      'Rule B: fixture/model.ts#listWithItems (fixture/model.ts:1) queries recipes without listableRecipeCondition/viewableRecipeCondition',
+      'Rule B: fixture/model.ts#listWithNested (fixture/model.ts:5) queries recipes without listableRecipeCondition/viewableRecipeCondition',
+    ]);
   });
 
   it('reports stale exemptions', () => {

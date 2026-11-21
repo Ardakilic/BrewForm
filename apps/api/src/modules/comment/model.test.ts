@@ -567,45 +567,6 @@ describe('softDeleteReplies', () => {
 });
 
 /**
- * getRecipeAuthorId — Get the author ID of a recipe (used for permission
- * checks). Returns null if the recipe does not exist.
- */
-describe('getRecipeAuthorId', () => {
-  let userId: string;
-  let recipeId: string;
-  let versionId: string;
-
-  beforeEach(async () => {
-    userId = crypto.randomUUID();
-    await db.insert(users).values({
-      id: userId,
-      email: `test-${userId}@example.com`,
-      username: `testuser-${userId}`,
-      passwordHash: 'hash',
-    });
-    const fixture = await insertRecipeFixture(userId);
-    recipeId = fixture.recipeId;
-    versionId = fixture.versionId;
-  });
-
-  afterEach(async () => {
-    await db.delete(recipeVersions).where(eq(recipeVersions.id, versionId));
-    await db.delete(recipes).where(eq(recipes.id, recipeId));
-    await db.delete(users).where(eq(users.id, userId));
-  });
-
-  it('should return the author ID of the recipe', async () => {
-    const result = await model.getRecipeAuthorId(recipeId);
-    expect(result).toBe(userId);
-  });
-
-  it('should return null for a non-existent recipe', async () => {
-    const result = await model.getRecipeAuthorId('nonexistent-uuid');
-    expect(result).toBeNull();
-  });
-});
-
-/**
  * getRecipeForAccessCheck — Returns `{ authorId, visibility }` for the comment
  * visibility gate (D99.9). Excludes soft-deleted recipes; returns null when
  * the recipe does not exist.

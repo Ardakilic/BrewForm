@@ -1,21 +1,30 @@
 /**
- * Integration tests for the cursor-based recipe model queries.
+ * Integration tests for the cursor-based recipe model queries and the list filters.
  *
  * These tests exercise the real `findCursor()` and `getFeed()` functions
  * against a PostgreSQL test database. They verify DESC/ASC ordering, the
  * `perPage + 1` hasMore detection, empty results, includeTotal, and feed
  * cursor dispatch.
+ *
+ * "Recipe model — list filters (DB)" runs every shared filter branch through the real
+ * `buildListRecipesWhere` → `buildRecipeFilters` → `findMany` path, scoped to one author
+ * (D99.66: it replaced a hand-copied `buildRecipeFilters`), and "findStarred (DB)" covers the
+ * starred listing.
  */
 
 import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import {
+  coffeeVarieties,
+  equipment,
+  recipeEquipment,
   recipes,
   recipeTasteNotes,
   recipeVersions,
   tasteNotes,
   userFollows,
   userRecipeFavourites,
+  userRecipeRatings,
   users,
 } from '@brewform/db/schema';
 import { decodeCursor, encodeCursor } from '@brewform/shared/utils';
@@ -504,6 +513,10 @@ describe('Recipe model — list filters (DB)', () => {
   const createdVersions: string[] = [];
   const createdTasteNoteCatalog: string[] = [];
   const createdUsers: string[] = [];
+  /** Equipment, coffee varieties and users created by a single test (cleaned in `afterEach`). */
+  const createdEquipment: string[] = [];
+  const createdVarieties: string[] = [];
+  const testUsers: string[] = [];
 
   /** Insert a recipe + its first version, linking `currentVersionId`. */
   async function createRecipeWithVersion(
@@ -514,6 +527,8 @@ describe('Recipe model — list filters (DB)', () => {
       brewMethod?: string;
       drinkType?: string;
       productName?: string;
+      brewerDetails?: string;
+      coffeeVarietyId?: string;
       createdAt?: Date;
     } = {},
   ) {
@@ -539,6 +554,8 @@ describe('Recipe model — list filters (DB)', () => {
         brewMethod: (opts.brewMethod ?? 'v60') as typeof recipeVersions.$inferInsert.brewMethod,
         drinkType: (opts.drinkType ?? 'pour_over') as typeof recipeVersions.$inferInsert.drinkType,
         productName: opts.productName,
+        brewerDetails: opts.brewerDetails,
+        coffeeVarietyId: opts.coffeeVarietyId,
         preparationNotes: 'test preparation',
       })
       .returning();
@@ -548,11 +565,76 @@ describe('Recipe model — list filters (DB)', () => {
     return { recipe, version };
   }
 
+  /** Add version 2 to a recipe and make it the current version (version 1 becomes older). */
+  async function addCurrentVersion(recipeId: string) {
+    const [version] = await db
+      .insert(recipeVersions)
+      .values({
+        recipeId,
+        versionNumber: 2,
+        brewMethod: 'v60',
+        drinkType: 'pour_over',
+        preparationNotes: 'second version',
+      })
+      .returning();
+    createdVersions.push(version.id);
+    await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipeId));
+    return version;
+  }
+
   async function createTasteNote() {
     const id = crypto.randomUUID();
     await db.insert(tasteNotes).values({ id, name: `Note-${id.slice(0, 8)}` });
     createdTasteNoteCatalog.push(id);
     return id;
+  }
+
+  /** Link a taste note to a recipe version. */
+  async function linkTasteNote(recipeVersionId: string, tasteNoteId: string) {
+    await db.insert(recipeTasteNotes).values({ recipeVersionId, tasteNoteId, intensity: 2 });
+  }
+
+  /** Insert an equipment catalog row. */
+  async function createEquipment() {
+    const id = crypto.randomUUID();
+    await db.insert(equipment).values({ id, name: `Gear-${id.slice(0, 8)}`, type: 'grinder' });
+    createdEquipment.push(id);
+    return id;
+  }
+
+  /** Insert a coffee variety catalog row. */
+  async function createCoffeeVariety() {
+    const id = crypto.randomUUID();
+    await db
+      .insert(coffeeVarieties)
+      .values({ id, name: `Variety-${id.slice(0, 8)}`, category: 'variety' });
+    createdVarieties.push(id);
+    return id;
+  }
+
+  /** Insert a user with an exact username and display name (cleaned in `afterEach`). */
+  async function createNamedUser(username: string, displayName: string | null = null) {
+    const id = crypto.randomUUID();
+    const [user] = await db
+      .insert(users)
+      .values({ id, email: `${id}@example.com`, username, displayName, passwordHash: 'hash' })
+      .returning();
+    testUsers.push(user.id);
+    return user;
+  }
+
+  /** Rate a recipe from a fresh rater account. */
+  async function rate(recipeId: string, rating: number) {
+    const rater = await createUser('filter-rater');
+    testUsers.push(rater.id);
+    await db.insert(userRecipeRatings).values({ userId: rater.id, recipeId, rating });
+  }
+
+  /** Ids of the public recipes of `authorId` that match the shared filters, via the real path. */
+  async function listIds(authorId: string, filters: model.RecipeFilterCriteria) {
+    const where = model.buildListRecipesWhere({ ...filters, authorId }, false);
+    const result = await model.findMany(where, 1, 100);
+    return result.recipes.map((r) => r.id).sort();
   }
 
   beforeAll(async () => {
@@ -566,9 +648,13 @@ describe('Recipe model — list filters (DB)', () => {
       await db
         .delete(userRecipeFavourites)
         .where(inArray(userRecipeFavourites.recipeId, createdRecipes));
+      await db.delete(userRecipeRatings).where(inArray(userRecipeRatings.recipeId, createdRecipes));
       await db
         .delete(recipeTasteNotes)
         .where(inArray(recipeTasteNotes.recipeVersionId, createdVersions));
+      await db
+        .delete(recipeEquipment)
+        .where(inArray(recipeEquipment.recipeVersionId, createdVersions));
       await db.delete(recipeVersions).where(inArray(recipeVersions.recipeId, createdRecipes));
       await db.delete(recipes).where(inArray(recipes.id, createdRecipes));
       createdRecipes.length = 0;
@@ -577,6 +663,18 @@ describe('Recipe model — list filters (DB)', () => {
     if (createdTasteNoteCatalog.length) {
       await db.delete(tasteNotes).where(inArray(tasteNotes.id, createdTasteNoteCatalog));
       createdTasteNoteCatalog.length = 0;
+    }
+    if (createdEquipment.length) {
+      await db.delete(equipment).where(inArray(equipment.id, createdEquipment));
+      createdEquipment.length = 0;
+    }
+    if (createdVarieties.length) {
+      await db.delete(coffeeVarieties).where(inArray(coffeeVarieties.id, createdVarieties));
+      createdVarieties.length = 0;
+    }
+    if (testUsers.length) {
+      await db.delete(users).where(inArray(users.id, testUsers));
+      testUsers.length = 0;
     }
   });
 
@@ -701,6 +799,130 @@ describe('Recipe model — list filters (DB)', () => {
     const ids = result.recipes.map((r) => r.id);
     expect(ids).toContain(withNote.recipe.id);
     expect(ids.length).toBe(1);
+  });
+
+  // D99.66: the branches below were only asserted against a hand-copied buildRecipeFilters;
+  // they now run the real buildListRecipesWhere → buildRecipeFilters → findMany.
+
+  it('buildRecipeFilters({}) returns no condition', () => {
+    expect(model.buildRecipeFilters({})).toEqual([]);
+  });
+
+  it('mainBrewer matches a case-insensitive substring of brewerDetails, % literally', async () => {
+    const hario = await createRecipeWithVersion(author.id, 'Brewer Hario', {
+      brewerDetails: 'Hario V60 02 Ceramic, 50% bypass',
+    });
+    const kalita = await createRecipeWithVersion(author.id, 'Brewer Kalita', {
+      brewerDetails: 'Kalita Wave 185, 50x bypass',
+    });
+
+    expect(await listIds(author.id, { mainBrewer: 'v60 02 CERAMIC' })).toEqual([hario.recipe.id]);
+    // `%` is literal: as a wildcard, `50%` would also match "50x bypass".
+    expect(await listIds(author.id, { mainBrewer: '50%' })).toEqual([hario.recipe.id]);
+    expect(await listIds(author.id, { mainBrewer: 'Chemex' })).toEqual([]);
+    // A value that is empty after trimming adds no condition.
+    expect(model.buildRecipeFilters({ mainBrewer: '   ' })).toEqual([]);
+    expect(await listIds(author.id, { mainBrewer: '   ' })).toEqual(
+      [hario.recipe.id, kalita.recipe.id].sort(),
+    );
+  });
+
+  it('author matches the username or the display name, ignoring case, _ literally', async () => {
+    const suffix = crypto.randomUUID().slice(0, 8);
+    const named = await createNamedUser(`brew_master-${suffix}`, 'Jane Roaster');
+    const lookalike = await createNamedUser(`brewxmaster-${suffix}`, null);
+    const namedRecipe = await createRecipeWithVersion(named.id, 'Author Named');
+    const lookalikeRecipe = await createRecipeWithVersion(lookalike.id, 'Author Lookalike');
+
+    expect(await listIds(named.id, { author: 'BREW_MASTER' })).toEqual([namedRecipe.recipe.id]);
+    expect(await listIds(named.id, { author: 'jane roa' })).toEqual([namedRecipe.recipe.id]);
+    // `_` is literal: as a wildcard, `brew_master` would also match "brewxmaster".
+    expect(await listIds(lookalike.id, { author: 'brew_master' })).toEqual([]);
+    expect(await listIds(lookalike.id, { author: 'BrewXMaster' })).toEqual([
+      lookalikeRecipe.recipe.id,
+    ]);
+    expect(await listIds(named.id, { author: 'nobody-by-that-name' })).toEqual([]);
+    // A value that is empty after trimming adds no condition.
+    expect(model.buildRecipeFilters({ author: '   ' })).toEqual([]);
+    expect(await listIds(named.id, { author: '   ' })).toEqual([namedRecipe.recipe.id]);
+  });
+
+  it('minRating and maxRating bound the average rating, inclusively', async () => {
+    const rated = await createRecipeWithVersion(author.id, 'Rated Seven');
+    await rate(rated.recipe.id, 6);
+    await rate(rated.recipe.id, 8);
+    const ratedIds = [rated.recipe.id];
+
+    expect(await listIds(author.id, { minRating: 7 })).toEqual(ratedIds);
+    expect(await listIds(author.id, { maxRating: 7 })).toEqual(ratedIds);
+    expect(await listIds(author.id, { minRating: 8 })).toEqual([]);
+    expect(await listIds(author.id, { maxRating: 6 })).toEqual([]);
+    expect(await listIds(author.id, { minRating: 7, maxRating: 7 })).toEqual(ratedIds);
+    expect(await listIds(author.id, { minRating: 6, maxRating: 8 })).toEqual(ratedIds);
+    expect(await listIds(author.id, { minRating: 8, maxRating: 9 })).toEqual([]);
+    expect(await listIds(author.id, { minRating: 5, maxRating: 6 })).toEqual([]);
+  });
+
+  it('coffeeVarietyId matches a variety linked on any version, not only the current one', async () => {
+    const varietyId = await createCoffeeVariety();
+    const older = await createRecipeWithVersion(author.id, 'Variety On Old Version', {
+      coffeeVarietyId: varietyId,
+    });
+    await addCurrentVersion(older.recipe.id);
+    await createRecipeWithVersion(author.id, 'Variety Missing');
+
+    expect(await listIds(author.id, { coffeeVarietyId: varietyId })).toEqual([older.recipe.id]);
+  });
+
+  it('equipmentId matches only equipment linked on the current version', async () => {
+    const equipmentId = await createEquipment();
+    const current = await createRecipeWithVersion(author.id, 'Equipment Current');
+    await db.insert(recipeEquipment).values({ recipeVersionId: current.version.id, equipmentId });
+    const older = await createRecipeWithVersion(author.id, 'Equipment Older Only');
+    await db.insert(recipeEquipment).values({ recipeVersionId: older.version.id, equipmentId });
+    await addCurrentVersion(older.recipe.id);
+
+    expect(await listIds(author.id, { equipmentId })).toEqual([current.recipe.id]);
+  });
+
+  it('tasteNoteIds with two ids matches only recipes that carry both notes', async () => {
+    const noteA = await createTasteNote();
+    const noteB = await createTasteNote();
+    const both = await createRecipeWithVersion(author.id, 'Notes Both');
+    await linkTasteNote(both.version.id, noteA);
+    await linkTasteNote(both.version.id, noteB);
+    const onlyA = await createRecipeWithVersion(author.id, 'Notes Only A');
+    await linkTasteNote(onlyA.version.id, noteA);
+
+    expect(await listIds(author.id, { tasteNoteIds: `${noteA}, ${noteB}` })).toEqual([
+      both.recipe.id,
+    ]);
+    expect(await listIds(author.id, { tasteNoteIds: noteA })).toEqual(
+      [both.recipe.id, onlyA.recipe.id].sort(),
+    );
+  });
+
+  it('the singular tasteNoteId filters by one note', async () => {
+    const noteA = await createTasteNote();
+    const withNote = await createRecipeWithVersion(author.id, 'Singular With Note');
+    await linkTasteNote(withNote.version.id, noteA);
+    await createRecipeWithVersion(author.id, 'Singular Without Note');
+
+    expect(await listIds(author.id, { tasteNoteId: noteA })).toEqual([withNote.recipe.id]);
+  });
+
+  it('tasteNoteIds wins over tasteNoteId when both are set', async () => {
+    const noteA = await createTasteNote();
+    const noteB = await createTasteNote();
+    const withA = await createRecipeWithVersion(author.id, 'Plural Wins A');
+    await linkTasteNote(withA.version.id, noteA);
+    const withB = await createRecipeWithVersion(author.id, 'Plural Wins B');
+    await linkTasteNote(withB.version.id, noteB);
+
+    expect(await listIds(author.id, { tasteNoteIds: noteA, tasteNoteId: noteB })).toEqual([
+      withA.recipe.id,
+    ]);
+    expect(model.buildRecipeFilters({ tasteNoteIds: noteA, tasteNoteId: noteB })).toHaveLength(1);
   });
 });
 

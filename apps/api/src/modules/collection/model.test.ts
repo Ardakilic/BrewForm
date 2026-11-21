@@ -555,7 +555,7 @@ describe('collection model — removeItem', () => {
     expect(deleted).toBeDefined();
     expect(deleted!.recipeId).toBe(r1.id);
     // verify gone
-    const items = await model.getItems(col.id);
+    const items = (await model.findById(col.id))!.items;
     expect(items.length).toBe(0);
   });
 
@@ -601,7 +601,7 @@ describe('collection model — reorderItems', () => {
     // reverse the order
     const reordered = [itemIds[2], itemIds[1], itemIds[0]];
     await model.reorderItems(col.id, reordered);
-    const items = await model.getItems(col.id);
+    const items = (await model.findById(col.id))!.items;
     expect(items.length).toBe(3);
     expect(items[0].id).toBe(itemIds[2]);
     expect(items[0].sortOrder).toBe(0);
@@ -613,71 +613,12 @@ describe('collection model — reorderItems', () => {
 
   it('gives trailing ids the sortOrder values after the ordered ids, keeping their order', async () => {
     await model.reorderItems(col.id, [itemIds[2]], [itemIds[0], itemIds[1]]);
-    const items = await model.getItems(col.id);
+    const items = (await model.findById(col.id))!.items;
     expect(items.map((i) => [i.id, i.sortOrder])).toEqual([
       [itemIds[2], 0],
       [itemIds[0], 1],
       [itemIds[1], 2],
     ]);
-  });
-});
-
-describe('collection model — getItems', () => {
-  let user: typeof users.$inferSelect;
-  let col: typeof collections.$inferSelect;
-  let r1: typeof recipes.$inferSelect;
-  let r2: typeof recipes.$inferSelect;
-  const colIds: string[] = [];
-  const recipeIds: string[] = [];
-
-  beforeEach(async () => {
-    user = await createUser('col-getItems');
-    col = await createCollectionRow(user.id, 'GetItems Col');
-    colIds.push(col.id);
-    r1 = await createRecipe(user.id);
-    r2 = await createRecipe(user.id);
-    recipeIds.push(r1.id, r2.id);
-    // Insert in reverse to verify ordering by sortOrder
-    await db.insert(collectionItems).values({
-      collectionId: col.id,
-      recipeId: r2.id,
-      sortOrder: 1,
-    });
-    await db.insert(collectionItems).values({
-      collectionId: col.id,
-      recipeId: r1.id,
-      sortOrder: 0,
-    });
-  });
-
-  afterEach(async () => {
-    await cleanupCollections(colIds);
-    await cleanupRecipes(recipeIds);
-    colIds.length = 0;
-    recipeIds.length = 0;
-    await db.delete(users).where(eq(users.id, user.id));
-  });
-
-  it('returns items ordered by sortOrder', async () => {
-    const items = await model.getItems(col.id);
-    expect(items.length).toBe(2);
-    expect(items[0].recipeId).toBe(r1.id);
-    expect(items[1].recipeId).toBe(r2.id);
-  });
-
-  it('includes the nested recipe with author relation', async () => {
-    const items = await model.getItems(col.id);
-    expect(items[0].recipe).toBeDefined();
-    expect(items[0].recipe!.id).toBe(r1.id);
-    expect(items[0].recipe!.author).toBeDefined();
-    expect(items[0].recipe!.author.id).toBe(user.id);
-  });
-
-  it('excludes soft-deleted recipes', async () => {
-    await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, r1.id));
-    const items = await model.getItems(col.id);
-    expect(items.length).toBe(1);
-    expect(items[0].recipeId).toBe(r2.id);
   });
 });
 

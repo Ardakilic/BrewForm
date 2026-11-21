@@ -287,7 +287,7 @@ describe('collection service — addRecipeToCollection', () => {
 
   it('public recipe by non-owner succeeds', async () => {
     await service.addRecipeToCollection(userA.id, colA.id, publicRecipe.id);
-    const items = await model.getItems(colA.id);
+    const items = (await model.findById(colA.id))!.items;
     expect(items.some((i) => i.recipeId === publicRecipe.id)).toBe(true);
   });
 
@@ -301,7 +301,7 @@ describe('collection service — addRecipeToCollection', () => {
     const ownCol = await createCollectionRow(userB.id, 'OwnCol', 'public');
     colIds.push(ownCol.id);
     await service.addRecipeToCollection(userB.id, ownCol.id, privateRecipe.id);
-    const items = await model.getItems(ownCol.id);
+    const items = (await model.findById(ownCol.id))!.items;
     expect(items.some((i) => i.recipeId === privateRecipe.id)).toBe(true);
   });
 
@@ -387,7 +387,7 @@ describe('collection service — reorderCollection', () => {
   it('correct full order succeeds and assigns sortOrder = index', async () => {
     const reordered = [itemIds[2], itemIds[1], itemIds[0]];
     await service.reorderCollection(user.id, col.id, reordered);
-    const items = await model.getItems(col.id);
+    const items = (await model.findById(col.id))!.items;
     expect(items[0].id).toBe(itemIds[2]);
     expect(items[0].sortOrder).toBe(0);
     expect(items[1].id).toBe(itemIds[1]);
@@ -503,7 +503,7 @@ describe('collection service — removeRecipeFromCollection', () => {
 
   it('owner removes the recipe', async () => {
     await service.removeRecipeFromCollection(userA.id, col.id, r1.id);
-    const items = await model.getItems(col.id);
+    const items = (await model.findById(col.id))!.items;
     expect(items.length).toBe(0);
   });
 
