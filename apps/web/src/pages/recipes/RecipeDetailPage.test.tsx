@@ -77,6 +77,10 @@ vi.mock('../../components/recipe/LikeButton.tsx', () => ({ LikeButton: () => nul
 vi.mock('../../components/recipe/FavouriteButton.tsx', () => ({ FavouriteButton: () => null }));
 vi.mock('../../components/recipe/CommentSection.tsx', () => ({ CommentSection: () => null }));
 vi.mock('../../components/recipe/StarRating.tsx', () => ({ StarRating: vi.fn(() => null) }));
+// The add-to-collection modal (fetchers + toasts) has its own tests in AddToCollectionModal.test.tsx.
+vi.mock('../../components/collections/AddToCollectionButton.tsx', () => ({
+  AddToCollectionButton: () => null,
+}));
 vi.mock('../../components/recipe/ForkCard.tsx', () => ({
   ForkCard: () => <div data-testid="fork-card">ForkCard</div>,
 }));
