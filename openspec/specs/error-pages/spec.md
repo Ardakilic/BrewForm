@@ -209,7 +209,7 @@ Logger mock via `vi.hoisted`.
 
 #### Scenario: ErrorBoundary test passes
 
-- **WHEN** `make test-web` is executed (or `deno task --cwd apps/web test src/components/ErrorBoundary.test.tsx`)
+- **WHEN** `make test-web` is executed (or `pnpm --filter @brewform/web exec vitest run src/components/ErrorBoundary.test.tsx`)
 - **THEN** the `ErrorBoundary.test.tsx` suite passes, covering 404 → NotFoundPage and 500 →
   ServerErrorPage rendering via the boundary
 

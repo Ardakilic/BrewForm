@@ -278,16 +278,33 @@ The system SHALL provide a `useRecipeFilters()` hook in
 - Parsed scalars: `page: number`, `brewMethod: string`,
   `drinkType: string`, `visibility: string`, `sortBy: string`,
   `search: string`, `equipmentId: string`, `mainBrewer: string`,
-  `tasteNoteIds: string[]` (UUID-validated), `coffeeVarietyId: string`.
+  `tasteNoteIds: string[]` (UUID-validated), `coffeeVarietyId: string`,
+  `author: string`, `dateFrom: string`, `dateTo: string`,
+  `minRating: string`, `maxRating: string`.
 - `updateFilter(key: string, value: string | string[])`: sets or
-  deletes the URL param; joining arrays with `,`; deleting the `page`
-  param so the user lands on page 1.
+  deletes the URL param, joining arrays with `,`. When `key` is any
+  filter, sort or search key it SHALL also delete the `page` param so
+  the user lands on page 1. When `key === 'page'` it SHALL NOT delete
+  the `page` param.
+- `setPage(page: number)`: sets `page` (deleting it when `page <= 1`)
+  and keeps every other param unchanged.
 - `clearAllFilters(): void`: replaces all URL search params with an
   empty object.
+- Discrete updates (`updateFilter` for non-text keys, `setPage`,
+  `clearAllFilters`) push a history entry; text keys (`search`,
+  `author`) are committed through the debounced, `replace: true` path
+  defined by the `web-url-state` capability.
 
 The hook SHALL use the same UUID regex as
 `apps/web/src/utils/recipe-filters.ts` to validate `tasteNoteIds`
-entries.
+entries, and SHALL parse `page` with the same rules as
+`extractListParams` (non-numeric or non-positive values become `1`).
+
+The test in `useRecipeFilters.test.tsx` that asserted "should always
+clear the page param when updateFilter is called" SHALL be replaced
+by tests asserting that filter changes clear `page` and that
+`setPage(3)` / `updateFilter('page', '3')` keep `page=3` and all
+filters.
 
 #### Scenario: updateFilter with empty value deletes the param
 
@@ -299,11 +316,24 @@ entries.
 - **WHEN** `updateFilter('tasteNoteIds', ['a', 'b', 'c'])` is called
 - **THEN** the `tasteNoteIds` URL param is set to `'a,b,c'`
 
-#### Scenario: updateFilter always resets page
+#### Scenario: updateFilter on a filter key resets page
 
 - **WHEN** `updateFilter('brewMethod', 'ESPRESSO')` is called while
   `page=3` is in the URL
 - **THEN** the `page` param is removed from the resulting URL
+
+#### Scenario: setPage keeps filters
+
+- **WHEN** `setPage(3)` is called while `brewMethod=v60&sortBy=rating`
+  is in the URL
+- **THEN** the URL contains `brewMethod=v60`, `sortBy=rating` and
+  `page=3`
+
+#### Scenario: updateFilter on the page key keeps the page
+
+- **WHEN** `updateFilter('page', '3')` is called while `brewMethod=v60`
+  is in the URL
+- **THEN** the resulting URL contains `page=3` and `brewMethod=v60`
 
 #### Scenario: clearAllFilters empties the URL
 
@@ -334,47 +364,29 @@ The system SHALL provide a barrel `index.ts` in
   `'../../components/recipe-list/constants.ts'`
 - **THEN** Vitest resolves the module and the imports succeed
 
-### Requirement: Test environment is unchanged
-
-The system SHALL NOT modify `apps/web/vitest.config.ts`,
-`apps/web/src/test-setup.ts`, or any other test infrastructure file
-as part of this refactor.
-
-Only `apps/web/src/pages/recipes/RecipeListPage.test.tsx` SHALL be
-modified — a single import-line update to point at the new
-`constants.ts` location. No other test file is modified.
-
-#### Scenario: RecipeListPage test passes after the refactor
-
-- **WHEN** `make test-specific filter=apps/web/src/pages/recipes/RecipeListPage.test.tsx`
-  is run
-- **THEN** all 23 tests pass with no assertion changes
-
-#### Scenario: StarredRecipesPage test passes after the refactor
-
-- **WHEN** `make test-specific filter=apps/web/src/pages/recipes/StarredRecipesPage.test.tsx`
-  is run
-- **THEN** all 9 tests pass with no assertion changes
-
 ### Requirement: Page wrapper thinness
 
 After this refactor, the two page files SHALL each contain only:
 
-- The page's `loader` (kept verbatim; 401→`/login` redirect stays in
-  `StarredRecipesPage`'s loader).
+- An import of the page's `loader` from its co-located data module
+  (`RecipeListPage.data.ts` / `StarredRecipesPage.data.ts`), which
+  passes `request.signal` to every API call and, for the starred
+  page, is wrapped by `requireAuth` so a 401 redirects to
+  `/login?next=…` (see the `web-data-loading` capability).
 - A `RecipeListPage` / `StarredRecipesPage` component that:
-  - Calls `useLoaderData()`.
-  - For `RecipeListPage`: holds the variety-search state and
-    click-outside effect, builds the `coffeeVarietyFilterSlot`,
-    passes `showAdminVisibilityFilter={user?.isAdmin === true}` to
-    the view.
+  - Calls `useLoaderData<typeof loader>()` (no `as` cast).
+  - For `RecipeListPage`: hosts the coffee-variety filter (whose
+    typeahead reads through a `useFetcher()` resource route and whose
+    selected-variety name comes from the loader), builds the
+    `coffeeVarietyFilterSlot`, passes
+    `showAdminVisibilityFilter={user?.isAdmin === true}` to the view.
   - For `StarredRecipesPage`: checks `isAuthenticated` and renders
     the login-required message before the view when false.
   - Renders `<RecipeListView ... />` with the appropriate props.
 
-`RecipeListPage.tsx` SHALL be at most 120 lines (loader + wrapper +
-state). `StarredRecipesPage.tsx` SHALL be at most 80 lines (loader +
-wrapper + auth gate).
+`RecipeListPage.tsx` SHALL be at most 120 lines (wrapper + state).
+`StarredRecipesPage.tsx` SHALL be at most 80 lines (wrapper + auth
+gate).
 
 #### Scenario: RecipeListPage line count is bounded
 
@@ -386,6 +398,12 @@ wrapper + auth gate).
 - **WHEN** `wc -l apps/web/src/pages/recipes/StarredRecipesPage.tsx`
   is run
 - **THEN** the count is ≤ 80
+
+#### Scenario: Loaders forward the abort signal
+
+- **WHEN** the `/recipes` loader is called with a `request` whose
+  signal is later aborted
+- **THEN** `recipeApi.list` received that same signal
 
 ### Requirement: Logging in the new module
 
@@ -495,8 +513,8 @@ recipe listings, including the home page." The `AdminRecipesPage` table (which u
 not cards) is explicitly out of scope — see the `web-shared-components` requirement "AdminRecipesPage
 table is NOT extracted (stretch rejected)."
 
-**Reason:** `HomePage.tsx` had a local `RecipeCard` fork (lines 103–137) that was a stale subset of
-the shared card (missing the `currentVersion` badge row). The D36 plan's Cluster 1 deletes the fork
+**Reason:** `HomePage.tsx` had a local `RecipeCard` fork (lines 103–137) that duplicated the
+shared card. The D36 plan's Cluster 1 deletes the fork
 and imports the shared card. This requirement codifies the canonical-card contract so future pages
 don't re-fork it. This is a narrow scope extension of `recipe-list` (not a general dedup spec);
 the broader dedup work (BanDialog, Section/Field) is covered by the new `web-shared-components`
@@ -514,15 +532,52 @@ capability.
 - **THEN** no matches are returned — no page defines a local `RecipeCard` function (the shared
   `components/recipe-list/RecipeCard.tsx` is the only definition)
 
-#### Scenario: HomePage renders the currentVersion badge row via the shared card
+#### Scenario: HomePage cards follow the shared card's version-strip rule
 
-- **WHEN** `HomePage` is rendered with loader data where recipes have `currentVersion` populated
-- **THEN** each card renders the badge row (brew method • drink type • ★ rating) — the shared
-  `RecipeCard` behaviour, previously absent from the home page's local fork
+- **WHEN** `HomePage` is rendered with loader data from `GET /api/v1/recipes` (list items carry no
+  version payload, per the `advanced-search` requirement "List items carry no version payload")
+- **THEN** each card renders title, author and counts through the shared `RecipeCard` and no
+  brew-method • drink-type • ★ rating strip, because the strip renders only when a `version` prop
+  is passed explicitly
 
 #### Scenario: HomePage test passes unchanged
 
-- **WHEN** `make test-web` is executed (or `deno task --cwd apps/web test src/pages/HomePage.test.tsx`)
+- **WHEN** `make test-web` is executed (or `make test-specific filter=apps/web/src/pages/HomePage.test.tsx`)
 - **THEN** the existing `HomePage.test.tsx` suite passes — assertions on author buttons, titles, and
   counts still hold because the shared `RecipeCard` has the same `<button>` + `<Link>` structure
+
+### Requirement: Recipe list pagination navigates to the selected page
+Clicking a page control on `/recipes` or `/recipes/starred` SHALL navigate to that page while keeping every filter, sort and search parameter, and the page loader SHALL receive the same `page` value from the URL.
+
+`RecipeListView` SHALL call `setPage(p)` from `useRecipeFilters()` for `PaginationControls`. A
+`RecipeListView` (or page-level) regression test SHALL click Next and assert that the URL contains
+`page=2` and that the loader is called with `page: '2'`; this test SHALL fail against the
+pre-fix `useRecipeFilters.ts`.
+
+#### Scenario: Next goes to page 2
+- **WHEN** a user on `/recipes?brewMethod=v60` with more than 12 results clicks Next
+- **THEN** the URL becomes `/recipes?brewMethod=v60&page=2` and the loader requests `page=2` with `brewMethod=v60`
+
+#### Scenario: Previous goes back one page
+- **WHEN** a user on `/recipes/starred?page=3&sortBy=rating` clicks Previous
+- **THEN** the URL becomes `/recipes/starred?page=2&sortBy=rating`
+
+#### Scenario: Page 1 is canonical
+- **WHEN** a user on `/recipes?page=2` clicks Previous
+- **THEN** the URL becomes `/recipes` with no `page` parameter
+
+### Requirement: Recipe list text filters are debounced and replace history
+The `/recipes` and `/recipes/starred` search and author inputs SHALL hold the typed text locally and commit it to the URL only after 300 ms without typing, replacing the current history entry, so that typing triggers at most one loader run and one API request per pause.
+
+The inputs SHALL re-sync from the URL on external URL changes (Back/Forward, Clear Filters, badge
+removal). Select-type filters keep pushing history. Behaviour follows the `web-url-state`
+capability.
+
+#### Scenario: One request per typing pause
+- **WHEN** a user types `ethiopia` into the search box without pausing
+- **THEN** the recipe list loader runs once, 300 ms after the last keystroke
+
+#### Scenario: Author badge removal clears the input
+- **WHEN** a user removes the Author active-filter badge
+- **THEN** the author input is emptied and the `author` parameter is removed
 

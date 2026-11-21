@@ -3,10 +3,9 @@
 ## Purpose
 TBD - created by archiving change wave-1-correctness-security. Update Purpose after archive.
 ## Requirements
-
 ### Requirement: sanitizeText has dedicated unit-test coverage
 
-The API package SHALL contain a test file `apps/api/src/utils/sanitize.test.ts` that exercises the `sanitizeText` export from `./sanitize.ts` with both dangerous-input and benign-input cases. The test SHALL follow the pure-utility convention established by `apps/api/src/utils/response/response.test.ts` — no `test-setup.ts` import, no Hono app, no spies, no `{ sanitizeOps, sanitizeResources }` options. Tests SHALL be organised into a `describe('sanitizeText', () => { ... })` block with `it('should ...', () => { ... })` cases.
+The API package SHALL contain a test file `apps/api/src/utils/sanitize.test.ts` that exercises the `sanitizeText` export from `./sanitize.ts` with both dangerous-input and benign-input cases. The test SHALL follow the pure-utility convention established by `apps/api/src/utils/response/response.test.ts` — no `test-setup.ts` import, no Hono app, no spies, and no test-options object passed to `describe`. Tests SHALL be organised into a `describe('sanitizeText', () => { ... })` block with `it('should ...', () => { ... })` cases.
 
 `sanitizeText` is a security control (regex-based stripping used by `comment`, `recipe`, and `user` services). A regression — a tag or attribute slipping through — would ship silently without this suite.
 
@@ -102,10 +101,10 @@ The same test file `apps/api/src/utils/sanitize.test.ts` SHALL contain a `descri
 ### Requirement: sanitize test file follows pure-utility conventions
 
 The test file `apps/api/src/utils/sanitize.test.ts` SHALL:
-- Import `describe, it` from `jsr:@std/testing/bdd` and `expect` from `jsr:@std/expect`.
+- Import `describe, expect, it` from `vitest`.
 - Import `sanitizeText, sanitizeName` from `./sanitize.ts`.
 - NOT import `../../test-setup.ts` (the sanitizer is a pure function with no DB/cache/spy needs).
-- NOT use `{ sanitizeOps: false, sanitizeResources: false }` (those options are only for DB I/O tests).
+- NOT pass a test-options object to `describe` (the sanitizer tests need no lifecycle or isolation options).
 - NOT spin up a Hono app.
 - Use nested `describe` blocks per function and `'should ...'` `it` naming, matching `apps/api/src/utils/response/response.test.ts`.
 
@@ -123,3 +122,4 @@ The test file `apps/api/src/utils/sanitize.test.ts` SHALL:
 
 - **WHEN** `make check-api` and `make lint` are invoked
 - **THEN** zero errors and zero warnings are reported on `apps/api/src/utils/sanitize.test.ts`
+

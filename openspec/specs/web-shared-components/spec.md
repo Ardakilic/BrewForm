@@ -15,15 +15,16 @@ sections. The local `RecipeCard` function (previously at lines 103–137) SHALL 
 `AUTHOR_BUTTON_STYLE` import (previously line 8) and the `useNavigate` import (if no other usage
 remains) SHALL be removed.
 
-The shared `RecipeCard` (`apps/web/src/components/recipe-list/RecipeCard.tsx:14`) has the **same
-props signature** (`{ recipe: RecipeListItem }`) as the deleted local fork. Adopting it adds the
-`currentVersion` badge row (brewMethod • drinkType • ★ rating) to the home page — a behavioural
-improvement. The shared card guards the badge row with `recipe.currentVersion &&`, so recipes
-without a current version render unchanged.
+The shared `RecipeCard` (`apps/web/src/components/recipe-list/RecipeCard.tsx`) accepts the list
+item shape the deleted local fork accepted (`{ recipe }`), plus optional `hideAuthor` and
+`version` props. It renders the brew-method • drink-type • ★ rating strip only when a `version`
+prop is passed explicitly. `GET /api/v1/recipes` list items carry no version payload (the
+`advanced-search` requirement "List items carry no version payload"), so the home page passes no
+`version` and its cards render title, author and counts without the strip.
 
-**Reason:** The local fork was a stale copy missing the `currentVersion` badge row — not an
-intentional compact variant. Any card styling/behaviour change must be made in one place
-(`components/recipe-list/RecipeCard.tsx`), not two. This is the D36 plan's Cluster 1.
+**Reason:** The local fork duplicated the shared card. Any card styling/behaviour change must be
+made in one place (`components/recipe-list/RecipeCard.tsx`), not two. This is the D36 plan's
+Cluster 1.
 
 #### Scenario: HomePage imports the shared RecipeCard
 
@@ -31,16 +32,16 @@ intentional compact variant. Any card styling/behaviour change must be made in o
 - **THEN** it imports `RecipeCard` from `../components/recipe-list/` (or the barrel
   `../components/recipe-list/index.ts`) and contains NO local `function RecipeCard` definition
 
-#### Scenario: HomePage renders the currentVersion badge row
+#### Scenario: HomePage cards render without a version strip
 
-- **WHEN** `HomePage` is rendered with loader data where recipes have `currentVersion` populated
-  (with `brewMethod`, `drinkType`, `rating`)
-- **THEN** each card renders the badge row (brew method • drink type • ★ rating) — the shared
-  `RecipeCard` behaviour
+- **WHEN** `HomePage` is rendered with loader data from `GET /api/v1/recipes` (list items without
+  versions)
+- **THEN** each card renders the title, author and counts through the shared `RecipeCard`, and no
+  brew-method • drink-type • ★ rating strip is rendered
 
 #### Scenario: HomePage test passes unchanged
 
-- **WHEN** `make test-web` is executed (or `deno task --cwd apps/web test src/pages/HomePage.test.tsx`)
+- **WHEN** `make test-web` is executed (or `make test-specific filter=apps/web/src/pages/HomePage.test.tsx`)
 - **THEN** the existing `HomePage.test.tsx` suite passes — assertions on author buttons, titles, and
   counts still hold because the shared `RecipeCard` has the same `<button>` + `<Link>` structure
 
@@ -104,67 +105,6 @@ D36 extracts it to a single controlled component. This is the D36 plan's Cluster
 - **WHEN** `processing` is true
 - **THEN** the "Confirm Ban" button is disabled and displays "Banning..." (or the tr equivalent),
   and the "Cancel" button is disabled
-
-### Requirement: useBanUser hook owns the ban/unban state machine and API calls
-
-The file `apps/web/src/hooks/useBanUser.ts` SHALL exist and SHALL export a `useBanUser` hook that
-takes an `onSuccess(userId: string, isBanned: boolean) => void` callback and returns:
-
-```typescript
-interface UseBanUserReturn {
-  banDialogUser: { id: string; username: string; displayName: string | null } | null;
-  processing: boolean;
-  error: string | null;
-  openBanDialog: (user: { id: string; username: string; displayName: string | null }) => void;
-  confirmBan: (reason: string) => Promise<void>;
-  unban: (userId: string) => Promise<void>;
-  clearError: () => void;
-  closeDialog: () => void;
-}
-```
-
-The hook SHALL:
-- `openBanDialog(user)` — set `banDialogUser`, clear `error`, set `processing: false`.
-- `confirmBan(reason)` — if no `banDialogUser` or empty reason, return early. Set `processing: true`, call
-  `adminApi.banUser(banDialogUser.id, reason)`. On success: call `onSuccess(banDialogUser.id, true)`,
-  close the dialog, clear `error`. On failure: set `error` to the error message (or a fallback),
-  reset `processing: false`, keep the dialog open.
-- `unban(userId)` — call `adminApi.unbanUser(userId)`. On success: call `onSuccess(userId, false)`,
-  clear `error`. On failure: set `error`.
-- `clearError()` — set `error: null`.
-- `closeDialog()` — set `banDialogUser: null`, clear `error`, set `processing: false`.
-
-The hook SHALL surface errors on BOTH call sites — it SHALL NOT silently swallow ban/unban failures.
-This fixes the pre-existing bug where `AdminUserDetailPage` silently swallowed errors via
-`catch {}`.
-
-**Reason:** The ban/unban mutation logic was duplicated in `AdminUsersPage.tsx` (lines 72–94) and
-`AdminUserDetailPage.tsx` (lines 49–67) with drifting error handling. The hook unifies the state
-machine and API calls; the `onSuccess` callback lets each page apply the result to its own state
-container (list array vs single object). This is the D36 plan's Cluster 2.
-
-#### Scenario: useBanUser open → confirm → closed on success
-
-- **WHEN** `openBanDialog(user)` is called, then `confirmBan('Spam')` is called
-  and `adminApi.banUser` resolves
-- **THEN** `onSuccess` is called with `(user.id, true)`, `banDialogUser` becomes null,
-  `processing` is false, `error` is null
-
-#### Scenario: useBanUser surfaces error on ban failure
-
-- **WHEN** `confirmBan('Spam')` is called and `adminApi.banUser` rejects with an error
-- **THEN** `error` is set to the error message, `processing` is reset to false, `banDialogUser`
-  remains set (dialog stays open)
-
-#### Scenario: useBanUser unban calls onSuccess with false
-
-- **WHEN** `unban(userId)` is called and `adminApi.unbanUser` resolves
-- **THEN** `onSuccess` is called with `(userId, false)`, `error` is null
-
-#### Scenario: useBanUser unban surfaces error on failure
-
-- **WHEN** `unban(userId)` is called and `adminApi.unbanUser` rejects
-- **THEN** `error` is set to the error message
 
 ### Requirement: AdminUsersPage uses BanDialog and useBanUser with list-array refresh
 
@@ -350,17 +290,22 @@ The following test files SHALL exist:
   typing a reason + clicking confirm calls `onConfirm` with the reason; clicking cancel calls
   `onClose`; `processing: true` disables buttons and shows "Banning..." (or tr equivalent).
 - `apps/web/src/hooks/useBanUser.test.ts` — covers: `openBanDialog(user)` sets `banDialogUser` and
-  clears state; `confirmBan()` success path (mock `adminApi.banUser` resolves → `onSuccess` called
-  with `(userId, true)`, dialog closes, `processing: false`, `error: null`);
-  `confirmBan()` failure path (mock rejects → `error` set, `processing: false`, dialog stays open);
-  `unban(userId)` success → `onSuccess(userId, false)`; `unban(userId)` failure → `error` set;
-  `clearError()` clears `error`.
+  clears state; `confirmBan()` success path (the admin user route action returns `{ ok: true }` →
+  `onSuccess` called with `(userId, true)`, dialog closes, `processing: false`, `error: null`);
+  `confirmBan()` failure path (the action returns `{ ok: false, error }` → `error` set,
+  `processing: false`, dialog stays open); `unban(userId)` success → `onSuccess(userId, false)`;
+  `unban(userId)` failure → `error` set; `clearError()` clears `error`; each submission is sent with
+  `defaultShouldRevalidate: false`.
+- `apps/web/src/pages/admin/AdminUserDetailPage.data.test.ts` (the admin user route action) —
+  covers: intent `ban` calls `adminApi.banUser(id, reason, { signal })` and returns `{ ok: true }`;
+  intent `unban` calls `adminApi.unbanUser`; a rejected call returns `{ ok: false, error }`.
 
 Tests SHALL follow the existing Vitest convention: imports from `vitest`, `@testing-library/react`
 (`render`, `screen`, `waitFor`), `@testing-library/user-event` (`userEvent`). Logger mock via
-`vi.hoisted` + `vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }))`. Mock
-`adminApi` via `vi.mock('../../api/index.ts', ...)` with stubbed `banUser`/`unbanUser`. Hook tests
-use `renderHook` from `@testing-library/react` (or a test harness component).
+`vi.hoisted` + `vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }))`. Hook
+tests render the hook inside a `createMemoryRouter` route whose `action` is a `vi.fn()` returning the
+result under test (through `renderWithAppProviders`); only the action test mocks `adminApi` via
+`vi.mock('../../api/index.ts', ...)`.
 
 **Reason:** D36's acceptance criterion: "New shared components have tests." The `BanDialog` and
 `useBanUser` are the new shared pieces; the `Section`/`Field` primitives are presentational and
@@ -369,7 +314,7 @@ surrounding context but render the real `Section`/`Field` via the page under tes
 
 #### Scenario: BanDialog test passes
 
-- **WHEN** `make test-web` is executed (or `deno task --cwd apps/web test src/components/admin/BanDialog.test.tsx`)
+- **WHEN** `make test-web` is executed (or `make test-specific filter=apps/web/src/components/admin/BanDialog.test.tsx`)
 - **THEN** the `BanDialog.test.tsx` suite passes, covering name render, reason requirement, confirm
   callback, cancel callback, and processing state
 
@@ -383,18 +328,21 @@ surrounding context but render the real `Section`/`Field` via the page under tes
 
 `BanDialog.tsx` and `useBanUser.ts` SHALL create a module-scoped logger via
 `createLogger('<Name>')` (from `@/utils/logger.ts`) and emit `log.debug` on key lifecycle events:
-- `BanDialog`: `log.debug({}, 'BanDialog rendered')` is optional (presentational component —
-  logging is low-value here; if added, follow the `web-page-logging` pattern).
+- `BanDialog`: presentational, no logging required; if a log is added it follows the
+  `web-page-logging` pattern.
 - `useBanUser`: `log.debug({ userId }, 'useBanUser confirmBan started')` on `confirmBan` entry,
-  `log.debug({ userId }, 'useBanUser confirmBan completed')` on success,
-  `log.error({ err, userId }, 'useBanUser confirmBan failed')` on failure, same for `unban`.
+  `log.debug({ userId }, 'useBanUser confirmBan completed')` when the action returns `{ ok: true }`,
+  `log.error({ err, userId }, 'useBanUser confirmBan failed')` when it returns `{ ok: false, error }`
+  (with `err` set to the returned error), same for `unban`.
+- The `/admin/users/:id` route action logs entry, exit and failure per the web-data-loading action
+  rules (`log.error({ err, userId })`, no reason text).
 
 `Section.tsx` and `Field.tsx` are pure presentational primitives and do NOT require loggers (no
 state, no async, no lifecycle).
 
 **Reason:** AGENTS.md mandates structured logging for new features/codepaths. The `useBanUser` hook
-owns async mutation logic and MUST log entry/exit/error. `BanDialog` is presentational (no async);
-logging is optional. `Section`/`Field` are pure layout — no logging needed.
+owns async mutation state and MUST log entry/exit/error. `BanDialog` is presentational (no async).
+`Section`/`Field` are pure layout — no logging needed.
 
 #### Scenario: useBanUser logs confirmBan lifecycle
 
@@ -403,7 +351,7 @@ logging is optional. `Section`/`Field` are pure layout — no logging needed.
 
 #### Scenario: useBanUser logs confirmBan failure
 
-- **WHEN** `confirmBan()` is called and `adminApi.banUser` rejects
+- **WHEN** `confirmBan()` is called and the route action returns `{ ok: false, error }`
 - **THEN** the logger emits `error` with `{ err, userId }` and message 'useBanUser confirmBan failed'
 
 ### Requirement: RecipeCard is the single source for recipe card renderings
@@ -534,7 +482,9 @@ keys.
 ### Requirement: Toast primitives provide app-wide mutation feedback
 
 The app SHALL have a house-built, dependency-free toast system: a `ToastProvider` (React context +
-reducer holding a small toast queue) rendered once in `Layout.tsx`, and a `useToast()` hook
+reducer holding a small toast queue) rendered once at the application root by the shared
+`AppProviders` component (`apps/web/src/AppProviders.tsx`, inside `I18nProvider` and above
+`RouterProvider`, so the `/` and `/admin` route trees are both covered), and a `useToast()` hook
 returning `toast.success(i18nKey)` / `toast.error(i18nKey)`. The API accepts **i18n keys, not
 prebuilt strings** — the toast component resolves them via `useTranslation()`, so toasts are
 translated by construction. Toasts SHALL auto-dismiss after a timeout, carry `role="status"` and
@@ -545,7 +495,9 @@ SHALL be added.
 `useToast` is the feedback channel for mutations that are currently silent: T6's 14 empty-catch
 fixes use `toast.error(...)` for user-facing failures, and currently-silent successful mutations
 (e.g. list deletes) gain `toast.success(...)`. The primitive SHALL ship with a Vitest suite (render,
-auto-dismiss, queueing, key resolution).
+auto-dismiss, queueing, key resolution). `Layout.tsx` SHALL NOT mount `ToastProvider`, and
+`useToast()` SHALL keep throwing when no provider is mounted so a missing provider fails tests
+loudly.
 
 **Reason:** Zero toast infrastructure exists (rg for toast|snackbar → 0 hits); mutation feedback
 ranges from silent navigation to full-page checkmark screens, and the T6 empty-catch fixes need a
@@ -568,12 +520,25 @@ way to surface failure that today does not exist (design.md Decision 2).
 - **WHEN** `apps/web/package.json` is inspected after the change
 - **THEN** no toast/snackbar library has been added
 
+#### Scenario: Admin pages can raise toasts
+
+- **WHEN** an admin opens `/admin/recipes`, `/admin/vendors`, `/admin/users/:id`,
+  `/admin/compatibility` or `/admin/coffee-varieties`
+- **THEN** the page renders without throwing `useToast must be used within ToastProvider`
+- **AND** a failed admin mutation shows a translated error toast
+
+#### Scenario: Provider is mounted exactly once
+
+- **WHEN** `grep -rn "<ToastProvider" apps/web/src --include=*.tsx` is run excluding test files
+- **THEN** the only hit is `apps/web/src/AppProviders.tsx`
+
 ### Requirement: ConfirmDialog replaces native confirms and bespoke modal shells
 
 A shared modal shell (`components/ui/Modal.tsx`) and a promise-based confirm primitive SHALL exist:
 `useConfirm()` returns a function used as
 `if (await confirm({ titleKey, bodyKey, danger: true })) { … }`, with a single dialog component
-mounted by the provider alongside the toasts in `Layout.tsx`, styled with `.card` / `.btn-danger`,
+mounted by the provider alongside the toasts in the shared `AppProviders` component at the
+application root (not in `Layout.tsx`), styled with `.card` / `.btn-danger`,
 with focus trap and Escape-to-cancel handling. Like toasts, it takes **i18n keys** — eliminating the
 `t(key) + '?'` concatenation anti-pattern.
 
@@ -586,7 +551,9 @@ All 9 `globalThis.confirm` sites SHALL migrate to `useConfirm()`: `EquipmentList
 confirmation) rebase their overlay markup on the shared `Modal` shell while keeping their own
 content and existing props contracts (the BanDialog requirements in this spec remain satisfied). The
 primitives SHALL ship with Vitest suites (confirm resolves true/false, Escape cancels, danger
-styling).
+styling). `useConfirm()` SHALL throw `useConfirm must be used within ConfirmProvider` when no
+provider is mounted; the former `window.confirm(opts.bodyKey)` fallback, which displayed raw i18n
+keys, SHALL be removed and tests SHALL render through the shared provider test utility instead.
 
 **Reason:** Delete confirmation currently splits three ways (native `confirm()` — unthemeable,
 main-thread-blocking, and the source of the `t(key)+'?'` concatenation — plus two bespoke modal
@@ -610,6 +577,18 @@ and i18n at once (design.md Decision 2).
 - **WHEN** `grep -rn "fixed inset-0" apps/web/src` is run
 - **THEN** overlay-shell markup exists only in `components/ui/Modal.tsx` — `BanDialog`,
   `AddToCollectionModal`, and the confirm dialog all compose it
+
+#### Scenario: Admin delete confirmation is translated
+
+- **WHEN** an admin clicks Delete on `/admin/equipment` or `/admin/taste-notes`
+- **THEN** the themed confirm dialog shows the translated title and body
+- **AND** no native `window.confirm` dialog showing a raw key such as `admin.equipment.deleteConfirm`
+  appears
+
+#### Scenario: Missing provider fails loudly
+
+- **WHEN** a component calls `useConfirm()` with no `ConfirmProvider` above it
+- **THEN** the hook throws `useConfirm must be used within ConfirmProvider`
 
 ### Requirement: EmptyState and LoadingState primitives normalize list-page states
 
@@ -860,4 +839,133 @@ between red links and ad-hoc solid red buttons.
   pages are inspected
 - **THEN** they use `.btn-danger` (or the shared ConfirmDialog's danger button) — no inline
   `color: 'var(--error)'` link-styling for destructive actions remains
+
+### Requirement: useBanUser hook owns the ban/unban state machine and submits through the admin user route action
+
+The file `apps/web/src/hooks/useBanUser.ts` SHALL exist and SHALL export a `useBanUser` hook that
+takes an `onSuccess(userId: string, isBanned: boolean) => void` callback and returns:
+
+```typescript
+interface UseBanUserReturn {
+  banDialogUser: { id: string; username: string; displayName: string | null } | null;
+  processing: boolean;
+  error: string | null;
+  openBanDialog: (user: { id: string; username: string; displayName: string | null }) => void;
+  confirmBan: (reason: string) => Promise<void>;
+  unban: (userId: string) => Promise<void>;
+  clearError: () => void;
+  closeDialog: () => void;
+}
+```
+
+The hook SHALL NOT import the API client (`api/client.ts`, `api/index.ts`); it SHALL send ban and
+unban requests with `useFetcher().submit()` to the `/admin/users/:id` route action
+(`apps/web/src/pages/admin/AdminUserDetailPage.data.ts`), using
+`{ method: 'post', action: '/admin/users/<id>', defaultShouldRevalidate: false }` and the form
+fields `intent` (`ban` | `unban`) and `reason`. That action calls `adminApi.banUser` /
+`adminApi.unbanUser` with `request.signal` and returns `{ ok: true }` or `{ ok: false, error }`
+(the web-data-loading action contract). `defaultShouldRevalidate: false` keeps the "patch local
+state, no server re-fetch" behaviour of `AdminUsersPage` and `AdminUserDetailPage`. The hook SHALL:
+- `openBanDialog(user)` — set `banDialogUser`, clear `error`, set `processing: false`.
+- `confirmBan(reason)` — if no `banDialogUser` or empty reason, return early. Set `processing: true`
+  and submit intent `ban`. When the action returns `{ ok: true }`: call
+  `onSuccess(banDialogUser.id, true)`, close the dialog, clear `error`. When it returns
+  `{ ok: false, error }`: set `error` to the error message (or a fallback), reset
+  `processing: false`, keep the dialog open.
+- `unban(userId)` — submit intent `unban` for `userId`. On `{ ok: true }`: call
+  `onSuccess(userId, false)`, clear `error`. On `{ ok: false }`: set `error`.
+- `clearError()` — set `error: null`.
+- `closeDialog()` — set `banDialogUser: null`, clear `error`, set `processing: false`.
+
+The hook SHALL surface errors on BOTH call sites — it SHALL NOT silently swallow ban/unban failures.
+This keeps the fix for the pre-existing bug where `AdminUserDetailPage` silently swallowed errors
+via `catch {}`.
+
+**Reason:** The ban/unban mutation logic was duplicated in `AdminUsersPage.tsx` and
+`AdminUserDetailPage.tsx` with drifting error handling. The hook unifies the state machine; the
+`onSuccess` callback lets each page apply the result to its own state container (list array vs
+single object). Wave 6 moves the request itself into a route action so the web app has one
+data-loading paradigm (`web-data-loading`).
+
+#### Scenario: useBanUser open → confirm → closed on success
+
+- **WHEN** `openBanDialog(user)` is called, then `confirmBan('Spam')` is called
+  and the `/admin/users/:id` action returns `{ ok: true }`
+- **THEN** `onSuccess` is called with `(user.id, true)`, `banDialogUser` becomes null,
+  `processing` is false, `error` is null
+
+#### Scenario: useBanUser surfaces error on ban failure
+
+- **WHEN** `confirmBan('Spam')` is called and the action returns `{ ok: false, error }`
+- **THEN** `error` is set to the error message, `processing` is reset to false, `banDialogUser`
+  remains set (dialog stays open)
+
+#### Scenario: useBanUser unban calls onSuccess with false
+
+- **WHEN** `unban(userId)` is called and the action returns `{ ok: true }`
+- **THEN** `onSuccess` is called with `(userId, false)`, `error` is null
+
+#### Scenario: useBanUser unban surfaces error on failure
+
+- **WHEN** `unban(userId)` is called and the action returns `{ ok: false, error }`
+- **THEN** `error` is set to the error message
+
+#### Scenario: The hook does not call the API client
+
+- **WHEN** `apps/web/src/hooks/useBanUser.ts` is scanned by `apps/web/src/data-loading.enforcement.test.ts`
+- **THEN** it has no value import from `api/client.ts` or `api/index.ts`, and a ban sends no request other than the route action submission (no loader revalidation)
+
+### Requirement: Every route renders under the app-wide providers
+The application root SHALL render a single `AppProviders` component (`ThemeProvider` → `I18nProvider` → `ToastProvider` → `ConfirmProvider` → `AuthProvider`) around `RouterProvider`, and a router smoke test SHALL render every declared route through `createMemoryRouter` with that real `AppProviders` stack and no per-test provider wrappers, failing if any route renders an error boundary.
+
+This fixes the user's top-10 item 6 (`openspec/changes/archive/2026-11-21-wave-6-audit-remediation/audit/t5-web-state.md` §1 V1-V6 and §2). Today `/admin` is a
+sibling of `/` (`apps/web/src/router.tsx:69-73` vs `:351-363`), `ToastProvider`/`ConfirmProvider`
+are mounted only in `components/layout/Layout.tsx:23-24`, and `useToast()` throws outside its
+provider (`components/ui/Toast.tsx:99-102`). Five admin pages call `useToast()` during render and
+replace the whole admin screen with "Oops! useToast must be used within ToastProvider":
+`/admin/recipes` (`AdminRecipesPage.tsx:26`), `/admin/vendors` (`AdminVendorsPage.tsx:18`),
+`/admin/users/:id` (`AdminUserDetailPage.tsx:25`), `/admin/compatibility`
+(`AdminCompatibilityPage.tsx:21`) and `/admin/coffee-varieties` (`AdminCoffeeVarietiesPage.tsx:124`).
+Two more, `/admin/equipment` and `/admin/taste-notes`, fall back to a native `confirm()` showing a raw
+i18n key (`components/ui/Modal.tsx:161-167`).
+
+`apps/web/src/router.tsx` SHALL export the route tree as `routes` and a `createAppRouter()` factory
+(so importing the module does not start a browser router); `App.tsx` SHALL create the browser
+router once from it. The smoke test (`apps/web/src/router.smoke.test.tsx`) SHALL derive the list of
+paths from `routes` by walking every nested route object, SHALL render every route that has an
+`element`, `Component` or `lazy` component (action-only routes such as `recipes/:id/like` and
+resource routes under `resources/` are skipped because they render nothing), SHALL substitute
+fixture values for `:params`, SHALL stub the network layer with empty success envelopes, SHALL
+render public routes signed-out and guarded and admin routes as a signed-in admin, and SHALL assert
+that no `RootErrorBoundary` content (for example `error.boundary.oops`) is rendered. A route whose
+loader turns the empty stub into a 404 MAY render the not-found page; that is not a failure. The
+test SHALL also assert that its derived path list contains every one of the 14 admin routes that
+exist today: `/admin`, `/admin/users`, `/admin/users/new`, `/admin/users/:id`,
+`/admin/users/:id/edit`, `/admin/recipes`, `/admin/equipment`, `/admin/vendors`,
+`/admin/taste-notes`, `/admin/coffee-varieties`, `/admin/compatibility`, `/admin/badges`,
+`/admin/audit-log` and `/admin/cache` (a lower bound, so a broken route walk cannot silently skip
+the admin tree; new routes are added automatically). Admin page tests SHALL use the shared test
+utility (`apps/web/src/test-utils/render.tsx`, `renderWithAppProviders`) instead of wrapping
+themselves in `ToastProvider`/`ConfirmProvider`, and no non-test module other than
+`AppProviders.tsx` SHALL render `ToastProvider` or `ConfirmProvider`.
+
+#### Scenario: The five crashing admin pages render under the real providers
+- **WHEN** the smoke test renders `/admin/recipes`, `/admin/vendors`, `/admin/users/<id>`, `/admin/compatibility` and `/admin/coffee-varieties` as an admin
+- **THEN** each renders its page heading inside `AdminLayout` (sidebar visible) and no error boundary
+
+#### Scenario: Every admin route renders
+- **WHEN** the smoke test runs
+- **THEN** it renders all 14 admin routes listed above as a signed-in admin and none renders `error.boundary.oops`
+
+#### Scenario: Every public and guarded route renders
+- **WHEN** the smoke test runs
+- **THEN** every element route under `/` (for example `/`, `/recipes`, `/recipes/<slug>`, `/settings`, `/collections/<id>/edit`, `/u/<username>`, `/taste-notes`, `/contact`) renders without `error.boundary.oops`
+
+#### Scenario: Removing a provider breaks CI
+- **WHEN** `ToastProvider` is removed from `AppProviders.tsx`
+- **THEN** the router smoke test fails for every route whose page calls `useToast()`
+
+#### Scenario: New routes are covered automatically
+- **WHEN** a contributor adds a route to `routes` without adding a test
+- **THEN** the smoke test renders it because the path list is derived from the route tree
 

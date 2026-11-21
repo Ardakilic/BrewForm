@@ -90,27 +90,16 @@ Web tests that assert on logging SHALL use Vitest's `vi.hoisted` pattern to crea
 - **WHEN** each test in a test file starts
 - **THEN** the test SHALL call `mockLogger.debug.mockClear()` (and similarly for other methods) in `beforeEach` or at the start of each test
 
-### Requirement: API service test logger spying uses std/testing/mock
-
-API service tests that assert on logging SHALL use `spy()` from `jsr:@std/testing/mock` to create call-tracking wrappers and `assertSpyCalls` / `assertSpyCallArgs` to verify log calls.
-
-#### Scenario: Deno spy is used for logger verification
-
-- **WHEN** an API test asserts on logging
-- **THEN** the test SHALL import `{ spy, assertSpyCalls } from 'jsr:@std/testing/mock'`
-- **AND** verify that `assertSpyCalls(logSpy.debug, 2)` confirms entry and exit were both called
-
 ### Requirement: New test files follow existing test patterns
 
-New test files created for this change (report service test, auth middleware test, rate limit middleware test) SHALL follow the established test patterns in the codebase: using `describe`/`it` from `jsr:@std/testing/bdd` with `expect` from `jsr:@std/expect`, importing the real module under test, and using spies for logger assertions.
+New test files created for this change (report service test, auth middleware test, rate limit middleware test) SHALL follow the established test patterns in the codebase: using `describe`/`it`/`expect` from `vitest`, importing the real module under test, and using `vi.spyOn` spies for logger assertions.
 
 #### Scenario: Report service test file follows the vendor service test pattern
 
 - **WHEN** `apps/api/src/modules/report/service.test.ts` is created
-- **THEN** the file SHALL import `{ describe, it } from 'jsr:@std/testing/bdd'`
-- **AND** SHALL import `{ expect } from 'jsr:@std/expect'`
+- **THEN** the file SHALL import `{ describe, expect, it, vi } from 'vitest'`
 - **AND** SHALL import the real `report/service.ts` module (not a mock)
-- **AND** SHALL use `spy()` from `jsr:@std/testing/mock` for logger assertions
+- **AND** SHALL use `vi.spyOn` on the module logger for logger assertions
 - **AND** SHALL follow the same file structure as `vendor/service.test.ts`
 
 #### Scenario: Auth middleware test file follows the API test pattern
@@ -124,10 +113,10 @@ New test files created for this change (report service test, auth middleware tes
 #### Scenario: Rate limit middleware test file follows the API test pattern
 
 - **WHEN** `apps/api/src/middleware/rateLimit.test.ts` is created
-- **THEN** the file SHALL use `describe`/`it` blocks grouped by middleware function (`rateLimitMiddleware` and `authRateLimitMiddleware`)
-- **AND** SHALL create a mock Hono context for each test case
+- **THEN** the file SHALL use `describe`/`it` blocks grouped by middleware factory (`rateLimit` and `rateLimitFailures`, as defined by the `api-rate-limiting` capability)
+- **AND** SHALL exercise each case through a Hono app request whose client address comes from connection info (`peerEnv()`), resetting the limiter backend between cases
 - **AND** SHALL test both the under-limit (pass-through) and over-limit (429) scenarios
-- **AND** SHALL assert `log.warn` was called with `{ limit }` (or `{ userId, limit }` for `authRateLimitMiddleware`) on rate limit exceeded
+- **AND** SHALL assert `log.warn` was called with `{ policy, limit }` (or `{ policy, limit, userId }` for user-keyed policies) on rate limit exceeded
 
 ### Requirement: Web tests that update existing files must preserve all existing assertions
 
@@ -151,23 +140,6 @@ When adding logger mock setup and logger assertions to existing web test files, 
 - **THEN** other Vitest mocks (API clients, router, etc.) SHALL NOT be affected by the logger mock clear
 - **AND** each test SHALL start with a clean logger spy state without affecting other mocked modules
 
-### Requirement: API tests use describe/it from @std/testing/bdd with expect assertions
-
-All API test files (both newly created and updated) SHALL use the Deno standard library testing framework: `describe` and `it` from `jsr:@std/testing/bdd` for test structure, and `expect` from `jsr:@std/expect` for assertions. API tests SHALL NOT use Vitest, Jest, or any other test framework.
-
-#### Scenario: API test file imports follow the standard pattern
-
-- **WHEN** an API test file is opened (e.g., `user/service.test.ts`, `report/service.test.ts`, `auth.test.ts`)
-- **THEN** the file SHALL contain `import { describe, it } from 'jsr:@std/testing/bdd'`
-- **AND** SHALL contain `import { expect } from 'jsr:@std/expect'`
-- **AND** SHALL NOT contain any Vitest imports (`vi`, `describe` from `vitest`)
-
-#### Scenario: API test assertions use expect matchers
-
-- **WHEN** an API test asserts a value or behavior
-- **THEN** the assertion SHALL use the `expect(...).toBe(...)`, `expect(...).toThrow(...)`, or `expect(...).toEqual(...)` pattern from `@std/expect`
-- **AND** SHALL NOT use `assert()` or `assertEquals()` from `@std/assert` (the codebase standard is `@std/expect`)
-
 ### Requirement: Auth middleware test verifies optionalAuthMiddleware does NOT log errors when no token present
 
 The auth middleware test file SHALL include a test case that verifies `optionalAuthMiddleware` emits only `log.debug` calls (never `log.error` or `log.warn`) when no Authorization header is present, because missing tokens are an expected and valid state for optional authentication.
@@ -189,21 +161,21 @@ The auth middleware test file SHALL include a test case that verifies `optionalA
 
 ### Requirement: Rate limit test verifies both IP-based and user-ID-based rate limit logging
 
-The rate limit middleware test file SHALL include separate test cases for IP-based rate limiting (`rateLimitMiddleware`) and user-ID-based rate limiting (`authRateLimitMiddleware`), asserting that each emits the correct log context (limit only vs. user ID + limit) when the limit is exceeded.
+The rate limit middleware test file SHALL include separate test cases for an IP-keyed policy (for example `rateLimit(POLICIES.global)`) and a user-keyed policy (for example `rateLimit(POLICIES.commentUser)` mounted after `authMiddleware`), asserting that each emits the correct log context (`{ policy, limit }` vs. `{ policy, limit, userId }`) when the limit is exceeded. The former `rateLimitMiddleware` and `authRateLimitMiddleware` factories no longer exist (see the `api-rate-limiting` capability); only the log message string `rateLimitMiddleware rate limit exceeded` is kept.
 
-#### Scenario: IP-based rate limit test verifies warn log with limit
+#### Scenario: IP-based rate limit test verifies warn log with policy and limit
 
-- **WHEN** a test triggers `rateLimitMiddleware` to exceed its limit by making 101 requests from the same IP
+- **WHEN** a test sends 101 requests from one simulated peer (`peerEnv(ip)`) to a route guarded by `rateLimit(POLICIES.global)` with the default limit of 100
 - **THEN** the test SHALL assert that `log.warn` was called exactly once
-- **AND** the log call SHALL include `{ limit: 100 }` in its first argument
+- **AND** the log call SHALL include `{ policy: 'global', limit: 100 }` in its first argument and no IP, email or key field
 - **AND** the log message SHALL contain "rate limit exceeded"
 - **AND** the middleware returned a 429 response
 
-#### Scenario: User-ID-based rate limit test verifies warn log with userId and limit
+#### Scenario: User-ID-based rate limit test verifies warn log with userId, policy and limit
 
-- **WHEN** a test triggers `authRateLimitMiddleware` to exceed its limit for an authenticated user
+- **WHEN** a test exceeds `rateLimit(POLICIES.commentUser)` for an authenticated user
 - **THEN** the test SHALL assert that `log.warn` was called exactly once
-- **AND** the log call SHALL include `{ userId: "<user-id>", limit: 100 }` in its first argument
+- **AND** the log call SHALL include `{ policy: 'comment-user', limit: 5, userId: "<user-id>" }` in its first argument
 - **AND** the log message SHALL contain "rate limit exceeded"
 - **AND** the middleware returned a 429 response
 
@@ -214,19 +186,37 @@ The rate limit middleware test file SHALL include separate test cases for IP-bas
 - **AND** the middleware SHALL call `await next()` to proceed normally
 - **AND** the response SHALL NOT be a 429
 
-### Requirement: Test files run with --no-check flag matching the project test command
+### Requirement: API service test logger spying uses Vitest spies
+API service tests that assert on logging SHALL spy on the module logger with `vi.spyOn(log, '<level>')` (or inject a `vi.fn()` logger double) and verify calls with `expect(spy).toHaveBeenCalledTimes(n)` / `toHaveBeenCalledWith(...)`, restoring spies in `afterEach` (`vi.restoreAllMocks()`).
 
-All test files (both new and updated) SHALL be compatible with the project's test execution model: `deno test --no-check --allow-all`. Tests SHALL NOT rely on type-checking at test runtime and SHALL use `--allow-all` compatible imports.
+#### Scenario: Vitest spy is used for logger verification
+- **WHEN** an API test asserts on logging
+- **THEN** it imports `{ vi }` from `vitest` and spies on the logger's level methods (as `apps/api/src/modules/report/service.test.ts` does)
+- **AND** `expect(debugSpy).toHaveBeenCalledTimes(2)` confirms that entry and exit were both logged
+
+### Requirement: API tests use describe/it/expect from vitest
+All API test files (both newly created and updated) SHALL use Vitest: `describe`, `it`, `expect` and, where needed, `vi`, `beforeEach`, `afterEach`, `beforeAll` and `afterAll` imported from `vitest`, and no other test framework or assertion library.
+
+#### Scenario: API test file imports follow the standard pattern
+- **WHEN** an API test file is opened (e.g., `user/service.test.ts`, `report/service.test.ts`, `middleware/auth.test.ts`)
+- **THEN** it imports its test API from `vitest`
+- **AND** it imports nothing from Jest, `node:test`, or a previous runtime's standard-library test modules
+
+#### Scenario: API test assertions use expect matchers
+- **WHEN** an API test asserts a value or behaviour
+- **THEN** the assertion uses Vitest `expect(...)` matchers such as `toBe`, `toEqual` or `toThrow`
+- **AND** it does not use `node:assert`
+
+### Requirement: Test files run without type-checking under the Vitest runner
+All test files (both new and updated) SHALL be compatible with the project's test execution model: each workspace's `test` script runs `vitest run`, which transpiles without type-checking, and type-checking is a separate gate (`pnpm run check`, `make check`, `make check-tests`). Tests SHALL NOT depend on type-checking at test time.
 
 #### Scenario: Test files compile and run with make test
-
 - **WHEN** `make test` is executed from the project root
-- **THEN** all new and updated test files SHALL execute without compilation errors
-- **AND** all test assertions (both pre-existing and newly added) SHALL pass
+- **THEN** all new and updated test files execute without transpilation errors
+- **AND** all test assertions (both pre-existing and newly added) pass
 
 #### Scenario: Test files are compatible with test-specific filtering
-
 - **WHEN** `make test-specific filter=report/service.test.ts` is executed
-- **THEN** only the report service tests SHALL run
-- **AND** all report service test assertions SHALL pass
+- **THEN** only the report service tests run
+- **AND** all report service test assertions pass
 

@@ -172,7 +172,7 @@ model test verifies the insert path produces populated `createdAt` values.
 
 #### Scenario: Column-existence test passes
 
-- **WHEN** the schema column test is run (`make test` or `deno test packages/db/src/schema-indexes.test.ts`)
+- **WHEN** the schema column test is run (`make test`, or `pnpm --filter @brewform/db exec vitest run src/schema-columns.test.ts src/schema-indexes.test.ts`)
 - **THEN** `recipeTasteNotes`, `recipeEquipment`, and `recipeVersionPhotos` are each asserted to
   have a `createdAt` column with `notNull` and a `default`
 

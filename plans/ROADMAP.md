@@ -16,9 +16,9 @@
 
 The [2026-11-18 health audit](AUDIT-2026-11-18.md) found user-facing bugs and security gaps
 behind the earlier "all debt resolved" status. The `wave-6-audit-remediation` OpenSpec change
-fixed them in one pull request. After merge, the change is archived under
-[`openspec/changes/archive/`](../openspec/changes/archive/) as
-`<date>-wave-6-audit-remediation`. What it changed:
+fixed them in one pull request, which also archives the change at
+[`openspec/changes/archive/2026-11-21-wave-6-audit-remediation/`](../openspec/changes/archive/2026-11-21-wave-6-audit-remediation/proposal.md).
+What it changed:
 
 - **Security:** caller-scoped private recipe notes replace the notes IDOR, and the legacy notes
   `POST` is removed. Uploads get server-generated keys, magic-byte type checks and signed S3

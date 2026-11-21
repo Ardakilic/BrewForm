@@ -101,6 +101,6 @@ The admin `GET /reports` route in `apps/api/src/modules/admin/index.ts` SHALL va
 The test suite in `packages/shared/src/constants/enums.test.ts` SHALL include a test verifying that `ReportStatus` covers every value in `REPORT_STATUS_VALUES` with no duplicates, matching the existing pattern used for `EquipmentDeleteRequestStatus`, `CoffeeVarietyCategory`, and `AdditionalPreparationCategory`.
 
 #### Scenario: Enum coverage test passes
-- **WHEN** `deno test packages/shared/src/constants/enums.test.ts` is run
+- **WHEN** `pnpm --filter @brewform/shared exec vitest run src/constants/enums.test.ts` (or `make test-shared`) is run
 - **THEN** the `ReportStatus covers every REPORT_STATUS_VALUES entry` test passes
 

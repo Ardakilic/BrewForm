@@ -4,409 +4,526 @@
 TBD - created by archiving change d30-coolify-ghcr-deployment. Update Purpose after archive.
 ## Requirements
 ### Requirement: API Docker image with migrate-on-start entrypoint
+The system SHALL provide a multi-stage `Dockerfile` whose `runner` stage is based on the pinned `node:26.13.0-trixie-slim` image and contains only what the API needs at runtime, with `/app/docker-entrypoint.sh` as its entrypoint script.
 
-The system SHALL provide a multi-stage `Dockerfile` producing a `runner` stage that:
-- Is based on `denoland/deno:debian-2.7.14`
-- Contains the compiled API source (`apps/api/src/main.ts` and all imported modules), generated
-  Drizzle migrations (`packages/db/drizzle/`), `packages/db/drizzle.config.ts`, compiled email
-  templates (in `apps/api/src/` or wherever `deno task email-build` outputs them), and
-  `node_modules` (which includes `drizzle-kit` via the `npm:drizzle-kit@0.31` dependency, used
-  by the entrypoint for migrations)
-- Exposes port `8000`
-- Uses `ENTRYPOINT ["/app/docker-entrypoint.sh"]` (no `CMD` — the entrypoint `exec`s the API)
-- Runs the API with `--unstable-cron` and `--unstable-kv` flags (via the entrypoint's final
-  `exec deno run ...` line)
+The `Dockerfile` SHALL define these stages:
 
-The `builder` stage SHALL run `deno task email-build` (compiles MJML templates to TypeScript —
-currently only run in CI, not in the Dockerfile) AND
-`cd packages/db && deno run -A npm:drizzle-kit@0.31 generate` (generates migration SQL files —
-already present in the current Dockerfile) so the runner stage has both the compiled email
-templates and the migration SQL files for the entrypoint.
+1. **`deps`**: `node:26.13.0-trixie-slim`, installs `pnpm@12.18.0` globally via `npm` (kept in sync
+   with `packageManager` in the root `package.json`), copies the workspace manifests, runs
+   `pnpm fetch`, copies the source and runs `pnpm install --frozen-lockfile --offline`. The dev
+   containers in `compose.yml` use this stage.
+2. **`builder`** (from `deps`): runs `pnpm run email-build` (compiles the MJML templates into
+   `apps/api/src/templates/email/generated/`) and `pnpm run check`. It MUST NOT run
+   `drizzle-kit generate`: the committed migrations in `packages/db/drizzle/` are authoritative and
+   CI enforces their freshness.
+3. **`runner`**: `node:26.13.0-trixie-slim` with `ENV NODE_ENV=production` and
+   `ENV UPLOAD_DIR=/app/uploads`. It contains:
+   - `apps/api/` sources, including the generated email templates
+   - `packages/db/` sources, `packages/db/drizzle/` (committed migration SQL and meta) and the
+     migration runner script
+   - `packages/shared/` sources
+   - `files/` (reference data read by the seed, e.g. `files/scaa-2.json`)
+   - the production dependency closure of `@brewform/api` in `node_modules`
+   - `/app/docker-entrypoint.sh` (executable)
+   - `/app/healthcheck.mjs`, the dependency-free probe script copied from
+     `apps/api/scripts/healthcheck.mjs` (see "API runtime image runs as non-root with a built-in
+     health check")
 
-The `runner` stage SHALL `COPY docker-entrypoint.sh /app/docker-entrypoint.sh` and
-`RUN chmod +x /app/docker-entrypoint.sh`.
+   The runner MUST NOT contain `apps/web/`, `openspec/`, `plans/`, `docs/`, `.github/`, coverage
+   output, or development-only toolchains (for example `vitest`, `@biomejs/biome`, `typescript`,
+   `vite`, `mjml`, `drizzle-kit`).
+
+The runner SHALL `EXPOSE 8000` and use an `ENTRYPOINT` that starts a minimal init process which
+runs `/app/docker-entrypoint.sh`; there is no `CMD` (the entrypoint `exec`s the API).
 
 #### Scenario: API image builds successfully
-
-- **WHEN** `docker build -f Dockerfile -t ghcr.io/ardakilic/brewform-api:latest .` is run
+- **WHEN** `docker build -f Dockerfile -t brewform-api:local .` is run on a clean checkout
 - **THEN** the build completes without error
-- **AND** the final image contains `apps/api/src/main.ts`, `packages/db/drizzle/` (migration SQL
-  files), `packages/db/drizzle.config.ts`, compiled email templates, `node_modules/` (with
-  `drizzle-kit`), and `/app/docker-entrypoint.sh` (executable)
+- **AND** the image contains `/app/apps/api/src/main.ts`, `/app/packages/db/drizzle/`, `/app/files/scaa-2.json`, the generated email templates, an executable `/app/docker-entrypoint.sh` and `/app/healthcheck.mjs`
+
+#### Scenario: Runtime image excludes non-runtime content
+- **WHEN** the filesystem of the built API image is listed
+- **THEN** `/app/apps/web`, `/app/openspec`, `/app/plans` and `/app/docs` do not exist
+- **AND** `vitest`, `typescript`, `vite` and `drizzle-kit` are not resolvable from `/app/apps/api`
+
+#### Scenario: Image build does not generate migrations
+- **WHEN** the image is built
+- **THEN** the files under `/app/packages/db/drizzle/` are exactly the committed files
+- **AND** no build step runs `drizzle-kit generate`
 
 #### Scenario: API image starts on port 8000
-
-- **WHEN** the API image is run with `DATABASE_URL`, `JWT_SECRET`, and `CACHE_DRIVER` set as
-  runtime environment variables
+- **WHEN** the API image is run with `DATABASE_URL` and `JWT_SECRET` set and the database reachable
 - **THEN** the container listens on port `8000` (the `APP_PORT` default)
-- **AND** `GET /health` returns `200` with `{ status: 'ok' }`
-- **AND** `GET /ready` returns `200` with `{ status: 'ready', db: 'connected' }` (or `503` if
-  the DB is unreachable)
-
----
+- **AND** `GET /health` returns `200` with `{ "status": "ok" }`
+- **AND** `GET /ready` returns `200` with `status: "ready"` and `db: "connected"` plus the other readiness keys defined by the production-operations capability, or `503` with `status: "not_ready"` if the database is unreachable
 
 ### Requirement: Entrypoint runs migrations on every boot
+In its default `serve` mode, the `docker-entrypoint.sh` script SHALL apply pending Drizzle migrations before starting the API on every container start, unless `RUN_MIGRATIONS` is set to `false`, and it SHALL also provide a `migrate` mode that applies migrations and the first-install bootstrap and then exits.
 
-The `docker-entrypoint.sh` script SHALL run
-`cd /app/packages/db && deno run -A npm:drizzle-kit@0.31 migrate` before starting the API
-server, on every container start. `DATABASE_URL` MUST be set in the container environment (the
-`drizzle.config.ts` reads it via `Deno.env.get('DATABASE_URL')`). Migrations are idempotent via
-Drizzle's `__drizzle_migrations` tracking table.
+Migrations SHALL be applied by the `@brewform/db` migration runner script, run directly with
+`node` (no `pnpm` and no `drizzle-kit` at runtime). The runner uses Drizzle's migrator against the
+committed `packages/db/drizzle/` folder and the default `drizzle.__drizzle_migrations` tracking
+table, so applying an already-applied set is a no-op. `DATABASE_URL` MUST be set.
 
-The script SHALL use `set -e` so any failure exits with a non-zero code. If the migration fails,
-the entrypoint SHALL exit with a non-zero code and NOT start the API server (fail-fast). The
-container orchestrator's restart policy will restart the container.
-
-The script SHALL emit the log line `"Running database migrations..."` before the migrate command
-and `"Migrations complete."` after it succeeds.
+The script SHALL use `set -e` so a failing migration exits non-zero and the API does NOT start
+(fail-fast). It SHALL print `Running database migrations...` before and `Migrations complete.`
+after a successful migration. When `RUN_MIGRATIONS=false` in `serve` mode it SHALL print
+`Migrations skipped (RUN_MIGRATIONS=false).` and skip both migrations and the first-install
+bootstrap. The mode is selected by the first container argument (`serve` when absent, or
+`migrate`); any other value SHALL make the entrypoint exit non-zero with a usage message.
 
 #### Scenario: Migrations run on first boot
-
-- **WHEN** the API container starts against an empty database (no tables)
-- **THEN** `deno run -A npm:drizzle-kit@0.31 migrate` applies all pending migrations from
-  `packages/db/drizzle/`
-- **AND** stdout contains "Running database migrations..." and "Migrations complete."
+- **WHEN** the API container starts in `serve` mode against an empty database
+- **THEN** all migrations from `packages/db/drizzle/` are applied
+- **AND** stdout contains `Running database migrations...` and `Migrations complete.`
 - **AND** the API server starts after migrations complete
 
-#### Scenario: Migrations run on subsequent boots
-
-- **WHEN** the API container starts against a database with all migrations already applied
-- **THEN** `deno run -A npm:drizzle-kit@0.31 migrate` is a no-op (Drizzle detects no pending
-  migrations via the `__drizzle_migrations` table)
+#### Scenario: Migrations are a no-op on subsequent boots
+- **WHEN** the API container starts against a database with all migrations applied
+- **THEN** the migration runner applies nothing and exits successfully
 - **AND** the API server starts
 
 #### Scenario: Migration failure prevents API start
-
-- **WHEN** `deno run -A npm:drizzle-kit@0.31 migrate` exits with a non-zero code (e.g.,
-  `DATABASE_URL` is wrong, the DB is unreachable, or a migration SQL file is malformed)
-- **THEN** the entrypoint exits with a non-zero code (due to `set -e`)
+- **WHEN** the migration runner exits non-zero (wrong `DATABASE_URL`, unreachable database or a malformed migration)
+- **THEN** the entrypoint exits with a non-zero code
 - **AND** the API server does NOT start
-- **AND** the container restarts (per the orchestrator's restart policy)
 
----
+#### Scenario: Migrations can be disabled for an externally migrated deployment
+- **WHEN** the container starts in `serve` mode with `RUN_MIGRATIONS=false`
+- **THEN** stdout contains `Migrations skipped (RUN_MIGRATIONS=false).`
+- **AND** neither the migration runner nor the first-install bootstrap runs
+- **AND** the API server starts
+
+#### Scenario: Migrate mode exits after migrating
+- **WHEN** the container is started with the argument `migrate`
+- **THEN** migrations and the first-install bootstrap run
+- **AND** the container exits with status `0` without starting the API server
+
+#### Scenario: Unknown mode is rejected
+- **WHEN** the container is started with the argument `bogus`
+- **THEN** the entrypoint prints a usage message and exits non-zero
 
 ### Requirement: Entrypoint runs seed only on first boot
+The `docker-entrypoint.sh` script SHALL run the first-install bootstrap (the `@brewform/db` seed entrypoint, run with `node`) ONLY when the `users` table is empty, as reported by `packages/db/src/check-users-empty.ts` run directly with `node`.
 
-The `docker-entrypoint.sh` script SHALL run `deno run --allow-all /app/packages/db/src/seed.ts`
-ONLY when the `users` table is empty (i.e., `SELECT count(*) FROM users` returns `0`). This
-detects "first boot" because the admin user is the first row inserted by the seed script
-(`packages/db/src/seed.ts` inserts the admin user first, then seed users, then equipment,
-coffee varieties, vendors, beans, recipes, and social data — all with `onConflictDoNothing`).
+The check script prints the bare integer count of `users` rows to stdout, which the entrypoint
+captures. It MUST NOT mask a query failure as `0`: a failed check exits non-zero and, with
+`set -e`, aborts the boot instead of re-seeding a populated database. The check SHALL NOT use
+`psql` (the runtime image has no Postgres client).
 
-The first-boot check SHALL be performed by a Deno script that queries `SELECT count(*) FROM users`
-using the existing `@brewform/db` client (which is already in `/app/node_modules` and
-`/app/packages/db`). The RECOMMENDED form is a standalone `scripts/check-users-empty.ts` file run
-with the minimal permissions `--allow-env --allow-net --allow-read`. If an inline `deno eval` is
-used instead, it MUST carry those same `--allow-env --allow-net --allow-read` permissions, and it
-MUST NOT mask a query failure to `0`: a failed/errored check MUST fail-fast (non-zero exit), NOT
-silently report `0` and thereby trigger an unwanted re-seed against a populated database. The
-script SHALL print the count to stdout, which the entrypoint captures. The check SHALL NOT use
-`psql` (the Deno image does not include `postgresql-client`).
+When the count is `0` the script SHALL print `Database is empty, running seed...` before and
+`Seeding complete.` after the seed. When the count is greater than `0` it SHALL skip the seed and
+print `Seed skipped — database already contains data (<count> users).`
 
-When the `users` table is not empty (count > 0), the seed SHALL be skipped with a log message:
-`"Seed skipped — database already contains data (<count> users)."`.
+What the seed inserts in a given `APP_ENV` (for example admin-only in production) is defined by the
+seed capability, not by this requirement. The seed remains idempotent (`onConflictDoNothing` on
+unique keys), so a manual re-run is non-destructive.
 
-The seed script itself is idempotent (`onConflictDoNothing` on all inserts, verified across all
-seed helpers in `packages/db/src/seed.ts`), so an accidental re-run is non-destructive, but the
-first-boot guard avoids unnecessary work and log noise on every restart.
-
-The script SHALL emit the log line `"Database is empty, running seed..."` before the seed
-command (when count is 0) and `"Seeding complete."` after it succeeds.
-
-#### Scenario: Seed runs on first boot (empty database)
-
-- **WHEN** the API container starts against a database where `SELECT count(*) FROM users` is `0`
-- **THEN** `deno run --allow-all /app/packages/db/src/seed.ts` runs
-- **AND** the admin user (from `ADMIN_EMAIL`/`ADMIN_USERNAME`/`ADMIN_PASSWORD` env vars) and all
-  seed data (badges, equipment catalog, coffee varieties, vendors, beans, recipes, social data,
-  setups, taste notes) are inserted
-- **AND** stdout contains "Database is empty, running seed..." and "Seeding complete."
+#### Scenario: Seed runs on first boot
+- **WHEN** the API container starts against a database whose `users` table is empty
+- **THEN** the seed entrypoint runs and the admin account from `ADMIN_EMAIL`/`ADMIN_USERNAME`/`ADMIN_PASSWORD` is created
+- **AND** stdout contains `Database is empty, running seed...` and `Seeding complete.`
 - **AND** the API server starts after seeding completes
 
 #### Scenario: Seed is skipped on subsequent boots
+- **WHEN** the API container starts against a database whose `users` table has rows
+- **THEN** the seed does NOT run
+- **AND** stdout contains `Seed skipped — database already contains data (<N> users).`
 
-- **WHEN** the API container starts against a database where `SELECT count(*) FROM users` is
-  `> 0`
-- **THEN** the seed script is NOT executed
-- **AND** stdout contains "Seed skipped — database already contains data (<N> users)."
-- **AND** the API server starts immediately after migrations
+#### Scenario: Failed check aborts instead of re-seeding
+- **WHEN** the user-count check cannot reach the database
+- **THEN** the check exits non-zero and the entrypoint aborts
+- **AND** the seed does NOT run
 
 #### Scenario: Seed is non-destructive if run manually
-
-- **WHEN** an operator runs `deno run --allow-all /app/packages/db/src/seed.ts` manually against
-  a populated database (e.g., via `docker exec` or Coolify's Terminal)
-- **THEN** all inserts use `onConflictDoNothing` on their unique constraints (email, username,
-  slug, composite keys, etc.) and no existing data is modified or deleted
-- **AND** the seed completes successfully without violating any unique constraint
-
----
+- **WHEN** an operator runs the seed entrypoint manually against a populated database
+- **THEN** no existing row is modified or deleted and no unique constraint is violated
 
 ### Requirement: Entrypoint execs the API server with correct flags
+After migrations and conditional seeding, the entrypoint SHALL print `Starting BrewForm API...` and `exec` Node directly on `apps/api/src/main.ts`, with no `pnpm` or `tsx` wrapper process, under a minimal init process, so that the Node process itself receives `SIGTERM` and `SIGINT`.
 
-After migrations and (conditional) seeding, the `docker-entrypoint.sh` SHALL emit
-`"Starting BrewForm API..."` and then `exec` the API server with:
-```
-exec deno run --allow-read --allow-write --allow-net --allow-env --allow-sys --unstable-cron --unstable-kv /app/apps/api/src/main.ts
-```
+Node SHALL load the TypeScript sources either through its built-in type stripping (the codebase
+compiles with `erasableSyntaxOnly` and `verbatimModuleSyntax`) or, if that proves unworkable,
+through an in-process loader registered with `node --import`. Either way, there SHALL be exactly
+one Node process serving the API. The init process SHALL forward signals to the entrypoint's
+process group so a stop request during migrations or seeding is not ignored by a shell running as
+PID 1.
 
-The `--unstable-kv` flag is REQUIRED for the `Deno.openKv()` call in `main.ts` when
-`CACHE_DRIVER=deno-kv` (the Deno KV API is still unstable as of Deno 2.7). The `--unstable-cron`
-flag is required for the cron jobs registered in `apps/api/src/utils/jobs/cron.ts`. The `exec`
-ensures the API process replaces the entrypoint shell and receives `SIGTERM`/`SIGINT` for
-graceful shutdown (the `main.ts` has shutdown handlers at lines 136+).
+#### Scenario: Process tree has no package-manager wrapper
+- **WHEN** the API container is running
+- **THEN** the process list contains the init process and one `node` process for the API
+- **AND** no `pnpm` or `tsx` CLI process is running
 
-#### Scenario: API server starts with unstable flags
+#### Scenario: API receives SIGTERM for graceful shutdown
+- **WHEN** the container is stopped with `docker stop`
+- **THEN** the Node process receives `SIGTERM` and the `main.ts` shutdown handlers run (HTTP server close, database client end, email transporter and cache close)
+- **AND** the container exits before the stop timeout elapses
 
-- **WHEN** the entrypoint reaches the `exec` line
-- **THEN** the API server starts with both `--unstable-cron` and `--unstable-kv` flags
-- **AND** `Deno.openKv()` works (no "unstable API" error)
-- **AND** `Deno.cron()` works (no "unstable API" error)
-
-#### Scenario: API server receives SIGTERM for graceful shutdown
-
-- **WHEN** the container is stopped (Docker sends `SIGTERM`)
-- **THEN** the API process (which replaced the shell via `exec`) receives `SIGTERM`
-- **AND** the shutdown handlers in `main.ts` run (HTTP server shutdown, KV close, DB client end)
-
----
+#### Scenario: Stop during migrations is honoured
+- **WHEN** `docker stop` is issued while migrations are running
+- **THEN** the signal reaches the migration process and the container stops without waiting for the `SIGKILL` timeout
 
 ### Requirement: Web Docker image with Caddy serving the SPA
+The system SHALL provide a `Dockerfile.web` with three stages (pnpm `deps`, Vite `builder` and a `caddy:2.11.9-alpine` `runner`) that serves the built SPA on port 80 with an SPA fallback, a never-cached runtime `/config.js`, and a `/healthz` endpoint.
 
-The system SHALL provide a `Dockerfile.web` with three stages:
+1. **`deps`**: identical to the API `Dockerfile` `deps` stage (same base, pnpm version and
+   lockfile resolution).
+2. **`builder`** (from `deps`): accepts `ARG VITE_API_URL` (default `/api/v1`) and
+   `ARG VITE_PUBLIC_APP_URL` (default `http://localhost:8080`), promotes them to `ENV` so Vite's
+   `define` inlines them, and runs `pnpm --filter @brewform/web run build`, producing
+   `apps/web/dist/` (`index.html`, hashed bundles in `assets/`, `robots.txt` from the
+   `build-robots-txt` plugin, and the files from `apps/web/public/`).
+3. **`runner`** (`caddy:2.11.9-alpine`): copies `apps/web/dist` to `/usr/share/caddy`, copies
+   `apps/web/Caddyfile` to `/etc/caddy/Caddyfile`, records the build-time public URL for the
+   entrypoint, copies `docker-web-entrypoint.sh` as the `ENTRYPOINT`, `EXPOSE 80`, and declares
+   `HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --start-interval=1s --retries=3 CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]`
+   (exec form; `wget` is the BusyBox applet of the Alpine base, so nothing is installed for it).
 
-1. **`deps`** (same as the API Dockerfile's `deps` stage): `denoland/deno:debian-2.7.14`, copies
-   all workspace `deno.json`/`package.json` files, runs `deno install --frozen`.
-2. **`builder`** (`denoland/deno:debian-2.7.14`): copies the full source, accepts `ARG VITE_API_URL`
-   (default `/api/v1`) and `ARG VITE_PUBLIC_APP_URL` (default `http://localhost:8080`), sets them
-   as `ENV` so Vite's `define` in `vite.config.ts` picks them up, runs
-   `deno task --cwd apps/web build` (which runs `deno run -A npm:vite build`), producing
-   `apps/web/dist/` with `index.html`, hashed JS/CSS bundles in `assets/`, `robots.txt`
-   (generated by the `build-robots-txt` Vite plugin), and static assets copied from
-   `apps/web/public/` (favicon, manifest, og-default.png, icons).
-3. **`runner`** (`caddy:2-alpine`): copies `apps/web/dist` from the builder to `/usr/share/caddy`,
-   writes a production `Caddyfile` to `/etc/caddy/Caddyfile` listening on `:80` (NOT `:8080` like
-   the repo-root preview `Caddyfile`) with `try_files {path} /index.html` for SPA routing,
-   `EXPOSE 80`. No `CMD` — the `caddy:2-alpine` base image's default CMD runs
-   `caddy run --config /etc/caddy/Caddyfile`.
+The `apps/web/Caddyfile` SHALL listen on `:80` (the repo-root `Caddyfile` stays the `:8080` local
+preview config), compress responses, answer `GET /healthz` with `200`, body `ok` and
+`Cache-Control: no-store` from Caddy itself (a liveness check of the web container only: it never
+contacts the API upstream, so it stays `200` while the API is down), send `Cache-Control: no-store`
+for `/config.js`, and fall back to `/index.html` for client-side routes.
 
-The production `Caddyfile` content SHALL be:
-```
-:80
-root * /usr/share/caddy
-file_server
-try_files {path} /index.html
-```
-This can be written inline in the Dockerfile via `RUN printf '...' > /etc/caddy/Caddyfile` or
-copied from a `Caddyfile.prod` file — either is acceptable.
+The web container is configured at runtime, not only at build time:
+- `VITE_API_URL`: when set, the entrypoint validates it against a URL/path allowlist (no quotes,
+  backslashes, whitespace or angle brackets) and writes
+  `globalThis.__BREWFORM_CONFIG__ = { apiUrl: "<value>" }` to `/usr/share/caddy/config.js`;
+  otherwise it writes an empty config and the SPA uses the build-time value.
+- `PUBLIC_APP_URL`, `API_UPSTREAM`, `TRUSTED_PROXIES` and `EDGE_MAX_BODY_SIZE`: see the
+  "Web image applies the public app URL at runtime" and "Web edge reverse-proxies API paths when an
+  upstream is configured" requirements.
 
-The web image SHALL have **no runtime environment variable dependencies** for the SPA itself.
-`VITE_API_URL` and `VITE_PUBLIC_APP_URL` are baked at Vite build time (inlined into the JS bundle
-via `import.meta.env.*` and into `index.html` meta tags via `%VITE_PUBLIC_APP_URL%` substitution).
-The web container has no env vars to configure at runtime.
-
-#### Scenario: Web image builds with production API URL
-
-- **WHEN** `docker build -f Dockerfile.web --build-arg VITE_API_URL=https://api.brewform.example.com/api/v1 --build-arg VITE_PUBLIC_APP_URL=https://brewform.example.com -t ghcr.io/ardakilic/brewform-web:latest .` is run
-- **THEN** the build completes and the final image contains `/usr/share/caddy/index.html` with
-  the `VITE_API_URL` value inlined into the JS bundle as `import.meta.env.VITE_API_URL`
-- **AND** `/usr/share/caddy/robots.txt` exists (generated by the Vite plugin)
-- **AND** `/usr/share/caddy/assets/` contains the hashed JS/CSS bundles
-- **AND** `/usr/share/caddy/favicon.svg`, `manifest.json`, `og-default.png` exist (copied from
-  `apps/web/public/`)
-- **AND** `/etc/caddy/Caddyfile` contains `:80` (not `:8080`)
+#### Scenario: Web image builds
+- **WHEN** `docker build -f Dockerfile.web -t brewform-web:local .` is run
+- **THEN** the image contains `/usr/share/caddy/index.html`, `/usr/share/caddy/robots.txt`, hashed bundles under `/usr/share/caddy/assets/`, and `/usr/share/caddy/favicon.svg`
+- **AND** `/etc/caddy/Caddyfile` listens on `:80`
 
 #### Scenario: Web image serves the SPA on port 80
+- **WHEN** the web image is run with `-p 8080:80` and no environment variables
+- **THEN** `GET /` returns `index.html` with content type `text/html`
+- **AND** `GET /some/spa/route` returns `index.html`
 
-- **WHEN** the web image is run (e.g., `docker run -p 8080:80 ghcr.io/ardakilic/brewform-web:latest`)
-- **THEN** Caddy listens on port `80` inside the container
-- **AND** `GET /` (mapped to host 8080) returns `index.html` with content-type `text/html`
-- **AND** `GET /some/spa/route` returns `index.html` (SPA fallback via `try_files`)
+#### Scenario: Web image serves static and public assets
+- **WHEN** a hashed asset under `/assets/` or `/favicon.svg` is requested
+- **THEN** Caddy serves the file with its proper content type
 
-#### Scenario: Web image serves static assets
+#### Scenario: Runtime API URL is applied and never cached
+- **WHEN** the web container starts with `VITE_API_URL=https://api.example.com/api/v1`
+- **THEN** `GET /config.js` returns `globalThis.__BREWFORM_CONFIG__ = { apiUrl: "https://api.example.com/api/v1" };`
+- **AND** the response carries `Cache-Control: no-store`
 
-- **WHEN** `GET /assets/recipe-list-abc123.js` is requested
-- **THEN** Caddy serves the hashed asset from `/usr/share/caddy/assets/`
-- **AND** the response has content-type `application/javascript`
+#### Scenario: Unsafe runtime API URL is ignored
+- **WHEN** the web container starts with a `VITE_API_URL` containing a double quote
+- **THEN** the entrypoint logs a warning and writes the empty default `/config.js`
 
-#### Scenario: Web image serves public assets
+#### Scenario: Health endpoint and image healthcheck
+- **WHEN** the web container has started
+- **THEN** `GET /healthz` returns `200` with body `ok` and `Cache-Control: no-store`
+- **AND** `docker inspect` reports the container health status as `healthy` without any compose or orchestrator health-check override
 
-- **WHEN** `GET /favicon.svg` is requested
-- **THEN** Caddy serves the file from `/usr/share/caddy/favicon.svg`
-- **AND** the response has content-type `image/svg+xml`
-
----
-
-### Requirement: Compose `prod` profile references published images
-
-The `compose.yml` SHALL define a `prod` profile containing:
-- An `app-prod` service (named `app-prod` to avoid collision with the existing `dev`-profile
-  `app` service) with `image: ghcr.io/ardakilic/brewform-api:latest`, `ports: ["8000:8000"]`,
-  `env_file: .env`, `depends_on: [postgres (healthy), denokv (started)]` (denokv uses
-  `condition: service_started`, not `service_healthy` — see the `remote-cache` spec; a plain
-  HTTP `/` healthcheck on denokv flaps, so the API relies on its own fail-fast KV connection
-  instead), `profiles: [prod]`.
-- A `web-prod` service with `image: ghcr.io/ardakilic/brewform-web:latest`,
-  `ports: ["8080:80"]` (host 8080 → container 80), `depends_on: [app-prod (started)]`,
-  `profiles: [prod]`.
-- The `denokv` service (see `remote-cache` spec — shared across profiles, no profile constraint
-  or listed in both).
-- A `postgres` service (already exists for `dev`; the `prod` profile reuses it for local
-  prod-smoke-testing — Coolify manages its own Postgres).
-
-`docker compose --profile prod up` SHALL pull the published images from GHCR (because the
-services have `image:` fields and no `build:` override).
-`docker compose --profile prod up --build` SHALL build the images locally from `Dockerfile` and
-`Dockerfile.web` (Docker Compose's `--build` flag overrides the `image:` field and builds from
-the `build:` context — the implementer must add `build:` blocks to the `app-prod`/`web-prod`
-services pointing at `.` with `dockerfile: Dockerfile` / `dockerfile: Dockerfile.web`).
-
-The `dev` profile (existing `app`, `web-dev`, `app-preview`, `web` services) SHALL remain
-unchanged in behavior — `make dev` and `make up` must not start any `prod`-profile service.
-
-#### Scenario: Prod profile pulls published images
-
-- **WHEN** `docker compose --profile prod up` is run (no `--build`)
-- **THEN** Docker pulls `ghcr.io/ardakilic/brewform-api:latest` and
-  `ghcr.io/ardakilic/brewform-web:latest` from GHCR
-- **AND** the `app-prod`, `web-prod`, `denokv`, and `postgres` containers start
-
-#### Scenario: Prod profile builds locally with --build
-
-- **WHEN** `docker compose --profile prod up --build` is run
-- **THEN** Docker builds the API image from `Dockerfile` and the web image from `Dockerfile.web`
-- **AND** the built images are used instead of pulling from GHCR
-- **AND** the containers start
-
-#### Scenario: Dev profile is unaffected
-
-- **WHEN** `make dev` or `make up` is run
-- **THEN** only the `dev`-profile and no-profile services start (no `prod`-profile service starts)
-- **AND** the behavior is identical to before this change
-
----
+#### Scenario: Web liveness does not depend on the API
+- **WHEN** the web container runs with `API_UPSTREAM=api:8000` and the API container is stopped
+- **THEN** `GET /healthz` still returns `200` and the web container stays `healthy`
 
 ### Requirement: Makefile targets for image build and prod profile
+The `Makefile` SHALL provide an `images` target that builds both images locally under non-registry tags and `prod-*` targets that wrap `compose.production.yml` with `--env-file .env.production`, and it SHALL NOT provide any target that pushes images to the public registry.
 
-The `Makefile` SHALL add the following targets, all running through Docker (no local Deno
-required). The targets mirror the existing Makefile style (each target has a `##` help comment):
-- `images` — build `ghcr.io/ardakilic/brewform-api:latest` from `Dockerfile` and
-  `ghcr.io/ardakilic/brewform-web:latest` from `Dockerfile.web` locally. The web build passes
-  `--build-arg VITE_API_URL=$${VITE_API_URL:-/api/v1}` and
-  `--build-arg VITE_PUBLIC_APP_URL=$${VITE_PUBLIC_APP_URL:-http://localhost:8080}` (shell
-  parameter expansion — uses the env var if set, falls back to the default).
-- `images-push` — `docker push` both images to GHCR (requires `docker login ghcr.io` first).
-- `prod-up` — `docker compose --profile prod up -d` (pulls published images).
-- `prod-up-build` — `docker compose --profile prod up -d --build` (builds locally).
-- `prod-down` — `docker compose --profile prod down`.
-- `release` — `make images && make images-push` (local equivalent of the CI release job).
+Targets (each with a `##` help comment and listed in `.PHONY`):
+- `images`: builds `brewform-api:local` from `Dockerfile` and `brewform-web:local` from
+  `Dockerfile.web`, passing `VITE_API_URL` (default `/api/v1`) and `VITE_PUBLIC_APP_URL` (default
+  `http://localhost:8080`) as build args. It MUST NOT tag `ghcr.io/...:latest`.
+- `prod-up`, `prod-down`, `prod-logs`, `prod-ps`, `prod-pull`: run
+  `docker compose --env-file .env.production -f compose.production.yml <up -d|down|logs -f|ps|pull>`.
+- `prod-backup`: runs one immediate database (and uploads) backup through the Compose `backup`
+  service.
+- `prod-backup-export`: copies the backups target to `DEST` (default `./backup-export`) with
+  `docker compose cp backup:/backups/. $(DEST)`.
+- `prod-restore`: stops `api` and `web`, runs the profile-gated `restore` service with
+  `RESTORE_DB_DUMP=$(DUMP)` and `RESTORE_UPLOADS_ARCHIVE=$(UPLOADS)`, then runs `up -d`.
+- `prod-fix-uploads-owner`: runs
+  `docker compose run --rm --no-deps --user 0:0 --entrypoint chown api -R 1000:1000 /app/uploads`,
+  which hands the selected uploads source (named volume or host folder) to the API's `node` user.
+- `prod-smoke`: runs `images` and then `scripts/ci/smoke-compose.sh` against
+  `compose.production.yml` with the local images (`IMAGE_TAG=local` and the local image names), the
+  same compose smoke test CI runs, for a pre-release check.
 
-All existing Makefile targets SHALL remain unchanged. The `.PHONY` declaration SHALL be updated
-to include all new targets.
+Every `prod-*` target MUST fail with a clear message when `.env.production` does not exist (Compose
+would otherwise fall back to the development `.env`). The previous `images-push`, `release` and
+`prod-up-build` targets SHALL be removed.
 
-#### Scenario: make images builds both images
-
+#### Scenario: make images builds local tags only
 - **WHEN** `make images` is run
-- **THEN** `docker build -t ghcr.io/ardakilic/brewform-api:latest -f Dockerfile .` executes
-- **AND** `docker build -t ghcr.io/ardakilic/brewform-web:latest -f Dockerfile.web --build-arg VITE_API_URL=... --build-arg VITE_PUBLIC_APP_URL=... .` executes
-- **AND** both images are present in `docker images`
+- **THEN** `brewform-api:local` and `brewform-web:local` exist in `docker images`
+- **AND** no `ghcr.io/ardakilic/brewform-*:latest` tag is created or changed
 
-#### Scenario: make images respects VITE_API_URL env var
+#### Scenario: make prod-up uses the production compose file
+- **WHEN** `make prod-up` is run with `.env.production` present
+- **THEN** `docker compose --env-file .env.production -f compose.production.yml up -d` executes
 
-- **WHEN** `VITE_API_URL=https://api.example.com/api/v1 make images` is run
-- **THEN** the web image build receives `--build-arg VITE_API_URL=https://api.example.com/api/v1`
-- **AND** the built `dist/` has the production API URL inlined
+#### Scenario: Uploads ownership is fixed for any source
+- **WHEN** `make prod-fix-uploads-owner` runs with `UPLOADS_SOURCE` unset, and again with `UPLOADS_SOURCE=./data/uploads`
+- **THEN** after each run `/app/uploads` and every file in it are owned by `1000:1000` inside the api container
 
-#### Scenario: make prod-up starts the prod profile
+#### Scenario: Missing production env file is refused
+- **WHEN** any `prod-*` target is run without `.env.production`
+- **THEN** the target exits non-zero with a message telling the operator to copy `.env.production.example`
+- **AND** no `docker compose` command runs
 
-- **WHEN** `make prod-up` is run
-- **THEN** `docker compose --profile prod up -d` executes
-- **AND** the `app-prod`, `web-prod`, `denokv`, and `postgres` containers are running
-
-#### Scenario: make release builds and pushes
-
-- **WHEN** `make release` is run (after `docker login ghcr.io`)
-- **THEN** `make images` runs (builds both images)
-- **AND** `make images-push` runs (pushes both to GHCR)
-- **AND** `ghcr.io/ardakilic/brewform-api:latest` and `ghcr.io/ardakilic/brewform-web:latest` are
-  updated on GHCR
-
----
+#### Scenario: No local publish path exists
+- **WHEN** `make release` or `make images-push` is run
+- **THEN** make reports that there is no such target
 
 ### Requirement: No secrets baked into images
+Neither Docker image SHALL contain secrets at build time: all sensitive configuration SHALL be provided as runtime environment variables, and the only build-time `ARG`s SHALL be the public `VITE_API_URL` and `VITE_PUBLIC_APP_URL` of the web image.
 
-Neither Docker image SHALL contain secrets at build time. All sensitive configuration
-(`DATABASE_URL`, `JWT_SECRET`, `DENO_KV_ACCESS_TOKEN`, `S3_SECRET_KEY`, `SMTP_PASS`,
-`ADMIN_PASSWORD`, etc.) SHALL be provided as runtime environment variables (via Coolify's
-Environment Variables tab, or `compose.yml` `environment:`/`env_file:`), not as Docker build
-`ARG`s or `ENV` instructions.
+Sensitive values include `DATABASE_URL`, `POSTGRES_PASSWORD`, `JWT_SECRET`, `REDIS_URL`,
+`VALKEY_PASSWORD`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `SMTP_PASS` and `ADMIN_PASSWORD`. They are set
+via Coolify's Environment Variables, `compose.production.yml` `environment:` interpolated from
+`.env.production`, or `docker run -e`, never as `ARG` or `ENV` instructions. The API `Dockerfile`
+has no build-time `ARG`s.
 
-The only build-time `ARG`s SHALL be `VITE_API_URL` and `VITE_PUBLIC_APP_URL` for the web image,
-which are public URLs (not secrets). The API Dockerfile has NO build-time `ARG`s.
-
-The `.dockerignore` MUST exclude `.env` and `*.env` (while keeping `*.env.example`). Both
-Dockerfiles use `COPY . .`, so without this exclusion a local `make images` / `make release` run
-in a working tree with a populated `.env` would bake a developer's real secrets into the PUBLIC
-image. The current `.dockerignore` only excludes `node_modules`/`.git`/`.turbo`/`coverage` and
-does NOT exclude `.env`; the implementation MUST add `.env`/`*.env` (retaining `*.env.example`).
+The `.dockerignore` MUST exclude environment files at any depth (`.env`, `*.env`, `.env.*` and
+their `**/` forms) while keeping the committed `*.env.example` templates, because both Dockerfiles
+use `COPY . .`.
 
 #### Scenario: API image has no baked secrets
+- **WHEN** `docker history --no-trunc` and the image config of the API image are inspected
+- **THEN** no layer or `ENV` entry contains `JWT_SECRET`, `DATABASE_URL`, `REDIS_URL`, `VALKEY_PASSWORD`, `S3_SECRET_KEY`, `SMTP_PASS` or `ADMIN_PASSWORD` values
 
-- **WHEN** `docker history ghcr.io/ardakilic/brewform-api:latest --no-trunc` is inspected
-- **THEN** no layer contains `JWT_SECRET`, `DATABASE_URL`, `DENO_KV_ACCESS_TOKEN`,
-  `S3_SECRET_KEY`, `SMTP_PASS`, or `ADMIN_PASSWORD`
-
-#### Scenario: Web image build-args are public URLs only
-
+#### Scenario: Web image build args are public URLs only
 - **WHEN** the web image build command is inspected
 - **THEN** the only `--build-arg` values are `VITE_API_URL` and `VITE_PUBLIC_APP_URL`
-- **AND** neither value is a secret (they are public URLs)
 
-#### Scenario: Local image build does not include .env
-
-- **WHEN** `make images` is run in a working tree containing a populated `.env`
-- **THEN** the built image does NOT contain `.env` (because `.dockerignore` excludes `.env`/`*.env`)
-- **AND** `docker run --rm --entrypoint ls <image> /app` does not list `.env`
-- **AND** `*.env.example` files are still present (not excluded)
-
----
+#### Scenario: Local env files never reach an image
+- **WHEN** `make images` is run in a working tree containing populated `.env`, `.env.production` and `apps/api/.env` files
+- **THEN** none of those files exists in either image
+- **AND** the `*.env.example` templates are still present in the build context
 
 ### Requirement: Entrypoint and API have structured logging
+The `docker-entrypoint.sh` SHALL print one plain log line per step to container stdout, and the API SHALL log its cache and storage configuration at startup through the module-scoped `createLogger` logger.
 
-The `docker-entrypoint.sh` SHALL emit plain `echo` log lines for each step (these go to
-container stdout, which Coolify captures):
-- `"Running database migrations..."` before the migrate command
-- `"Migrations complete."` after successful migration
-- `"Database is empty, running seed..."` (when count is 0) or
-  `"Seed skipped — database already contains data (<N> users)."` (when count > 0)
-- `"Seeding complete."` after successful seed (when seed ran)
-- `"Starting BrewForm API..."` before the `exec`
+Entrypoint lines:
+- `Entrypoint mode: <serve|migrate>` first
+- `Running database migrations...` / `Migrations complete.`, or
+  `Migrations skipped (RUN_MIGRATIONS=false).`
+- `Database is empty, running seed...` and `Seeding complete.`, or
+  `Seed skipped — database already contains data (<N> users).`
+- `Starting BrewForm API...` before the `exec` (serve mode only)
 
-The API's `main.ts` SHALL log the Deno KV cache connection using the existing `createLogger`
-module-scoped logger (from `apps/api/src/utils/logger/index.ts`), per the `logging` spec
-conventions:
-- `logger.info({ url: kvUrl }, 'Deno KV cache connecting to remote server')` before the
-  `Deno.openKv()` call (when `CACHE_DRIVER === 'deno-kv'`)
-- `logger.info('Deno KV cache initialized (remote)')` after a successful remote `openKv`
-  (replaces the existing ambiguous `'Deno KV cache initialized'` message)
-- `logger.info('In-memory cache initialized')` (unchanged, when `CACHE_DRIVER === 'memory'`)
+API startup logs (`apps/api/src/main.ts`, logger `main`):
+- `{ enabled, driver }` with message `Cache initialized` (memory, redis or null driver, as defined by
+  the `cache-driver` capability)
+- `{ storageDriver, uploadDir }` for local storage or `{ storageDriver, bucket }` for S3, as
+  defined by the `api-env-config` capability
+- no secret, credential, email address or IP address in any of these logs
 
-#### Scenario: Entrypoint logs each step
-
-- **WHEN** the API container starts against an empty database
-- **THEN** stdout contains, in order: "Running database migrations...", "Migrations complete.",
-  "Database is empty, running seed...", "Seeding complete.", "Starting BrewForm API..."
-- **AND** the API's own structured logs follow (JSON or pretty format per `LOG_FORMAT`)
+#### Scenario: Entrypoint logs each step on first boot
+- **WHEN** the API container starts in `serve` mode against an empty database
+- **THEN** stdout contains, in order: `Entrypoint mode: serve`, `Running database migrations...`, `Migrations complete.`, `Database is empty, running seed...`, `Seeding complete.`, `Starting BrewForm API...`
+- **AND** the API's structured logs follow
 
 #### Scenario: Entrypoint logs seed skip
+- **WHEN** the API container starts against a populated database
+- **THEN** stdout contains `Migrations complete.` followed by `Seed skipped — database already contains data (<N> users).` and `Starting BrewForm API...`
 
-- **WHEN** the API container starts against a populated database (count > 0)
-- **THEN** stdout contains: "Running database migrations...", "Migrations complete.",
-  "Seed skipped — database already contains data (<N> users).", "Starting BrewForm API..."
+#### Scenario: API logs cache and storage configuration
+- **WHEN** the API starts with `CACHE_DRIVER=redis` and `STORAGE_DRIVER=local`
+- **THEN** the structured logs contain `Cache initialized` with `driver: 'redis'` and a storage entry with `storageDriver: 'local'` and the absolute `uploadDir`
+- **AND** neither `REDIS_URL` nor any password appears in the logs
 
-#### Scenario: API logs remote KV connection
+### Requirement: API runtime image runs as non-root with a built-in health check
+The API runtime image SHALL run the entrypoint, migrations, seed and API server as the unprivileged `node` user (UID/GID `1000`), and SHALL declare `HEALTHCHECK --interval=15s --timeout=5s --start-period=180s --start-interval=2s --retries=3 CMD ["node", "/app/healthcheck.mjs", "/ready"]`, so the image probes readiness with Node alone and needs no `curl` or `wget`.
 
-- **WHEN** the API starts with `CACHE_DRIVER=deno-kv` and `DENO_KV_URL=http://denokv:4512`
-- **THEN** the structured logs contain `{ url: 'http://denokv:4512' }` at info level with message
-  "Deno KV cache connecting to remote server"
-- **AND** followed by "Deno KV cache initialized (remote)" at info level
+`/app/uploads` SHALL exist in the image, owned by `node`, so a freshly created named volume mounted
+there inherits writable ownership.
+
+The probe script `/app/healthcheck.mjs` (source `apps/api/scripts/healthcheck.mjs`) SHALL:
+- be plain JavaScript with no imports beyond Node built-ins, so it starts in milliseconds and does
+  not depend on TypeScript loading, the app's configuration or the database client
+- take an optional path argument (default `/ready`) that MUST match `^/[A-Za-z0-9/_-]*$`, and
+  request `http://127.0.0.1:<APP_PORT, default 8000><path>` with Node's built-in `fetch` and a
+  4-second `AbortSignal.timeout`
+- exit `0` only when the response status is `200`, and otherwise print one short line to stderr
+  (status code or error name, never headers or body) and exit `1`
+
+The same command is used by the image `HEALTHCHECK`, the compose api health check and the Coolify
+API health check (`CMD` type), so every orchestrator probes the API the same way.
+
+The image probes `/ready`, not `/health`, because Docker never restarts an unhealthy container. A
+container's health status is only consumed as a traffic and rollout gate: Compose `depends_on`
+with `service_healthy`, Coolify's rolling update (it waits for the new container to pass before it
+removes the old one), and Coolify's Traefik (it stops routing to unhealthy containers). Those
+consumers need readiness (migrations done, database reachable). Three retries 15 seconds apart keep a
+database blip shorter than about 45 seconds from changing the status. The 180-second start period
+with a 2-second start interval covers `serve`-mode migrations and the first-install seed. `/health`
+stays the liveness endpoint for external uptime monitors and for orchestrators that run a separate
+liveness probe.
+
+#### Scenario: API process is not root
+- **WHEN** `id -u` is run inside a running API container
+- **THEN** the result is `1000`
+
+#### Scenario: Fresh uploads volume is writable
+- **WHEN** the API container starts with a new named volume mounted at `/app/uploads` and `STORAGE_DRIVER=local`
+- **THEN** a photo upload succeeds and the file appears in the volume
+
+#### Scenario: Container reports healthy without curl
+- **WHEN** the API container has finished migrations and is serving requests, with no health-check override from compose or an orchestrator
+- **THEN** `docker inspect --format '{{.State.Health.Status}}'` reports `healthy`
+- **AND** neither `curl` nor `wget` is installed in the image
+
+#### Scenario: Database outage marks the container unhealthy and recovery clears it
+- **WHEN** the database becomes unreachable for longer than three health-check intervals and then returns
+- **THEN** the container health status becomes `unhealthy` while `GET /health` keeps returning `200`
+- **AND** the status returns to `healthy` at the next successful probe without a container restart
+
+#### Scenario: Probe exit codes follow the response
+- **WHEN** `node /app/healthcheck.mjs /ready` runs against a server that answers `200`, one that answers `503`, one that refuses the connection and one that never answers
+- **THEN** the exit codes are `0`, `1`, `1` and `1`, and the last one exits within 5 seconds
+
+#### Scenario: Probe rejects an unsafe path argument
+- **WHEN** `node /app/healthcheck.mjs 'http://example.com/'` runs
+- **THEN** it exits `1` without making a request
+
+### Requirement: Docker build context excludes local state and nested artifacts
+The `.dockerignore` SHALL exclude, at any directory depth, `node_modules`, `coverage`, `dist` and `.turbo`, and SHALL exclude local state and tooling directories (`uploads`, `backups`, `.git`, `.github`, `.claude`, `.kiro`, `.opencode`, `.vscode`, `.idea`, `plans`, `openspec`, `docs`), while keeping every path the images need.
+
+Paths the images need, and which therefore MUST NOT be excluded, include `files/`,
+`packages/db/drizzle/`, `apps/web/public/`, `apps/api/src/templates/` and the workspace manifests.
+Docker evaluates `.dockerignore` patterns relative to the context root, so nested directories need
+`**/` patterns.
+
+#### Scenario: Nested node_modules are not sent to the builder
+- **WHEN** a build runs in a working tree that has `apps/web/node_modules` and `packages/db/node_modules`
+- **THEN** neither directory is part of the build context
+
+#### Scenario: Local uploads never reach an image
+- **WHEN** a build runs in a working tree with files in `uploads/` and `apps/api/uploads/`
+- **THEN** neither image contains those files
+
+#### Scenario: Required inputs are still present
+- **WHEN** the API image is built
+- **THEN** `/app/files/scaa-2.json` and `/app/packages/db/drizzle/meta/_journal.json` exist in the image
+
+### Requirement: Web edge reverse-proxies API paths when an upstream is configured
+When `API_UPSTREAM` is set to a valid `host:port`, the web container SHALL reverse-proxy every request whose path starts with `/api/`, `/uploads/` or `/share/`, and requests for the exact path `/health`, to that upstream with the original path and query preserved, and when `API_UPSTREAM` is unset it SHALL serve only static files exactly as before.
+
+`/health` is proxied so an external uptime monitor can check the API's liveness through the single
+public origin. `/ready` is NOT proxied: readiness is for the orchestrator on the internal network.
+The web container's own `/healthz` is always answered locally.
+
+The entrypoint SHALL validate `API_UPSTREAM` against a `host[:port]` allowlist; an invalid value is
+logged as a warning and ignored (static-only mode). On proxied requests the edge SHALL:
+- resolve the client IP by trusting incoming forwarding headers only from the ranges in
+  `TRUSTED_PROXIES` (unset: trust no proxy; `private_ranges` and CIDR lists accepted), parsing
+  `X-Forwarded-For` right-to-left
+- send the upstream exactly one `X-Forwarded-For` entry and an `X-Real-IP`, both equal to that
+  resolved client IP, replacing any client-supplied values. The API therefore always sees the edge
+  as one trusted hop (`TRUST_PROXY=hops`, `TRUST_PROXY_HOPS=1` in the `api-rate-limiting`
+  capability), whatever proxies sit in front of the edge
+- reject request bodies larger than `EDGE_MAX_BODY_SIZE` (default `16MB`) with `413`
+- return `502` for proxied paths while the upstream is unreachable, while still serving the SPA
+
+Unset `API_UPSTREAM` keeps the split-domain topology used by Coolify (web and API on separate
+domains) unchanged.
+
+#### Scenario: API request is proxied same-origin
+- **WHEN** the web container runs with `API_UPSTREAM=api:8000` and the browser requests `GET /api/v1/sitemap.xml` from the web origin
+- **THEN** the response is the API's sitemap XML, not `index.html`
+
+#### Scenario: Uploads and share paths are proxied
+- **WHEN** `GET /uploads/<file>` and `GET /share/<slug>` are requested from the web origin with `API_UPSTREAM` set
+- **THEN** both are answered by the API service
+
+#### Scenario: API liveness is reachable through the edge
+- **WHEN** `GET /health` is requested from the web origin with `API_UPSTREAM` set and the API running
+- **THEN** the response is the API's `200` `{"status":"ok"}`
+- **AND** `GET /ready` from the web origin is not forwarded to the API
+
+#### Scenario: Static-only mode without an upstream
+- **WHEN** the web container runs without `API_UPSTREAM`
+- **THEN** `GET /api/v1/anything` returns the SPA `index.html` as before
+- **AND** the entrypoint logs that the API proxy is disabled
+
+#### Scenario: Invalid upstream is ignored
+- **WHEN** the web container starts with `API_UPSTREAM="api:8000; rm -rf /"`
+- **THEN** the entrypoint logs a warning and starts in static-only mode
+
+#### Scenario: Spoofed client IP headers are overwritten
+- **WHEN** a client connecting directly (not from `TRUSTED_PROXIES`) sends `X-Real-IP: 1.2.3.4` and `X-Forwarded-For: 1.2.3.4` to a proxied path
+- **THEN** the upstream receives `X-Real-IP` and a single-entry `X-Forwarded-For`, both set to the client's actual address
+
+#### Scenario: Client IP behind a trusted outer proxy is preserved
+- **WHEN** `TRUSTED_PROXIES=private_ranges` and a proxy at `10.0.0.5` forwards a request with `X-Forwarded-For: 1.2.3.4, 203.0.113.9`
+- **THEN** the upstream receives `X-Forwarded-For: 203.0.113.9` and `X-Real-IP: 203.0.113.9` (the right-most untrusted address)
+
+#### Scenario: Oversized request body is rejected at the edge
+- **WHEN** a client sends a 20 MB body to `/api/v1/photos` with the default `EDGE_MAX_BODY_SIZE`
+- **THEN** the edge responds `413` without forwarding the full body
+
+#### Scenario: Upstream outage does not break the SPA
+- **WHEN** the API container is stopped
+- **THEN** proxied paths return `502`
+- **AND** `GET /` still returns `index.html` and `GET /healthz` still returns `200`
+
+### Requirement: Web image applies the public app URL at runtime
+When `PUBLIC_APP_URL` is set to a valid absolute `http(s)` origin, the web entrypoint SHALL replace the build-time public origin in `index.html` (the `og:image` and `twitter:image` meta tags) and in `robots.txt` (the `Sitemap:` line) with that origin before Caddy starts; when it is unset or invalid, the build-time values SHALL remain.
+
+The value SHALL be validated against a strict origin allowlist (scheme, host, optional port and
+path made of URL-safe characters, no trailing slash) before substitution. Self-hosted deployments
+that pull the published image therefore advertise their own domain instead of the maintainer's or
+`http://localhost:8080`.
+
+#### Scenario: Runtime public URL rewrites social and sitemap URLs
+- **WHEN** the web container starts with `PUBLIC_APP_URL=https://brew.example.org`
+- **THEN** `index.html` contains `https://brew.example.org/og-default.png` in its `og:image` and `twitter:image` tags
+- **AND** `robots.txt` contains `Sitemap: https://brew.example.org/api/v1/sitemap.xml`
+
+#### Scenario: Unset public URL keeps build-time values
+- **WHEN** the web container starts without `PUBLIC_APP_URL`
+- **THEN** `index.html` and `robots.txt` are byte-identical to the built files
+
+#### Scenario: Invalid public URL is ignored
+- **WHEN** the web container starts with `PUBLIC_APP_URL=javascript:alert(1)`
+- **THEN** the entrypoint logs a warning and leaves the built files unchanged
+
+### Requirement: Production compose routes browser traffic through the web edge
+`compose.production.yml` SHALL make the SPA reach the API on the same origin: the web service SHALL default `VITE_API_URL` to `/api/v1` and set `API_UPSTREAM=api:8000`, the api service SHALL publish no host port, and `API_DOMAIN` SHALL NOT be required.
+
+The file SHALL also:
+- select images through `${API_IMAGE:-ghcr.io/ardakilic/brewform-api}:${IMAGE_TAG:-latest}` and
+  `${WEB_IMAGE:-ghcr.io/ardakilic/brewform-web}:${IMAGE_TAG:-latest}`
+- set `UPLOAD_DIR` to the literal `/app/uploads`, the mount target of the uploads source selected
+  by `UPLOADS_SOURCE` (named volume `uploads` by default, or a host folder, as defined by the
+  production-operations capability)
+- pass `PUBLIC_APP_URL=https://${WEB_DOMAIN}` and `TRUSTED_PROXIES` (default `private_ranges`,
+  matching the documented "TLS proxy in front" topology) to the web service
+- give the api service the one-hop trust settings that match the edge contract
+  (`TRUST_PROXY=hops`, `TRUST_PROXY_HOPS=1`, as defined by the `api-rate-limiting` capability)
+- keep every `S3_*` variable unset unless the operator sets it
+- keep the Valkey password out of process arguments (server and health-check command lines)
+- document in its header that TLS terminates in a proxy in front of the web service, that only
+  the web port is published, and how to use a separate API domain instead (set `VITE_API_URL`)
+
+#### Scenario: Fresh install works with only the required variables
+- **WHEN** an operator copies `.env.production.example`, fills in the required values and runs `make prod-up`
+- **THEN** all services become healthy
+- **AND** the SPA served on `WEB_PORT` signs in successfully, with its API calls going to `/api/v1/...` on the same origin
+
+#### Scenario: Locally stored photos survive container recreation
+- **WHEN** a photo is uploaded with the default `STORAGE_DRIVER=local` and the api container is then recreated with `docker compose up -d --force-recreate api`
+- **THEN** the photo URL `/uploads/<file>` still returns the image through the web origin
+
+#### Scenario: API_DOMAIN is optional
+- **WHEN** `docker compose --env-file .env.production -f compose.production.yml config` runs with `API_DOMAIN` unset
+- **THEN** the configuration renders without an interpolation error
+
+#### Scenario: Split-domain topology remains possible
+- **WHEN** the operator sets `VITE_API_URL=https://api.example.com/api/v1` and routes that domain to the api service through their own proxy
+- **THEN** the SPA calls the API on that domain via the runtime `/config.js`
+
+#### Scenario: Valkey password is not visible in process arguments
+- **WHEN** `docker top` is run for the valkey service and its health check runs
+- **THEN** no command line contains the value of `VALKEY_PASSWORD`
 

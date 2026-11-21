@@ -88,31 +88,6 @@ Each web page component SHALL use the component's PascalCase name as the logger 
 - **WHEN** a web page imports `createLogger`
 - **THEN** the import path SHALL be `@/utils/logger.ts`
 
-### Requirement: Pages with useEffect for data fetching must add log.error in existing catch blocks
-
-Web page components that use `useEffect` to fetch data from API endpoints and already have `try/catch` error handling SHALL add a `log.error({ err }, '<PageName> <actionName> failed')` call in every existing catch block, without restructuring the existing error handling logic.
-
-#### Scenario: RecipeEditPage logs loadRecipe failure when API call for recipe data rejects
-
-- **WHEN** `RecipeEditPage` mounts and calls `fetchRecipe(slug)` inside a `useEffect`, and the API request rejects with a network error
-- **THEN** the system SHALL emit `log.error({ err }, 'RecipeEditPage loadRecipe failed')` in the existing catch block
-- **AND** the existing `setError(...)` or `setIsLoading(false)` state updates SHALL still execute after the log call
-
-#### Scenario: RecipeEditPage logs loadBeans failure when bean list fetch rejects
-
-- **WHEN** `RecipeEditPage` calls `fetchBeans()` inside a `useEffect`, and the API request rejects
-- **THEN** the system SHALL emit `log.error({ err }, 'RecipeEditPage loadBeans failed')` in the existing catch block
-
-#### Scenario: RecipeEditPage logs loadEquipment failure when equipment list fetch rejects
-
-- **WHEN** `RecipeEditPage` calls `fetchEquipment()` inside a `useEffect`, and the API request rejects
-- **THEN** the system SHALL emit `log.error({ err }, 'RecipeEditPage loadEquipment failed')` in the existing catch block
-
-#### Scenario: Admin user detail page logs loadData failure when user fetch rejects
-
-- **WHEN** `AdminUserDetailPage` calls `fetchUser(userId)` inside a `useEffect`, and the API request rejects
-- **THEN** the system SHALL emit `log.error({ err }, 'AdminUserDetailPage loadData failed')` in the existing catch block
-
 ### Requirement: Pages with form submission handlers must add log.error in submission catch blocks
 
 Web page components that handle form submissions (create, update, delete operations) and already wrap the submission in `try/catch` SHALL add a `log.error({ err }, '<PageName> <actionName> failed')` call in every submission catch block.
@@ -159,22 +134,6 @@ The AuthContext provider SHALL detect and log when an authenticated user's accou
 - **THEN** the system SHALL emit `log.debug({}, 'AuthContext token refresh started')` before the refresh request
 - **AND** SHALL emit `log.debug({}, 'AuthContext token refresh completed')` on successful refresh
 
-### Requirement: VerifyEmailPage logs token verification failure in existing useEffect catch
-
-The `VerifyEmailPage` component already has a `useEffect` that calls the email verification API on mount and includes a catch block for error handling. The log expansion SHALL add a `log.error` call in that existing catch block without restructuring the effect.
-
-#### Scenario: VerifyEmailPage logs token verification failure
-
-- **WHEN** `VerifyEmailPage` mounts and the `GET /api/v1/auth/verify-email?token=...` request rejects with a 400 or 404 response
-- **THEN** the system SHALL emit `log.error({ err }, 'VerifyEmailPage verifyEmail failed')` in the existing `useEffect` catch block
-- **AND** the existing error state update (e.g., `setError(...)`, `setStatus('error')`) SHALL still execute
-
-#### Scenario: VerifyEmailPage logs mount and unmount
-
-- **WHEN** `VerifyEmailPage` is first rendered
-- **THEN** the system SHALL emit `log.debug({}, 'VerifyEmailPage mounted')` from a dedicated mount/unmount `useEffect`
-- **AND** on unmount, SHALL emit `log.debug({}, 'VerifyEmailPage unmounted')` from the cleanup function
-
 ### Requirement: AuthContext logs registration failures
 
 The AuthContext provider SHALL log registration attempts that fail, using `log.error` with the error object, to provide visibility into sign-up problems.
@@ -184,4 +143,41 @@ The AuthContext provider SHALL log registration attempts that fail, using `log.e
 - **WHEN** a user registration attempt fails (e.g., duplicate email, validation error, server error)
 - **THEN** the system SHALL emit `log.error({ err }, 'AuthContext registration failed')` in the registration catch block
 - **AND** the existing error state (returned to the calling component) SHALL be unchanged
+
+### Requirement: Page data-loading failures are logged in loaders, actions and resource routes
+
+Every web page data-loading failure SHALL be logged with `log.error({ err }, '<PageName> <actionName> failed')` from the page's module-scoped logger. After wave 6, page reads run in route loaders, mutations in route actions, and component-level reads in fetcher resource routes (see the `web-data-loading` capability), so the log call SHALL sit in that loader's, action's or resource route's catch path, immediately before it rethrows (a loader, so the route error element renders) or returns `{ ok: false, error }` (an action). No page SHALL reintroduce a `useEffect` fetch to satisfy this requirement, and the log context SHALL carry ids only, never payloads or PII.
+
+#### Scenario: RecipeEditPage loader logs loadRecipe failure when the recipe request rejects
+
+- **WHEN** the `/recipes/:id/edit` loader (in `RecipeEditPage.data.ts`) requests the recipe and the API request rejects with a network error
+- **THEN** the system SHALL emit `log.error({ err }, 'RecipeEditPage loadRecipe failed')` before the loader rethrows
+- **AND** the route error state renders inside the app shell instead of a blank form
+
+#### Scenario: RecipeEditPage loader logs equipment and bean lookup failures
+
+- **WHEN** the same loader's equipment or beans request rejects
+- **THEN** the system SHALL emit `log.error({ err }, 'RecipeEditPage loadEquipment failed')` (or `'RecipeEditPage loadBeans failed'`) before rethrowing
+
+#### Scenario: Admin user detail loader logs loadData failure when the user request rejects
+
+- **WHEN** the `/admin/users/:id` loader requests the user and the API request rejects with a non-404 error
+- **THEN** the system SHALL emit `log.error({ err }, 'AdminUserDetailPage loadData failed')` before rethrowing
+- **AND** a 404 renders the not-found page without an error log
+
+### Requirement: VerifyEmailPage logs token verification failure in its loader
+
+Email-token verification SHALL run once in the `/verify-email` route loader (with `shouldRevalidate: () => false`), not in a component `useEffect`. When verification fails, the loader SHALL emit `log.error({ err }, 'VerifyEmailPage verifyEmail failed')` and return an error result that the page renders as its error state. The component SHALL keep its dedicated mount/unmount debug-logging `useEffect`.
+
+#### Scenario: VerifyEmailPage logs token verification failure
+
+- **WHEN** `/verify-email?token=...` is opened and the `GET /api/v1/auth/verify-email?token=...` request rejects with a 400 or 404 response
+- **THEN** the loader SHALL emit `log.error({ err }, 'VerifyEmailPage verifyEmail failed')`
+- **AND** the page renders its error state, and the token is verified at most once even under React StrictMode
+
+#### Scenario: VerifyEmailPage logs mount and unmount
+
+- **WHEN** `VerifyEmailPage` is first rendered
+- **THEN** the system SHALL emit `log.debug({}, 'VerifyEmailPage mounted')` from a dedicated mount/unmount `useEffect`
+- **AND** on unmount, SHALL emit `log.debug({}, 'VerifyEmailPage unmounted')` from the cleanup function
 

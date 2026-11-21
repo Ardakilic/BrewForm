@@ -4,49 +4,23 @@
 TBD - created by archiving change wave-4-independent-fillers. Update Purpose after archive.
 ## Requirements
 ### Requirement: Web app is type-checked in CI
+The web app at `apps/web/src/` SHALL be type-checked in CI by the TypeScript compiler from the workspace catalog: the `apps/web/package.json` `check` script runs `tsc --noEmit -p tsconfig.json`, the root `check:web` script and the `Makefile` `check-web` target invoke it, and the root `check` script — run by the `quality` job of `.github/workflows/ci.yml` on every pull request — composes it. Linting is a separate gate (`biome check src/` via the `lint` script), and the `make check-web` help text SHALL describe the target as a type-check.
 
-The web app at `apps/web/src/` SHALL be type-checked in CI via
-`deno run -A npm:typescript/tsc --noEmit -p tsconfig.json`. The `apps/web/deno.json` `"check"` task
-SHALL run this command (in addition to `deno lint src/`). The root `deno.json` `"check:web"` task
-and the `Makefile` `check-web` target SHALL invoke this task. The invocation
-`deno run -A npm:typescript/tsc` executes the TypeScript compiler via Deno's npm compatibility
-layer — no Node installation needed (verified in the Docker `app` container, which is Deno-only).
-`typescript` 6.0 is already a dev-dep in `apps/web/package.json`.
+The `apps/web/tsconfig.json` SHALL keep `"allowImportingTsExtensions": true` in `compilerOptions` (the codebase uses explicit `.ts`/`.tsx` import extensions per AGENTS.md; without it `tsc` reports a `TS5097` error per import) and SHALL extend the root `tsconfig.json`.
 
-The `apps/web/tsconfig.json` SHALL include `"allowImportingTsExtensions": true` in
-`compilerOptions` (the codebase uses explicit `.ts`/`.tsx` import extensions per AGENTS.md; without
-this flag, `tsc` reports 686 `TS5097` errors — one per import statement). The `tsconfig.json` SHALL
-also include `"ignoreDeprecations": "6.0"` to silence the `baseUrl` deprecation warning (the
-`baseUrl` is needed for path alias resolution; migrating away from it is out of scope).
-
-**Reason:** The web app is currently NOT type-checked in CI. `make check-web` runs only
-`deno lint src/`; the Vite build does not type-check; `apps/web/tsconfig.json` is consumed only by
-IDE language servers. D42's type-safety guarantees are unverifiable without a type-check gate. This
-is the prerequisite for all other D42 requirements — without it, replacing `Record<string, unknown>`
-with real types cannot be verified.
-
-**Pre-existing error breakdown (verified 2026-07-06):** Running `tsc --noEmit` produces 887 errors,
-but 686 are `TS5097` (fixed by `allowImportingTsExtensions: true`), 145 are in test files (mock
-`AuthContextType` missing `sessionError`/`clearSessionError` from D38 — mechanical fix), and 56 are
-in non-test files (mostly `RecipeDetailPage.tsx` shadow-type mismatch — exactly what D42 fixes).
-The single-phase approach is tractable.
+**Reason:** Before D42 the web app was not type-checked anywhere — the Vite build does not type-check — so D42's type-safety guarantees were unverifiable. D42 added the gate and fixed the pre-existing errors honestly (887 at the time: 686 `TS5097`, 145 in test mocks, 56 in pages); the gate now runs on the catalog TypeScript (7.x) through pnpm.
 
 #### Scenario: make check-web type-checks the web app
-
 - **WHEN** `make check-web` is executed
-- **THEN** `tsc --noEmit -p apps/web/tsconfig.json` runs and passes with zero type errors
-- **AND** `deno lint src/` also runs and passes
+- **THEN** `tsc --noEmit -p tsconfig.json` runs in `apps/web` and passes with zero type errors
 
-#### Scenario: Pre-existing type errors are fixed
+#### Scenario: Type errors are fixed, not suppressed
+- **WHEN** a type error appears in `apps/web/src/`
+- **THEN** it is fixed in code — NOT suppressed with `// @ts-ignore`, `// @ts-expect-error` (outside the type-level regression test) or `as any`
 
-- **WHEN** `tsc --noEmit` is first run on `apps/web/src/`
-- **THEN** any pre-existing type errors (in files D42 does not touch) are fixed as part of D42's
-  "fix fallout honestly" step — NOT suppressed with `// @ts-ignore` or `as any` casts
-
-#### Scenario: CI pr.yml runs the web type-check
-
-- **WHEN** the `check` job in `.github/workflows/pr.yml` runs `deno task check`
-- **THEN** `deno task check:web` invokes the web type-check and fails the build on any type error
+#### Scenario: CI runs the web type-check
+- **WHEN** the `quality` job in `.github/workflows/ci.yml` runs `pnpm run check`
+- **THEN** `pnpm run check:web` executes as part of it and fails the build on any type error
 
 ### Requirement: Shared response types are re-exported through the schemas barrel
 
@@ -97,7 +71,7 @@ index.ts`:
 | `RecipeUpdate` | `packages/shared/src/schemas/recipe.ts` | `recipeApi.update` |
 | `RecipeFork` | `packages/shared/src/schemas/recipe.ts` | `recipeApi.fork` |
 | `RecipeRate` | `packages/shared/src/schemas/recipe.ts` | `recipeApi.rate` |
-| `RecipeNotes` | `packages/shared/src/schemas/recipe.ts` | `recipeApi.saveNotes` |
+| `RecipeNotes` | `packages/shared/src/schemas/recipe.ts` | `recipeApi.saveMyNote` (`PUT /api/v1/recipes/:id/notes`, caller-scoped private note; wave 6 removed `recipeApi.saveNotes`) |
 | `UserProfileUpdate` | `packages/shared/src/schemas/user.ts` | `userApi.updateProfile` |
 | `UserPreferences` (request, nested) | `packages/shared/src/schemas/preferences.ts` | `OnboardingWizard`, `SettingsPage` PATCH `/preferences` |
 | `TasteNoteCreate` | `packages/shared/src/schemas/taste.ts` | `tasteApi.create` |
@@ -201,7 +175,8 @@ link to the web app.
   `recipeApi.update` accepts `RecipeUpdate` and returns `RecipeDetailOutput`;
   `recipeApi.fork` accepts `{ title: string }` and returns `RecipeDetailOutput`;
   `recipeApi.compare` returns the compare response type;
-  `recipeApi.like`/`favourite`/`feature`/`saveNotes` return their respective output types
+  `recipeApi.like`/`favourite`/`feature` return their respective output types, and the private-note
+  methods `recipeApi.getMyNote`/`saveMyNote`/`deleteMyNote` return `RecipeUserNoteOutput` (wave 6)
 
 #### Scenario: No new `as` casts introduced
 
@@ -393,7 +368,7 @@ exactly the sites that render/submit the data.
 
 New and modified web code SHALL keep the boundary typed: every new API function in
 `apps/web/src/api/index.ts` uses shared `z.infer` request/response types; no new
-`Record<string, unknown>`, `as any`, or justification-free `deno-lint-ignore` enters `apps/web/src`
+`Record<string, unknown>`, `as any`, or justification-free `biome-ignore` enters `apps/web/src`
 (line-level ignores require a justification comment, per the lint-style spec); and pages consume API
 results through the inferred return types rather than re-casting. The type-level regression test in
 `apps/web/src/api/` (the `@ts-expect-error` non-existent-field assertion) SHALL be kept passing, and

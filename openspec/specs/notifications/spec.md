@@ -266,23 +266,18 @@ The PATCH `/preferences` route's OpenAPI `requestBody` SHALL describe the flat `
 - Then it passes — every in-scope route still documented, no orphan tags, the renamed request body shape is reflected via the auto-generated `jsonRequestBody(UserPreferencesSchema)`
 
 ### Requirement: Code quality gates
-
 The change SHALL pass all repo-mandated code quality gates before commit.
 
 - `make check` (type-check across all workspaces) SHALL pass.
-- `make lint` (lint across all apps and packages) SHALL pass.
-- `make test` (full test suite via Docker with `--allow-all`) SHALL pass — including the new test suites added by this change.
-- `make fmt` SHALL be applied; `deno fmt --check` SHALL pass (CI gate — the build fails on any diff).
+- `make lint` (Biome lint across all apps and packages) SHALL pass.
+- `make test` (full Vitest suite via Docker) SHALL pass — including the new test suites added by this change.
+- `make fmt` SHALL be applied; `pnpm run fmt-check` (Biome) SHALL pass (CI gate — the build fails on any diff).
 
 #### Scenario: CI green
+- **WHEN** all Phase 1-4 tasks are complete and `make check && make lint && make test` runs
+- **THEN** all three commands exit 0
 
-- Given all Phase 1-4 tasks complete
-- When `make check && make lint && make test` runs
-- Then all three commands exit 0
-
-#### Scenario: deno fmt --check passes
-
-- Given all source edits are saved
-- When `make fmt` runs (applies `deno fmt` formatting)
-- Then `git status` shows no unformatted files; `deno fmt --check` (run by the pre-commit hook and CI) passes — the build does not fail on formatting diffs
+#### Scenario: Formatting check passes
+- **WHEN** all source edits are saved and `make fmt` runs (applies `biome check --write`)
+- **THEN** `git status` shows no unformatted files and `pnpm run fmt-check` (run by the pre-commit hook and CI) passes
 

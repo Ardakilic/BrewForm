@@ -140,7 +140,7 @@ The row-value comparison is a D03 raw-SQL exception — see the lint-style raw-S
 When `cursor` is provided but `sortBy` is `likeCount` or `rating`, the system SHALL
 fall back to offset-based pagination using `page` and `perPage` (defaults: `page=1`, `perPage=20`).
 
-**F11 extension:** When `cursor` is provided but `search` is active (non-empty after sanitization), the system SHALL fall back to offset-based pagination. This is because relevance ranking (applied when `search` is active) reorders results in application code, making a `(createdAt, id)` keyset cursor non-deterministic — a keyset page boundary would skip high-rank items.
+**F11 extension:** When `cursor` is provided but `search` is active (non-empty after sanitization), the system SHALL fall back to offset-based pagination. This is because relevance ranking (applied when `search` is active) orders results by a relevance score that the database computes per request (wave 6, `advanced-search` "Database-side relevance ranking"), so a `(createdAt, id)` keyset cursor does not follow the result order — a keyset page boundary would skip high-rank items. The fallback behaviour is unchanged by wave 6; only the ranking moved from application code into SQL. Keyset paging on the score is a deferred follow-up.
 
 The system SHALL log a debug-level message with non-sensitive metadata only when the search-active fallback occurs: `log.debug({ requestId, hasSearch: true, searchLength: <number> }, 'Search active, falling back to offset pagination for ranking')`. The raw search string SHALL NOT be logged.
 

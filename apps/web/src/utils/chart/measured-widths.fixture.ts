@@ -3,7 +3,7 @@
  *
  * Every row was measured with CoreText in the macOS system UI font (SF Pro),
  * which is what renders because Inter is not loaded (`apps/web/index.html`).
- * Source: `openspec/changes/wave-6-audit-remediation/audit/t6-charts.md` §8
+ * Source: `openspec/changes/archive/2026-11-21-wave-6-audit-remediation/audit/t6-charts.md` §8
  * (en and tr radar labels, timeline titles, tick labels and stat values).
  *
  * The estimate test asserts `estimateTextWidth(...) >= measuredPx` for every
