@@ -76,7 +76,7 @@ check: ## Type-check all workspaces (api, web, db, shared)
 check-api: ## Type-check API only
 	docker compose run --rm --no-deps app pnpm run check:api
 
-check-web: ## Lint web frontend
+check-web: ## Type-check web frontend (tsc)
 	docker compose run --rm --no-deps app pnpm run check:web
 
 check-db: ## Type-check database package
