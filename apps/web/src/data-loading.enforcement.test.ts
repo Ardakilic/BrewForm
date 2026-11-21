@@ -105,14 +105,6 @@ function format(v: Violation): string {
   return `${v.file}:${v.line} ${v.rule}`;
 }
 
-/**
- * Modules that still violate a rule while the wave-6 migration is in progress (the 65-module
- * inventory of `audit/_refine/coverage.md` §1.6). Shrink-only: each migration task
- * removes its files, and a listed file that no longer violates fails the test. Must be empty
- * (and removed) before the change is archived.
- */
-const PENDING = new Set<string>([]);
-
 describe('data-loading enforcement — self-check', () => {
   const rulesOf = (file: string, source: string) => checkModule(file, source).map((v) => v.rule);
 
@@ -224,23 +216,13 @@ describe('data-loading enforcement — self-check', () => {
 describe('data-loading enforcement — repository scan', () => {
   const files = listSourceFiles();
   const violations = files.flatMap((file) => checkModule(file, readSource(file)));
-  const violatingFiles = new Set(violations.map((v) => v.file));
 
   it('finds source files to scan', () => {
     expect(files.length).toBeGreaterThan(100);
     expect(files).toContain('router.tsx');
   });
 
-  it('has no violations outside the pending migration list', () => {
-    const unexpected = violations.filter((v) => !PENDING.has(v.file)).map(format);
-    expect(unexpected).toEqual([]);
-  });
-
-  it('lists only files that still violate (the pending list only shrinks)', () => {
-    const stale = [...PENDING].filter((file) => !violatingFiles.has(file));
-    expect(
-      stale,
-      'These files no longer violate any rule: remove them from PENDING in data-loading.enforcement.test.ts',
-    ).toEqual([]);
+  it('has no violations: the data-loading migration is complete', () => {
+    expect(violations.map(format)).toEqual([]);
   });
 });
