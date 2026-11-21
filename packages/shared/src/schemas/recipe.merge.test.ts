@@ -129,7 +129,8 @@ describe('RecipeMergeSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues.some((i) => i.path.includes('recipeVersionId2'))).toBe(true);
+      const issue = result.error.issues.find((i) => i.path.includes('recipeVersionId2'));
+      expect(issue?.message).toBe('Cannot merge a version with itself');
     }
   });
 });

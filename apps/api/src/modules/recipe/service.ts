@@ -1156,6 +1156,10 @@ export function getMergedPreparations(
 /**
  * Merge two recipe versions into a new draft recipe.
  *
+ * Both sources must exist and their recipes must not be soft-deleted (`RECIPE_NOT_FOUND`), and
+ * the caller must be allowed to view both under {@link canViewRecipe} (`FORBIDDEN`): another
+ * user's public or unlisted recipe can be merged, their draft or private recipe cannot.
+ *
  * Delegates the write to {@link createRecipe}, so the merged recipe gets its
  * slug from the same pipeline (sanitized title, candidates claimed in the
  * creation transaction): merging twice with the same title yields distinct
@@ -1171,11 +1175,16 @@ export async function mergeRecipes(authorId: string, data: RecipeMerge) {
   const v1 = await model.fetchRecipeVersionWithRelations(data.recipeVersionId1);
   const v2 = await model.fetchRecipeVersionWithRelations(data.recipeVersionId2);
 
-  if (!v1 || !v2) throw new Error('RECIPE_NOT_FOUND');
+  // A soft-deleted source recipe counts as missing, even for its author.
+  if (!v1 || !v2 || v1.recipe.deletedAt != null || v2.recipe.deletedAt != null) {
+    throw new Error('RECIPE_NOT_FOUND');
+  }
 
-  const canAccess = (v: typeof v1) =>
-    v.recipe.authorId === authorId || v.recipe.visibility === 'public';
-  if (!canAccess(v1) || !canAccess(v2)) throw new Error('FORBIDDEN');
+  // Same rule as opening the recipe by link: public and unlisted for anyone, draft and private
+  // only for the author (capability `recipe-visibility`).
+  if (!canViewRecipe(v1.recipe, authorId) || !canViewRecipe(v2.recipe, authorId)) {
+    throw new Error('FORBIDDEN');
+  }
 
   const sel = data.selections;
   const pick = <K extends keyof typeof v1>(field: K) => {

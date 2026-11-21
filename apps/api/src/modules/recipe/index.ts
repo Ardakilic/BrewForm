@@ -745,11 +745,12 @@ recipe.post(
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       403: {
-        description: 'Email not verified or equipment compatibility violation',
+        description:
+          'Email not verified, source recipe not viewable, or equipment compatibility violation',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       404: {
-        description: 'One or both recipe versions not found',
+        description: 'Version not found or recipe deleted',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       409: {
