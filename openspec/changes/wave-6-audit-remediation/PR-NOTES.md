@@ -69,3 +69,23 @@ credential scoping.
 
 <!-- Task 22.10 adds the same section to docs/deployment_compose.md and links it here. Task 29.13
 turns both paths into links in the PR description. -->
+
+---
+
+## Web data loading migration (t5, task 17.19)
+
+Data-loading migration: 41 useEffect fetch blocks in 38 files, 13 inline loaders moved to
+`*.data.ts`, 12 mutation-only modules moved to actions, 2 raw-fetch QR downloads moved to a
+resource route (65 modules); AuthContext is the only API-client exception.
+
+- Pages read through route loaders (`<Page>.data.ts`), write through route actions that return
+  `{ ok: true, … } | { ok: false, error }`, and components read and write through `useFetcher()`
+  against `resources/*` routes (ADR-018). The last module migrated was the add-to-collection modal
+  (`resources/collections/mine`).
+- The guards are now final: `apps/web/src/architecture.test.ts` (no API call inside a
+  `useEffect`) and `apps/web/src/data-loading.enforcement.test.ts` (no API-client import, raw
+  `fetch(`, misplaced loader/action or data-module import outside the data layer) carry no pending
+  list, and the Biome `style/noRestrictedImports` override on `apps/web/src/**` is at `error`, so
+  `make lint` fails on a page or component that imports `api/client.ts`, `api/index.ts` or
+  `api/static-cache.ts`.
+- `make test-web` passes with both pending lists deleted (188 files, 2254 tests).
