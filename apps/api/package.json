@@ -7,7 +7,8 @@
     "check": "tsc --noEmit",
     "lint": "biome check src/",
     "test": "vitest run",
-    "email-build": "tsx scripts/build-email-templates.ts"
+    "email-build": "tsx scripts/build-email-templates.ts",
+    "docs:api": "node scripts/generate-api-reference.ts"
   },
   "dependencies": {
     "@brewform/db": "workspace:*",
