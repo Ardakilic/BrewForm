@@ -219,9 +219,15 @@ produce thumbnails, server-side generation becomes a localized change in one hel
 > **Amended in wave 6 (2026-11).** The original rule also redirected a scan when the recipe was
 > "no longer public", which sent every scan of an **unlisted** recipe (the visibility meant for
 > direct links such as a QR code) to the unavailable page. Unlisted recipes now open normally.
+>
+> **Amended in the wave-6 review (2026-11).** The QR route used to answer `draft` and `private`
+> recipes with `403 FORBIDDEN` (`RECIPE_NOT_AVAILABLE`), which told an anonymous caller that a
+> hidden recipe exists under a guessed slug. The service now applies `canViewRecipe(recipe, null)`
+> and answers them with the same `404 NOT_FOUND` as an unknown slug.
 
-**Decision.** QR codes can be generated for public and unlisted recipes (`draft` and `private` are
-rejected with `RECIPE_NOT_AVAILABLE`) and embed `https://.../recipes/<slug>?from=qr`. The recipe
+**Decision.** QR codes can be generated for public and unlisted recipes (`draft` and `private`
+recipes answer 404 like an unknown slug (wave-6 review)) and embed
+`https://.../recipes/<slug>?from=qr`. The recipe
 detail loader (`apps/web/src/pages/recipes/RecipeDetailPage.data.ts`) reads the query param. When
 the API answers 404 for the scanner (the recipe was deleted, or is now draft or private), it
 redirects to `/recipes/unavailable` instead of the generic 404. A recipe the scanner can view opens

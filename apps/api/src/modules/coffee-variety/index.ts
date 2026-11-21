@@ -17,7 +17,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth.ts';
 import type { AppEnv } from '../../types/hono.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
-import { error, paginated, success } from '../../utils/response/index.ts';
+import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
 import * as service from './service.ts';
 
 /** Dependency-injection proxy for test stubbing (auth middleware + service). */
@@ -118,7 +118,7 @@ router.post(
     },
   }),
   authGuard,
-  zValidator('json', CoffeeVarietyCreateSchema),
+  zValidator('json', CoffeeVarietyCreateSchema, zodValidationHook),
   async (c) => {
     const body = c.req.valid('json');
     const userId = c.get('userId')!;
@@ -195,7 +195,7 @@ router.patch(
     },
   }),
   authGuard,
-  zValidator('json', CoffeeVarietyUpdateSchema),
+  zValidator('json', CoffeeVarietyUpdateSchema, zodValidationHook),
   async (c) => {
     const body = c.req.valid('json');
     const userId = c.get('userId')!;

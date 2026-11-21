@@ -103,4 +103,27 @@ describe('QR-Code Routes — legacy slugs (DB-backed)', () => {
     // PNG signature: 0x89 'P' 'N' 'G'.
     expect(Array.from(body.slice(0, 4))).toEqual([0x89, 0x50, 0x4e, 0x47]);
   });
+
+  it('answers a draft slug exactly like an unknown slug (404 NOT_FOUND)', async () => {
+    const marker = crypto.randomUUID().replaceAll('-', '').slice(0, 10);
+    const author = await fixtures.user('qr-draft');
+    const slug = `qr-draft-${marker}`;
+    const [recipe] = await db
+      .insert(recipes)
+      .values({ slug, title: `Draft ${marker}`, authorId: author.id, visibility: 'draft' })
+      .returning({ id: recipes.id });
+    createdRecipeIds.push(recipe.id);
+
+    const app = createTestApp();
+    const draft = await app.request(`/api/v1/qrcode/recipe/${slug}.png`);
+    const unknown = await app.request(`/api/v1/qrcode/recipe/qr-unknown-${marker}.png`);
+    const draftBody = await draft.json();
+    const unknownBody = await unknown.json();
+
+    expect(draft.status).toBe(404);
+    expect(unknown.status).toBe(404);
+    expect(draftBody.error.code).toBe('NOT_FOUND');
+    expect(draftBody.error.code).toBe(unknownBody.error.code);
+    expect(draftBody.error.message).toBe(unknownBody.error.message);
+  });
 });

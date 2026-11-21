@@ -185,14 +185,20 @@ written:
 - **Ranges** (shared Zod schemas in `packages/shared/src/schemas/recipe.ts`): dose
   (`groundWeightGrams`) and yield (`extractionVolumeMl`) are `>= 0`, `extractionTimeSeconds` is
   positive, `temperatureCelsius` is between -40 and 100, `tds` is between 0 and 25, `rating` is
-  1-10, `preInfusionTimeSeconds` is a whole number `>= 1`, text fields have maximum lengths.
+  1-10, `preInfusionTimeSeconds` is a whole number `>= 1`, text fields have maximum lengths, and
+  a version holds at most 20 additional preparations (`MAX_ADDITIONAL_PREPARATIONS`) and at most
+  50 taste notes and 50 equipment items (`MAX_RELATION_IDS`).
 - **Cross-field rules** (`recipeCrossFieldIssues`): the grind date and the package-open date are
   not before the roast date, the grind date is not before the package-open date, the pre-infusion
   time is shorter than the extraction time, and a pre-infusion time needs an extraction time. An
   edit is checked on the values merged over the stored version.
 - **References**: taste notes, equipment, the vendor and the coffee variety must exist and not be
   deleted, and a newly set bean must belong to the author (`400 VALIDATION_ERROR` with one detail
-  per field). Repeated ids in `tasteNoteIds` or `equipmentIds` are rejected with `400`.
+  per field). The checks apply to the references a write newly sets: on an edit, ids already
+  linked to the current version (and a `vendorId`, `coffeeVarietyId` or `beanId` equal to the
+  stored one) are kept even if the record was deleted since, so the edit form can re-send them; a
+  newly added deleted id is still rejected and the detail names only it. Repeated ids in
+  `tasteNoteIds` or `equipmentIds` are rejected with `400`.
 - **Equipment compatibility** with the brew method is enforced through the
   `BrewMethodEquipmentRule` table. An incompatible combination returns `422 VALIDATION_ERROR`
   with a `details` array naming each incompatible equipment type.
@@ -271,7 +277,8 @@ The body names the two version ids, the new title and, per field, which side to 
 must exist and not be deleted (`404`) and the caller must be allowed to view both
 (`canViewRecipe`, otherwise `403`): another user's public or unlisted recipe can be merged, their
 draft or private recipe cannot. The merged recipe is created through the normal create path (same
-slug pipeline and validation), starts as `draft`, and the page then opens its editor.
+slug pipeline and validation), starts as `draft`, and the page then opens its editor. Taste notes
+and equipment deleted from the catalog are left out of the merged recipe.
 
 ## Filtering by Main Brewer
 

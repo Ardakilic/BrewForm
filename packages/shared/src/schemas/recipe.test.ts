@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { EMOJI_TAG_VALUES } from '../constants/emoji-tags.ts';
 import { VISIBILITY_VALUES } from '../constants/visibility.ts';
 import {
+  MAX_ADDITIONAL_PREPARATIONS,
+  MAX_RELATION_IDS,
   RecipeCreateObjectSchema,
   RecipeCreateSchema,
   RecipeFilterSchema,
@@ -619,6 +621,64 @@ describe('Recipe payloads reject duplicate relation ids', () => {
     const ids = [crypto.randomUUID(), crypto.randomUUID()];
     expect(RecipeCreateSchema.safeParse({ ...base, tasteNoteIds: ids }).success).toBe(true);
     expect(RecipeUpdateSchema.safeParse({ equipmentIds: ids }).success).toBe(true);
+  });
+});
+
+describe('Recipe payloads bound their relation arrays', () => {
+  it('exports the limits', () => {
+    expect(MAX_ADDITIONAL_PREPARATIONS).toBe(20);
+    expect(MAX_RELATION_IDS).toBe(50);
+  });
+
+  const base = {
+    title: 'Bounds',
+    brewMethod: 'v60',
+    drinkType: 'pour_over',
+    preparationNotes: 'Bloom',
+  };
+
+  /** `count` valid additional preparations. */
+  function preparations(count: number) {
+    return Array.from({ length: count }, (_, i) => ({
+      name: `Prep ${i}`,
+      type: 'milk',
+      inputAmount: '100ml',
+      preparationType: 'steamed',
+    }));
+  }
+
+  /** `count` distinct UUIDs. */
+  function ids(count: number): string[] {
+    return Array.from({ length: count }, () => crypto.randomUUID());
+  }
+
+  const schemas = [
+    ['RecipeCreateSchema', (body: object) => RecipeCreateSchema.safeParse({ ...base, ...body })],
+    ['RecipeUpdateSchema', (body: object) => RecipeUpdateSchema.safeParse(body)],
+  ] as const;
+
+  it.each(schemas)('%s accepts 20 additional preparations and rejects 21', (_name, parse) => {
+    expect(parse({ additionalPreparations: preparations(20) }).success).toBe(true);
+    const result = parse({ additionalPreparations: preparations(21) });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path)).toContainEqual([
+        'additionalPreparations',
+      ]);
+    }
+  });
+
+  it.each(
+    schemas.flatMap(([name, parse]) =>
+      (['tasteNoteIds', 'equipmentIds'] as const).map((field) => [name, field, parse] as const),
+    ),
+  )('%s accepts 50 distinct %s and rejects 51', (_name, field, parse) => {
+    expect(parse({ [field]: ids(50) }).success).toBe(true);
+    const result = parse({ [field]: ids(51) });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path)).toContainEqual([field]);
+    }
   });
 });
 

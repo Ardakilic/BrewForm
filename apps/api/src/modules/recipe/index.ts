@@ -515,7 +515,8 @@ recipe.get(
     try {
       const recipe = await service.getRecipe(slug);
       if (!recipe) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
-      if (!service.canViewRecipe(recipe, c.get('userId'), c.get('user')?.isAdmin)) {
+      // Same existence-hiding visibility gate as GET '/:slugOrId' (no admin bypass).
+      if (!service.canViewRecipe(recipe, c.get('userId'))) {
         return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
       noIndexUnlessPublic(c, recipe.visibility);

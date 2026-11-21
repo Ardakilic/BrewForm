@@ -13,10 +13,10 @@ import {
   users,
 } from '@brewform/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { evaluateBadges } from '../badge/service.ts';
 import * as model from './model.ts';
-import { getMergedIds, getMergedPreparations, mergeRecipes } from './service.ts';
+import { getMergedIds, getMergedPreparations, logger, mergeRecipes } from './service.ts';
 
 describe('getMergedIds', () => {
   const list1 = [{ tasteNoteId: 'a' }, { tasteNoteId: 'b' }];
@@ -299,6 +299,44 @@ describe('mergeRecipes', () => {
     const version = result!.versions?.[0];
     expect(version!.tasteNotes!.length).toBe(3);
     expect(version!.equipment!.length).toBe(2);
+  });
+
+  it('drops a soft-deleted taste note', async () => {
+    // v1 links deleted tn1 and live tn2, v2 links tn2 and tn3.
+    await db.update(tasteNotes).set({ deletedAt: new Date() }).where(eq(tasteNotes.id, tn1));
+    const debugSpy = vi.spyOn(logger, 'debug');
+    try {
+      const result = await mergeRecipes(userId, {
+        recipeVersionId1: versionId1,
+        recipeVersionId2: versionId2,
+        title: 'Merged Without Deleted Note',
+        selections: { tasteNotes: 'both' },
+      });
+      createdRecipeIds.push(result!.id);
+      const version = result!.versions?.[0];
+      expect(version!.tasteNotes!.map((tn) => tn.tasteNoteId).sort()).toEqual([tn2, tn3].sort());
+      expect(debugSpy).toHaveBeenCalledWith(
+        { authorId: userId, droppedTasteNotes: 1, droppedEquipment: 0 },
+        'mergeRecipes dropped deleted references',
+      );
+    } finally {
+      debugSpy.mockRestore();
+    }
+  });
+
+  it('drops a soft-deleted equipment item', async () => {
+    // v1 links deleted eq1 and live eq2.
+    await db.insert(recipeEquipment).values({ recipeVersionId: versionId1, equipmentId: eq2 });
+    await db.update(equipment).set({ deletedAt: new Date() }).where(eq(equipment.id, eq1));
+    const result = await mergeRecipes(userId, {
+      recipeVersionId1: versionId1,
+      recipeVersionId2: versionId2,
+      title: 'Merged Without Deleted Equipment',
+      selections: { equipment: 'v1' },
+    });
+    createdRecipeIds.push(result!.id);
+    const version = result!.versions?.[0];
+    expect(version!.equipment!.map((e) => e.equipmentId)).toEqual([eq2]);
   });
 
   it('returns empty arrays for none', async () => {

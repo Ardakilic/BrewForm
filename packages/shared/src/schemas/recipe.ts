@@ -21,13 +21,30 @@ const AdditionalPreparationSchema = z.object({
 });
 
 /**
- * A list of relation ids (taste notes, equipment) with no repeated id. A duplicate would
- * violate the `(recipe_version_id, <relation>_id)` unique constraint of the join table, so it
- * is rejected up front with a field-level 400 instead of a 409 from the database.
+ * Maximum number of `additionalPreparations` per recipe version. Each preparation is one row of a
+ * single multi-row INSERT with 7 bound parameters, and postgres-js refuses a statement with 65,534
+ * or more parameters (a 500), so the list is bounded (20× the seed maximum).
  */
-const RelationIdsSchema = z.array(z.uuid()).refine((ids) => new Set(ids).size === ids.length, {
-  message: 'Duplicate ids are not allowed',
-});
+export const MAX_ADDITIONAL_PREPARATIONS = 20;
+
+/**
+ * Maximum number of ids in `tasteNoteIds` and in `equipmentIds` per recipe version (12× and 7×
+ * the seed maxima), so one request cannot push thousands of ids into the reference lookups.
+ */
+export const MAX_RELATION_IDS = 50;
+
+/**
+ * A list of at most {@link MAX_RELATION_IDS} relation ids (taste notes, equipment) with no
+ * repeated id. A duplicate would violate the `(recipe_version_id, <relation>_id)` unique
+ * constraint of the join table, so it is rejected up front with a field-level 400 instead of a
+ * 409 from the database.
+ */
+const RelationIdsSchema = z
+  .array(z.uuid())
+  .max(MAX_RELATION_IDS)
+  .refine((ids) => new Set(ids).size === ids.length, {
+    message: 'Duplicate ids are not allowed',
+  });
 
 /**
  * Field validators shared by the create and update object schemas, without optionality or
@@ -63,7 +80,7 @@ const recipeFields = {
   setupId: z.uuid(),
   tasteNoteIds: RelationIdsSchema,
   equipmentIds: RelationIdsSchema,
-  additionalPreparations: z.array(AdditionalPreparationSchema),
+  additionalPreparations: z.array(AdditionalPreparationSchema).max(MAX_ADDITIONAL_PREPARATIONS),
   preInfusionTimeSeconds: z.number().int().min(1),
   beanId: z.uuid(),
   coffeeVarietyId: z.uuid(),

@@ -262,7 +262,7 @@ Recipe QR-code image generation
 
 | Method | Path | Summary | Auth | Parameters | Responses |
 |---|---|---|---|---|---|
-| `GET` | `/api/v1/qrcode/recipe/{filename}` | Get a recipe QR code image | — | `filename` (path, string) | 200, 403, 404 |
+| `GET` | `/api/v1/qrcode/recipe/{filename}` | Get a recipe QR code image | — | `filename` (path, string) | 200, 404 |
 
 ## Reports
 

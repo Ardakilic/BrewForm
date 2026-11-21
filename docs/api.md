@@ -404,12 +404,17 @@ rule set (see [recipes.md](recipes.md) for versioning):
 - `null` is a `400 VALIDATION_ERROR` for `title`, `visibility`, `brewMethod`, `drinkType`,
   `preparationNotes`, `isFavourite`, `brewDate`, `setupId` and the relation arrays.
 - `tasteNoteIntensities` is accepted only together with `tasteNoteIds`.
-- A relation array with the same id twice is a `400 VALIDATION_ERROR`.
+- A relation array with the same id twice is a `400 VALIDATION_ERROR`, and so is a longer list
+  than a version holds: at most 20 `additionalPreparations` and at most 50 `tasteNoteIds` or
+  `equipmentIds` (the same limits apply on create).
 - `bumpVersion: false` (the default) amends the current version in place; `bumpVersion: true`
   creates a new version that carries forward every value and relation the body does not provide
   (scalar fields, taste notes with intensities, equipment, additional preparations and version
   photos). Earlier versions are never modified, and the write is all-or-nothing: validation,
   referenced records and equipment compatibility are checked before the first write.
+- Referenced records are checked only when the body sets them newly: an id already linked to the
+  current version is accepted even if the record was deleted since, and re-sending the current
+  `coffeeVarietyId` keeps the stored `coffeeVarietyName`.
 - Computed fields (`brewRatio`, `flowRate`) and copied names (`coffeeVarietyName`) are set by the
   API and ignored when sent; `tds` is returned as a two-decimal string such as `"1.35"`.
 

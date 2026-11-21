@@ -21,6 +21,8 @@ export type { BrewLogCreate, BrewLogUpdate } from './brew-log.ts';
 export { BrewLogCreateSchema, BrewLogUpdateSchema } from './brew-log.ts';
 export type { CoffeeVarietyCreate, CoffeeVarietyUpdate } from './coffee-variety.ts';
 export {
+  COFFEE_VARIETY_LIST_ITEM_MAX_LENGTH,
+  COFFEE_VARIETY_LIST_MAX_ITEMS,
   CoffeeVarietyCategoryEnum,
   CoffeeVarietyCreateSchema,
   CoffeeVarietyFilterSchema,
@@ -73,6 +75,8 @@ export type {
   RecipeUpdate,
 } from './recipe.ts';
 export {
+  MAX_ADDITIONAL_PREPARATIONS,
+  MAX_RELATION_IDS,
   RecipeCreateObjectSchema,
   RecipeCreateSchema,
   RecipeFilterSchema,

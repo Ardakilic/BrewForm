@@ -5,7 +5,14 @@
  */
 import '../../test-setup.ts';
 import { db } from '@brewform/db';
-import { recipes, recipeVersionPhotos } from '@brewform/db/schema';
+import {
+  coffeeVarieties,
+  equipment,
+  recipes,
+  recipeVersionPhotos,
+  tasteNotes,
+  vendors,
+} from '@brewform/db/schema';
 import { RecipeCreateSchema, RecipeUpdateSchema } from '@brewform/shared/schemas';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -294,6 +301,66 @@ describe('updateRecipe (integration)', () => {
       'coffeeVarietyId',
     );
     expect(await fixtures.versionNumbers(rich.recipeId)).toEqual([1]);
+  });
+
+  it.each([false, true])(
+    'keeps a soft-deleted linked taste note, equipment item, vendor and variety (bumpVersion %s)',
+    async (bumpVersion) => {
+      const vendorId = await fixtures.vendor();
+      const rich = await createRich({ vendorId });
+      await db.update(tasteNotes).set({ deletedAt: new Date() }).where(eq(tasteNotes.id, rich.t1));
+      await db.update(equipment).set({ deletedAt: new Date() }).where(eq(equipment.id, rich.e1));
+      await db.update(vendors).set({ deletedAt: new Date() }).where(eq(vendors.id, vendorId));
+      await db
+        .update(coffeeVarieties)
+        .set({ deletedAt: new Date() })
+        .where(eq(coffeeVarieties.id, rich.variety.id));
+
+      // The edit form's body: every current relation is sent back.
+      const updated = await update(rich.recipeId, {
+        title: 'Renamed',
+        tasteNoteIds: [rich.t1, rich.t2],
+        tasteNoteIntensities: { [rich.t1]: 3, [rich.t2]: 2 },
+        equipmentIds: [rich.e1],
+        coffeeVarietyId: rich.variety.id,
+        vendorId,
+        bumpVersion,
+      });
+
+      expect(updated!.title).toBe('Renamed');
+      expect(updated!.versions).toHaveLength(bumpVersion ? 2 : 1);
+      const current = currentOf(updated);
+      expect(current.tasteNotes.map((tn) => tn.tasteNoteId).sort()).toEqual(
+        [rich.t1, rich.t2].sort(),
+      );
+      expect(current.equipment.map((e) => e.equipmentId)).toEqual([rich.e1]);
+      expect(current.vendorId).toBe(vendorId);
+      expect(current.coffeeVarietyId).toBe(rich.variety.id);
+      expect(current.coffeeVarietyName).toBe(rich.variety.name);
+    },
+  );
+
+  it('still rejects a newly added soft-deleted taste note', async () => {
+    const rich = await createRich();
+    await db.update(tasteNotes).set({ deletedAt: new Date() }).where(eq(tasteNotes.id, rich.t1));
+    const t3 = await fixtures.tasteNote({ deleted: true });
+    const before = await fixtures.snapshot(rich.versionId);
+
+    const err = await update(rich.recipeId, {
+      title: 'Renamed',
+      tasteNoteIds: [rich.t1, rich.t2, t3],
+      equipmentIds: [rich.e1],
+      coffeeVarietyId: rich.variety.id,
+    }).then(
+      () => null,
+      (e: unknown) => e,
+    );
+
+    expect(err).toBeInstanceOf(ValidationError);
+    const detail = (err as ValidationError).details?.find((d) => d.field === 'tasteNoteIds');
+    expect(detail?.message).toContain(t3);
+    expect(detail?.message).not.toContain(rich.t1);
+    expect(await fixtures.snapshot(rich.versionId)).toEqual(before);
   });
 
   it("rejects another user's bean before any write", async () => {

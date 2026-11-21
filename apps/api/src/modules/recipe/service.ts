@@ -104,18 +104,35 @@ function emptyTitleError(): ValidationError {
   ]);
 }
 
-/** Referenced ids of a recipe write that must exist before anything is written. */
+/**
+ * Referenced ids of a recipe write that must exist before anything is written. A create passes
+ * every reference; an update passes only the references it newly sets (ids already linked to the
+ * current version are carried forward unchecked, so a record soft-deleted after it was linked
+ * never blocks an edit).
+ */
 interface RecipeReferences {
-  /** Taste notes to link (checked when provided). */
+  /** Taste notes to link that are newly set (checked when provided). */
   tasteNoteIds?: string[];
-  /** Equipment to link (checked when provided). */
+  /** Equipment to link that is newly set (checked when provided). */
   equipmentIds?: string[];
-  /** Vendor to link (checked when non-null). */
+  /** Vendor to link: a newly set vendor (checked when non-null). */
   vendorId?: string | null;
-  /** Coffee variety to link (checked when non-null; its name is resolved). */
+  /** Coffee variety to link: a newly set variety (checked when non-null; its name is resolved). */
   coffeeVarietyId?: string | null;
   /** Bean to link: a NEWLY set bean (checked against the author when non-null). */
   newBeanId?: string | null;
+}
+
+/**
+ * Tell whether an update value sets a reference other than the stored one: `undefined` keeps
+ * the stored value and `null` clears it, so neither needs a check.
+ *
+ * @param value - The payload value (`undefined` when the key is absent).
+ * @param stored - The current version's value.
+ * @returns `true` (narrowing `value` to a string) when the value is a new id.
+ */
+function isNewReference(value: string | null | undefined, stored: string | null): value is string {
+  return value !== undefined && value !== null && value !== stored;
 }
 
 /**
@@ -479,10 +496,13 @@ export async function createRecipe(authorId: string, data: RecipeCreateInput) {
  * 2. Merge the payload over the current version and recompute `brewRatio`/`flowRate`;
  *    `setupId` fills `grinder`/`brewerDetails` from the author's setup only when those keys
  *    are absent from the payload.
- * 3. Validate before any write: the cross-field rules on the merged values, the referenced
- *    records (a bean only when newly set), equipment compatibility on the merged brew method
- *    and equipment set (when either changes), and the sanitized title; normalize `tds` to a
- *    decimal string, store empty brewer notes as `NULL` and resolve `coffeeVarietyName`.
+ * 3. Validate before any write: the cross-field rules on the merged values, the references
+ *    the payload newly sets (taste notes and equipment not linked to the current version, and
+ *    a `vendorId`, `coffeeVarietyId` or `beanId` that differs from the stored one; ids already
+ *    linked are kept even if their record was soft-deleted since), equipment compatibility on
+ *    the merged brew method and equipment set (when either changes), and the sanitized title;
+ *    normalize `tds` to a decimal string, store empty brewer notes as `NULL` and resolve
+ *    `coffeeVarietyName` from the lookup only when the variety changed (else the stored name).
  * 4. Write everything in one transaction through {@link model.updateRecipeWithVersion}.
  *
  * Sends no notification (unchanged).
@@ -543,12 +563,15 @@ export async function updateRecipe(recipeId: string, authorId: string, data: Rec
     preInfusionTimeSeconds,
     extractionTimeSeconds: measurements.extractionTimeSeconds,
   });
+  const linkedTasteNotes = new Set(current.tasteNotes.map((tn) => tn.tasteNoteId));
+  const linkedEquipment = new Set(current.equipment.map((e) => e.equipmentId));
+  const varietyChanged = isNewReference(data.coffeeVarietyId, current.coffeeVarietyId);
   const references = await validateReferences(authorId, {
-    tasteNoteIds: data.tasteNoteIds,
-    equipmentIds: data.equipmentIds,
-    vendorId: data.vendorId,
-    coffeeVarietyId: data.coffeeVarietyId,
-    newBeanId: data.beanId !== undefined && data.beanId !== current.beanId ? data.beanId : null,
+    tasteNoteIds: data.tasteNoteIds?.filter((id) => !linkedTasteNotes.has(id)),
+    equipmentIds: data.equipmentIds?.filter((id) => !linkedEquipment.has(id)),
+    vendorId: isNewReference(data.vendorId, current.vendorId) ? data.vendorId : null,
+    coffeeVarietyId: varietyChanged ? data.coffeeVarietyId : null,
+    newBeanId: isNewReference(data.beanId, current.beanId) ? data.beanId : null,
   });
   if (data.brewMethod !== undefined || data.equipmentIds !== undefined) {
     await validateEquipmentCompatibility(
@@ -558,8 +581,9 @@ export async function updateRecipe(recipeId: string, authorId: string, data: Rec
   }
   const title = data.title !== undefined ? sanitizeText(data.title) : recipe.title;
   if (!title.trim()) throw emptyTitleError();
-  const coffeeVarietyName =
-    data.coffeeVarietyId === undefined ? current.coffeeVarietyName : references.coffeeVarietyName;
+  const coffeeVarietyName = varietyChanged
+    ? references.coffeeVarietyName
+    : current.coffeeVarietyName;
 
   // 4. One transactional write.
   // A bump records a new brew (payload date or now); an amend keeps the stored date unless given.
@@ -994,14 +1018,17 @@ export async function getRecipeMeta(slug: string) {
 /**
  * True when the caller may view the recipe.
  *
- * Canonical visibility predicate (previously duplicated inline at
- * `recipe/index.ts` GET /:slugOrId and GET /:slug/versions): `public`/`unlisted`
- * are visible to any caller including anonymous; `draft`/`private` are visible
- * only to the author (`userId === recipe.authorId`) or to an admin. The admin
- * bypass is deliberate: the recipe GET routes do NOT pass an admin flag (they
- * keep their pre-existing author-only semantics), but the comment surface does
- * — the comment-reply permission rule already honours `isAdmin`
- * (comment/service.ts), so the predicate supports it for that caller.
+ * Canonical visibility predicate: `public`/`unlisted` are visible to any caller including
+ * anonymous; `draft`/`private` are visible only to the author (`userId === recipe.authorId`)
+ * or, when the caller passes the flag, to an admin.
+ *
+ * Who passes the admin flag: only the comment surface (`comment/service.ts`, whose reply and
+ * moderation rules already honour `isAdmin`) and the private-note surface
+ * (`recipe-note/service.ts`). The recipe GET routes in `recipe/index.ts` pass none and keep
+ * author-only semantics for drafts and private recipes: the detail (`GET /:slugOrId`), the
+ * versions (`GET /:slug/versions`), the version diff (`GET /:slug/versions/diff`) and the
+ * collections (`GET /:slugOrId/collections`) routes; admins use `/api/v1/admin/*` instead.
+ * The merge, the brew log and the QR code (anonymous viewer, `null`) pass none either.
  *
  * Pure function with no I/O — intentionally has no entry/exit debug logging;
  * the calling routes/services already log.
@@ -1185,6 +1212,11 @@ export function getMergedPreparations(
  * the caller must be allowed to view both under {@link canViewRecipe} (`FORBIDDEN`): another
  * user's public or unlisted recipe can be merged, their draft or private recipe cannot.
  *
+ * Taste notes and equipment whose catalog row is soft-deleted are dropped from both sources
+ * before the lists are merged (the relation rows already carry the row's `deletedAt`), so a
+ * merge never fails on a record deleted after it was linked; the dropped counts are logged at
+ * debug.
+ *
  * Delegates the write to {@link createRecipe}, so the merged recipe gets its
  * slug from the same pipeline (sanitized title, candidates claimed in the
  * creation transaction): merging twice with the same title yields distinct
@@ -1211,6 +1243,22 @@ export async function mergeRecipes(authorId: string, data: RecipeMerge) {
     throw new Error('FORBIDDEN');
   }
 
+  // Taste notes and equipment deleted from the catalog are left out of the merged recipe.
+  const liveTasteNotes1 = v1.tasteNotes.filter((tn) => tn.tasteNote.deletedAt === null);
+  const liveTasteNotes2 = v2.tasteNotes.filter((tn) => tn.tasteNote.deletedAt === null);
+  const liveEquipment1 = v1.equipment.filter((e) => e.equipment.deletedAt === null);
+  const liveEquipment2 = v2.equipment.filter((e) => e.equipment.deletedAt === null);
+  const droppedTasteNotes =
+    v1.tasteNotes.length - liveTasteNotes1.length + v2.tasteNotes.length - liveTasteNotes2.length;
+  const droppedEquipment =
+    v1.equipment.length - liveEquipment1.length + v2.equipment.length - liveEquipment2.length;
+  if (droppedTasteNotes > 0 || droppedEquipment > 0) {
+    logger.debug(
+      { authorId, droppedTasteNotes, droppedEquipment },
+      'mergeRecipes dropped deleted references',
+    );
+  }
+
   const sel = data.selections;
   const pick = <K extends keyof typeof v1>(field: K) => {
     const choice = sel[field as keyof typeof sel];
@@ -1234,8 +1282,8 @@ export async function mergeRecipes(authorId: string, data: RecipeMerge) {
     preparationNotes: pick('preparationNotes') || 'Merged recipe',
     personalNotes: pick('personalNotes') ?? undefined,
     isFavourite: false,
-    tasteNoteIds: getMergedIds(v1.tasteNotes, v2.tasteNotes, sel.tasteNotes, 'tasteNoteId'),
-    equipmentIds: getMergedIds(v1.equipment, v2.equipment, sel.equipment, 'equipmentId'),
+    tasteNoteIds: getMergedIds(liveTasteNotes1, liveTasteNotes2, sel.tasteNotes, 'tasteNoteId'),
+    equipmentIds: getMergedIds(liveEquipment1, liveEquipment2, sel.equipment, 'equipmentId'),
     additionalPreparations: getMergedPreparations(v1, v2, sel.additionalPreparations) as Array<{
       name: string;
       type: 'milk' | 'water' | 'syrup' | 'spice' | 'other';

@@ -125,47 +125,41 @@ describe('QR Code Service Logic', () => {
       );
     });
 
-    it('should log warn and throw RECIPE_NOT_AVAILABLE for a draft recipe', async () => {
-      const slug = generateSlug('Draft Recipe');
+    it.each(['draft', 'private'] as const)(
+      'should log warn and throw RECIPE_NOT_FOUND for a %s recipe',
+      async (visibility) => {
+        const slug = generateSlug(`${visibility} recipe ${crypto.randomUUID().slice(0, 8)}`);
+        await db
+          .insert(recipes)
+          .values({ slug, title: 'Hidden Recipe', authorId: userId, visibility });
+
+        await expect(getRecipeQRCode(slug, 'png', 'http://localhost:8000')).rejects.toThrow(
+          'RECIPE_NOT_FOUND',
+        );
+
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenNthCalledWith(
+          1,
+          { slug, visibility },
+          'getRecipeQRCode failed: recipe not viewable',
+        );
+        expect(debugSpy).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it('should return a PNG for an unlisted recipe', async () => {
+      const slug = generateSlug(`Unlisted Recipe ${crypto.randomUUID().slice(0, 8)}`);
       await db.insert(recipes).values({
         slug,
-        title: 'Draft Recipe',
+        title: 'Unlisted Recipe',
         authorId: userId,
-        visibility: 'draft',
+        visibility: 'unlisted',
       });
 
-      await expect(getRecipeQRCode(slug, 'png', 'http://localhost:8000')).rejects.toThrow(
-        'RECIPE_NOT_AVAILABLE',
-      );
+      const result = await getRecipeQRCode(slug, 'png', 'http://localhost:8000');
 
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(warnSpy).toHaveBeenNthCalledWith(
-        1,
-        { slug, visibility: 'draft' },
-        'getRecipeQRCode failed: recipe not available',
-      );
-      expect(debugSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it('should log warn and throw RECIPE_NOT_AVAILABLE for a private recipe', async () => {
-      const slug = generateSlug('Private Recipe');
-      await db.insert(recipes).values({
-        slug,
-        title: 'Private Recipe',
-        authorId: userId,
-        visibility: 'private',
-      });
-
-      await expect(getRecipeQRCode(slug, 'png', 'http://localhost:8000')).rejects.toThrow(
-        'RECIPE_NOT_AVAILABLE',
-      );
-
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(warnSpy).toHaveBeenNthCalledWith(
-        1,
-        { slug, visibility: 'private' },
-        'getRecipeQRCode failed: recipe not available',
-      );
+      expect(result.contentType).toBe('image/png');
+      expect(warnSpy).not.toHaveBeenCalled();
     });
   });
 });

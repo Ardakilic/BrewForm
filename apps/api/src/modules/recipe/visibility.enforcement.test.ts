@@ -44,13 +44,14 @@ const HELPER_UNITS = new Set([
  * Keys are `<module>/model.ts#<unit>` or `routes/<file>.ts#<unit>`.
  */
 const EXEMPT_UNITS: Record<string, string> = {
-  // Point lookups whose callers apply canViewRecipe (or the QR draft/private gate).
+  // Point lookups whose callers apply canViewRecipe.
   'comment/model.ts#getRecipeAuthorId': 'point lookup; the comment service applies canViewRecipe',
   'comment/model.ts#getRecipeForNotification':
     'point lookup; the comment service applies canViewRecipe',
   'comment/model.ts#getRecipeForAccessCheck':
     'point lookup; the comment service applies canViewRecipe',
-  'qrcode/model.ts#findBySlug': 'point lookup; the QR service refuses draft and private recipes',
+  'qrcode/model.ts#findBySlug':
+    'point lookup; the QR service applies canViewRecipe for an anonymous viewer',
   'recipe-note/model.ts#findRecipeForNotes':
     'point lookup; the notes service applies canViewRecipe',
   'recipe/model.ts#updateRecipeWithVersion':

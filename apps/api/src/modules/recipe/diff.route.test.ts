@@ -230,15 +230,16 @@ describe('GET /api/v1/recipes/:slug/versions/diff', () => {
     expect(body.error.code).toBe('NOT_FOUND');
   });
 
-  it('admin can diff a private recipe', async () => {
+  it("admin cannot diff another user's private recipe", async () => {
     const app = createAuthApp(admin.id, true);
     const res = await app.request(diffUrl(privateSlug(), privateV1Id, privateV2Id));
     // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
     const body = (await res.json()) as any;
 
-    expect(res.status).toBe(200);
-    expect(body.success).toBe(true);
-    expect(body.data.version1).toBeDefined();
+    expect(res.status).toBe(404);
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('NOT_FOUND');
+    expect(body.error.message).toBe('Recipe not found');
   });
 
   it('returns 400 when v2 is missing', async () => {

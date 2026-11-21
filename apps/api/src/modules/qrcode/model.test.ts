@@ -75,10 +75,11 @@ describe('findBySlug', () => {
     expect(result!.visibility).toBe('public');
   });
 
-  it('should return only id and visibility keys', async () => {
+  it('should return only the id, visibility and authorId keys', async () => {
     const result = await model.findBySlug(slug);
     expect(result).not.toBeNull();
-    expect(Object.keys(result!).sort()).toEqual(['id', 'visibility'].sort());
+    expect(Object.keys(result!).sort()).toEqual(['authorId', 'id', 'visibility']);
+    expect(result!.authorId).toBe(userId);
   });
 
   it('should return null for a soft-deleted recipe', async () => {
