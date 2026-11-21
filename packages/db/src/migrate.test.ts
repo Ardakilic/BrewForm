@@ -17,12 +17,13 @@ import { bigint, pgSchema, serial, text } from 'drizzle-orm/pg-core';
 import { describe, expect, it, vi } from 'vitest';
 import { db } from './index.ts';
 import {
+  createMigrationRunnerDeps,
   describeMigrationError,
   MIGRATIONS_FOLDER,
   type MigrationRunnerDeps,
   runMigrations,
 } from './migrate.ts';
-import { PG_TRGM_NOT_AVAILABLE_MESSAGE } from './preflight.ts';
+import { assertMigrationPreflight, PG_TRGM_NOT_AVAILABLE_MESSAGE } from './preflight.ts';
 
 /** Drizzle's default tracking table (`drizzle.__drizzle_migrations`), declared for reads only. */
 const drizzleMigrations = pgSchema('drizzle').table('__drizzle_migrations', {
@@ -97,6 +98,24 @@ describe('migration runner (DB integration)', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('DATABASE_URL is not set');
   });
+});
+
+describe('createMigrationRunnerDeps (DB integration, in-process)', () => {
+  it('wires the real pre-flight and migrator; an up-to-date database applies nothing', async () => {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) throw new Error('DATABASE_URL must point at brewform_test');
+    const before = await appliedMigrations();
+    const deps = createMigrationRunnerDeps(databaseUrl);
+    expect(deps.preflight).toBe(assertMigrationPreflight);
+    expect(deps.output).toBe(console);
+    const output = { log: vi.fn(), error: vi.fn() };
+
+    expect(await runMigrations({ ...deps, output })).toBe(0);
+
+    expect(output.error).not.toHaveBeenCalled();
+    expect(output.log).toHaveBeenCalledWith('Migration runner: complete');
+    expect(await appliedMigrations()).toEqual(before);
+  }, 120_000);
 });
 
 describe('runMigrations (stubbed)', () => {
