@@ -401,6 +401,11 @@ export const RecipeForkSchema = z.object({
   title: z.string().max(200).optional(),
 });
 
+/**
+ * Validates recipe merge payloads: two distinct version ids, the new title, and per-field
+ * `v1`/`v2` selections (`both`/`none` for list fields; defaults to `{}`).
+ * Used by POST /api/v1/recipes/merge.
+ */
 export const RecipeMergeSchema = z
   .object({
     recipeVersionId1: z.uuid(),
