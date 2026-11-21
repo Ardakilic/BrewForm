@@ -229,7 +229,7 @@ message (and without running Compose) when it does not.
 | `make prod-logs` | `logs -f`. |
 | `make prod-ps` | `ps`: state and health of every service. |
 | `make prod-pull` | `pull`: fetch the images for `IMAGE_TAG`. |
-| `make prod-backup` | one immediate backup (`run --rm -e BACKUP_ONESHOT=1 backup`). |
+| `make prod-backup` | one immediate backup (`run --rm --no-deps -e BACKUP_ONESHOT=1 backup`); the stack must be running. |
 | `make prod-backup-export DEST=./backup-export` | copies every backup to a host folder (`cp backup:/backups/. $(DEST)`). |
 | `make prod-restore DUMP=… UPLOADS=…` | stops api and web, runs the `restore` service, starts the stack ([§11](#11-restore-runbook)). |
 | `make prod-check-identifiers [args=…]` | the wave-6 identifier check against the production database ([§14](#14-upgrading-from-the-pre-wave-6-compose-file)). |
@@ -364,8 +364,14 @@ interval; the service turns `unhealthy` when no dump is younger than twice the i
 They go to the named volume `backups` by default. Set `BACKUPS_SOURCE=./backups` (or an absolute
 path) to write them to a host folder instead.
 
+The `backup` service starts only after `migrate` has completed successfully, so the start-up dump
+of a fresh install already holds the schema. `make prod-backup` runs one extra backup with
+`--no-deps`: it never starts or re-runs `migrate`, so it dumps the schema the database has right
+now (for example the old schema after `make prod-pull`, which is what a rollback needs). It
+connects to the running `postgres` service, so the stack must be up (`make prod-up`) first.
+
 ```sh
-make prod-backup                                              # one backup now
+make prod-backup                                              # one backup now (stack running)
 docker compose --env-file .env.production -f compose.production.yml exec backup ls -l /backups
 ```
 
