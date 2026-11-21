@@ -69,13 +69,13 @@ describe('AdminLayout — tr locale spot-check', () => {
 });
 
 describe('AdminLayout — print', () => {
-  it('marks the admin navigation print-hidden (print hides only marked elements, V2)', () => {
+  it('marks the whole admin sidebar print-hidden, not only its navigation (V2)', () => {
     const router = createMemoryRouter(
       [
         {
           path: '/admin',
           element: <AdminLayout />,
-          children: [{ path: '*', element: <div /> }],
+          children: [{ index: true, element: <p>Admin page content</p> }],
         },
       ],
       { initialEntries: ['/admin'] },
@@ -83,6 +83,18 @@ describe('AdminLayout — print', () => {
 
     render(<RouterProvider router={router} />);
 
-    expect(screen.getByRole('navigation')).toHaveClass('print-hidden');
+    const sidebar = screen.getByRole('complementary');
+    expect(sidebar).toHaveClass('print-hidden');
+    // Title, navigation, "Back to Site" and the signed-in line all sit inside the hidden sidebar.
+    for (const element of [
+      screen.getByRole('heading', { name: 'Yönetici Paneli' }),
+      screen.getByRole('navigation'),
+      screen.getByRole('link', { name: '← Siteye Dön' }),
+      screen.getByText(/Giriş yapan:/),
+    ]) {
+      expect(element.closest('.print-hidden')).toBe(sidebar);
+    }
+    // The admin page content itself still prints.
+    expect(screen.getByText('Admin page content').closest('.print-hidden')).toBeNull();
   });
 });
