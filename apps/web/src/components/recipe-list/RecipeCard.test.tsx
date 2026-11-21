@@ -2,7 +2,7 @@ import type { RecipeListItemOutput } from '@brewform/shared/schemas';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RecipeCard, type RecipeCardRecipe } from './RecipeCard.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -123,9 +123,9 @@ describe('RecipeCard', () => {
     // The "by Deleted user" text is in a <p> tag; there's no author button
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     const paragraph = document.querySelector('p.mt-1');
-    expect(paragraph).not.toBeNull();
-    expect(paragraph!.textContent).toBe('by Deleted user');
-    expect(paragraph!.textContent).not.toContain('unknown');
+    assert.exists(paragraph);
+    expect(paragraph.textContent).toBe('by Deleted user');
+    expect(paragraph.textContent).not.toContain('unknown');
   });
 
   it('hides the author line entirely when hideAuthor is set', () => {

@@ -2,7 +2,7 @@ import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { comments, recipes, recipeVersions, users } from '@brewform/db/schema';
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, assert, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 /**
@@ -188,8 +188,8 @@ describe('findByRecipe', () => {
     try {
       const result = await model.findByRecipe(recipeId, 1, 20);
       const listed = result.comments.find((c) => c.id === parent.id);
-      expect(listed).toBeDefined();
-      expect(listed!.replies).toEqual([]);
+      assert.exists(listed);
+      expect(listed.replies).toEqual([]);
     } finally {
       await db.delete(comments).where(eq(comments.id, foreign.id));
       await db.delete(comments).where(eq(comments.id, parent.id));
@@ -243,8 +243,10 @@ describe('findByRecipe', () => {
       ];
 
       const result = await model.findByRecipe(recipeId, 1, 20);
-      const listed1 = result.comments.find((c) => c.id === p1.id)!;
-      const listed2 = result.comments.find((c) => c.id === p2.id)!;
+      const listed1 = result.comments.find((c) => c.id === p1.id);
+      const listed2 = result.comments.find((c) => c.id === p2.id);
+      assert.exists(listed1);
+      assert.exists(listed2);
 
       expect(listed1.replies.map((r) => r.id)).toEqual(p1Replies.slice(0, 20).map((r) => r.id));
       expect(listed1.hasMoreReplies).toBe(true);
@@ -252,8 +254,8 @@ describe('findByRecipe', () => {
       expect(listed2.replies.map((r) => r.id)).toEqual(p2Replies.map((r) => r.id));
       expect(listed2.hasMoreReplies).toBe(false);
       // The fixture's own top-level comment has one reply and no more.
-      const fixtureParent = result.comments.find((c) => c.id === topLevelId)!;
-      expect(fixtureParent.hasMoreReplies).toBe(false);
+      const fixtureParent = result.comments.find((c) => c.id === topLevelId);
+      expect(fixtureParent?.hasMoreReplies).toBe(false);
     });
 
     it('a parent with exactly 20 replies gets all 20 and hasMoreReplies false', async () => {
@@ -261,7 +263,8 @@ describe('findByRecipe', () => {
       for (let i = 0; i < 20; i++) await insertAt(1 + i, { parentCommentId: parent.id });
 
       const result = await model.findByRecipe(recipeId, 1, 20);
-      const listed = result.comments.find((c) => c.id === parent.id)!;
+      const listed = result.comments.find((c) => c.id === parent.id);
+      assert.exists(listed);
       expect(listed.replies).toHaveLength(20);
       expect(listed.hasMoreReplies).toBe(false);
     });
@@ -274,7 +277,8 @@ describe('findByRecipe', () => {
       await insertAt(5, { parentCommentId: parent.id, id: ids[0] });
 
       const result = await model.findByRecipe(recipeId, 1, 20);
-      const listed = result.comments.find((c) => c.id === parent.id)!;
+      const listed = result.comments.find((c) => c.id === parent.id);
+      assert.exists(listed);
       expect(listed.replies.map((r) => r.id)).toEqual(ids);
     });
   });
@@ -351,24 +355,26 @@ describe('deleted comment authors (E11)', () => {
     await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, deletedUserId));
 
     const result = await model.findByRecipe(fixture.recipeId, 1, 20);
-    const listed = result.comments.find((c) => c.id === top.id)!;
+    const listed = result.comments.find((c) => c.id === top.id);
+    assert.exists(listed);
     expect(listed.content).toBe('Written before leaving');
     expect(listed.authorId).toBe(deletedUserId);
     expect(listed.author).toBeNull();
-    const listedReply = listed.replies.find((r) => r.id === reply.id)!;
+    const listedReply = listed.replies.find((r) => r.id === reply.id);
+    assert.exists(listedReply);
     expect(listedReply.content).toBe('A reply before leaving');
     expect(listedReply.authorId).toBe(deletedUserId);
     expect(listedReply.author).toBeNull();
-    const listedLive = listed.replies.find((r) => r.id === liveReply.id)!;
-    expect(listedLive.author).toEqual({
+    const listedLive = listed.replies.find((r) => r.id === liveReply.id);
+    expect(listedLive?.author).toEqual({
       id: liveUserId,
       username: `live-${liveUserId.slice(0, 8)}`,
       displayName: null,
       avatarUrl: null,
     });
 
-    expect((await model.findById(reply.id))!.author).toBeNull();
-    expect((await model.findById(liveReply.id))!.author!.id).toBe(liveUserId);
+    expect((await model.findById(reply.id))?.author).toBeNull();
+    expect((await model.findById(liveReply.id))?.author?.id).toBe(liveUserId);
   });
 });
 
@@ -552,10 +558,10 @@ describe('softDeleteReplies', () => {
     expect([...ids].sort()).toEqual([r1.id, r2.id].sort());
     const rows = await db.select().from(comments).where(eq(comments.parentCommentId, parent.id));
     const byId = new Map(rows.map((row) => [row.id, row]));
-    expect(byId.get(r1.id)!.deletedAt).not.toBeNull();
-    expect(byId.get(r2.id)!.deletedAt).not.toBeNull();
-    expect(byId.get(r3.id)!.deletedAt!.getTime()).toBe(oldDeletedAt.getTime());
-    expect(byId.get(x.id)!.deletedAt).toBeNull();
+    expect(byId.get(r1.id)?.deletedAt).toBeInstanceOf(Date);
+    expect(byId.get(r2.id)?.deletedAt).toBeInstanceOf(Date);
+    expect(byId.get(r3.id)?.deletedAt?.getTime()).toBe(oldDeletedAt.getTime());
+    expect(byId.get(x.id)?.deletedAt).toBeNull();
     const [parentRow] = await db.select().from(comments).where(eq(comments.id, parent.id));
     expect(parentRow.deletedAt).toBeNull();
   });

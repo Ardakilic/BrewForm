@@ -9,7 +9,17 @@ import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { collectionItems, collections, recipes, users } from '@brewform/db/schema';
 import { DrizzleQueryError, eq, inArray } from 'drizzle-orm';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  assert,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { type CacheProvider, InMemoryCacheProvider } from '../../utils/cache/index.ts';
 import { cacheProvider, setCacheProvider } from '../../utils/cache/singleton.ts';
 import * as model from './model.ts';
@@ -87,6 +97,13 @@ async function createCollectionRow(
   return col;
 }
 
+/** Loads a live collection's items through `findById`, failing the test when it is missing. */
+async function itemsOf(collectionId: string) {
+  const found = await model.findById(collectionId);
+  assert.exists(found);
+  return found.items;
+}
+
 async function cleanupCollections(collectionIds: string[]) {
   if (collectionIds.length === 0) return;
   await db.delete(collectionItems).where(inArray(collectionItems.collectionId, collectionIds));
@@ -143,18 +160,17 @@ describe('collection service — createCollection', () => {
       description: 'Best pours',
       visibility: 'public',
     });
-    colIds.push(result!.id);
-    expect(result).toBeDefined();
-    expect(result!.id).toBeDefined();
-    expect(result!.name).toBe('My V60s');
-    expect(result!.description).toBe('Best pours');
-    expect(result!.visibility).toBe('public');
-    expect(result!.userId).toBe(user.id);
-    expect(result!.author).toBeDefined();
-    expect(result!.author!.username).toBe(user.username);
-    expect(Array.isArray(result!.items)).toBe(true);
-    expect(result!.items.length).toBe(0);
-    expect(result!.recipeCount).toBe(0);
+    assert.exists(result);
+    colIds.push(result.id);
+    expect(result.id).toBeDefined();
+    expect(result.name).toBe('My V60s');
+    expect(result.description).toBe('Best pours');
+    expect(result.visibility).toBe('public');
+    expect(result.userId).toBe(user.id);
+    expect(result.author?.username).toBe(user.username);
+    expect(Array.isArray(result.items)).toBe(true);
+    expect(result.items.length).toBe(0);
+    expect(result.recipeCount).toBe(0);
   });
 
   it('defaults visibility to private when omitted', async () => {
@@ -287,7 +303,7 @@ describe('collection service — addRecipeToCollection', () => {
 
   it('public recipe by non-owner succeeds', async () => {
     await service.addRecipeToCollection(userA.id, colA.id, publicRecipe.id);
-    const items = (await model.findById(colA.id))!.items;
+    const items = await itemsOf(colA.id);
     expect(items.some((i) => i.recipeId === publicRecipe.id)).toBe(true);
   });
 
@@ -301,7 +317,7 @@ describe('collection service — addRecipeToCollection', () => {
     const ownCol = await createCollectionRow(userB.id, 'OwnCol', 'public');
     colIds.push(ownCol.id);
     await service.addRecipeToCollection(userB.id, ownCol.id, privateRecipe.id);
-    const items = (await model.findById(ownCol.id))!.items;
+    const items = await itemsOf(ownCol.id);
     expect(items.some((i) => i.recipeId === privateRecipe.id)).toBe(true);
   });
 
@@ -387,7 +403,7 @@ describe('collection service — reorderCollection', () => {
   it('correct full order succeeds and assigns sortOrder = index', async () => {
     const reordered = [itemIds[2], itemIds[1], itemIds[0]];
     await service.reorderCollection(user.id, col.id, reordered);
-    const items = (await model.findById(col.id))!.items;
+    const items = await itemsOf(col.id);
     expect(items[0].id).toBe(itemIds[2]);
     expect(items[0].sortOrder).toBe(0);
     expect(items[1].id).toBe(itemIds[1]);
@@ -503,7 +519,7 @@ describe('collection service — removeRecipeFromCollection', () => {
 
   it('owner removes the recipe', async () => {
     await service.removeRecipeFromCollection(userA.id, col.id, r1.id);
-    const items = (await model.findById(col.id))!.items;
+    const items = await itemsOf(col.id);
     expect(items.length).toBe(0);
   });
 
@@ -713,8 +729,8 @@ describe('collection service — deleted accounts (E11)', () => {
 
     const list = await service.listAllPublicCollections(1, 100);
     const listed = list.collections.find((c) => c.id === col.id);
-    expect(listed).toBeDefined();
-    expect(listed!.author).toBeNull();
+    assert.exists(listed);
+    expect(listed.author).toBeNull();
   });
 });
 

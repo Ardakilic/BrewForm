@@ -18,7 +18,7 @@ import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { recipes, recipeVersions, userRecipeRatings, users } from '@brewform/db/schema';
 import { and, eq, getTableColumns } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, assert, beforeEach, describe, expect, it } from 'vitest';
 import { NoteFixtures } from '../recipe-note/test-helpers.ts';
 import * as recipeModel from './model.ts';
 import * as recipeService from './service.ts';
@@ -116,9 +116,9 @@ describe('decrementComments — by a bound amount', () => {
 
   it('lowers commentCount by 3 with by = 3, then by 1 with the default', async () => {
     const afterThree = await recipeModel.decrementComments(recipeId, 3);
-    expect(afterThree!.commentCount).toBe(2);
+    expect(afterThree?.commentCount).toBe(2);
     const afterOne = await recipeModel.decrementComments(recipeId);
-    expect(afterOne!.commentCount).toBe(1);
+    expect(afterOne?.commentCount).toBe(1);
     const [row] = await db
       .select({ commentCount: recipes.commentCount })
       .from(recipes)
@@ -154,11 +154,13 @@ describe('deleted recipe authors (E11)', () => {
     await softDeleteUser(author.id);
 
     const byId = await recipeModel.findById(recipe.id);
-    expect(byId!.id).toBe(recipe.id);
-    expect(byId!.author).toBeNull();
+    assert.exists(byId);
+    expect(byId.id).toBe(recipe.id);
+    expect(byId.author).toBeNull();
     const bySlug = await recipeModel.findBySlug(recipe.slug);
-    expect(bySlug!.id).toBe(recipe.id);
-    expect(bySlug!.author).toBeNull();
+    assert.exists(bySlug);
+    expect(bySlug.id).toBe(recipe.id);
+    expect(bySlug.author).toBeNull();
     const after = await recipeModel.findListPage(scope);
     expect(after.total).toBe(before.total);
     expect(after.recipes.map((r) => r.id)).toEqual([recipe.id]);
@@ -169,7 +171,7 @@ describe('deleted recipe authors (E11)', () => {
     const author = await fixtures.user('e11-live');
     const { recipe } = await fixtures.recipe(author.id);
     const byId = await recipeModel.findById(recipe.id);
-    expect(byId!.author).toEqual({
+    expect(byId?.author).toEqual({
       id: author.id,
       username: author.username,
       displayName: null,

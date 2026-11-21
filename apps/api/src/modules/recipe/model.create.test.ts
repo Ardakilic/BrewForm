@@ -14,7 +14,7 @@ import {
   users,
 } from '@brewform/db/schema';
 import { count, eq, inArray } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, assert, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 describe('createRecipeWithRelations', () => {
@@ -491,18 +491,18 @@ describe('createRecipeWithRelations', () => {
       equipmentIds: [equipmentRow.id],
     });
     const result = await model.createRecipeWithRelations(input);
-    createdRecipeIds.push(result!.id);
+    assert.exists(result);
+    createdRecipeIds.push(result.id);
 
-    expect(result).toBeDefined();
-    expect(result!.author).toBeDefined();
-    expect(result!.author!.id).toBe(user.id);
-    expect(result!.author!.username).toBeDefined();
-    expect(result!.author!.displayName).toBeDefined();
-    expect(result!.author!.avatarUrl).toBeDefined();
-    expect(Array.isArray(result!.versions)).toBe(true);
-    expect(result!.versions.length).toBe(1);
+    assert.exists(result.author);
+    expect(result.author.id).toBe(user.id);
+    expect(result.author.username).toBeDefined();
+    expect(result.author.displayName).toBeDefined();
+    expect(result.author.avatarUrl).toBeDefined();
+    expect(Array.isArray(result.versions)).toBe(true);
+    expect(result.versions.length).toBe(1);
 
-    const firstVersion = result!.versions[0];
+    const firstVersion = result.versions[0];
     expect(firstVersion.tasteNotes).toBeDefined();
     expect(firstVersion.tasteNotes.length).toBe(1);
     expect(firstVersion.tasteNotes[0].tasteNote).toBeDefined();
@@ -521,11 +521,11 @@ describe('createRecipeWithRelations', () => {
 
     expect(firstVersion.bean).toBeDefined();
 
-    expect(result!.photos).toBeDefined();
-    expect(Array.isArray(result!.photos)).toBe(true);
+    expect(result.photos).toBeDefined();
+    expect(Array.isArray(result.photos)).toBe(true);
 
-    expect(result!.forkedFrom).toBeNull();
-    expect(result!.currentVersionId).toBe(firstVersion.id);
+    expect(result.forkedFrom).toBeNull();
+    expect(result.currentVersionId).toBe(firstVersion.id);
   });
 });
 

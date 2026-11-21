@@ -13,7 +13,7 @@ import {
   users,
 } from '@brewform/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import { evaluateBadges } from '../badge/service.ts';
 import * as model from './model.ts';
 import { getMergedIds, getMergedPreparations, logger, mergeRecipes } from './service.ts';
@@ -312,9 +312,10 @@ describe('mergeRecipes', () => {
         title: 'Merged Without Deleted Note',
         selections: { tasteNotes: 'both' },
       });
-      createdRecipeIds.push(result!.id);
-      const version = result!.versions?.[0];
-      expect(version!.tasteNotes!.map((tn) => tn.tasteNoteId).sort()).toEqual([tn2, tn3].sort());
+      assert.exists(result);
+      createdRecipeIds.push(result.id);
+      const version = result.versions?.[0];
+      expect(version?.tasteNotes?.map((tn) => tn.tasteNoteId).sort()).toEqual([tn2, tn3].sort());
       expect(debugSpy).toHaveBeenCalledWith(
         { authorId: userId, droppedTasteNotes: 1, droppedEquipment: 0 },
         'mergeRecipes dropped deleted references',
@@ -334,9 +335,10 @@ describe('mergeRecipes', () => {
       title: 'Merged Without Deleted Equipment',
       selections: { equipment: 'v1' },
     });
-    createdRecipeIds.push(result!.id);
-    const version = result!.versions?.[0];
-    expect(version!.equipment!.map((e) => e.equipmentId)).toEqual([eq2]);
+    assert.exists(result);
+    createdRecipeIds.push(result.id);
+    const version = result.versions?.[0];
+    expect(version?.equipment?.map((e) => e.equipmentId)).toEqual([eq2]);
   });
 
   it('returns empty arrays for none', async () => {

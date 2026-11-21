@@ -17,7 +17,7 @@
  *
  * The pre-existing `routes/openapi.test.ts` smoke test is left unchanged.
  */
-import { beforeAll, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Test environment — set BEFORE the dynamic import of the router so the
@@ -280,12 +280,12 @@ describe('OpenAPI coverage — non-JSON routes (Requirements 9.x)', () => {
 
   it('sitemap operation documents application/xml and is not a JSON envelope', () => {
     const op = findOp((p) => p === '/sitemap.xml');
-    expect(op).toBeDefined();
-    const ok = op!.responses?.['200'];
-    expect(ok).toBeDefined();
-    expect(ok!.content?.['application/xml']).toBeDefined();
-    expect(ok!.content?.['application/json']).toBeUndefined();
-    expect(Object.keys(op!.responses ?? {})).toEqual(expect.arrayContaining(['400', '404']));
+    assert.exists(op);
+    const ok = op.responses?.['200'];
+    assert.exists(ok);
+    expect(ok.content?.['application/xml']).toBeDefined();
+    expect(ok.content?.['application/json']).toBeUndefined();
+    expect(Object.keys(op.responses ?? {})).toEqual(expect.arrayContaining(['400', '404']));
   });
 
   it('the legacy /api/v1/sitemap.xml operation is deprecated and documents a 301', () => {
@@ -295,11 +295,11 @@ describe('OpenAPI coverage — non-JSON routes (Requirements 9.x)', () => {
           responses?: Record<string, { headers?: Record<string, unknown> }>;
         })
       | undefined;
-    expect(op).toBeDefined();
-    expect(op!.deprecated).toBe(true);
-    expect(op!.responses?.['301']).toBeDefined();
-    expect(op!.responses?.['301'].headers?.Location).toBeDefined();
-    expect(op!.responses?.['200']).toBeUndefined();
+    assert.exists(op);
+    expect(op.deprecated).toBe(true);
+    expect(op.responses?.['301']).toBeDefined();
+    expect(op.responses?.['301'].headers?.Location).toBeDefined();
+    expect(op.responses?.['200']).toBeUndefined();
   });
 
   it('qrcode 200 documents an image content type and is not a JSON envelope', () => {

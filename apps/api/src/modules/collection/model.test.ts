@@ -10,7 +10,7 @@ import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { collectionItems, collections, recipes, recipeVersions, users } from '@brewform/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, assert, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 async function createUser(prefix: string) {
@@ -62,6 +62,13 @@ async function createCollectionRow(
     })
     .returning();
   return col;
+}
+
+/** Loads a live collection's items through `findById`, failing the test when it is missing. */
+async function itemsOf(collectionId: string) {
+  const found = await model.findById(collectionId);
+  assert.exists(found);
+  return found.items;
 }
 
 async function cleanupCollections(collectionIds: string[]) {
@@ -121,13 +128,12 @@ describe('collection model — findById', () => {
 
   it('returns the collection with user and items relations', async () => {
     const found = await model.findById(col.id);
-    expect(found).toBeDefined();
-    expect(found!.id).toBe(col.id);
-    expect(found!.name).toBe('My Col');
-    expect(found!.user).toBeDefined();
-    expect(found!.user!.username).toBe(user.username);
-    expect(Array.isArray(found!.items)).toBe(true);
-    expect(found!.items.length).toBe(0);
+    assert.exists(found);
+    expect(found.id).toBe(col.id);
+    expect(found.name).toBe('My Col');
+    expect(found.user?.username).toBe(user.username);
+    expect(Array.isArray(found.items)).toBe(true);
+    expect(found.items.length).toBe(0);
   });
 
   it('returns undefined when the collection does not exist', async () => {
@@ -173,16 +179,17 @@ describe('collection model — deleted accounts (E11)', () => {
       .where(inArray(users.id, [owner.id, recipeAuthor.id]));
 
     const found = await model.findById(col.id);
-    expect(found!.id).toBe(col.id);
-    expect(found!.user).toBeNull();
-    expect(found!.items).toHaveLength(1);
-    expect(found!.items[0].recipe.id).toBe(recipe.id);
-    expect(found!.items[0].recipe.author).toBeNull();
+    assert.exists(found);
+    expect(found.id).toBe(col.id);
+    expect(found.user).toBeNull();
+    expect(found.items).toHaveLength(1);
+    expect(found.items[0].recipe.id).toBe(recipe.id);
+    expect(found.items[0].recipe.author).toBeNull();
 
     const publicList = await model.findAllPublic(1, 100);
     const listed = publicList.collections.find((c) => c.id === col.id);
-    expect(listed).toBeDefined();
-    expect(listed!.user).toBeNull();
+    assert.exists(listed);
+    expect(listed.user).toBeNull();
   });
 
   it('still joins a live owner on findAllPublic', async () => {
@@ -193,7 +200,8 @@ describe('collection model — deleted accounts (E11)', () => {
 
     const publicList = await model.findAllPublic(1, 100);
     const listed = publicList.collections.find((c) => c.id === col.id);
-    expect(listed!.user).toEqual({
+    assert.exists(listed);
+    expect(listed.user).toEqual({
       id: owner.id,
       username: owner.username,
       displayName: null,
@@ -555,7 +563,7 @@ describe('collection model — removeItem', () => {
     expect(deleted).toBeDefined();
     expect(deleted!.recipeId).toBe(r1.id);
     // verify gone
-    const items = (await model.findById(col.id))!.items;
+    const items = await itemsOf(col.id);
     expect(items.length).toBe(0);
   });
 
@@ -601,7 +609,7 @@ describe('collection model — reorderItems', () => {
     // reverse the order
     const reordered = [itemIds[2], itemIds[1], itemIds[0]];
     await model.reorderItems(col.id, reordered);
-    const items = (await model.findById(col.id))!.items;
+    const items = await itemsOf(col.id);
     expect(items.length).toBe(3);
     expect(items[0].id).toBe(itemIds[2]);
     expect(items[0].sortOrder).toBe(0);
@@ -613,7 +621,7 @@ describe('collection model — reorderItems', () => {
 
   it('gives trailing ids the sortOrder values after the ordered ids, keeping their order', async () => {
     await model.reorderItems(col.id, [itemIds[2]], [itemIds[0], itemIds[1]]);
-    const items = (await model.findById(col.id))!.items;
+    const items = await itemsOf(col.id);
     expect(items.map((i) => [i.id, i.sortOrder])).toEqual([
       [itemIds[2], 0],
       [itemIds[0], 1],

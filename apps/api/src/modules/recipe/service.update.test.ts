@@ -15,7 +15,7 @@ import {
 } from '@brewform/db/schema';
 import { RecipeCreateSchema, RecipeUpdateSchema } from '@brewform/shared/schemas';
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, assert, beforeEach, describe, expect, it } from 'vitest';
 import { ValidationError } from '../../utils/errors.ts';
 import * as service from './service.ts';
 import { RecipeWriteFixtures } from './test-helpers.ts';
@@ -327,8 +327,9 @@ describe('updateRecipe (integration)', () => {
         bumpVersion,
       });
 
-      expect(updated!.title).toBe('Renamed');
-      expect(updated!.versions).toHaveLength(bumpVersion ? 2 : 1);
+      assert.exists(updated);
+      expect(updated.title).toBe('Renamed');
+      expect(updated.versions).toHaveLength(bumpVersion ? 2 : 1);
       const current = currentOf(updated);
       expect(current.tasteNotes.map((tn) => tn.tasteNoteId).sort()).toEqual(
         [rich.t1, rich.t2].sort(),

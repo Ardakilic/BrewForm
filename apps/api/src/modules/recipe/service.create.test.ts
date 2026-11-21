@@ -15,7 +15,7 @@ import {
 } from '@brewform/db/schema';
 import { RecipeCreateSchema } from '@brewform/shared/schemas';
 import { eq, inArray } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, assert, beforeEach, describe, expect, it } from 'vitest';
 import { ValidationError } from '../../utils/errors.ts';
 import { evaluateBadges } from '../badge/service.ts';
 import * as service from './service.ts';
@@ -106,23 +106,23 @@ describe('createRecipe (integration)', () => {
     });
 
     const result = await service.createRecipe(userId, data);
-    expect(result).toBeDefined();
-    createdRecipeIds.push(result!.id);
+    assert.exists(result);
+    createdRecipeIds.push(result.id);
 
-    expect(result!.author!.id).toBe(userId);
-    expect(result!.versions.length).toBe(1);
-    expect(result!.versions[0].versionNumber).toBe(1);
-    expect(result!.currentVersionId).toBe(result!.versions[0].id);
-    expect(Array.isArray(result!.versions[0].tasteNotes)).toBe(true);
-    expect(result!.versions[0].tasteNotes.length).toBeGreaterThan(0);
-    expect(result!.versions[0].tasteNotes[0].tasteNote).toBeDefined();
-    expect(result!.versions[0].tasteNotes[0].tasteNote.id).toBe(tasteNoteId);
-    expect(Array.isArray(result!.versions[0].equipment)).toBe(true);
-    expect(result!.versions[0].equipment.length).toBeGreaterThan(0);
-    expect(result!.versions[0].equipment[0].equipment).toBeDefined();
-    expect(result!.versions[0].equipment[0].equipment.id).toBe(equipmentId);
-    expect(result!.forkedFrom).toBeNull();
-    expect(Array.isArray(result!.photos)).toBe(true);
+    expect(result.author?.id).toBe(userId);
+    expect(result.versions.length).toBe(1);
+    expect(result.versions[0].versionNumber).toBe(1);
+    expect(result.currentVersionId).toBe(result.versions[0].id);
+    expect(Array.isArray(result.versions[0].tasteNotes)).toBe(true);
+    expect(result.versions[0].tasteNotes.length).toBeGreaterThan(0);
+    expect(result.versions[0].tasteNotes[0].tasteNote).toBeDefined();
+    expect(result.versions[0].tasteNotes[0].tasteNote.id).toBe(tasteNoteId);
+    expect(Array.isArray(result.versions[0].equipment)).toBe(true);
+    expect(result.versions[0].equipment.length).toBeGreaterThan(0);
+    expect(result.versions[0].equipment[0].equipment).toBeDefined();
+    expect(result.versions[0].equipment[0].equipment.id).toBe(equipmentId);
+    expect(result.forkedFrom).toBeNull();
+    expect(Array.isArray(result.photos)).toBe(true);
   });
 
   it('sanitizes the title and generates a slug', async () => {
