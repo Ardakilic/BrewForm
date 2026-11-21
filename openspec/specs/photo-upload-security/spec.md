@@ -1,7 +1,14 @@
 # photo-upload-security Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Hardens recipe photo uploads end to end. The server generates random storage keys, detects image
+types from content, guards dimensions and decompression bombs, limits each part and the request
+body, and validates thumbnails before any write; storage drivers reject unsafe keys, never overwrite
+an object and set an explicit Content-Type, and no client input can alter a signed S3 request.
+Upload errors never leak internals, partial uploads are cleaned up, legacy uploads keep resolving,
+and security events are logged and regression-tested.
+
 ## Requirements
 ### Requirement: Server-generated random storage keys
 

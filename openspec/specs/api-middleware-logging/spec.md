@@ -1,7 +1,13 @@
 # api-middleware-logging Specification
 
 ## Purpose
-TBD - created by archiving change d26-expand-logging. Update Purpose after archive.
+
+Defines the structured logs every API middleware emits: authentication successes and failures, admin
+access decisions, the optional-auth paths and exceeded rate limits with their policy name.
+Middleware loggers follow the module naming convention, log the `err` object without token contents,
+and never change the response status or body, so access decisions leave an auditable trail without
+leaking credentials.
+
 ## Requirements
 ### Requirement: Auth middleware logs authentication failures
 

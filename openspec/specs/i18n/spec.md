@@ -1,7 +1,13 @@
 # i18n Specification
 
 ## Purpose
-TBD - created by archiving change wave-3-frontend-structure. Update Purpose after archive.
+
+Defines the web app's internationalisation contract: `en.json` and `tr.json` keep deterministic
+two-way key parity in a flat dotted-key format, and every user-visible string on pages, admin
+screens and shared components, including accessibility and SEO text, goes through `t()`. Dates and
+numbers follow the active locale, and a literal-attribute regression test stops new hard-coded
+strings.
+
 ## Requirements
 ### Requirement: Locale files maintain deterministic bidirectional key parity
 

@@ -1,7 +1,14 @@
 # chart-rendering Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines how the web app draws recipe charts (the SCAA radar, the brew timeline, duration axes,
+meters and star ratings) through one shared chart primitives module. Marks and labels stay inside
+the drawing area, charts scale responsively, values are sanitized and clamped, and durations use
+shared locale-aware formatters. Colours come from theme tokens that meet contrast minimums, ratings
+are accessible and keyboard operable, and the geometry is covered by regression tests and a visual
+check.
+
 ## Requirements
 ### Requirement: Shared chart primitives module
 

@@ -1,7 +1,11 @@
 # report-rate-limit Specification
 
 ## Purpose
-TBD - created by archiving change wave-1-correctness-security. Update Purpose after archive.
+
+Throttles report submissions: `POST /api/v1/reports` is protected by the `report-ip` and
+`report-user` rate-limit policies, so neither an anonymous flood nor a single account can spam
+moderators, while the admin report routes stay unthrottled. Tests cover both limiters.
+
 ## Requirements
 ### Requirement: Report submission route is rate-limited
 The `POST /api/v1/reports` route in `apps/api/src/modules/report/index.ts` SHALL be protected by two named rate-limit policies from `apps/api/src/utils/rate-limit/policies.ts`: `report-ip` (3 requests per 15 minutes per client IP) and `report-user` (3 requests per 15 minutes per authenticated user id).

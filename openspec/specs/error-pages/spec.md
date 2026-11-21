@@ -1,7 +1,12 @@
 # error-pages Specification
 
 ## Purpose
-TBD - created by archiving change wave-3-frontend-structure. Update Purpose after archive.
+
+Makes `ErrorPage.tsx` the single error-page module of the web app: the old `NotFoundPage` is gone,
+every error page renders `SEOHead` with `noIndex`, and the route `ErrorBoundary` shows the
+server-error page for 5xx route errors. All error copy uses the existing `error.*` i18n keys, and
+both components have Vitest coverage.
+
 ## Requirements
 ### Requirement: ErrorPage.tsx is the canonical error-page module
 

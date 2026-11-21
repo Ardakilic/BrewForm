@@ -1,7 +1,14 @@
 # api-rate-limiting Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines API rate limiting as named policies with isolated counters, kept in a store that is
+independent of the cache and atomic across requests and replicas. It covers resolving the client IP
+from the configured `TRUST_PROXY` boundary, per-IP and per-account login protection, throttling of
+the email-sending routes, safe degradation when the shared store is unavailable, and one 429
+contract that is documented in OpenAPI and explained in the user's language. Rate-limit keys and
+logs contain no raw personal data.
+
 ## Requirements
 ### Requirement: Client IP is resolved from a configured trust boundary
 The API SHALL derive the client IP used for rate limiting through a single helper `getClientIp(c)` (`apps/api/src/utils/client-ip/index.ts`) driven by the `TRUST_PROXY` configuration, and SHALL NEVER use a raw `X-Forwarded-For`, `X-Real-IP` or `CF-Connecting-IP` header string as a rate-limit key.

@@ -1,7 +1,14 @@
 # recipe-collections Specification
 
 ## Purpose
-TBD - created by archiving change f01-recipe-collections. Update Purpose after archive.
+
+Defines user recipe collections end to end: the tables and relations, shared input and output
+schemas, the model, service and route layers with OpenAPI metadata, and the web pages, components,
+profile tab, i18n keys and seed data. Collections follow the recipe visibility rules: items and
+counts show only recipes the viewer may list, cached reads re-check visibility, and a non-public
+recipe added to a shared collection stays hidden from other viewers. Logging, docblocks and tests
+are required throughout.
+
 ## Requirements
 ### Requirement: Database tables for collections and collection items
 

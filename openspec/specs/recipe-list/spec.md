@@ -1,7 +1,13 @@
 # recipe-list Specification
 
 ## Purpose
-TBD - created by archiving change d11-recipe-list-deduplication. Update Purpose after archive.
+
+Defines the shared recipe-list view behind the web recipe listings: one reusable component and
+`useRecipeFilters` hook, equipment, taste-note and coffee-variety filters with active-filter badges,
+and thin page wrappers. It also covers source-driven loading and pagination (cursor support on the
+feed, offset-only starred recipes), the canonical `RecipeCard` on the home page, page navigation,
+and debounced text filters that replace history.
+
 ## Requirements
 ### Requirement: Shared recipe-list view component
 

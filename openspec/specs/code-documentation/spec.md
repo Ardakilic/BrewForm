@@ -1,7 +1,12 @@
 # code-documentation Specification
 
 ## Purpose
-TBD - created by archiving change wave-5-debt-clearance. Update Purpose after archive.
+
+Requires a JSDoc docblock in the captured house style on every exported production symbol in the
+API, web, shared and db workspaces, including constants, types, schemas and module singletons.
+Enforcement is automated by `scripts/docblock-scan.ts`, which runs in `make docs-check` and in CI,
+so the code stays self-describing for people and agents alike.
+
 ## Requirements
 ### Requirement: Every exported production symbol carries a JSDoc docblock
 

@@ -1,7 +1,12 @@
 # web-api-boundary Specification
 
 ## Purpose
-TBD - created by archiving change wave-4-independent-fillers. Update Purpose after archive.
+
+Defines a typed boundary between the web app and the API. Web code uses the shared request and
+response types re-exported through the schemas barrel instead of `Record<string, unknown>` or ad-hoc
+casts, and the web app is type-checked in CI. Type-level regression tests and a guard stop new
+untyped casts from entering the boundary.
+
 ## Requirements
 ### Requirement: Web app is type-checked in CI
 The web app at `apps/web/src/` SHALL be type-checked in CI by the TypeScript compiler from the workspace catalog: the `apps/web/package.json` `check` script runs `tsc --noEmit -p tsconfig.json`, the root `check:web` script and the `Makefile` `check-web` target invoke it, and the root `check` script — run by the `quality` job of `.github/workflows/ci.yml` on every pull request — composes it. Linting is a separate gate (`biome check src/` via the `lint` script), and the `make check-web` help text SHALL describe the target as a type-check.

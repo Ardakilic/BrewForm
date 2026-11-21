@@ -1,7 +1,11 @@
 # unit-system-display Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines how measurements follow the user's unit-system preference. The preference flows through the
+authenticated user and is never read from `localStorage`, and every display reacts to a change
+without a reload.
+
 ## Requirements
 ### Requirement: Unit system display reflects the user preference
 The web app SHALL display recipe measurements (weight, volume, temperature) in the unit system from the authenticated user's preferences, and SHALL fall back to metric when no user is signed in, the user has no preferences record, or `unitSystem` is undefined.

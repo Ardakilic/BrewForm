@@ -1,7 +1,12 @@
 # request-body-limit Specification
 
 ## Purpose
-TBD - created by archiving change d24-add-request-body-limit. Update Purpose after archive.
+
+Caps API request bodies: the global body-limit middleware rejects bodies over 1 MB with 413
+`PAYLOAD_TOO_LARGE` in the standard error envelope, while the photo upload route is excluded and
+enforces its own cap. It also fixes where the limit sits in the middleware stack and lists the tests
+that cover it.
+
 ## Requirements
 ### Requirement: Global request body size limit
 

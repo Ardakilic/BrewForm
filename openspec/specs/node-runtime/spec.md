@@ -1,7 +1,13 @@
 # node-runtime Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines the runtime of the API and the repository tooling: Node 26 LTS pinned identically on every
+surface, TypeScript run directly from source with erasable syntax only, the Hono app on
+`@hono/node-server` behind an import guard, configuration from `process.env` validated by Zod, and
+background jobs in-process on node-cron. It also requires that no artefact of the removed runtime
+remains in code or configuration, and replaces the retired runtime capability.
+
 ## Requirements
 ### Requirement: Node 26 LTS is pinned consistently on every runtime surface
 The API, workspace scripts, CI jobs and container images SHALL run on Node 26 LTS, pinned consistently: `.nvmrc` contains `26`, the root `package.json` declares `engines.node` and `devEngines.runtime.version` as `^26.13.0`, every stage of `Dockerfile` and `Dockerfile.web` that runs Node uses the exact tag `node:26.13.0-trixie-slim` (never a floating `node:26` or `node:lts` tag), and every `actions/setup-node` step in `.github/workflows/*.yml` reads `node-version-file: '.nvmrc'` instead of a literal version.

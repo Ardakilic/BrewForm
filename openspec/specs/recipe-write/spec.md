@@ -1,7 +1,14 @@
 # recipe-write Specification
 
 ## Purpose
-TBD - created by archiving change d29-recipe-service-layering. Update Purpose after archive.
+
+Defines how recipes are created, updated and forked without data loss. Creation runs in one
+model-owned transaction, update payloads distinguish absent, null and empty values, edits amend the
+current version while bumps create a complete new version atomically, and updates are validated like
+creates, including referenced records and duplicate relation ids. Every write path persists TDS and
+coffee variety through one version column mapping and is logged without payloads; the PATCH route is
+gated and documented, the edit page saves honestly, and every data-loss path has a regression test.
+
 ## Requirements
 ### Requirement: Service layer does not import from drizzle-orm
 

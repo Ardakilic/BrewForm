@@ -1,7 +1,12 @@
 # local-dev-environment Specification
 
 ## Purpose
-TBD - created by archiving change d32-deploy-plan-deno29-sync. Update Purpose after archive.
+
+Defines the Docker-based local development environment that every `make` target runs in. Compose
+image references are version-pinned (the preview Caddy matches the production web image),
+dependencies live in a named `node_modules` volume inside the dev containers, and a test catches
+drift in the compose configuration.
+
 ## Requirements
 ### Requirement: Compose image references are version-pinned for reproducibility
 

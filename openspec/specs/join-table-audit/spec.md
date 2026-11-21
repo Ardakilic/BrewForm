@@ -1,7 +1,12 @@
 # join-table-audit Specification
 
 ## Purpose
-TBD - created by archiving change wave-4-independent-fillers. Update Purpose after archive.
+
+Gives the recipe join tables `recipe_taste_note`, `recipe_equipment` and `recipe_version_photo` a
+`createdAt` audit timestamp in the house style, added by migration 0008 with a `DEFAULT now()`
+backfill. The change adds no indexes and no API response fields, keeps the seed and fork paths
+working, and is verified by column-existence and insertion tests.
+
 ## Requirements
 ### Requirement: All recipe join tables carry a createdAt audit timestamp
 

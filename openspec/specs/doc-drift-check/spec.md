@@ -1,7 +1,14 @@
 # doc-drift-check Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines the dependency-free `scripts/doc-drift-check.ts` guard that keeps `AGENTS.md`, `docs/`,
+`plans/` and `openspec/specs` truthful. It rejects removed-tooling tokens, stale code idioms,
+archive placeholder Purposes, broken relative links and archived capabilities missing from the main
+specs, with a justified allowlist that reports its own stale entries. It runs locally through `make
+docs-check` and in the CI `doc-drift` job, next to the generated API reference check and the
+pull-request docs checklist.
+
 ## Requirements
 ### Requirement: A dependency-free doc-drift script guards docs and specs against removed tooling
 The repository SHALL provide `scripts/doc-drift-check.ts`, runnable with plain `node scripts/doc-drift-check.ts` (Node 26 type stripping, `node:` built-ins only, no install step) and through the root `pnpm run docs:check` script, that exits non-zero and prints `file:line: token` for every case-insensitive match of the removed-tooling pattern `(?<![A-Za-z])deno(?:kv|land)?(?![A-Za-z])|jsr:` in the documentation scope.

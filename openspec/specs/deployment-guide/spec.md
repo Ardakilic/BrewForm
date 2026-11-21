@@ -1,7 +1,14 @@
 # deployment-guide Specification
 
 ## Purpose
-TBD - created by archiving change d32-deploy-plan-deno29-sync. Update Purpose after archive.
+
+Keeps the self-hosted deployment guides (`docs/deployment_compose.md` and
+`docs/deployment_coolify.md`) consistent with the shipped images and tooling. The guides state the
+pinned Node and pnpm versions, the frozen install, the Caddy pin, how the API image applies
+migrations, the plain Node start command with in-process jobs, and Coolify's exact health-check and
+persistent upload settings. No guide tells an operator to run pnpm or drizzle-kit inside a
+production container.
+
 ## Requirements
 ### Requirement: Guide pins drizzle-kit consistently with the codebase
 The self-hosted deployment guides (`docs/deployment_compose.md` and `docs/deployment_coolify.md`) SHALL describe production migrations only as the API image applies them — the `migrate` entrypoint mode run by the compose `migrate` service (`make prod-up`, or `docker compose --env-file .env.production -f compose.production.yml run --rm migrate`), or `serve` mode on every container start in Coolify, both running the `@brewform/db` migration runner (`packages/db/src/migrate.ts`) with `node` — and SHALL mention drizzle-kit only for generating migrations in development, through the `@brewform/db` workspace scripts (`pnpm --filter @brewform/db run generate` or the root `pnpm run db:generate`) that resolve the single catalog pin in the `pnpm-workspace.yaml` `catalog:`, without stating a drizzle-kit version literal.

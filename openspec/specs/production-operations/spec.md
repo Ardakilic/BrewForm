@@ -1,7 +1,14 @@
 # production-operations Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines how BrewForm runs in production from one compose definition, `compose.production.yml`, with
+its own project name. It covers persistent data locations chosen by one variable each, health checks
+with dependency-ordered startup, separate liveness and readiness probes, restart, graceful stop, log
+rotation and memory limits, and migrations that run once per deploy before the API serves traffic.
+Automated database and upload backups, a restore, upgrade and rollback runbook, and upgrade notes
+that protect existing photos complete it.
+
 ## Requirements
 ### Requirement: One production deployment definition
 The repository SHALL ship exactly one self-hosted production definition, `compose.production.yml`, and `compose.yml` SHALL NOT define production-profile services.

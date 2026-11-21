@@ -1,7 +1,13 @@
 # dependency-management Specification
 
 ## Purpose
-TBD - created by archiving change d33-dependency-refresh. Update Purpose after archive.
+
+Defines how BrewForm's dependencies stay current and reproducible: manifest floors and the single
+pnpm lockfile reflect the latest compatible versions and install frozen, and the framework lines the
+code relies on are pinned (react-router v8, zod-openapi v6, the drizzle-kit 0.31 line). Deployment
+pins are decoupled from application-dependency refreshes, and Renovate plus a workspace test keep
+the catalog, Node and pnpm pins consistent.
+
 ## Requirements
 ### Requirement: Manifest floors and the lockfile reflect the latest compatible versions
 Workspace dependency `^` floors SHALL be kept current with the versions resolved in `pnpm-lock.yaml`: a member `package.json` SHALL NOT declare a `^` floor lower than the version the lockfile resolves for that dependency, and when dependencies are refreshed the floors, the `pnpm-workspace.yaml` `catalog:` pins and the lockfile SHALL be updated together (never the lockfile alone), so the manifests remain an accurate statement of the installed versions.

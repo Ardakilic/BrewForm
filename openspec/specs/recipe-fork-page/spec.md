@@ -1,7 +1,11 @@
 # recipe-fork-page Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines the web fork page at `/recipes/:id/fork` for signed-in users. It shows the source recipe's
+title, lets the user edit the fork title (at most 200 characters) and opens the new recipe's editor
+after submitting. The page is excluded from search indexing and logs its lifecycle and actions.
+
 ## Requirements
 ### Requirement: Fork page is served at /recipes/:id/fork for signed-in users
 The web router SHALL serve `RecipeForkPage` (lazy-loaded) at `/recipes/:id/fork`, wrapped in `RequireAuth`, so only authenticated users can reach it and anonymous visitors are redirected to `/login`.

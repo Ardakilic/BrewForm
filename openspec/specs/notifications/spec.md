@@ -1,7 +1,13 @@
 # notifications Specification
 
 ## Purpose
-TBD - created by archiving change f05-in-app-notifications. Update Purpose after archive.
+
+Defines notifications for follows, likes, comments and @mentions. One flat, channel-agnostic
+preference flag per type gates both the stored record and the email, mention and comment events are
+gated independently, and each event has an explicit fan-out rule, including the recipe-author skip
+rule for mention emails. The feed UI renders every type, and the notification routes keep their
+OpenAPI metadata current.
+
 ## Requirements
 ### Requirement: Flat channel-agnostic notification preferences
 

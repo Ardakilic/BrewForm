@@ -1,7 +1,14 @@
 # web-data-loading Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Makes React Router data APIs the single data-loading paradigm of the web app: route reads go through
+loaders that honour `request.signal`, component reads use fetchers against resource routes, and
+mutations go through actions that return result objects with scoped revalidation. It also covers
+auth-guarded redirects with a safe return path, loader error states inside the app shell, a
+cancellable API client with single-flight refresh, a single-flight static cache, and static guards
+that block new `useEffect` fetching and API access outside loaders, actions and resource routes.
+
 ## Requirements
 ### Requirement: React Router data APIs are the single web data-loading paradigm
 The web app SHALL load all server data through React Router data APIs: route `loader`s for data a route needs to render, route `action`s for mutations, and `useFetcher()` against resource routes for component-level reads and writes. No other data-fetching paradigm (component `useEffect` fetching, TanStack Query, SWR, or a custom query hook) SHALL be added or kept.

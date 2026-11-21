@@ -1,7 +1,13 @@
 # recipe-slug Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines how recipe slugs are generated and kept stable. A slug is the transliterated ASCII title
+plus a short random suffix, is never reserved or identifier-shaped when issued bare, and is unique
+across all recipe rows, including soft-deleted ones. Slugs are claimed inside the creation
+transaction without aborting it, so concurrent creates, forks and merges all succeed, exhausted
+candidates return 409 `SLUG_CONFLICT`, and legacy slugs and QR codes keep resolving.
+
 ## Requirements
 ### Requirement: Slug base is derived from the title with built-in ASCII transliteration
 

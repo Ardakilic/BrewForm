@@ -1,7 +1,12 @@
 # web-url-state Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Makes the URL the single source of truth for list navigation in the web app. Filter changes reset
+the page while page changes keep the filters, text inputs debounce and replace history, loaders and
+controls share one parser that produces canonical URLs, and paginated lists fetch only the requested
+page. Every list page adopts this contract.
+
 ## Requirements
 ### Requirement: The URL is the single source of truth for list navigation selections
 Every list or browse page SHALL keep all of its navigation selections (filters, sort, page, tab, and search query) in the URL search parameters and SHALL derive its rendered state from the URL, so that copying the URL reproduces the same view and browser Back/Forward steps through previous selections.

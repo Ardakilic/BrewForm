@@ -1,7 +1,13 @@
 # logging-test-coverage Specification
 
 ## Purpose
-TBD - created by archiving change d26-expand-logging. Update Purpose after archive.
+
+Requires tests that pin the logging contract: API service tests assert entry, exit and error logs
+through Vitest spies, middleware tests assert auth-failure and rate-limit logs, and web page tests
+assert mount and unmount logs with `vi.hoisted` logger mocks. The tests use Vitest's
+`describe`/`it`/`expect`, follow the existing patterns, keep every existing assertion and run
+without type-checking.
+
 ## Requirements
 ### Requirement: API service tests assert entry and exit logging at the expected level
 

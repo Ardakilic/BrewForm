@@ -1,7 +1,14 @@
 # recipe-personal-notes Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines caller-private recipe notes, stored per user and recipe and separate from the author's
+public brewer notes. A caller can read, create, replace and delete only their own note through
+`/recipes/:id/notes`, the legacy notes `POST` is gone, brewer notes change only through the recipe
+write flow, and private notes never leak to other surfaces and are removed with the account. The
+recipe detail page separates the two kinds of notes with honest, localized labels, and the endpoints
+are documented, logged and tested.
+
 ## Requirements
 ### Requirement: Private recipe notes are stored per user and recipe
 The system SHALL store each user's private notes on a recipe in a dedicated `user_recipe_note` table keyed by `(user_id, recipe_id)`, separate from the author's public `recipe_version.personal_notes` column.

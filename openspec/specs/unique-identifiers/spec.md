@@ -1,7 +1,14 @@
 # unique-identifiers Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines identifier uniqueness for accounts and their records. Emails are normalized before
+validation, storage and lookup, email and username uniqueness and lookups are case-insensitive at
+the database level, identifiers of soft-deleted accounts stay reserved with conflicts mapped to 409,
+and reserved usernames are refused at self-registration. It also allows one active default setup per
+user, lets join rows be re-created after removal, and requires existing conflicts to be found and
+remediated before stricter constraints apply.
+
 ## Requirements
 ### Requirement: Email addresses are normalized before validation, storage and lookup
 

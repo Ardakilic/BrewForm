@@ -1,7 +1,14 @@
 # container-deployment Specification
 
 ## Purpose
-TBD - created by archiving change d30-coolify-ghcr-deployment. Update Purpose after archive.
+
+Defines the two production container images. The API image is a multi-stage Node 26 build that runs
+as a non-root user with a built-in health check, and its entrypoint either applies migrations and
+serves (`serve`) or applies migrations and exits (`migrate`). The web image serves the SPA with
+Caddy, applies the public app URL at runtime and, when an API upstream is configured,
+reverse-proxies the API paths as a same-origin edge. Neither image bakes in secrets, and both
+entrypoints log in structured form.
+
 ## Requirements
 ### Requirement: API Docker image with migrate-on-start entrypoint
 The system SHALL provide a multi-stage `Dockerfile` whose `runner` stage is based on the pinned `node:26.13.0-trixie-slim` image and contains only what the API needs at runtime, with `/app/docker-entrypoint.sh` as its entrypoint script.

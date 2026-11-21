@@ -1,7 +1,11 @@
 # text-sanitization Specification
 
 ## Purpose
-TBD - created by archiving change wave-1-correctness-security. Update Purpose after archive.
+
+Requires dedicated unit tests for the `sanitizeText` and `sanitizeName` security helpers in
+`apps/api/src/utils/sanitize.ts`, covering both dangerous and benign input. The tests follow the
+pure-utility conventions, so a regression in this control fails CI instead of shipping silently.
+
 ## Requirements
 ### Requirement: sanitizeText has dedicated unit-test coverage
 

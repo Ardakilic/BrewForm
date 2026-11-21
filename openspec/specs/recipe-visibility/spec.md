@@ -1,7 +1,13 @@
 # recipe-visibility Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Gives each visibility value one meaning for recipes and collections, decided by a single shared
+listing condition and predicate pair. Discovery surfaces list only public recipes, unlisted recipes
+stay usable through their direct link, fork attribution never reveals a recipe the viewer could not
+list, and non-public pages and responses are never indexed. An enforcement test keeps every recipe
+listing on the shared condition, and every surface has failing-first regression tests.
+
 ## Requirements
 ### Requirement: Visibility values have one meaning for recipes and collections
 

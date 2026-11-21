@@ -1,7 +1,12 @@
 # cursor-pagination Specification
 
 ## Purpose
-TBD - created by archiving change d27-cursor-pagination. Update Purpose after archive.
+
+Defines opaque cursor pagination for recipe lists next to the existing page/offset mode. Cursors are
+direction-agnostic, cursor and page parameters are mutually exclusive, an invalid cursor answers
+400, and authorization and visibility rules apply identically in both modes. The response envelope
+tells the two modes apart, and the list routes document both in OpenAPI.
+
 ## Requirements
 ### Requirement: Cursor encode and decode
 

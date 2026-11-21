@@ -1,7 +1,12 @@
 # recipe-comparison Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines the recipe compare-and-merge flow. A shared Zod schema describes merge payloads, `POST
+/api/v1/recipes/merge` merges two versions the caller may view into a new draft, and the web compare
+page shows a side-by-side diff with a per-field merge selector. Its strings exist in both locales,
+diff colours are themeable, logs carry ids only, and the behaviour has regression tests.
+
 ## Requirements
 ### Requirement: Shared Zod schema for merge payloads
 `packages/shared/src/schemas/recipe.ts` SHALL export `RecipeMergeSchema` and its inferred type `RecipeMerge` (re-exported from `packages/shared/src/schemas/index.ts`) describing a merge request as `recipeVersionId1` and `recipeVersionId2` (`z.uuid()`), `title` (`z.string().min(1).max(200)`) and a `selections` object defaulting to `{}` in which every scalar field (`brewMethod`, `drinkType`, `grindSize`, `groundWeightGrams`, `extractionTimeSeconds`, `extractionVolumeMl`, `temperatureCelsius`, `brewerDetails`, `grinder`, `preparationNotes`, `personalNotes`) is an optional `z.enum(['v1', 'v2'])` and every list field (`tasteNotes`, `equipment`, `additionalPreparations`) is an optional `z.enum(['v1', 'v2', 'both', 'none'])`.

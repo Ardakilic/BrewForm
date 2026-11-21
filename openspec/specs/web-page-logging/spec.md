@@ -1,7 +1,12 @@
 # web-page-logging Specification
 
 ## Purpose
-TBD - created by archiving change d26-expand-logging. Update Purpose after archive.
+
+Defines logging in web pages and app-level components: mount and unmount debug logs on every page,
+error logs for failed async work and form submissions, auth context state changes (including banned
+users and registration failures), and error-boundary render errors. Page data-loading failures are
+logged in loaders, actions and resource routes, and page loggers follow the naming convention.
+
 ## Requirements
 ### Requirement: Web page components log mount and unmount lifecycle
 

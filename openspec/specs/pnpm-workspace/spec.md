@@ -1,7 +1,13 @@
 # pnpm-workspace Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines the pnpm monorepo: the `apps/*` and `packages/*` workspace with a shared version catalog, an
+exactly pinned pnpm with frozen installs, and structural settings kept in `pnpm-workspace.yaml`.
+Scripts are orchestrated with pnpm filters and wrapped in Docker by the Makefile, with Biome,
+TypeScript and Vitest as the lint, format, type-check and test toolchain. It replaces the retired
+workspace-management capability.
+
 ## Requirements
 ### Requirement: pnpm workspace layout with a shared catalog
 The repository SHALL be a pnpm workspace declared in `pnpm-workspace.yaml` with `packages: ['apps/*', 'packages/*']` and exactly four members named `@brewform/api`, `@brewform/web`, `@brewform/shared` and `@brewform/db`, which reference each other with `workspace:*`; shared third-party versions SHALL be pinned once in the `catalog:` block of `pnpm-workspace.yaml` (today `drizzle-orm`, `bcryptjs`, `zod`, `vite`, `vitest`, `drizzle-kit`, `typescript`).

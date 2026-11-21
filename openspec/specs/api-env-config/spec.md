@@ -1,7 +1,12 @@
 # api-env-config Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines how the API reads and validates its environment in `apps/api/src/config/env.ts`. Empty
+values count as unset, ports and sizes are range-checked, the upload directory resolves to one
+absolute, write-verified path, and the storage configuration is checked and logged at startup.
+Validation errors name the variable but never print its value.
+
 ## Requirements
 ### Requirement: Empty environment values are treated as unset
 The API environment loader (`apps/api/src/config/env.ts`) SHALL treat every variable whose value is an empty or whitespace-only string exactly as if the variable were not set, before any validation, coercion or defaulting runs.

@@ -1,7 +1,13 @@
 # ci-image-publishing Specification
 
 ## Purpose
-TBD - created by archiving change d30-coolify-ghcr-deployment. Update Purpose after archive.
+
+Defines the single CI workflow (`.github/workflows/ci.yml`) that checks pull requests and `main` and
+publishes the API and web images to GHCR. Pull requests build and smoke-test both images without
+publishing; on `main`, images are published only after every CI job succeeds, with least-privilege
+permissions and superseded runs cancelled. It also covers the web build arguments taken from
+repository secrets with fallback defaults, and anonymous pull access to the published images.
+
 ## Requirements
 ### Requirement: Web image build-args are injected from secrets with fallback defaults
 On `push` events the CI `images` job SHALL pass `VITE_API_URL` and `VITE_PUBLIC_APP_URL` as build args when it builds `Dockerfile.web`, sourced from the repository secrets of the same names with the fallbacks `/api/v1` and `http://localhost:8080`, so a run without secrets still succeeds; the `publish` job SHALL NOT build images at all.

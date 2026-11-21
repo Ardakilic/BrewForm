@@ -1,7 +1,11 @@
 # recipe-drink-type-sync Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Keeps the recipe drink type defined in one place. `DrinkType` is derived from the single drink-type
+source, API filters and shared validators are typed with it, and the web app casts to it only at
+untyped boundaries.
+
 ## Requirements
 ### Requirement: DrinkType is derived from the single drink-type source
 The shared `DrinkType` type (`packages/shared/src/types/recipe.ts`) SHALL be an alias of `DrinkTypeValue`, which is derived from the `DRINK_TYPES` constant in `packages/shared/src/constants/drink-types.ts`, so the TypeScript union, the `DRINK_TYPE_VALUES` tuple, the Zod `DrinkTypeEnum` and the database `drink_type` enum always list the same values (15 today, including `aeropress`).

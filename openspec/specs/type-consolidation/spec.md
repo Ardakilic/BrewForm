@@ -1,7 +1,11 @@
 # type-consolidation Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Keeps one definition of the authenticated user type. The canonical shared `User` type includes
+`emailVerifiedAt`, the web `AuthUser` type is defined once in the shared package, and the web app
+declares no duplicates of it.
+
 ## Requirements
 ### Requirement: Canonical User type includes emailVerifiedAt
 The `User` interface in `@brewform/shared/types` (`packages/shared/src/types/user.ts`) SHALL include `emailVerifiedAt: Date | null`, and server-side types derived from it (such as `AuthUser extends Omit<User, 'preferences'>` in the auth service) SHALL inherit the field instead of redeclaring it.

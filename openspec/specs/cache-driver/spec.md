@@ -1,7 +1,13 @@
 # cache-driver Specification
 
 ## Purpose
-TBD - created by archiving change wave-6-audit-remediation. Update Purpose after archive.
+
+Defines the API cache backend selected by `CACHE_DRIVER`: a bounded in-memory LRU cache, or a
+namespaced Redis-protocol (Valkey) provider whose connections fail fast. Cache failures degrade to
+cache misses, invalidations dropped during an outage are reconciled on recovery, readiness reports
+cache and rate-limit store health without failing, and flush tooling stays inside the cache
+namespace. It replaces the retired `remote-cache` capability.
+
 ## Requirements
 ### Requirement: Cache driver is selected by validated environment configuration
 The API SHALL select its `CacheProvider` once at startup from `CACHE_ENABLED`, `CACHE_DRIVER` and `REDIS_URL`, validated by the Zod schema in `apps/api/src/config/env.ts`, and SHALL install it through `setCacheProvider()` before the HTTP server binds.
