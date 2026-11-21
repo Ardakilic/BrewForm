@@ -1,4 +1,58 @@
-# F15 — Content Moderation Queue
+# F15 — Content Moderation Queue (split into F15a and F15b)
+
+> **Split (2026-11-21): F15a ships the user-facing report flow and an admin reports page over the
+> existing endpoints; F15b adds auto-flagging. F15a does not depend on F15b.**
+>
+> **F15a — Report button/dialog + admin reports page** (no schema change, no new report endpoint).
+> This is the user-facing moderation UI follow-up recorded in the wave-6 debt ledger.
+>
+> - Today there is NO web UI for reports at all: no report button anywhere, no `reportApi` in
+>   `apps/web/src/api/index.ts`, no admin reports page in `apps/web/src/pages/admin/` and no
+>   reports link in `AdminLayout`. The backend is complete for a first version:
+>   - users: `POST /api/v1/reports` (`apps/api/src/modules/report/index.ts`, `ReportCreateSchema`
+>     in `packages/shared/src/schemas/report.ts`: exactly one of `recipeId`/`commentId`, `type`
+>     `spam|harassment|inappropriate|other`, `reason` 1–2000 chars), rate-limited by the named
+>     policies `reportIp`/`reportUser` (3 per 15 min, `apps/api/src/utils/rate-limit/policies.ts`);
+>   - admins: `GET /api/v1/admin/reports` (`ReportFilterSchema` + `entityType`),
+>     `PATCH /api/v1/admin/reports/:id/resolve` and `/dismiss` (`apps/api/src/modules/admin/index.ts`),
+>     each writing an audit-log entry; `GET /admin/stats` already returns `pendingReports` for the
+>     nav badge (US-15.7).
+> - F15a scope:
+>   1. A `ReportDialog` (type select + reason) opened from a "Report" button on the recipe detail
+>      page and on each comment in `apps/web/src/components/recipe/CommentSection.tsx`, shown to
+>      signed-in users who are not the author; it submits through a resource-route action
+>      (web data-loading rule: components never import `api/index.ts`) and maps 429 with
+>      `t('error.rateLimited')`. User reports are out of F15a, because `ReportCreateSchema` only
+>      accepts recipes and comments; widening it is an F15a follow-up.
+>   2. `/admin/reports` (`AdminReportsPage` + `.data.ts` loader, lazy child under `/admin`) listing
+>      reports with status/entity-type filters, `PaginationControls`, a link to the reported
+>      recipe or comment, and Resolve/Dismiss actions through a route action; an `AdminLayout` nav
+>      link with the pending count. Moderation actions on the content itself use the existing
+>      admin pages (recipe soft delete, ban dialog) — no one-step resolve-with-action in F15a.
+>   3. `describeRoute()` metadata for the three admin report routes (they have none today; they
+>      are part of the admin OpenAPI coverage gap in the debt ledger), every string in `en.json`
+>      and `tr.json`, page mount/unmount logs.
+> - Optional F15a extension if the bare entity link proves too thin: the context-enriched list
+>   (reporter + recipe title/comment excerpt) as a NEW additive output schema, built in
+>   `admin/model.ts` (see the 2026-08-13 corrections below).
+>
+> **F15b — Auto-flagging** (after F15a; the queue UI is F15a's page).
+>
+> - `checkContentForAutoFlags` (profanity list, rapid-fire comments, new-user recipe spam) wired
+>   fire-and-forget beside `evaluateBadges` in `createRecipe`/`createComment`, with its queries in
+>   `admin/model.ts` (never `db` in a service) and entry/exit debug logs.
+> - Open design points F15b must settle first: which reporter an automatic report records
+>   (`reports.reporterId` is a NOT NULL FK; there is no system user — seed one or make the column
+>   nullable with an `autoFlag` reason prefix), whether `escalated` joins `REPORT_STATUS_VALUES`
+>   (enum migration via `packages/db/src/schema.ts` + `make db-generate`), and the
+>   resolve-with-action endpoint (`moderateReport`, not a redefined `resolveReport`).
+> - US-15.4/15.5 and the auto-flag acceptance criteria below belong to F15b; US-15.1/15.2/15.3
+>   (resolve/dismiss only)/15.6/15.7 belong to F15a.
+>
+> **Superseded by wave 6:** the 2026-08-13 "Frontend reality" bullet below (admin pages fetch via
+> `useEffect` + `api.get`) is stale — every admin page now loads through a `*.data.ts` route
+> loader and mutates through actions/fetchers, enforced by `data-loading.enforcement.test.ts`.
+> Follow that pattern.
 
 > **Validation status (2026-08-13): refreshed — corrections below**
 >
@@ -40,15 +94,16 @@ Enhance the existing report module with a dedicated moderation dashboard queue, 
 
 ## User Stories
 
-| ID | Story | Priority |
-|----|-------|----------|
-| US-15.1 | As an admin, I see a moderation queue with pending reports | P0 |
-| US-15.2 | As an admin, I can view the flagged content context before deciding | P0 |
-| US-15.3 | As an admin, I can approve (resolve), dismiss, or escalate a report | P0 |
-| US-15.4 | As an admin, new recipes/comments are auto-flagged for profanity | P1 |
-| US-15.5 | As an admin, rapid-fire comments (>10 in 5 min) are auto-flagged | P1 |
-| US-15.6 | As an admin, all moderation actions are logged in the audit trail | P1 |
-| US-15.7 | As an admin, I see report count badges on the moderation nav item | P2 |
+| ID | Story | Priority | Phase |
+|----|-------|----------|-------|
+| US-15.0 | As a signed-in user, I can report a recipe or a comment with a type and a reason | P0 | F15a |
+| US-15.1 | As an admin, I see a moderation queue with pending reports | P0 | F15a |
+| US-15.2 | As an admin, I can view the flagged content context before deciding | P0 | F15a (link; enriched context optional) |
+| US-15.3 | As an admin, I can approve (resolve), dismiss, or escalate a report | P0 | F15a resolve/dismiss; escalate F15b |
+| US-15.4 | As an admin, new recipes/comments are auto-flagged for profanity | P1 | F15b |
+| US-15.5 | As an admin, rapid-fire comments (>10 in 5 min) are auto-flagged | P1 | F15b |
+| US-15.6 | As an admin, all moderation actions are logged in the audit trail | P1 | F15a (already true for resolve/dismiss) |
+| US-15.7 | As an admin, I see report count badges on the moderation nav item | P2 | F15a |
 
 ## Technical Design
 
@@ -540,6 +595,8 @@ export function ModerationCard({ report, onDismiss, onResolve, onEscalate }: Mod
 
 ## API Endpoints
 
+**F15a** adds no endpoint: it uses `POST /api/v1/reports`, `GET /api/v1/admin/reports`, `PATCH /api/v1/admin/reports/:id/resolve` and `PATCH /api/v1/admin/reports/:id/dismiss` as they exist. The table below is the pre-split draft; only what F15b adopts (an enriched queue, resolve-with-action, escalate) is built, and then under `/api/v1/admin/reports/*` beside the existing routes rather than a parallel `/moderation/*` tree.
+
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/v1/admin/moderation/queue` | Get moderation queue |
@@ -591,35 +648,43 @@ GET /api/v1/admin/moderation/queue?status=pending&page=1&perPage=20
 
 ## Acceptance Criteria
 
-- [ ] Moderation queue accessible at `/admin/moderation`
-- [ ] Queue shows pending reports with context preview
-- [ ] Status filter switches between pending/all/resolved/dismissed/escalated
-- [ ] Dismiss action resolves report without content action
-- [ ] Resolve action with "remove_content" deletes the flagged content
-- [ ] Resolve action with "ban_user" bans the content author
-- [ ] Escalate action marks report as escalated
-- [ ] All actions logged in audit log
+**F15a**
+
+- [ ] Signed-in non-authors see a "Report" button on recipe detail pages and on comments; the dialog submits `POST /api/v1/reports` through a resource-route action and shows the 429 message
+- [ ] Admin reports page accessible at `/admin/reports`, loaded by a route loader, with an `AdminLayout` nav link and pending-count badge
+- [ ] Status filter switches between pending/reviewed/resolved/dismissed (the real `REPORT_STATUS_VALUES`) and entity type
+- [ ] Each row links to the reported recipe or comment
+- [ ] Resolve and Dismiss call the existing admin endpoints and are logged in the audit log
+- [ ] The three admin report routes carry `describeRoute()` metadata
+- [ ] Every new string in `en.json` and `tr.json`
+- [ ] `make check`, `make lint`, `make test-web` and `make test-api` pass
+
+**F15b**
+
 - [ ] Auto-flagging detects profanity in new recipes/comments
 - [ ] Auto-flagging detects rapid-fire comments (>10 in 5 min)
 - [ ] Auto-flagging detects new user spam (3+ recipes in 24h)
-- [ ] Auto-flagged content appears in moderation queue
-- [ ] Context preview shows flagged content details
-- [ ] `make check` passes
-- [ ] `make lint` passes
+- [ ] Auto-flagged content appears in the F15a reports page
+- [ ] If adopted: escalate marks a report as `escalated` (enum value added through `schema.ts` + `make db-generate`), and resolve-with-action (`remove_content`, `ban_user`) acts on the content and logs to the audit log
+- [ ] `make check` and `make lint` pass
 
 ## Implementation Steps
 
-1. **Add `checkContentForAutoFlags()`** to `apps/api/src/modules/admin/service.ts`
-2. **Add `getModerationQueue()` and context functions** to `apps/api/src/modules/admin/model.ts`
-3. **Add `dismissReport()`, `resolveReport()`, `escalateReport()`** to admin service
-4. **Add moderation routes** to `apps/api/src/modules/admin/index.ts`
-5. **Hook auto-flagging** into recipe creation and comment creation
-6. **Create `ModerationQueuePage`** in admin pages
-7. **Create `ModerationCard`** component
-8. **Add route** `/admin/moderation` to router
-9. **Add API types** for moderation responses
-10. **Add tests** for auto-flagging logic and moderation actions
-11. **Run `make check && make lint && make test`**
+**F15a**
+
+1. **Add `describeRoute()`** to `GET /admin/reports`, `PATCH /admin/reports/:id/resolve` and `/dismiss`
+2. **Add `reportApi.create` and admin report calls** to `apps/web/src/api/index.ts`, plus a resource route for the report action
+3. **Create `ReportDialog`** and wire the "Report" button into the recipe detail page and `CommentSection`
+4. **Create `AdminReportsPage`** (`.tsx` + `.data.ts` loader + action) and add the lazy `/admin/reports` route and `AdminLayout` nav link with the pending badge
+5. **Add i18n keys** to `en.json` and `tr.json`
+6. **Add tests** (dialog, page loader/action, route metadata) and run `make check && make lint && make test-web && make test-api`
+
+**F15b**
+
+1. **Add the auto-flag queries** to `apps/api/src/modules/admin/model.ts` and `checkContentForAutoFlags()` to the admin service
+2. **Settle the reporter for automatic reports** (system user or nullable reporter) and, if adopted, the `escalated` status and `moderateReport()`
+3. **Hook auto-flagging** fire-and-forget into recipe creation and comment creation
+4. **Add tests** for the auto-flagging rules and run `make check && make lint && make test-api`
 
 ## Dependencies
 
@@ -630,8 +695,8 @@ GET /api/v1/admin/moderation/queue?status=pending&page=1&perPage=20
 
 ## References
 
-- [Drizzle ORM docs](/drizzle-team/drizzle-orm-docs) — updates, inserts
+- [Drizzle ORM docs](https://orm.drizzle.team/docs) (Context7 id `/drizzle-team/drizzle-orm-docs`) — updates, inserts
 - Existing: `apps/api/src/modules/admin/service.ts` — admin service pattern
 - Existing: `apps/api/src/modules/admin/index.ts` — admin routes pattern
 - Existing: `apps/api/src/modules/report/index.ts` — existing report routes
-- Existing: `packages/db/src/schema.ts:740` — `reports` table
+- Existing: `packages/db/src/schema.ts` `reports` table (`report`, :1063)

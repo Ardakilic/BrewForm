@@ -1,5 +1,7 @@
 # F27 — Equipment Reviews & Ratings
 
+> **Refresh (2026-11-21, wave 6):** tests are Vitest (`describe`/`it`/`expect` from `vitest`) run with `make test-api` / `make test-web` (single file: `make test-specific filter=src/modules/equipment/service.test.ts`); the test plan below is updated. `EquipmentDetailPage` already loads through a route loader since wave 6 (`apps/web/src/pages/equipment/EquipmentDetailPage.data.ts`), so the "loader conversion" below becomes "extend the existing loader with the review summary", and the review form submits through a route action or a keyed fetcher (web data-loading rules, ADR-018), not a direct client call.
+>
 > **Validation status (2026-07-13): ✅ Valid**
 >
 > - Verified against current code with only minor line-number drift. `equipment` has no rating/review columns (`packages/db/src/schema.ts:357-384`, cited 350-377). `recipeEquipment` references `recipe_version` and now carries a `createdAt` from D43 (`schema.ts:265-285`, cited 262-280). `userRecipeRatings` pattern (`unique(userId, recipeId)` + `check rating BETWEEN 1 AND 10`) confirmed (`schema.ts:662-678`, cited 655-671).
@@ -126,9 +128,9 @@ export const loader = async ({ params }: LoaderFunctionArgs) => {
 
 ## Test plan
 
-- `apps/api/src/modules/equipment/service.test.ts` (extend, `@std/testing/bdd` + `@std/expect`): upsert creates then updates (unique key respected); rating 0/11 rejected by schema; soft-deleted review excluded from aggregates; usage count only counts public, non-deleted recipes; not-found equipment → `EQUIPMENT_NOT_FOUND`.
+- `apps/api/src/modules/equipment/service.test.ts` (extend; Vitest `describe`/`it`/`expect` from `vitest`, DB-backed against `brewform_test`): upsert creates then updates (unique key respected); rating 0/11 rejected by schema; soft-deleted review excluded from aggregates; usage count only counts public, non-deleted recipes; not-found equipment → `EQUIPMENT_NOT_FOUND`.
 - `apps/api/src/modules/equipment/index.test.ts`: PUT without auth → 401; envelope shape for GET reviews incl. pagination meta.
-- Web colocated tests: `EquipmentReviewForm.test.tsx` (validation, submit), `EquipmentRatingSummary.test.tsx` (empty state), loader test for `EquipmentDetailPage`.
+- Web colocated tests (Vitest + Testing Library, `make test-web`): `EquipmentReviewForm.test.tsx` (validation, submit), `EquipmentRatingSummary.test.tsx` (empty state), and an extended `EquipmentDetailPage.test.tsx` for the loader's review summary.
 
 ## Acceptance criteria
 
@@ -139,7 +141,7 @@ export const loader = async ({ params }: LoaderFunctionArgs) => {
 - [ ] Soft-deleted reviews excluded everywhere (`isNull(deletedAt)`)
 - [ ] Detail page uses a react-router loader + `useLoaderData`
 - [ ] en + tr i18n keys present
-- [ ] `make check && make lint && make test` pass
+- [ ] `make check && make lint && make test-api && make test-web` pass
 
 ## Effort
 

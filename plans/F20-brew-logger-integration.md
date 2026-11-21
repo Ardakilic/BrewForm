@@ -1,10 +1,30 @@
 # F20 — Brew Logger App Integration
 
-> **Validation status (2026-07-13): ❌ Invalid — blocked on F02**
+> **Refresh (2026-11-21): unblocked by F02 (shipped 2026-08-13) — re-validate the body against the module below before speccing**
 >
-> - Still blocked: no `brewLogs` table in `packages/db/src/schema.ts` and no `brew-log` module among the API modules (`apps/api/src/modules/` has bean, recipe, equipment, notification, … but no brew-log). Every `model.*` / `service.*` call here targets code that does not exist.
-> - Client calls are also stale under D42: `client.post(url, formData, { headers })`, `client.get(url, { params })`, and `response.data` are axios-isms. Use `api.upload(...)` for import and `api.get`/`api.getWithMeta` for export — but note the JSON-unwrapping client (`apps/web/src/api/client.ts`) cannot return a raw CSV body, so CSV export needs a bespoke `fetch`.
-> - Re-validate after F02 lands.
+> - The target exists. The `brewLogs` table (`brew_log`, `packages/db/src/schema.ts:1166`:
+>   `userId`, `recipeId` NOT NULL, nullable `recipeVersionId`, `brewedAt`, `yieldActual`,
+>   `doseActual`, `notes`, `personalRating` 1–10 with CHECK constraints, soft delete) and the
+>   `apps/api/src/modules/brew-log/` module are live under `/api/v1/brew-logs`
+>   (`apps/api/src/routes/index.ts:60`): list, `GET /recipe/:recipeId`, `GET /:id`, `POST /`,
+>   `PATCH /:id`, `DELETE /:id`, the caller's stats `GET /stats/user`
+>   (`service.getUserBrewStats`, `brew-log/service.ts:177`) and the public
+>   `GET /stats/recipe/:recipeId` (`brew-log/index.ts:130-132`).
+> - Map imports onto what the module really has: the model exports `findByUserId(userId, page,
+>   perPage)` (paged — export must page through or add a bounded export query, not ask for 10,000
+>   rows), `create`, `update`, `softDelete`; validation is `BrewLogCreateSchema`
+>   (`packages/shared/src/schemas/brew-log.ts`), so every imported row needs a resolvable BrewForm
+>   `recipeId` (unmatched external entries stay in the preview as warnings, US-6). Imports run as
+>   one bounded batch per request, register the new routes BEFORE `GET /:id`, carry
+>   `describeRoute()` metadata (CSV export documents `text/csv`) and add an upload body cap like
+>   the photo route's.
+> - Web: the client now has `api.upload(...)` for multipart and `api.getText(...)` for a raw body
+>   (`apps/web/src/api/client.ts`), so CSV export no longer needs a bespoke `fetch`. The axios-isms
+>   below (`client.post(url, formData, { headers })`, `client.get(url, { params })`,
+>   `response.data`) are stale. Import/export go through an action on the existing
+>   `apps/web/src/routes/resources/brew-logs.ts` resource route (web data-loading rule:
+>   components never import `api/index.ts`), and the UI lives beside `BrewLogListPage`
+>   (`apps/web/src/pages/brew-logs/`).
 
 ## Overview
 
@@ -33,7 +53,7 @@ Import and export brew logs from popular brew logging apps (Beanconqueror, Artis
 
 ### No New Tables
 
-This feature uses the existing `brewLogs` table (defined in F02). No schema changes required.
+This feature uses the existing `brewLogs` table (shipped with F02, `packages/db/src/schema.ts:1166`). No schema changes required.
 
 ### Import Adapters
 
@@ -371,7 +391,7 @@ export async function exportBrewLogs(format: 'csv' | 'json') {
 
 ## Dependencies
 
-- Existing `brewLogs` table (from F02)
+- Existing `brewLogs` table and `brew-log` module (shipped with F02, `/api/v1/brew-logs`)
 - Existing `authMiddleware`
 - Existing response helpers
 - Existing `BrewLogCreateSchema` in shared schemas

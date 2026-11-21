@@ -1,12 +1,14 @@
 # F07 — Batch / Scale Recipe Calculator
 
+> **Refresh (2026-11-21, wave 6):** the repo runs on Node 26 + pnpm with Vitest (#135). The test notes in both banners and the body's test snippet now use Vitest (`describe`/`it`/`expect` from `vitest`), and the commands are `make test-shared` / `make test-web` (or `pnpm --filter @brewform/shared exec vitest run src/utils/metrics.test.ts`). Design unchanged.
+>
 > **Validation status (2026-08-13): refreshed — corrections below**
 >
 > **Note:** The body below this line is the pre-refresh draft (including the older 2026-07-13 banner, whose corrections all still hold); treat the corrections below as authoritative. Design is still valid: pure client-side, no tables, no endpoints, and NO part of it has shipped — no `BatchCalculator` or `scaleRecipe` exists anywhere in the codebase, and no active OpenSpec change covers it (`openspec/changes/` holds only `archive/`). No scope overlap with F01/F04/F05/F08/F09/F11 or debts D21/D42.
 >
 > - Core dependencies re-verified current: `useUnitSystem` (apps/web/src/hooks/useUnitSystem.ts:20), `formatWeight`/`formatVolume`/`formatTemperature` (packages/shared/src/utils/conversion.ts:34/42/50), `computeBrewRatio` (packages/shared/src/utils/metrics.ts:2), `convertGramsToOunces`/`convertOuncesToGrams`/`convertMlToFlOz`/`convertFlOzToMl` (conversion.ts:4/9/14/19). `scaleRecipe`/`suggestGrindAdjustment`/`scaleExtractionTime` remain net-new.
 > - Barrel still required: new functions must be added to the metrics export block in `packages/shared/src/utils/index.ts` (currently :18-23) — `@brewform/shared/utils` resolves through the barrel via the Vite alias (apps/web/vite.config.ts:61).
-> - Test style correction still applies: write tests as `describe/it` + `expect` per packages/shared/src/utils/metrics.test.ts:1-3; the body's `Deno.test` + `assertEquals`-from-bdd snippet is wrong. `*.test.ts` naming in the body is correct.
+> - Test style: write tests as Vitest `describe/it` + `expect`, imported from `vitest` exactly as packages/shared/src/utils/metrics.test.ts:1 does (`import { describe, expect, it } from 'vitest';`). The body's snippet below has been rewritten in that style (2026-11-21). `*.test.ts` naming in the body is correct.
 > - i18n is now shipped (D40) and is a hard convention: every user-visible string in `BatchCalculator` must go through `t()` from `useTranslation()` (apps/web/src/contexts/I18nContext.tsx:55), with keys added to BOTH packages/shared/src/i18n/en.json and tr.json (key parity enforced by packages/shared/src/i18n/i18n.test.ts:7). `suggestGrindAdjustment` must return a key/enum, not English sentences. Both integration pages already use `t()` (RecipeDetailPage.tsx:330, RecipeCreatePage.tsx:30).
 > - RecipeDetailPage integration snippet is unsafe as written: `v` is `recipe.currentVersion` and may be undefined (apps/web/src/pages/recipes/RecipeDetailPage.tsx:121) — use `v?.groundWeightGrams` etc. and guard. Sidebar location still valid: sidebar at :317, rating card at :326-386 (note ShareSection now tops the sidebar, and social-actions/collections cards follow the rating card).
 > - Version columns verified on `recipeVersions`: `groundWeightGrams` real, `extractionTimeSeconds` integer, `extractionVolumeMl` real, `brewRatio` real (packages/db/src/schema.ts:221-226). There are no `waterAmount`/`coffeeAmount` columns — the body's field mapping is correct.
@@ -21,7 +23,7 @@
 >
 > - Core still valid: pure client-side. `useUnitSystem` (hooks/useUnitSystem.ts:20), `formatWeight`/`formatVolume`/`formatTemperature` (conversion.ts:34/42/50), `computeBrewRatio` (metrics.ts:2), `convertGramsToOunces`/`convertMlToFlOz` all exist. `scaleRecipe`/`suggestGrindAdjustment`/`scaleExtractionTime` are net-new as intended.
 > - Correction: the new functions must ALSO be added to the utils barrel `packages/shared/src/utils/index.ts` (the metrics export block), not just metrics.ts — `@brewform/shared/utils` resolves through the barrel.
-> - Correction (the test snippet is broken): the plan imports `assertEquals, assertStrictEquals` from `jsr:@std/testing/bdd` and uses `Deno.test(...)`. Repo convention (metrics.test.ts) is `import { describe, it } from 'jsr:@std/testing/bdd'` + `import { expect } from 'jsr:@std/expect'` with `describe/it/expect`; `assertEquals` isn't exported by bdd. Rewrite tests in the expect style.
+> - Correction (the test snippet was broken): it used assert-style helpers from the old runtime's standard library and a non-Vitest test registration. Repo convention (metrics.test.ts) is `describe/it/expect` from `vitest`. _(Superseded detail: this banner originally quoted the pre-migration import specifiers; the body snippet is now Vitest.)_
 > - NEW — D40 i18n: `BatchCalculator` hardcodes English ("Batch Calculator", "Target Yield", "Scaled Dose", …) — route through `t()` and add keys to both en.json + tr.json (strict parity test). `suggestGrindAdjustment` returns English sentences from a shared util — return a key/enum and translate client-side instead.
 
 ## Overview
@@ -128,34 +130,43 @@ export function scaleExtractionTime(
 Add tests to `packages/shared/src/utils/metrics.test.ts`:
 
 ```ts
-import { assertEquals, assertStrictEquals } from 'jsr:@std/testing/bdd';
-import { scaleRecipe, suggestGrindAdjustment, scaleExtractionTime } from './metrics.ts';
+import { describe, expect, it } from 'vitest';
+import { scaleExtractionTime, scaleRecipe, suggestGrindAdjustment } from './metrics.ts';
 
-Deno.test('scaleRecipe', () => {
-  // Double the yield → double the dose
-  const result = scaleRecipe(18, 36, 72);
-  assertEquals(result?.dose, 36);
-  assertEquals(result?.water, 72);
-  assertEquals(result?.brewRatio, 2.0);
+describe('scaleRecipe', () => {
+  it('doubles the dose when the yield doubles', () => {
+    const result = scaleRecipe(18, 36, 72);
+    expect(result?.dose).toBe(36);
+    expect(result?.water).toBe(72);
+    expect(result?.brewRatio).toBe(2);
+  });
+
+  it('returns null for invalid inputs', () => {
+    expect(scaleRecipe(0, 36, 72)).toBeNull();
+    expect(scaleRecipe(18, 0, 72)).toBeNull();
+    expect(scaleRecipe(18, 36, 0)).toBeNull();
+  });
 });
 
-Deno.test('scaleRecipe returns null for invalid inputs', () => {
-  assertEquals(scaleRecipe(0, 36, 72), null);
-  assertEquals(scaleRecipe(18, 0, 72), null);
-  assertEquals(scaleRecipe(18, 36, 0), null);
+describe('suggestGrindAdjustment', () => {
+  it('suggests coarser, finer or unchanged by dose change', () => {
+    expect(suggestGrindAdjustment(18, 36).toLowerCase()).toContain('coarser');
+    expect(suggestGrindAdjustment(18, 10).toLowerCase()).toContain('finer');
+    expect(suggestGrindAdjustment(18, 18)).toBe('Grind size likely unchanged');
+  });
 });
 
-Deno.test('suggestGrindAdjustment', () => {
-  assertEquals(suggestGrindAdjustment(18, 36).toLowerCase().includes('coarser'), true);
-  assertEquals(suggestGrindAdjustment(18, 10).toLowerCase().includes('finer'), true);
-  assertEquals(suggestGrindAdjustment(18, 18), 'Grind size likely unchanged');
-});
-
-Deno.test('scaleExtractionTime', () => {
-  assertEquals(scaleExtractionTime(25, 2), 35); // sqrt(2) * 25 ≈ 35
-  assertEquals(scaleExtractionTime(null, 2), null);
+describe('scaleExtractionTime', () => {
+  it('scales by the square root of the factor', () => {
+    expect(scaleExtractionTime(25, 2)).toBe(35); // sqrt(2) * 25 ≈ 35
+    expect(scaleExtractionTime(null, 2)).toBeNull();
+  });
 });
 ```
+
+(When the banner's i18n correction makes `suggestGrindAdjustment` return a key such as `'coarser' | 'finer' | 'unchanged'`, assert on the key with `toBe` instead of the English text.)
+
+Run with `make test-shared`, or a single file with `pnpm --filter @brewform/shared exec vitest run src/utils/metrics.test.ts` (inside Docker: `make test-specific filter=…`).
 
 ### Unit Conversion Integration
 
@@ -384,7 +395,7 @@ None — this is a pure client-side feature.
 3. Create `apps/web/src/components/recipe/BatchCalculator.tsx`
 4. Integrate `BatchCalculator` into `RecipeDetailPage` sidebar
 5. Integrate `BatchCalculator` into `RecipeCreatePage` brew parameters section
-6. Run `make check && make lint && make test`
+6. Run `make check && make lint && make test-shared && make test-web`
 
 ## Dependencies
 

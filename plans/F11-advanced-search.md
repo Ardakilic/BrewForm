@@ -466,9 +466,9 @@ GET /api/v1/recipes?search=espresso&author=coffee&dateFrom=2025-01-01&minRating=
 
 ## References
 
-- [Drizzle ORM ORM docs](/drizzle-team/drizzle-orm-docs) — query building, indexes
-- [Hono docs](/websites/hono_dev) — route handling, middleware
-- [React docs](/reactjs/react.dev) — hooks, effects for infinite scroll
+- [Drizzle ORM docs](https://orm.drizzle.team/docs) (Context7 `/drizzle-team/drizzle-orm-docs`) — query building, indexes
+- [Hono docs](https://hono.dev/docs) (Context7 `/websites/hono_dev`) — route handling, middleware
+- [React docs](https://react.dev) (Context7 `/reactjs/react.dev`) — hooks, effects for infinite scroll
 - Existing: `apps/api/src/modules/recipe/service.ts:469` — `listRecipes()` current implementation
 - Existing: `apps/api/src/modules/recipe/model.ts:103` — `findMany()` current implementation
 - Existing: `packages/shared/src/schemas/recipe.ts:140` — `RecipeFilterSchema` current definition
