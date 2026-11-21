@@ -11,7 +11,7 @@
  * avoid leaking the API surface in production.
  */
 import type { Hono } from 'hono';
-import { openAPIRouteHandler } from 'hono-openapi';
+import { type GenerateSpecOptions, openAPIRouteHandler } from 'hono-openapi';
 import { config } from '../config/index.ts';
 import type { AppEnv } from '../types/hono.ts';
 
@@ -32,67 +32,76 @@ const DOCS_HTML = `<!DOCTYPE html>
 </html>`;
 
 /**
+ * `documentation` options of the OpenAPI document served at `/api/v1/openapi.json`: info, the
+ * development server, the `bearerAuth` scheme and the tag registry (one entry per tag used by a
+ * `describeRoute()`; `openapi.coverage.test.ts` rejects orphan tags). Exported so tooling such as
+ * `apps/api/scripts/generate-api-reference.ts` (which renders `docs/api-reference.md`) shares the
+ * exact options {@link registerOpenApi} serves.
+ */
+export const openApiDocumentation: GenerateSpecOptions['documentation'] = {
+  info: {
+    title: 'BrewForm API',
+    version: '1.0.0',
+    description: 'Coffee brewing recipe sharing and discovery platform',
+  },
+  servers: [{ url: 'http://localhost:8000', description: 'Development' }],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+    },
+  },
+  tags: [
+    { name: 'Auth', description: 'Registration, login, password reset, token refresh' },
+    { name: 'Recipes', description: 'Recipe CRUD, fork, like/favourite/feature toggles' },
+    { name: 'Users', description: 'Public user profiles and the authenticated user' },
+    { name: 'Admin', description: 'Privileged admin operations (requires admin role)' },
+    { name: 'Health', description: 'Liveness and readiness probes' },
+    { name: 'Beans', description: 'Coffee bean inventory owned by users' },
+    { name: 'Badges', description: 'Achievement badges and per-user awards' },
+    {
+      name: 'Brew Logs',
+      description: 'Personal brew journal entries and brew stats',
+    },
+    {
+      name: 'Coffee Varieties',
+      description: 'Coffee cultivar reference data and recipes using a variety',
+    },
+    {
+      name: 'Collections',
+      description: 'User-owned named collections of recipes',
+    },
+    { name: 'Comments', description: 'Recipe comment threads and replies' },
+    { name: 'Contact', description: 'Contact-form message submission' },
+    { name: 'Equipment', description: 'Brewing equipment catalogue and deletion requests' },
+    { name: 'Follow', description: 'Follow/unfollow, follower/following lists, and feed' },
+    {
+      name: 'Notifications',
+      description: 'In-app notification feed and read-state management',
+    },
+    { name: 'Photos', description: 'Recipe photo upload and listing' },
+    { name: 'Preferences', description: 'Per-user application and notification preferences' },
+    { name: 'QR Codes', description: 'Recipe QR-code image generation' },
+    { name: 'Reports', description: 'Content moderation reports' },
+    { name: 'Setups', description: 'Saved brewing-equipment setups' },
+    { name: 'Taste Notes', description: 'Taste-note hierarchy, search, and admin management' },
+    { name: 'Vendors', description: 'Coffee vendor/roaster directory' },
+    { name: 'Share', description: 'Server-rendered share/OG preview pages' },
+    { name: 'Sitemap', description: 'XML sitemap for crawlers' },
+  ],
+};
+
+/**
  * Registers GET /api/v1/openapi.json and GET /api/v1/docs on the supplied
  * Hono instance. Must be called AFTER all sub-routers have been mounted so
  * the spec can introspect them.
  */
 export function registerOpenApi(app: Hono<AppEnv>): void {
   const handler = openAPIRouteHandler(app, {
-    documentation: {
-      info: {
-        title: 'BrewForm API',
-        version: '1.0.0',
-        description: 'Coffee brewing recipe sharing and discovery platform',
-      },
-      servers: [{ url: 'http://localhost:8000', description: 'Development' }],
-      components: {
-        securitySchemes: {
-          bearerAuth: {
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT',
-          },
-        },
-      },
-      tags: [
-        { name: 'Auth', description: 'Registration, login, password reset, token refresh' },
-        { name: 'Recipes', description: 'Recipe CRUD, fork, like/favourite/feature toggles' },
-        { name: 'Users', description: 'Public user profiles and the authenticated user' },
-        { name: 'Admin', description: 'Privileged admin operations (requires admin role)' },
-        { name: 'Health', description: 'Liveness and readiness probes' },
-        { name: 'Beans', description: 'Coffee bean inventory owned by users' },
-        { name: 'Badges', description: 'Achievement badges and per-user awards' },
-        {
-          name: 'Brew Logs',
-          description: 'Personal brew journal entries and brew stats',
-        },
-        {
-          name: 'Coffee Varieties',
-          description: 'Coffee cultivar reference data and recipes using a variety',
-        },
-        {
-          name: 'Collections',
-          description: 'User-owned named collections of recipes',
-        },
-        { name: 'Comments', description: 'Recipe comment threads and replies' },
-        { name: 'Contact', description: 'Contact-form message submission' },
-        { name: 'Equipment', description: 'Brewing equipment catalogue and deletion requests' },
-        { name: 'Follow', description: 'Follow/unfollow, follower/following lists, and feed' },
-        {
-          name: 'Notifications',
-          description: 'In-app notification feed and read-state management',
-        },
-        { name: 'Photos', description: 'Recipe photo upload and listing' },
-        { name: 'Preferences', description: 'Per-user application and notification preferences' },
-        { name: 'QR Codes', description: 'Recipe QR-code image generation' },
-        { name: 'Reports', description: 'Content moderation reports' },
-        { name: 'Setups', description: 'Saved brewing-equipment setups' },
-        { name: 'Taste Notes', description: 'Taste-note hierarchy, search, and admin management' },
-        { name: 'Vendors', description: 'Coffee vendor/roaster directory' },
-        { name: 'Share', description: 'Server-rendered share/OG preview pages' },
-        { name: 'Sitemap', description: 'XML sitemap for crawlers' },
-      ],
-    },
+    documentation: openApiDocumentation,
     // The sitemap route is mounted at `/api/v1/sitemap.xml`; its path ends in a
     // file extension, so static-file exclusion would drop it from the spec.
     // hono-openapi only documents routes carrying `describeRoute()` metadata, so
