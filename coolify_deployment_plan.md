@@ -4,7 +4,7 @@
 > self-hosted **Coolify** instance. It assumes the OpenSpec change
 > `d30-coolify-ghcr-deployment` has been **implemented** — i.e. the two Docker images exist on
 > GHCR, and the `publish` job of `.github/workflows/ci.yml` publishes them after every `main`
-> push whose CI jobs (quality, tests, image smoke tests) all passed.
+> push whose CI jobs (quality, tests, image smoke tests, doc-drift) all passed.
 >
 > If the implementation has NOT been done yet, the "Codebase prerequisites" section below tells
 > you what must land first; the Coolify steps are what you do in the Coolify panel.

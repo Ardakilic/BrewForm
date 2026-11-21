@@ -4,8 +4,11 @@ name: CI
 # were merged into it). Job order:
 #
 #   quality ──┬── test ─────┬── publish   (push events only)
-#             └── images ───┘
+#             └── images ───┤
+#   doc-drift ──────────────┘
 #
+# - `doc-drift` runs the dependency-free doc-drift check and docblock scan with plain
+#   Node (no install, no `needs:`), in parallel with `quality`.
 # - `images` builds both Docker images WITHOUT pushing and boot-tests them (compose config
 #   check, standalone image smoke test, full production compose smoke test). It runs on
 #   every pull request too, so a broken Dockerfile, entrypoint or edge config fails the PR.
@@ -36,6 +39,28 @@ defaults:
     shell: bash
 
 jobs:
+  # Docs and specs guard (doc-drift-check spec): removed-tooling tokens, stale idioms,
+  # spec Purpose placeholders, broken relative links and retired capabilities, plus the
+  # docblock scan. Both scripts use only node: built-ins, so nothing is installed. It runs
+  # on pull requests and pushes alike, because `publish` needs it.
+  doc-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Doc-drift check
+        run: node scripts/doc-drift-check.ts
+
+      - name: Docblock scan
+        run: node scripts/docblock-scan.ts --check
+
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -405,7 +430,7 @@ jobs:
   # job of this workflow; scripts/ci/check-publish-needs.sh enforces it) and never add
   # always()/failure()/cancelled() to `if`.
   publish:
-    needs: [quality, test, images]
+    needs: [quality, test, images, doc-drift]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 20

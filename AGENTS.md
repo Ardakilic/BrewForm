@@ -368,7 +368,8 @@ useEffect(() => {
   `node scripts/doc-drift-check.ts` (removed-tooling tokens, stale idioms, broken relative links,
   archived capabilities missing from `openspec/specs`, placeholder Purposes; exemptions with a
   mandatory reason in `scripts/doc-drift-allowlist.json`) and `node scripts/docblock-scan.ts --check`.
-  Run it before opening a PR.
+  Run it before opening a PR. CI runs the same two scripts in the `doc-drift` job of
+  `.github/workflows/ci.yml` (plain Node, no install), and `publish` needs that job.
 - Fill in the "Docs & specs" checklist of `.github/pull_request_template.md`: AGENTS.md, README.md,
   the affected `docs/*.md` and `openspec/specs` updated for runtime, infra, config or env changes;
   OpenAPI metadata plus a regenerated `docs/api-reference.md` for route changes; the
