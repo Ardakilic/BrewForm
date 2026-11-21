@@ -98,19 +98,26 @@ Open **http://localhost:5173** for the web app and **http://localhost:8000** for
 
 ### Seeded accounts
 
-The seed (`make db-seed` here; the API image's `migrate` step on its first boot) creates these
-accounts whenever it runs against a database whose `users` table is empty. **That includes the
-first boot of a production install**, so change the passwords (or delete the demo users) right
-after a production install.
+The seed (`make db-seed` here; the API image's `migrate` step on its first boot) runs against a
+database whose `users` table is empty. It always creates the admin account and the reference
+catalogs (brew-method rules, badges, the equipment catalog, coffee varieties, vendors and the SCAA
+taste notes). The demo users and their content exist only when `APP_ENV` is not `production`:
 
 | Account | Email | Password |
 | ------- | ----- | -------- |
 | Admin | `admin@brewform.local` (`ADMIN_EMAIL`), username `admin` (`ADMIN_USERNAME`) | `admin123456`, or `ADMIN_PASSWORD` when set |
-| Demo users `alice`, `bob`, `charlie`, `diana`, `evan` | `<username>@example.com` | `user123456` |
+| Demo users `alice`, `bob`, `charlie`, `diana`, `evan` (not with `APP_ENV=production`) | `<username>@example.com` | `user123456` |
 
 The `ADMIN_*` variables are read only when the admin row is created; changing them later does not
-update an existing admin. The seed also inserts the reference catalogs and demo content (18
-recipes, beans, setups, comments, collections and brew logs for the demo users).
+update an existing admin. Outside production the seed also inserts demo content (18 recipes,
+beans, setups, comments, collections and brew logs for the demo users). A production install
+(`APP_ENV=production`, set by the production images' compose file and the Coolify guide) gets
+only the admin and the reference catalogs; change the admin password right after the first
+start. Production installs created before this release still have the five demo accounts with
+the published password: remove them with the cleanup step in
+[`docs/deployment_compose.md`](docs/deployment_compose.md) ("Installs created before this
+release: remove the demo accounts") or [`docs/deployment_coolify.md`](docs/deployment_coolify.md)
+(§13).
 
 ### Tests
 

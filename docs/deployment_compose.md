@@ -116,14 +116,22 @@ which wrap `docker compose --env-file .env.production -f compose.production.yml`
 
    The `migrate` container runs the API image in `migrate` mode. `docker-entrypoint.sh` runs the
    `@brewform/db` migration runner with Node (`node /app/packages/db/src/migrate.ts`, the
-   drizzle-orm migrator with a `pg_trgm` pre-flight), then the user-count check, then the seed on
-   an empty database. `make prod-logs` shows:
+   drizzle-orm migrator with a `pg_trgm` pre-flight), then the comment-count recount
+   (`node /app/packages/db/src/recount-comment-counts.ts`, which repairs drifted
+   `recipe.comment_count` values after every migration run; a failure only warns), then the
+   user-count check, then the seed on an empty database. On a production install
+   (`APP_ENV=production`) the seed creates only the admin account and the reference catalogues
+   (brew-method rules, badges, equipment, coffee varieties, vendors, SCAA taste notes): no demo
+   users and no sample recipes. `make prod-logs` shows:
 
    ```text
    Entrypoint mode: migrate
    Running database migrations...
    Migrations complete.
+   Recounting comment counts...
+   Comment count recount: complete (scanned 0, repaired 0, skipped 0)
    Database is empty, running seed...
+   Demo content skipped (APP_ENV=production): admin and reference catalogs only
    Seeding complete.
    ```
 
@@ -145,6 +153,20 @@ which wrap `docker compose --env-file .env.production -f compose.production.yml`
 
 6. Sign in as the admin (`ADMIN_USERNAME`, default `admin`) and change the password in the app.
 
+### Installs created before this release: remove the demo accounts
+
+Before this release the seed also created five demo accounts on a production install, with a
+password published in the README: `alice`, `bob`, `charlie`, `diana` and `evan`
+(`<username>@example.com`). The seed runs only on an empty database, so an upgrade does not
+remove them. Remove them once:
+
+1. Sign in as the admin and open **Admin → Users**.
+2. Search `example.com`.
+3. Delete `alice`, `bob`, `charlie`, `diana` and `evan`. This is a soft delete with an audit-log
+   entry; a deleted account cannot sign in, and its recipes and comments show no author identity.
+4. Review the recipes and comments those accounts posted after the install date (anyone who knew
+   the published password could sign in as them) and delete what you did not create yourself.
+
 ## 4. Configuration
 
 All settings live in `.env.production`; `.env.production.example` lists every one with its
@@ -163,7 +185,7 @@ exception: blank ones fail fast. `TRUSTED_PROXIES` is the one setting where empt
 | `IMAGE_TAG` | `latest` | Image tag for api, migrate and web: `latest`, a full commit SHA or `vX.Y.Z` (rollback, [§12](#12-upgrade-and-rollback)). |
 | `API_IMAGE` / `WEB_IMAGE` | `ghcr.io/ardakilic/brewform-api` / `…/brewform-web` | Image names (for example your own builds, [§15](#15-building-the-images-yourself)). |
 | `COMPOSE_PROJECT_NAME` | `brewform-prod` | Project name; volumes are named `<project>_uploads` etc. Keep an older install's name to keep its volumes. |
-| `WEB_PORT` | `80` | Host port of the web edge. |
+| `WEB_PORT` | `80` | Host port of the web edge: `80`, or `127.0.0.1:8080` to listen on loopback only (a TLS proxy on the same host, [§5](#5-client-ip-and-trusted_proxies)). |
 | `VITE_API_URL` | `/api/v1` | API URL for the SPA; an absolute URL selects the split-domain topology. |
 | `TRUSTED_PROXIES` | `private_ranges` | Who may send `X-Forwarded-For` to the edge ([§5](#5-client-ip-and-trusted_proxies)). |
 | `EDGE_MAX_BODY_SIZE` | `16MB` | Request body cap at the edge. Keep it above the API's photo cap (`UPLOAD_MAX_SIZE_BYTES` + 1 MiB + 64 KiB, about 11.06 MiB by default). |
@@ -217,6 +239,62 @@ which connecting addresses may supply `X-Forwarded-For`:
 - Lock the origin down when Cloudflare is in front: allow the web port only from the Cloudflare
   ranges (host firewall or security group), or clients can bypass Cloudflare and its limits.
 - `/health` and `/ready` are never rate limited, also when `/health` arrives through the edge.
+
+**Front proxy contract.** The edge trusts `X-Forwarded-For` from every address in
+`TRUSTED_PROXIES` (`private_ranges` by default, which includes the Docker bridge gateway a proxy
+on the same host connects from). So:
+
+- A proxy in front of the stack that connects from such an address **must append** its peer
+  address to `X-Forwarded-For` **or replace** the header. A proxy that passes the client's header
+  through unchanged lets any client choose its IP (a fresh rate-limit bucket per request, or a
+  victim's bucket).
+- A TCP (layer 4) forwarder on a private address (HAProxy `mode tcp`, nginx `stream`, a private
+  TCP load balancer) passes client headers through. With one, set `TRUSTED_PROXIES` to the
+  forwarder's own address or leave it empty (`TRUSTED_PROXIES=`).
+- **Only the proxy may reach the web port.** With the proxy on the same host, publish the port on
+  loopback only: `WEB_PORT=127.0.0.1:8080` (Compose then publishes `127.0.0.1:8080:80`). On a
+  private network, firewall the web port to the proxy's address.
+
+nginx (on the same host, with `WEB_PORT=127.0.0.1:8080`):
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name brewform.example.com;
+    client_max_body_size 16m;                      # nginx defaults to 1m; photos are up to ~11 MiB
+    location / {
+        proxy_pass http://127.0.0.1:8080;          # WEB_PORT=127.0.0.1:8080
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;   # required
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Caddy:
+
+```caddyfile
+brewform.example.com {
+	reverse_proxy 127.0.0.1:8080
+}
+# Caddy's reverse_proxy ignores client-sent X-Forwarded-* and sets the client address.
+# Do not add trusted_proxies here unless another proxy (e.g. Cloudflare) sits in front of it.
+```
+
+Traefik (Docker labels on the `web` service):
+
+```yaml
+# The default forwardedHeaders handling is correct.
+labels:
+  - traefik.http.routers.brewform.rule=Host(`brewform.example.com`)
+  - traefik.http.routers.brewform.tls.certresolver=le
+  - traefik.http.services.brewform.loadbalancer.server.port=80
+# Never set entryPoints.<name>.forwardedHeaders.notAppendXForwardedFor=true.
+```
+
+`TRUSTED_PROXIES=private_ranges` stays the default: an empty default would put every client
+behind a proxy into one rate-limit bucket, and `127.0.0.1/8` would miss a host proxy, which
+reaches the container from the Docker bridge gateway, not from loopback.
 
 ## 6. `make prod-*` reference
 
@@ -662,9 +740,12 @@ Cloudflare R2 an "Admin Read & Write" token; on AWS an IAM user with bucket read
 ```sh
 export S3_ENDPOINT="https://s3.example.com"         # the API's S3_ENDPOINT
 export S3_BUCKET="brewform-uploads"                 # the API's S3_BUCKET
-export AWS_ACCESS_KEY_ID="<audit key id>" AWS_SECRET_ACCESS_KEY="<audit secret>"
+export AWS_ACCESS_KEY_ID="<audit key id>"
+read -rs AWS_SECRET_ACCESS_KEY && export AWS_SECRET_ACCESS_KEY   # paste the audit secret (not shown, not in history)
 export AWS_DEFAULT_REGION=auto                      # the API's S3_REGION (Garage: its s3_region)
 ```
+
+(`read -s` needs bash or zsh. Run `unset AWS_SECRET_ACCESS_KEY` when you are done.)
 
 **1. Inspect the bucket configuration.** BrewForm sets none of these, so any policy, extra ACL
 grant, CORS rule, tag, lifecycle rule, versioning or website configuration you did not create
@@ -819,8 +900,9 @@ it in CI).
 | `migrate` exits non-zero, api never starts | `make prod-logs` shows the migration error. A unique-index error on `user_*_lower_unique` or `setup_user_default_unique` needs `make prod-check-identifiers` ([§14](#14-upgrading-from-the-pre-wave-6-compose-file)); nothing was changed. |
 | `[restore] ERROR: pg_restore failed; the database … was not changed` | The live database was not changed and no `<POSTGRES_DB>_restore` is left. Check the dump (`pg_restore --list` inside the `backup` container) and the free disk space, then run `make prod-restore` again, or `make prod-up` to resume ([§11](#11-restore-runbook)). |
 | api `unhealthy`, `/ready` `503` with `db: "disconnected"` | Postgres is down or slow; the api recovers without a restart when it answers again. |
-| `413` on photo upload through the edge | `EDGE_MAX_BODY_SIZE` is below the API's photo cap; keep the `16MB` default. |
+| `413` on photo upload through the edge | `EDGE_MAX_BODY_SIZE` is below the API's photo cap; keep the `16MB` default. Or a front nginx with its default `client_max_body_size 1m`: set `client_max_body_size 16m` ([§5](#5-client-ip-and-trusted_proxies)). |
 | All clients share one rate limit | `TRUSTED_PROXIES` does not match what connects to the web port ([§5](#5-client-ip-and-trusted_proxies)). |
+| Rate limits hit random clients, or are bypassed | The front proxy passes `X-Forwarded-For` through instead of appending to it (nginx: `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`), or clients reach the web port without the proxy ([§5](#5-client-ip-and-trusted_proxies)). |
 | `exec format error` | The images are amd64-only; run on amd64 or build your own images ([§15](#15-building-the-images-yourself)). |
 | Photos uploaded before this release 404, their URL has `//` after the bucket URL | They were uploaded while `S3_PUBLIC_URL` ended with `/`. The API now ignores a trailing slash, so new uploads are fine; repair the old rows once (below). |
 

@@ -52,6 +52,8 @@
 #   - empty (TRUSTED_PROXIES=): nothing is in front, trust no proxy;
 #   - Cloudflare connecting directly: the Cloudflare ranges, space separated
 #     (https://www.cloudflare.com/ips/), e.g. `173.245.48.0/20 103.21.244.0/22 …`.
+# Contract: a trusted front proxy must append to or replace X-Forwarded-For, and only it may
+# reach WEB_PORT (same host: WEB_PORT=127.0.0.1:8080); docs/deployment_compose.md §5.
 # RATE_LIMIT_STORE defaults to redis (counters shared through Valkey, per-process
 # fallback while it is down).
 #

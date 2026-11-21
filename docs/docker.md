@@ -147,7 +147,7 @@ make dev
 
 ## Database Seeding
 
-The seed script (`packages/db/src/seed.ts`) is idempotent: it can be run multiple times against the same database without raising unique-constraint errors. This is important because Docker Compose named volumes (especially the Postgres volume) can outlive a `docker compose down` or container recreation, leaving previous seed data behind.
+The seed script (`packages/db/src/seed.ts`) creates the admin account and the reference catalogs, plus, unless `APP_ENV` is `production`, the demo users (`alice`, `bob`, `charlie`, `diana`, `evan`) and their sample content; the development containers set `APP_ENV=development`, a production install gets no demo accounts. It is idempotent: it can be run multiple times against the same database without raising unique-constraint errors. This is important because Docker Compose named volumes (especially the Postgres volume) can outlive a `docker compose down` or container recreation, leaving previous seed data behind.
 
 When re-running the full setup:
 

@@ -302,15 +302,24 @@ service), while the env schema and this Coolify setup default to `memory`.
 
 7. **Deploy.** Every container start runs `docker-entrypoint.sh` in `serve` mode: the
    `@brewform/db` migration runner with Node (`node /app/packages/db/src/migrate.ts`, a no-op when
-   nothing is pending), then the user-count check, then the seed on an empty database only, then
-   `exec node src/main.ts` (one Node process under `tini`, no runtime flags; the hourly badge job
-   runs inside it, once per replica). The image contains neither pnpm nor drizzle-kit. Watch for:
+   nothing is pending), then the comment-count recount (repairs drifted `recipe.comment_count`
+   values after every migration run; a failure only warns), then the user-count check, then the
+   seed on an empty database only, then `exec node src/main.ts` (one Node process under `tini`,
+   no runtime flags; the hourly badge job runs inside it, once per replica). With
+   `APP_ENV=production` the seed creates only the admin account and the reference catalogues
+   (brew-method rules, badges, equipment, coffee varieties, vendors, SCAA taste notes): no demo
+   users and no sample recipes. Installs created before this release still have the demo
+   accounts: remove them ([§13](#13-maintenance)). The image contains neither pnpm nor
+   drizzle-kit. Watch for:
 
    ```text
    Entrypoint mode: serve
    Running database migrations...
    Migrations complete.
+   Recounting comment counts...
+   Comment count recount: complete (scanned 0, repaired 0, skipped 0)
    Database is empty, running seed...
+   Demo content skipped (APP_ENV=production): admin and reference catalogs only
    Seeding complete.
    Starting BrewForm API...
    … "msg":"Cache initialized" …
@@ -480,9 +489,12 @@ app's scoped token):
 ```sh
 export S3_ENDPOINT="https://<account-id>.r2.cloudflarestorage.com"   # the API's S3_ENDPOINT
 export S3_BUCKET="brewform-uploads"                                   # the API's S3_BUCKET
-export AWS_ACCESS_KEY_ID="<admin key id>" AWS_SECRET_ACCESS_KEY="<admin secret>"
+export AWS_ACCESS_KEY_ID="<admin key id>"
+read -rs AWS_SECRET_ACCESS_KEY && export AWS_SECRET_ACCESS_KEY        # paste the admin secret (not shown, not in history)
 export AWS_DEFAULT_REGION=auto                                        # the API's S3_REGION
 ```
+
+(`read -s` needs bash or zsh. Run `unset AWS_SECRET_ACCESS_KEY` when you are done.)
 
 **1. Inspect the bucket configuration.** BrewForm sets none of these, so any policy, extra ACL
 grant, CORS rule, tag, lifecycle rule, versioning or website configuration you did not create
@@ -536,11 +548,14 @@ jq -r '.Contents[]?.Key | select(test("^[0-9]{13}-"))' objects.json | head -n 20
 
 **3. Compare the photo rows with the objects.** Photo rows store full URLs; the key is the last
 path segment. List each photo's keys with the row's `created_at`, then join them with the object
-listing (`DATABASE_URL` as the API uses it):
+listing. The query runs inside the PostgreSQL resource's container over its local socket, so no
+connection string or password is on the command line (find the container with
+`docker ps --filter name=postgresql`, and use the database user and name of the API's
+`DATABASE_URL` for `-U` and `-d`):
 
 ```sh
 export LC_ALL=C   # sort and join must use the same collation
-psql "$DATABASE_URL" -At -F $'\t' -c "
+docker exec -i <postgres container> psql -U postgres -d postgres -At -F $'\t' -c "
   SELECT regexp_replace(url, '^.*/', ''), created_at FROM photo
   UNION ALL
   SELECT regexp_replace(thumbnail_url, '^.*/', ''), created_at FROM photo
@@ -647,6 +662,13 @@ still exist.
   or renames something the running release uses ships in two releases: first add and backfill,
   then remove in a later release. More than one replica would need the migrations moved to a
   single job first.
+- **Remove the demo accounts (installs created before this release):** the seed used to create
+  five demo accounts with a password published in the README (`alice`, `bob`, `charlie`, `diana`,
+  `evan`, `<username>@example.com`) on a production install too. The seed runs only on an empty
+  database, so an upgrade keeps them. Sign in as the admin, open **Admin → Users**, search
+  `example.com` and delete the five accounts (a soft delete with an audit-log entry; deleted
+  accounts cannot sign in). Then review the recipes and comments those accounts posted after the
+  install date and delete what you did not create yourself.
 - **Comment counts recounted (upgrade note):** every migration run now ends with the
   comment-count recount, so it runs on every API start with `RUN_MIGRATIONS` left on
   (`Recounting comment counts...`, then
@@ -694,12 +716,16 @@ Wave 6 adds three unique indexes: case-insensitive `user.email` and `user.userna
 `foo@x.io` as two accounts. Check the data **before** redeploying:
 
 1. On the server, run the check from the **new** image as a one-off container on the API's
-   network, with the API's `DATABASE_URL` value:
+   network, with the API's `DATABASE_URL` value. Read the value into the environment instead of
+   typing it into the command: `-e DATABASE_URL` without a value passes it from your shell, so the
+   password appears in neither `ps` nor the shell history (`read -s` needs bash or zsh):
 
    ```sh
-   docker run --rm --network <API network> -e DATABASE_URL=<API value> \
+   read -rs DATABASE_URL && export DATABASE_URL   # paste the API's DATABASE_URL (not shown)
+   docker run --rm --network <API network> -e DATABASE_URL \
      --entrypoint node ghcr.io/ardakilic/brewform-api:<new tag> \
      /app/packages/db/src/check-identifiers.ts
+   unset DATABASE_URL
    ```
 
    `<API network>` is the Docker network the API resource runs on (`coolify` for the setup in
