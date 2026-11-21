@@ -113,9 +113,7 @@ describe('runMigrations (stubbed)', () => {
 
   it('never calls migrate when the pre-flight fails, prints the message and returns 1', async () => {
     const deps = stubDeps({
-      preflight: vi.fn(async () => {
-        throw new Error(PG_TRGM_NOT_AVAILABLE_MESSAGE);
-      }),
+      preflight: vi.fn(() => Promise.reject(new Error(PG_TRGM_NOT_AVAILABLE_MESSAGE))),
     });
     expect(await runMigrations(deps)).toBe(1);
     expect(deps.migrate).not.toHaveBeenCalled();
@@ -128,9 +126,11 @@ describe('runMigrations (stubbed)', () => {
 
   it('returns 1 and closes the client when a migration fails', async () => {
     const deps = stubDeps({
-      migrate: vi.fn(async () => {
-        throw new Error('Failed query: create table', { cause: new Error('syntax error') });
-      }),
+      migrate: vi.fn(() =>
+        Promise.reject(
+          new Error('Failed query: create table', { cause: new Error('syntax error') }),
+        ),
+      ),
     });
     expect(await runMigrations(deps)).toBe(1);
     expect(deps.output.error).toHaveBeenCalledWith(

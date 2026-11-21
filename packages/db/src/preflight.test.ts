@@ -18,9 +18,9 @@ import {
 /** Build a stub client returning one catalog row; `queries` records each query text. */
 function stubClient(row: Partial<PreflightCatalogRow>) {
   const queries: string[] = [];
-  const stub = async (strings: TemplateStringsArray) => {
+  const stub = (strings: TemplateStringsArray) => {
     queries.push(strings.join('$'));
-    return [
+    return Promise.resolve([
       {
         installed: false,
         available: false,
@@ -29,7 +29,7 @@ function stubClient(row: Partial<PreflightCatalogRow>) {
         database: 'brewform_prod',
         ...row,
       },
-    ];
+    ]);
   };
   return { stub, queries };
 }
