@@ -157,7 +157,7 @@ make test-coverage      # Run tests with coverage
 make test-api           # Run API tests only
 make test-shared        # Run shared package tests only
 make test-web           # Run web (Vitest + Testing Library) tests only
-make test-specific filter=src/path/to/file.test.ts  # Run one test file
+make test-specific filter=src/path/to/file.test.ts  # Run one api/db/shared test file (substring match; not web)
 make check-tests        # Type-check test files
 
 # CI
