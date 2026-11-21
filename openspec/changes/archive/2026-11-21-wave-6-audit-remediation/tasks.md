@@ -668,6 +668,7 @@ How to use this task list
 - [x] 10.34 Update `docs/api.md` (task 24.16 keeps this content when it rewrites the file as conventions only): `search` (max 200, relevance-ranked, trigram-indexed), `sortBy=rating` semantics, the 503 `QUERY_TIMEOUT` error code, and the removal of `versions` from list items.
 - [x] 10.35 Group check: run `make check`, `make lint`, `make test-shared`, `make test-api` (with `brewform_test` provisioned via `make test-db-provision`), and `make test-web` for the RecipeListView change. Then run `make fmt` and confirm `pnpm run fmt-check` passes.
 - [ ] 10.36 Manual acceptance: with the dev stack up, run `GET /api/v1/recipes?search=a&perPage=20` and `?search=espresso&page=2`. Confirm 20 items, no `versions` keys, the correct `meta.pagination.total`, and `sortBy=rating` ordering in the UI ("Top rated"). Paste `EXPLAIN (ANALYZE, BUFFERS)` of the search page query (with `enable_seqscan = off`) into the PR description.
+  - Status: carried to wave-6-review-remediation task 20.1
 
 ## 11. Unlisted visibility on every discovery surface (recipe-visibility; refine OQ1, D4)
 
@@ -851,6 +852,7 @@ How to use this task list
 - [x] 16.7 Mark `plans/D10-tanstack-query-migration.md` as superseded by this change, and fix the stale JSDoc in `Layout.tsx`, `useRecipeFilters.ts` and `routes/comments.ts`. The `docs/architecture.md` web data-flow section is written in task 26.8.
 - [x] 16.8 Group check: run `make check`, `make lint`, `make test-web` (including `router.smoke.test.tsx` and `architecture.test.ts`) and `make fmt`; confirm `make fmt-check` is clean and that no new keys were needed in `packages/shared/src/i18n/{en,tr}.json` (add any new user-visible strings to both files)
 - [ ] 16.9 Manually verify in `make dev`: each of the five admin pages opens; `/recipes` Next/Prev keeps filters and Back/Forward works; typing in search produces one history entry; `/settings` while signed out redirects to `/login?next=%2Fsettings` and returns after login
+  - Status: carried to wave-6-review-remediation task 20.2
 
 ## 17. Private notes and recipe write — web, then the data-loading guard flip (t1, t5)
 
@@ -915,6 +917,7 @@ How to use this task list
   - As A: tick the checkbox and confirm a new version keeps taste notes and equipment.
   - Clear the grinder and confirm it is gone.
   - Set a coffee variety and confirm the recipe appears on `/coffee-varieties/:id`.
+  - Status: carried to wave-6-review-remediation task 20.3
 
 ## 18. Charts: shared helpers, formatters and i18n (t6)
 
@@ -1021,6 +1024,7 @@ How to use this task list
   - Keyboard-only rating (Tab, arrows, Shift+arrow, Enter, Escape) with focus retained during submit.
   - VoiceOver reading the read-only author and community ratings, the radar values and the timeline durations.
   - Record deviations in the PR description.
+  - Status: carried to wave-6-review-remediation task 20.4
 
 ## 20. Deploy: migration runner, health and readiness, entrypoint modes and API runtime image (t4b, refine OQ4)
 
@@ -1384,3 +1388,4 @@ How to use this task list
   End the description with the Claude Code attribution line.
 - [ ] 29.14 After opening the PR, confirm: exactly one `CI` run per push; `images` builds and smoke-tests both images; `publish` is skipped on the PR. After merge, confirm `publish` runs only after `quality`, `test`, `images` and `doc-drift` pass and that GHCR shows `latest` and `<sha>` for both images. On a personal fork, push a throwaway `v0.0.0-rc` tag, confirm the run does not move `latest`, then delete the tag.
   - Status 2026-11-21 (PR #172, run 44887464763): one `CI & Deploy` run for the push; `doc-drift`, `quality`, `test` and `images` passed (both images built and smoke-tested standalone and as the production compose stack); `publish` skipped. Post-merge checks (publish ordering, GHCR `latest`/`<sha>`, the fork `v0.0.0-rc` tag test) are pending the merge.
+  - Status: post-merge part carried to wave-6-review-remediation task 22.7
