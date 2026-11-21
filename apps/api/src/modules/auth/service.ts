@@ -10,6 +10,7 @@
 import type { User, UserPreferences } from '@brewform/shared/types';
 import { isReservedUsername } from '@brewform/shared/utils';
 import { config } from '../../config/env.ts';
+import { toLoggableMailError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { sendPasswordResetEmail, sendVerificationEmail } from './email.ts';
 import * as jwt from './jwt.ts';
@@ -134,7 +135,7 @@ export async function register(data: {
   try {
     await sendVerificationToken(user.id, user.email, user.username);
   } catch (err) {
-    logger.warn({ err }, 'Failed to send verification email');
+    logger.warn({ err: toLoggableMailError(err) }, 'Failed to send verification email');
   }
 
   logger.debug({}, 'register completed');
@@ -247,7 +248,7 @@ export async function requestPasswordReset(email: string) {
   try {
     await sendPasswordResetEmail(user.email, token, user.username);
   } catch (err) {
-    logger.error({ err }, 'Failed to send password reset email');
+    logger.error({ err: toLoggableMailError(err) }, 'Failed to send password reset email');
     throw new Error('EMAIL_SEND_FAILED');
   }
   logger.debug({}, 'requestPasswordReset completed');

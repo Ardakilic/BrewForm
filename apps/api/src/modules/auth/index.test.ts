@@ -1048,6 +1048,18 @@ describe('Auth Routes — rate limiting (DB integration)', () => {
     expect(statuses).toEqual([200, 200, 200]);
   });
 
+  it('lets only 5 of 8 concurrent wrong-password logins reach the password check', async () => {
+    const { user } = await makeUser('rl-race');
+    const app = createTestApp();
+    const ip = uniqueTestIp();
+    const responses = await Promise.all(
+      Array.from({ length: 8 }, () =>
+        postFrom(app, ip, '/auth/login', { email: user.email, password: 'wrong-password' }),
+      ),
+    );
+    expect(responses.map((r) => r.status).sort()).toEqual([401, 401, 401, 401, 401, 429, 429, 429]);
+  });
+
   it('answers the 6th login after 5 wrong passwords with 429, Retry-After and no cookies', async () => {
     const { user, password } = await makeUser('rl-lock');
     const app = createTestApp();

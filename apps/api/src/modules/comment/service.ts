@@ -7,6 +7,7 @@
  */
 
 import { parseMentions } from '@brewform/shared/utils';
+import { toLoggableError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { sanitizeText } from '../../utils/sanitize.ts';
 import { evaluateBadges } from '../badge/service.ts';
@@ -111,9 +112,13 @@ export async function createComment(
     recipeId,
     commentId: comment.id,
     effectiveContent,
-  }).catch((err) => logger.error({ err }, 'comment notification side-effects failed'));
+  }).catch((err) =>
+    logger.error({ err: toLoggableError(err) }, 'comment notification side-effects failed'),
+  );
 
-  deps.evaluateBadges(userId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
+  deps
+    .evaluateBadges(userId)
+    .catch((err) => logger.error({ err: toLoggableError(err) }, 'evaluateBadges failed'));
 
   return comment;
 }
@@ -175,7 +180,9 @@ export async function runCommentNotificationSideEffects(params: {
         recipeTitle: recipe.title,
         commentId,
       })
-      .catch((err) => logger.error({ err, commentId }, 'createCommentNotification failed'));
+      .catch((err) =>
+        logger.error({ err: toLoggableError(err), commentId }, 'createCommentNotification failed'),
+      );
   }
 
   // Mention notifications always run — including when the commenter IS the
@@ -193,7 +200,7 @@ export async function runCommentNotificationSideEffects(params: {
       recipeAuthorId: recipe.authorId,
     });
   } catch (err) {
-    logger.error({ err, commentId }, 'createMentionNotifications failed');
+    logger.error({ err: toLoggableError(err), commentId }, 'createMentionNotifications failed');
   }
 
   logger.debug({ userId, recipeId, commentId }, 'runCommentNotificationSideEffects completed');

@@ -6,7 +6,9 @@
  * run without a database or SMTP. Originals are restored after each test.
  */
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { logCallsContain } from '../../test-fixtures/mail.ts';
+import { toLoggableError } from '../../utils/errors.ts';
 import * as service from './service.ts';
 import { deps } from './service.ts';
 
@@ -761,4 +763,176 @@ describe('createCommentNotification', () => {
     expect(calls.create.length).toBe(1);
     expect(calls.notifyRecipeCommented.length).toBe(1);
   });
+});
+
+describe('database errors are logged through toLoggableError (D99.65)', () => {
+  /** A Drizzle-shaped query error whose message and `params` carry a bound value. */
+  function drizzleError(): Error {
+    return Object.assign(
+      new Error('Failed query: insert into "notification" …\nparams: secret-param'),
+      { query: 'insert into "notification" …', params: ['secret-param'] },
+    );
+  }
+
+  /** Mention targets: one opted-in user who is not the recipe author. */
+  const oneMentionTarget = () => Promise.resolve([makeTarget()]);
+
+  const mention = () => service.createMentionNotifications(mentionParams());
+  const follow = () =>
+    service.createFollowNotification({
+      followerId: 'follower-1',
+      followerUsername: 'follower',
+      followingId: 'target-1',
+    });
+  const like = () =>
+    service.createLikeNotification({
+      likerId: 'liker-1',
+      likerUsername: 'liker',
+      recipeAuthorId: 'target-1',
+      recipeId: 'recipe-1',
+      recipeSlug: 'slug-1',
+      recipeTitle: 'Title 1',
+    });
+  const comment = () =>
+    service.createCommentNotification({
+      commenterId: 'commenter-1',
+      commenterUsername: 'commenter',
+      recipeAuthorId: 'target-1',
+      recipeId: 'recipe-1',
+      recipeSlug: 'slug-1',
+      recipeTitle: 'Title 1',
+      commentId: 'comment-1',
+    });
+
+  /** One catch of the service: how to make it see `err`, how to reach it, and whether it rethrows. */
+  interface CatchCase {
+    name: string;
+    stub: (err: Error) => void;
+    call: () => Promise<unknown>;
+    rethrows: boolean;
+  }
+
+  const reject = (err: Error) => () => Promise.reject(err);
+
+  const CASES: CatchCase[] = [
+    {
+      name: 'createMentionNotifications: findMentionTargets',
+      stub: (err) => {
+        deps.model = makeModel({ findMentionTargets: reject(err) }, calls);
+      },
+      call: mention,
+      rethrows: true,
+    },
+    {
+      name: 'createMentionNotifications: model.create',
+      stub: (err) => {
+        deps.model = makeModel(
+          { findMentionTargets: oneMentionTarget, create: reject(err) },
+          calls,
+        );
+      },
+      call: mention,
+      rethrows: false,
+    },
+    {
+      name: 'createMentionNotifications: notifyMentioned',
+      stub: (err) => {
+        deps.model = makeModel({ findMentionTargets: oneMentionTarget }, calls);
+        deps.notifyMentioned = reject(err);
+      },
+      call: mention,
+      rethrows: false,
+    },
+    ...(
+      [
+        ['createFollowNotification', follow, 'notifyNewFollower'],
+        ['createLikeNotification', like, 'notifyRecipeLiked'],
+        ['createCommentNotification', comment, 'notifyRecipeCommented'],
+      ] as const
+    ).flatMap(([name, call, notify]): CatchCase[] => [
+      {
+        name: `${name}: findNotifyTarget`,
+        stub: (err) => {
+          deps.model = makeModel({ findNotifyTarget: reject(err) }, calls);
+        },
+        call,
+        rethrows: true,
+      },
+      {
+        name: `${name}: model.create`,
+        stub: (err) => {
+          deps.model = makeModel({ create: reject(err) }, calls);
+        },
+        call,
+        rethrows: false,
+      },
+      {
+        name: `${name}: ${notify}`,
+        stub: (err) => {
+          deps.model = makeModel({}, calls);
+          deps[notify] = reject(err);
+        },
+        call,
+        rethrows: false,
+      },
+    ]),
+    {
+      name: 'listNotifications: findByUserId',
+      stub: (err) => {
+        deps.model = makeModel({ findByUserId: reject(err) }, calls);
+      },
+      call: () => service.listNotifications('user-1', 1, 20, false),
+      rethrows: true,
+    },
+    {
+      name: 'markAsRead: findById',
+      stub: (err) => {
+        deps.model = makeModel({ findById: reject(err) }, calls);
+      },
+      call: () => service.markAsRead('user-1', 'n-1'),
+      rethrows: true,
+    },
+    {
+      name: 'markAllAsRead: markAllAsRead',
+      stub: (err) => {
+        deps.model = makeModel({ markAllAsRead: reject(err) }, calls);
+      },
+      call: () => service.markAllAsRead('user-1'),
+      rethrows: true,
+    },
+    {
+      name: 'getUnreadCount: getUnreadCount',
+      stub: (err) => {
+        deps.model = makeModel({ getUnreadCount: reject(err) }, calls);
+      },
+      call: () => service.getUnreadCount('user-1'),
+      rethrows: true,
+    },
+  ];
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('covers all 16 catches of the service', () => {
+    expect(CASES).toHaveLength(16);
+  });
+
+  it.each(CASES)(
+    '$name logs toLoggableError(err) and no parameter',
+    async ({ stub, call, rethrows }) => {
+      const err = drizzleError();
+      stub(err);
+      const error = vi.spyOn(service.logger, 'error').mockImplementation(() => undefined);
+
+      if (rethrows) await expect(call()).rejects.toBe(err);
+      else await expect(call()).resolves.toBeUndefined();
+
+      expect(error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: toLoggableError(err) }),
+        expect.any(String),
+      );
+      expect(logCallsContain(error.mock.calls, 'secret-param')).toBe(false);
+    },
+  );
 });

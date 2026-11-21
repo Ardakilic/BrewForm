@@ -10,13 +10,15 @@ import { z } from 'zod';
 import { config } from '../../config/index.ts';
 import { rateLimit } from '../../middleware/rateLimit.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { toLoggableMailError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { getTransporter } from '../../utils/notify/index.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import { POLICIES } from '../../utils/rate-limit/policies.ts';
 import { error, success } from '../../utils/response/index.ts';
 
-const logger = createLogger('contact');
+/** Module logger (exported for test spies). Never logs the sender's or recipient's address. */
+export const logger = createLogger('contact');
 
 const contactSchema = z.object({
   name: z.string().min(1).max(100),
@@ -76,7 +78,7 @@ contact.post(
 
       return success(c, { message: 'Thank you for your message. We will get back to you soon.' });
     } catch (err) {
-      logger.error({ err }, 'Failed to send contact email');
+      logger.error({ err: toLoggableMailError(err) }, 'Failed to send contact email');
       return error(c, 'INTERNAL_ERROR', 'Failed to send message. Please try again later.', 500);
     }
   },

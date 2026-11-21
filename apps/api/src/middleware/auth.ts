@@ -20,6 +20,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import type { Context, Next } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { verifyJwt } from '../modules/auth/jwt.ts';
+import { toLoggableError } from '../utils/errors.ts';
 import { createLogger } from '../utils/logger/index.ts';
 import { forbidden, unauthorized } from '../utils/response/index.ts';
 
@@ -97,7 +98,7 @@ export async function authMiddleware(c: Context, next: Next) {
     log.debug({ userId }, 'authMiddleware authentication successful');
     await next();
   } catch (err) {
-    log.error({ err }, 'authMiddleware token verification failed');
+    log.error({ err: toLoggableError(err) }, 'authMiddleware token verification failed');
     return unauthorized(c, 'Invalid or expired token');
   }
 }

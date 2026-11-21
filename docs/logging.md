@@ -64,6 +64,12 @@ These are the AGENTS.md logging rules; every new codepath includes structured lo
   or other content.
 - **Never log** passwords, tokens, secrets, API keys, or PII: no email addresses and no IP
   addresses.
+- Email-send errors go through `toLoggableMailError` (`apps/api/src/utils/errors.ts`): nodemailer
+  puts recipient addresses in the error's message, `response`, `rejected` and
+  `rejectedErrors[].recipient`, so only the name, `code`, `command`, `responseCode` and stack frames
+  are logged.
+- Catches that can see a database error log `err: toLoggableError(err)`;
+  `apps/api/src/utils/db-error-logging.enforcement.test.ts` pins the files.
 
 | Level | When to use |
 | --- | --- |

@@ -139,6 +139,78 @@ describe('LocalStorageDriver', () => {
     expect(res.status).toBe(403);
   });
 
+  it('streams a large file in chunks of at most 64 KiB', async () => {
+    const bytes = new Uint8Array(300 * 1024);
+    for (let i = 0; i < bytes.length; i++) bytes[i] = i % 251;
+    const url = await driver.save(bytes, key('webp'), { contentType: 'image/webp' });
+
+    const res = await app.request(url);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('image/webp');
+    const body = res.body;
+    expect(body).not.toBeNull();
+    if (!body) return;
+    const reader = body.getReader();
+    try {
+      const first = await reader.read();
+      expect(first.done).toBe(false);
+      expect(first.value?.byteLength ?? 0).toBeGreaterThan(0);
+      expect(first.value?.byteLength ?? 0).toBeLessThanOrEqual(64 * 1024);
+      const chunks: Uint8Array[] = first.value ? [first.value] : [];
+      for (let next = await reader.read(); !next.done; next = await reader.read()) {
+        chunks.push(next.value);
+      }
+      expect(chunks.length).toBeGreaterThan(1);
+      expect(Buffer.concat(chunks).equals(Buffer.from(bytes))).toBe(true);
+    } finally {
+      await reader.cancel();
+    }
+  });
+
+  it('marks a successful upload read as immutable for a year, with nosniff', async () => {
+    const url = await driver.save(new Uint8Array([1, 2, 3]), key('png'), {
+      contentType: 'image/png',
+    });
+
+    const res = await app.request(url);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+    await res.arrayBuffer();
+  });
+
+  it('answers HEAD with the headers only', async () => {
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 4, 5, 6, 7, 8]);
+    const url = await driver.save(bytes, key('png'), { contentType: 'image/png' });
+
+    const res = await app.request(url, { method: 'HEAD' });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-length')).toBe(String(bytes.byteLength));
+    expect(res.headers.get('content-type')).toBe('image/png');
+    expect(res.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+    expect(await res.text()).toBe('');
+  });
+
+  it('answers 404 for a path with a null byte', async () => {
+    const res = await app.request('/uploads/a%00.png');
+    expect(res.status).toBe(404);
+  });
+
+  it('answers 404 for a directory', async () => {
+    await mkdir(`${testDir}/dir.png`);
+    const res = await app.request('/uploads/dir.png');
+    expect(res.status).toBe(404);
+  });
+
+  it('sends no cache-control header with a 403 or a 404', async () => {
+    const forbidden = await app.request('/uploads/..%2F..%2Fetc%2Fpasswd');
+    expect(forbidden.status).toBe(403);
+    expect(forbidden.headers.get('cache-control')).toBeNull();
+    const missing = await app.request('/uploads/never-saved.png');
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get('cache-control')).toBeNull();
+  });
+
   it('should reject path traversal in delete', async () => {
     await expect(driver.delete('../../../etc/passwd')).rejects.toThrow('Invalid storage key');
     await expect(driver.delete('/etc/passwd')).rejects.toThrow('Invalid storage key');

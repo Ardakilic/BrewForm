@@ -11,6 +11,7 @@
  * notification endpoints (list, unread count, mark read, mark all read).
  */
 
+import { toLoggableError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import {
   notifyMentioned,
@@ -20,7 +21,8 @@ import {
 } from '../../utils/notify/index.ts';
 import * as model from './model.ts';
 
-const logger = createLogger('notification-service');
+/** Module logger (exported for test spies). Database errors go through `toLoggableError`. */
+export const logger = createLogger('notification-service');
 
 /**
  * Dependency-injection proxy for test stubbing (data access + email
@@ -132,7 +134,10 @@ export async function createMentionNotifications(params: {
         });
         created++;
       } catch (err) {
-        logger.error({ err, commentId, recipeId }, 'mention notification create failed');
+        logger.error(
+          { err: toLoggableError(err), commentId, recipeId },
+          'mention notification create failed',
+        );
         continue;
       }
 
@@ -145,13 +150,16 @@ export async function createMentionNotifications(params: {
             recipeSlug,
           });
         } catch (err) {
-          logger.error({ err, commentId, recipeId }, 'mention email failed');
+          logger.error({ err: toLoggableError(err), commentId, recipeId }, 'mention email failed');
         }
       }
     }
     logger.debug({ commentId, recipeId, created }, 'createMentionNotifications completed');
   } catch (err) {
-    logger.error({ err, commentId, recipeId }, 'createMentionNotifications failed');
+    logger.error(
+      { err: toLoggableError(err), commentId, recipeId },
+      'createMentionNotifications failed',
+    );
     throw err;
   }
 }
@@ -217,18 +225,24 @@ export async function createFollowNotification(params: {
       });
       created++;
     } catch (err) {
-      logger.error({ err, followerId, followingId }, 'follow notification create failed');
+      logger.error(
+        { err: toLoggableError(err), followerId, followingId },
+        'follow notification create failed',
+      );
     }
 
     try {
       await deps.notifyNewFollower({ followingId, followerUsername });
     } catch (err) {
-      logger.error({ err, followerId, followingId }, 'follow email failed');
+      logger.error({ err: toLoggableError(err), followerId, followingId }, 'follow email failed');
     }
 
     logger.debug({ followingId, created }, 'createFollowNotification completed');
   } catch (err) {
-    logger.error({ err, followerId, followingId }, 'createFollowNotification failed');
+    logger.error(
+      { err: toLoggableError(err), followerId, followingId },
+      'createFollowNotification failed',
+    );
     throw err;
   }
 }
@@ -285,7 +299,10 @@ export async function createLikeNotification(params: {
       });
       created++;
     } catch (err) {
-      logger.error({ err, likerId, recipeId, recipeAuthorId }, 'like notification create failed');
+      logger.error(
+        { err: toLoggableError(err), likerId, recipeId, recipeAuthorId },
+        'like notification create failed',
+      );
     }
 
     try {
@@ -296,12 +313,15 @@ export async function createLikeNotification(params: {
         recipeSlug,
       });
     } catch (err) {
-      logger.error({ err, likerId, recipeId }, 'like email failed');
+      logger.error({ err: toLoggableError(err), likerId, recipeId }, 'like email failed');
     }
 
     logger.debug({ recipeAuthorId, created }, 'createLikeNotification completed');
   } catch (err) {
-    logger.error({ err, likerId, recipeId, recipeAuthorId }, 'createLikeNotification failed');
+    logger.error(
+      { err: toLoggableError(err), likerId, recipeId, recipeAuthorId },
+      'createLikeNotification failed',
+    );
     throw err;
   }
 }
@@ -375,7 +395,7 @@ export async function createCommentNotification(params: {
       created++;
     } catch (err) {
       logger.error(
-        { err, commentId, recipeId, recipeAuthorId },
+        { err: toLoggableError(err), commentId, recipeId, recipeAuthorId },
         'comment notification create failed',
       );
     }
@@ -388,13 +408,13 @@ export async function createCommentNotification(params: {
         recipeSlug,
       });
     } catch (err) {
-      logger.error({ err, commentId, recipeId }, 'comment email failed');
+      logger.error({ err: toLoggableError(err), commentId, recipeId }, 'comment email failed');
     }
 
     logger.debug({ recipeAuthorId, created }, 'createCommentNotification completed');
   } catch (err) {
     logger.error(
-      { err, commenterId, recipeId, recipeAuthorId },
+      { err: toLoggableError(err), commenterId, recipeId, recipeAuthorId },
       'createCommentNotification failed',
     );
     throw err;
@@ -422,7 +442,10 @@ export async function listNotifications(
     logger.debug({ total: result.total }, 'listNotifications completed');
     return { notifications: result.notifications.map(toOutput), total: result.total };
   } catch (err) {
-    logger.error({ err, page, perPage, unreadOnly }, 'listNotifications failed');
+    logger.error(
+      { err: toLoggableError(err), page, perPage, unreadOnly },
+      'listNotifications failed',
+    );
     throw err;
   }
 }
@@ -448,7 +471,7 @@ export async function markAsRead(userId: string, notificationId: string) {
     logger.debug({ notificationId }, 'markAsRead completed');
     return toOutput({ ...row, readAt: updated ? updated.readAt : row.readAt });
   } catch (err) {
-    logger.error({ err, notificationId }, 'markAsRead failed');
+    logger.error({ err: toLoggableError(err), notificationId }, 'markAsRead failed');
     throw err;
   }
 }
@@ -466,7 +489,7 @@ export async function markAllAsRead(userId: string) {
     logger.debug({ marked }, 'markAllAsRead completed');
     return marked;
   } catch (err) {
-    logger.error({ err }, 'markAllAsRead failed');
+    logger.error({ err: toLoggableError(err) }, 'markAllAsRead failed');
     throw err;
   }
 }
@@ -484,7 +507,7 @@ export async function getUnreadCount(userId: string) {
     logger.debug({ unreadCount }, 'getUnreadCount completed');
     return unreadCount;
   } catch (err) {
-    logger.error({ err }, 'getUnreadCount failed');
+    logger.error({ err: toLoggableError(err) }, 'getUnreadCount failed');
     throw err;
   }
 }

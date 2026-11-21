@@ -3,10 +3,12 @@ import { config } from '../../config/index.ts';
 import { template as resetPasswordTemplate } from '../../templates/email/generated/reset-password.ts';
 import { template as verifyEmailTemplate } from '../../templates/email/generated/verify-email.ts';
 import { template as welcomeTemplate } from '../../templates/email/generated/welcome.ts';
+import { toLoggableMailError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { appBaseUrl, getTransporter } from '../../utils/notify/index.ts';
 
-const logger = createLogger('auth-email');
+/** Module logger (exported for test spies). Never logs recipient addresses. */
+export const logger = createLogger('auth-email');
 
 /**
  * Substitute `{{key}}` placeholders with HTML-escaped values.
@@ -38,7 +40,10 @@ async function sendEmail(to: string, subject: string, html: string) {
     });
     logger.info({ delivery: 'sent', subject }, 'Auth email sent successfully');
   } catch (err) {
-    logger.error({ err, delivery: 'failed', subject }, 'Failed to send auth email');
+    logger.error(
+      { err: toLoggableMailError(err), delivery: 'failed', subject },
+      'Failed to send auth email',
+    );
     throw err;
   }
 }

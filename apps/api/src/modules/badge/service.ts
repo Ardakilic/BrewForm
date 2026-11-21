@@ -6,6 +6,7 @@
  * users. Batch evaluation processes users in cursor-paginated batches of 100.
  */
 
+import { toLoggableError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import * as userModel from '../user/model.ts';
 import * as model from './model.ts';
@@ -48,7 +49,7 @@ export async function evaluateAllBadges() {
       try {
         await model.evaluateBadges(userId);
       } catch (err) {
-        logger.error({ err, userId }, 'evaluateBadges failed');
+        logger.error({ err: toLoggableError(err), userId }, 'evaluateBadges failed');
       }
     }
 

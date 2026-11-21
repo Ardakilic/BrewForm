@@ -5,10 +5,10 @@ import { assertSafeStorageKey } from './key.ts';
 import type { StorageDriver } from './types.ts';
 
 /**
- * StorageDriver that writes files to UPLOAD_DIR on local disk and serves them
- * under `/uploads/`. `config.UPLOAD_DIR` is already absolute (resolved once in
- * `config/env.ts`), so the driver and the `/uploads/*` handler in `main.ts`
- * read and write the same directory. Keys are checked with
+ * StorageDriver that writes files to UPLOAD_DIR on local disk; they are served
+ * under `/uploads/` by `serveLocalUpload` (`./serve.ts`, mounted in `main.ts`).
+ * `config.UPLOAD_DIR` is already absolute (resolved once in `config/env.ts`), so
+ * the driver and that handler read and write the same directory. Keys are checked with
  * `assertSafeStorageKey` and resolved against path traversal before any
  * filesystem access; files are created exclusively (never replaced); deletes
  * are best-effort (missing files are ignored).
@@ -21,7 +21,7 @@ export class LocalStorageDriver implements StorageDriver {
    *
    * @param data - File bytes.
    * @param key - A flat, server-generated key inside UPLOAD_DIR.
-   * @param _options - The content type; the `/uploads/*` handler derives it from
+   * @param _options - The content type; `serveLocalUpload` derives it from
    *   the server-generated extension, so the local driver does not store it.
    * @returns The root-relative public URL `/uploads/<key>`.
    * @throws {Error} `Invalid storage key` / `Invalid filename` on an unsafe key,

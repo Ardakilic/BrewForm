@@ -1,11 +1,14 @@
 import '../../test-setup.ts';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { reloadConfig } from '../../config/env.ts';
 import { log as rateLimitLog } from '../../middleware/rateLimit.ts';
+import { logCallsContain, smtpEnvelopeError } from '../../test-fixtures/mail.ts';
 import { log as clientIpLog } from '../../utils/client-ip/index.ts';
 import { peerEnv, uniqueTestIp } from '../../utils/client-ip/test-helpers.ts';
+import { getTransporter } from '../../utils/notify/index.ts';
 import { resetRateLimitBackend } from '../../utils/rate-limit/registry.ts';
-import contact from './index.ts';
+import contact, { logger } from './index.ts';
 
 /** The contact router behind a requestId middleware (as in the main stack). */
 function createTestApp() {
@@ -111,5 +114,31 @@ describe('POST /api/v1/contact', () => {
     const ip = uniqueTestIp();
     for (let i = 0; i < 4; i++) await postContact(app, ip, VALID);
     expect((await postContact(app, uniqueTestIp(), VALID)).status).toBe(200);
+  });
+
+  it('answers 500 and logs a rejected send without any address', async () => {
+    const previous = { APP_ENV: process.env.APP_ENV, ADMIN_EMAIL: process.env.ADMIN_EMAIL };
+    process.env.APP_ENV = 'development';
+    process.env.ADMIN_EMAIL = 'victim@example.com';
+    reloadConfig();
+    const sendMail = vi
+      .spyOn(getTransporter(), 'sendMail')
+      .mockImplementation(() => Promise.reject(smtpEnvelopeError('victim@example.com')));
+    const error = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    try {
+      const res = await postContact(createTestApp(), uniqueTestIp(), VALID);
+      expect(res.status).toBe(500);
+      expect(sendMail).toHaveBeenCalledTimes(1);
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(error.mock.calls[0][0]).toMatchObject({ err: { code: 'EENVELOPE' } });
+      expect(logCallsContain(error.mock.calls, 'victim@example.com')).toBe(false);
+      expect(logCallsContain(error.mock.calls, VALID.email)).toBe(false);
+    } finally {
+      for (const [key, value] of Object.entries(previous)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      reloadConfig();
+    }
   });
 });

@@ -5,8 +5,10 @@ import { reloadConfig } from '../../config/env.ts';
 import { template as resetPasswordTemplate } from '../../templates/email/generated/reset-password.ts';
 import { template as verifyEmailTemplate } from '../../templates/email/generated/verify-email.ts';
 import { template as welcomeTemplate } from '../../templates/email/generated/welcome.ts';
+import { logCallsContain, smtpEnvelopeError } from '../../test-fixtures/mail.ts';
 import { appBaseUrl, getTransporter } from '../../utils/notify/index.ts';
 import {
+  logger,
   renderTemplate,
   sendPasswordResetEmail,
   sendVerificationEmail,
@@ -83,6 +85,31 @@ describe('Auth Email', () => {
       });
       expect(html).not.toContain('<script>');
       expect(html).toContain('&lt;script&gt;');
+    });
+  });
+
+  describe('send failures', () => {
+    it('logs a rejected welcome email without the recipient address, and rethrows', async () => {
+      const previousEnv = process.env.APP_ENV;
+      process.env.APP_ENV = 'development';
+      reloadConfig();
+      const sendMail = vi
+        .spyOn(getTransporter(), 'sendMail')
+        .mockImplementation(() => Promise.reject(smtpEnvelopeError('victim@example.com')));
+      const error = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+      try {
+        await expect(sendWelcomeEmail('victim@example.com', 'v')).rejects.toThrow();
+        expect(error).toHaveBeenCalledTimes(1);
+        expect(error.mock.calls[0][0]).toMatchObject({
+          err: { code: 'EENVELOPE', command: 'RCPT TO', responseCode: 550 },
+        });
+        expect(logCallsContain(error.mock.calls, 'victim@example.com')).toBe(false);
+      } finally {
+        sendMail.mockRestore();
+        error.mockRestore();
+        process.env.APP_ENV = previousEnv ?? 'test';
+        reloadConfig();
+      }
     });
   });
 

@@ -30,6 +30,7 @@ import {
   ConflictError,
   type ErrorDetail,
   isStatementTimeout,
+  toLoggableError,
   ValidationError,
 } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
@@ -448,10 +449,14 @@ export async function createRecipe(authorId: string, data: RecipeCreateInput) {
         recipeTitle: finalRecipe.title,
         recipeSlug: finalRecipe.slug,
       });
-    })().catch((err) => logger.error({ err }, 'notifyFollowersOfNewRecipe failed'));
+    })().catch((err) =>
+      logger.error({ err: toLoggableError(err) }, 'notifyFollowersOfNewRecipe failed'),
+    );
   }
 
-  evaluateBadges(authorId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
+  evaluateBadges(authorId).catch((err) =>
+    logger.error({ err: toLoggableError(err) }, 'evaluateBadges failed'),
+  );
 
   logger.debug({ authorId }, 'createRecipe completed');
   return finalRecipe;
@@ -655,7 +660,9 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
   const forked = await model.forkRecipe(sourceId, authorId, forkTitle, candidates);
   if (forked === null) throw slugExhausted(authorId, candidates.length);
 
-  evaluateBadges(authorId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
+  evaluateBadges(authorId).catch((err) =>
+    logger.error({ err: toLoggableError(err) }, 'evaluateBadges failed'),
+  );
 
   logger.debug({ sourceId, authorId }, 'forkRecipe completed');
   return forked;
@@ -790,7 +797,7 @@ export async function listRecipes(
     try {
       cursor = decodeCursor(filters.cursor);
     } catch (err) {
-      logger.error({ err }, 'Invalid cursor provided');
+      logger.error({ err: toLoggableError(err) }, 'Invalid cursor provided');
       throw new Error('VALIDATION_ERROR: INVALID_CURSOR');
     }
 
@@ -807,7 +814,7 @@ export async function listRecipes(
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'VALIDATION_ERROR: INVALID_CURSOR') {
         logger.error(
-          { err, userId: _requestingUserId, page, perPage },
+          { err: toLoggableError(err), userId: _requestingUserId, page, perPage },
           'Invalid cursor payload provided',
         );
         throw new Error('VALIDATION_ERROR: INVALID_CURSOR');
@@ -927,7 +934,9 @@ export async function toggleLike(userId: string, recipeId: string) {
         recipeSlug: recipe.slug,
         recipeTitle: recipe.title,
       });
-    })().catch((err) => logger.error({ err, recipeId }, 'createLikeNotification failed'));
+    })().catch((err) =>
+      logger.error({ err: toLoggableError(err), recipeId }, 'createLikeNotification failed'),
+    );
   }
 
   logger.debug({ userId, recipeId }, 'toggleLike completed');
@@ -1240,7 +1249,7 @@ export async function mergeRecipes(authorId: string, data: RecipeMerge) {
     logger.debug({ authorId, recipeId: recipe?.id }, 'mergeRecipes completed');
     return recipe;
   } catch (err) {
-    logger.error({ err, authorId }, 'mergeRecipes failed');
+    logger.error({ err: toLoggableError(err), authorId }, 'mergeRecipes failed');
     throw err;
   }
 }
@@ -1344,7 +1353,7 @@ export async function diffVersions(recipeId: string, v1Id: string, v2Id: string)
     if (message === 'VERSION_NOT_FOUND') {
       logger.debug({ recipeId, v1Id, v2Id }, 'diffVersions version not found');
     } else {
-      logger.error({ err, recipeId, v1Id, v2Id }, 'diffVersions failed');
+      logger.error({ err: toLoggableError(err), recipeId, v1Id, v2Id }, 'diffVersions failed');
     }
     throw err;
   }

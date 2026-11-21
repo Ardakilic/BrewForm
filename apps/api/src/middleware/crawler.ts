@@ -2,6 +2,7 @@ import { escapeHtml, escapeHtmlAttr } from '@brewform/shared/utils';
 import type { Context, Next } from 'hono';
 import { config } from '../config/index.ts';
 import { getRecipeMeta } from '../modules/recipe/service.ts';
+import { toLoggableError } from '../utils/errors.ts';
 import { createLogger } from '../utils/logger/index.ts';
 import { NOINDEX_NOFOLLOW, ROBOTS_TAG_HEADER } from '../utils/response/index.ts';
 
@@ -64,7 +65,7 @@ export async function crawlerMiddleware(c: Context, next: Next) {
     meta = await deps.getRecipeMeta(slug);
   } catch (err) {
     const missing = err instanceof Error && err.message === 'RECIPE_NOT_FOUND';
-    if (!missing) log.warn({ slug, err }, 'Crawler rendering failed');
+    if (!missing) log.warn({ slug, err: toLoggableError(err) }, 'Crawler rendering failed');
     return fallThroughNoIndex(c, next, slug, missing ? 'missing' : 'error');
   }
   if (!meta) return fallThroughNoIndex(c, next, slug, 'missing');
@@ -115,7 +116,7 @@ export async function crawlerMiddleware(c: Context, next: Next) {
     c.header('Vary', 'User-Agent');
     return c.html(html);
   } catch (err) {
-    log.warn({ slug, err }, 'Crawler rendering failed');
+    log.warn({ slug, err: toLoggableError(err) }, 'Crawler rendering failed');
     return next();
   }
 }

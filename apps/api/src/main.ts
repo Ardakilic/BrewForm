@@ -22,10 +22,12 @@
  *   cors → requestId → secureHeaders → rateLimit(POLICIES.global: RATE_LIMIT_GLOBAL_MAX/min per
  *   client IP, skipping /health, /ready and GET /uploads/*) → bodyLimit(1MB, excl. /api/v1/photos)
  *   → cache injection → crawler → routes (GET /uploads/* has its own POLICIES.uploads limit)
+ *
+ * With STORAGE_DRIVER=local, GET/HEAD /uploads/:path{.+} is served by `serveLocalUpload`
+ * (utils/storage/serve.ts): streamed from disk with bounded memory and
+ * `Cache-Control: public, max-age=31536000, immutable` on 200.
  */
 import 'dotenv/config';
-import { readFile } from 'node:fs/promises';
-import * as path from 'node:path';
 import { serve } from '@hono/node-server';
 import { type Context, Hono } from 'hono';
 import { secureHeaders } from 'hono/secure-headers';
@@ -47,6 +49,7 @@ import { POLICIES } from './utils/rate-limit/policies.ts';
 import { getRateLimitBackend, setRateLimitBackend } from './utils/rate-limit/registry.ts';
 import { createRedisClient } from './utils/redis/client.ts';
 import { StorageStartupError, verifyStorage } from './utils/storage/index.ts';
+import { serveLocalUpload } from './utils/storage/serve.ts';
 import './utils/jobs/cron.ts';
 
 const logger = createLogger('main');
@@ -107,51 +110,11 @@ app.use('*', async (c, next) => {
 app.use('*', crawlerMiddleware);
 app.onError(errorHandler);
 
-// Serve uploads locally when using filesystem storage. The path is captured by
-// a named regex param: Hono's bare `*` wildcard is not readable through
-// `c.req.param('*')` (it always returned undefined, so every request got 400).
+// Serve uploads locally when using filesystem storage (streamed, cached as immutable; see
+// utils/storage/serve.ts). The path is captured by a named regex param: Hono's bare `*` wildcard
+// is not readable through `c.req.param('*')`.
 if (config.STORAGE_DRIVER === 'local') {
-  app.get('/uploads/:path{.+}', rateLimit(POLICIES.uploads), async (c) => {
-    const userPath = c.req.param('path');
-    if (!userPath) {
-      return c.text('Bad Request', 400);
-    }
-    // config.UPLOAD_DIR is already absolute (resolved once in config/env.ts),
-    // so the driver and this handler always use the same directory.
-    const uploadDir = config.UPLOAD_DIR;
-    const filepath = path.resolve(uploadDir, userPath);
-
-    if (
-      path.isAbsolute(userPath) ||
-      userPath.includes('..') ||
-      !filepath.startsWith(uploadDir + path.sep)
-    ) {
-      return c.text('Forbidden', 403);
-    }
-
-    let data: Buffer;
-    try {
-      data = await readFile(filepath);
-      const ext = filepath.split('.').pop() ?? '';
-      const contentTypes: Record<string, string> = {
-        jpg: 'image/jpeg',
-        jpeg: 'image/jpeg',
-        png: 'image/png',
-        webp: 'image/webp',
-      };
-      const contentType = contentTypes[ext.toLowerCase()] ?? 'application/octet-stream';
-      // Copy out of the (possibly pooled) Buffer so the body is exactly this file.
-      const body = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-      return new Response(body as ArrayBuffer, {
-        headers: {
-          'content-type': contentType,
-          'content-length': String(data.byteLength),
-        },
-      });
-    } catch {
-      return c.notFound();
-    }
-  });
+  app.get('/uploads/:path{.+}', rateLimit(POLICIES.uploads), serveLocalUpload);
 }
 
 app.route('/', routes);

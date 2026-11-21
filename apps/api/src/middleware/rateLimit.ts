@@ -14,8 +14,10 @@ import { getRateLimitBackend } from '../utils/rate-limit/registry.ts';
  *
  * - {@link rateLimit} counts every request against a named policy;
  * - {@link rateLimitFailures} counts only failed attempts (OWASP login
- *   pattern): `get` before the handler, `penalty` after a failure status,
- *   `delete` after a 2xx when `resetOnSuccess`.
+ *   pattern): an atomic `consume` reserves a point before the handler (so
+ *   parallel attempts cannot pass the limit together), the point stays after a
+ *   failure status, the counter is deleted after a 2xx when `resetOnSuccess`,
+ *   and the point is given back with `reward` otherwise.
  *
  * Keys are `<policy-id>:<dimension>`: the normalised client IP (IPv6 by /64)
  * from `getClientIp`, the user id, or {@link emailKey}. State lives in the
@@ -200,11 +202,16 @@ export function rateLimit(policy: RateLimitPolicy, opts: RateLimitOptions = {}):
 }
 
 /**
- * Count only failed attempts against `policy`. Before the handler it reads the
- * counter and answers 429 once it has reached the limit; after the handler it
- * consumes a point when `isFailure(status)` (default: 401), or deletes the
- * counter after a 2xx when `resetOnSuccess`. Headers are set only on its own
- * 429.
+ * Count only failed attempts against `policy`, consume first: before the
+ * handler it reserves one point with an atomic `consume` and answers 429 when
+ * that is rejected (a rejected `RateLimiterRes`), so concurrent attempts can
+ * never pass the limit together; any other limiter error fails open with an
+ * error log. After the handler the reserved point stays only when
+ * `isFailure(status)` (default: 401); after a 2xx with `resetOnSuccess` the
+ * counter is deleted; for every other status the point is given back with
+ * `reward`. A failed counter update is logged at error. The threshold is
+ * unchanged: `points` failures pass, the next attempt is refused. Headers are
+ * set only on its own 429.
  *
  * @param policy - The failure-only policy to enforce.
  * @param opts - Key derivation, failure predicate and reset-on-success flag.
@@ -224,11 +231,9 @@ export function rateLimitFailures(
     let limiter: RateLimiterAbstract;
     try {
       limiter = getRateLimitBackend().limiter(policy);
-      const current = await limiter.get(key);
-      if (current !== null && current.consumedPoints >= policy.points) {
-        return rejectRequest(c, policy, current);
-      }
+      await limiter.consume(key);
     } catch (err) {
+      if (err instanceof RateLimiterRes) return rejectRequest(c, policy, err);
       log.error({ err, policy: policy.id }, 'rateLimitFailures limiter failed; allowing request');
       return next();
     }
@@ -236,11 +241,13 @@ export function rateLimitFailures(
     await next();
 
     const status = c.res.status;
+    // The reserved point is the failure.
+    if (isFailure(status)) return;
     try {
-      if (isFailure(status)) {
-        await limiter.penalty(key);
-      } else if (opts.resetOnSuccess && status >= 200 && status < 300) {
+      if (opts.resetOnSuccess && status >= 200 && status < 300) {
         await limiter.delete(key);
+      } else {
+        await limiter.reward(key);
       }
     } catch (err) {
       log.error({ err, policy: policy.id }, 'rateLimitFailures counter update failed');

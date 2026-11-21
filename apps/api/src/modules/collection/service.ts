@@ -497,7 +497,7 @@ export async function listAllPublicCollections(page: number, perPage: number) {
     logger.debug({ total: result.total }, 'listAllPublicCollections completed');
     return output;
   } catch (err) {
-    logger.error({ err, page, perPage }, 'listAllPublicCollections failed');
+    logger.error({ err: toLoggableError(err), page, perPage }, 'listAllPublicCollections failed');
     throw err;
   }
 }

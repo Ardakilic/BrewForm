@@ -6,6 +6,7 @@
  * followed users' public recipes.
  */
 
+import { toLoggableError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { evaluateBadges } from '../badge/service.ts';
 import { createFollowNotification } from '../notification/service.ts';
@@ -45,10 +46,15 @@ export async function followUser(followerId: string, followingId: string) {
       followingId,
     });
   })().catch((err) =>
-    logger.error({ err, followerId, followingId }, 'createFollowNotification failed'),
+    logger.error(
+      { err: toLoggableError(err), followerId, followingId },
+      'createFollowNotification failed',
+    ),
   );
 
-  evaluateBadges(followerId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
+  evaluateBadges(followerId).catch((err) =>
+    logger.error({ err: toLoggableError(err) }, 'evaluateBadges failed'),
+  );
 
   return follow;
 }

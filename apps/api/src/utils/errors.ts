@@ -11,6 +11,9 @@
  * - {@link toLoggableError} builds a log-safe copy of an error: Drizzle embeds
  *   the query parameters (emails, usernames, bcrypt hashes) in its message and
  *   `params`, and postgres-js puts row values in `detail`.
+ * - {@link toLoggableMailError} does the same for errors caught around an email
+ *   send: nodemailer puts recipient addresses in `message`, `response`,
+ *   `rejected` and `rejectedErrors[].recipient`.
  */
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
@@ -283,4 +286,42 @@ function toLoggableLink(link: Record<string, unknown>, depth: number): LoggableE
 export function toLoggableError(err: unknown): LoggableError {
   if (!isObjectLike(err)) return { type: typeof err, message: String(err) };
   return toLoggableLink(err, 0);
+}
+
+/** A log-safe copy of an email-send failure produced by {@link toLoggableMailError}. */
+export interface LoggableMailError {
+  type: string;
+  code?: string;
+  command?: string;
+  responseCode?: number;
+  stack?: string;
+}
+
+/**
+ * Build a log-safe copy of any error caught around an email send, for
+ * `log.error({ err: toLoggableMailError(err) })`.
+ *
+ * A database error (the send helpers may also see a failed token insert or
+ * recipient lookup) gets the {@link toLoggableError} shape. Anything else keeps
+ * only the error name (`type`), `code`, `command`, `responseCode` and the stack
+ * frames under a `type`-only header: nodemailer appends the SMTP reply to
+ * `message` and sets `response`, `rejected` and `rejectedErrors[].recipient`,
+ * all of which can carry recipient addresses. `code` + `command` +
+ * `responseCode` are enough to diagnose (`EAUTH`/535, `ECONNECTION`/`CONN`,
+ * `EENVELOPE`/`RCPT TO`/550).
+ *
+ * @param err - Any thrown value.
+ * @returns The database-safe or mail-safe copy; `{ type }` for a thrown non-object.
+ */
+export function toLoggableMailError(err: unknown): LoggableError | LoggableMailError {
+  if (isDatabaseError(err)) return toLoggableError(err);
+  if (!isObjectLike(err)) return { type: typeof err };
+  const type = typeof err.name === 'string' ? err.name : 'Error';
+  const result: LoggableMailError = { type };
+  if (typeof err.code === 'string') result.code = err.code;
+  if (typeof err.command === 'string') result.command = err.command;
+  if (typeof err.responseCode === 'number') result.responseCode = err.responseCode;
+  const stack = sanitizeStack(err.stack, type);
+  if (stack !== undefined) result.stack = stack;
+  return result;
 }

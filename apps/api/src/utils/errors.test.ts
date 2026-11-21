@@ -1,5 +1,6 @@
 import { DrizzleQueryError } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
+import { smtpEnvelopeError } from '../test-fixtures/mail.ts';
 import {
   AppError,
   ConflictError,
@@ -11,6 +12,7 @@ import {
   NotFoundError,
   postgresStatementKind,
   toLoggableError,
+  toLoggableMailError,
   ValidationError,
 } from './errors.ts';
 
@@ -280,5 +282,28 @@ describe('toLoggableError', () => {
 
   it('should describe a thrown non-object', () => {
     expect(toLoggableError('oops')).toEqual({ type: 'string', message: 'oops' });
+  });
+});
+
+describe('toLoggableMailError', () => {
+  it('keeps only the name, code, command, response code and stack frames of a mail error', () => {
+    const loggable = toLoggableMailError(smtpEnvelopeError('victim@example.com'));
+    expect(loggable).toEqual({
+      type: 'Error',
+      code: 'EENVELOPE',
+      command: 'RCPT TO',
+      responseCode: 550,
+      stack: expect.any(String),
+    });
+    expect(JSON.stringify(loggable)).not.toContain('victim@example.com');
+  });
+
+  it('gives a database error the toLoggableError shape', () => {
+    const err = wrapped(pgError('23505', { constraint_name: 'user_email_unique' }));
+    expect(toLoggableMailError(err)).toEqual(toLoggableError(err));
+  });
+
+  it('describes a thrown non-object by its type only', () => {
+    expect(toLoggableMailError('victim@example.com')).toEqual({ type: 'string' });
   });
 });

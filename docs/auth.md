@@ -123,8 +123,9 @@ Login is limited per IP and per account (capability `api-rate-limiting`; policie
 | `auth-login-fail-account-ip` | account email + client IP | 5 per 15 min | failed logins only; reset by a successful login |
 | `auth-login-fail-account` | account email | 20 per hour | failed logins only |
 
-- The failure-only policies check their counter before the handler and consume a point only when
-  the login returns `401`. Over a limit, the request gets `429 RATE_LIMITED` with `Retry-After`.
+- The failure-only policies take a point before the handler and give it back unless the login
+  returns `401`, so parallel attempts cannot exceed the limit. Over a limit, the request gets
+  `429 RATE_LIMITED` with `Retry-After`.
 - Five wrong passwords lock that account from that IP for the window; other IPs are unaffected
   until the per-account cap (20 failures per hour from any IP) is reached.
 - Unknown emails are counted exactly like existing accounts and get the same `429`, so the limiter

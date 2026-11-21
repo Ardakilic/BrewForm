@@ -18,6 +18,7 @@ import type {
 } from '@brewform/shared/schemas';
 import type { z } from 'zod';
 import type { CacheProvider } from '../../utils/cache/index.ts';
+import { toLoggableError, toLoggableMailError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { sendWelcomeEmail } from '../auth/email.ts';
 import * as model from './model.ts';
@@ -116,7 +117,7 @@ export async function adminCreateUser(
   try {
     await sendWelcomeEmail(data.email, data.username);
   } catch (err) {
-    logger.warn({ err }, 'Failed to send welcome email on admin create');
+    logger.warn({ err: toLoggableMailError(err) }, 'Failed to send welcome email on admin create');
   }
 
   logger.debug({ adminId }, 'adminCreateUser completed');
@@ -533,7 +534,7 @@ export async function flushCache(cache: CacheProvider, keys: string[]) {
       keys.length > 0 ? keys.join(',') : 'ALL',
     );
   } catch (err) {
-    logger.warn({ err }, 'Failed to write FLUSH_CACHE audit log');
+    logger.warn({ err: toLoggableError(err) }, 'Failed to write FLUSH_CACHE audit log');
   }
   logger.debug({}, 'flushCache completed');
 }

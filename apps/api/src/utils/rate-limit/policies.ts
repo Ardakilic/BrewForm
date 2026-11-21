@@ -14,9 +14,9 @@ import { config } from '../../config/index.ts';
 export type RateLimitDimension = 'ip' | 'email' | 'email-ip' | 'user';
 
 /**
- * `count` consumes a point on every request; `failures` checks before the
- * handler and consumes a point only after a failed attempt (see
- * `rateLimitFailures`).
+ * `count` consumes a point on every request; `failures` reserves a point with
+ * an atomic `consume` before the handler and keeps it only after a failed
+ * attempt, giving it back otherwise (see `rateLimitFailures`).
  */
 export type RateLimitMode = 'count' | 'failures';
 

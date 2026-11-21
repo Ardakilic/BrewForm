@@ -95,7 +95,10 @@ describe('Auth Middleware', () => {
 
         expect(res.status).toBe(401);
         expect(spies.error).toHaveBeenCalledTimes(1);
-        expect(spies.error.mock.calls[0][0].err).toBeInstanceOf(Error);
+        // The catch also wraps the user lookup, so the error is logged through toLoggableError.
+        const logged = spies.error.mock.calls[0][0].err;
+        expect(logged).not.toBeInstanceOf(Error);
+        expect(logged).toMatchObject({ type: expect.any(String), message: expect.any(String) });
         expect(spies.error.mock.calls[0][1]).toContain('token verification failed');
       } finally {
         restoreSpies(spies);

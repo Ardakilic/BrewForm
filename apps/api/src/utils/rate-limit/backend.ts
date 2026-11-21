@@ -15,6 +15,10 @@
  *   store error, or a client that is not ready, falls back to the insurance
  *   limiter (fail-soft). It logs one warn on entering degraded mode and one
  *   info on recovery (with the number of fallback decisions in between).
+ *   Recovery is the first store call that succeeds after the failure or the
+ *   client's `ready` event, whichever comes first, so a command timeout or an
+ *   error reply on a live connection does not leave the store `degraded`; a
+ *   later failure starts a new outage with its own warn.
  */
 import {
   type RateLimiterAbstract,
@@ -105,16 +109,53 @@ type HandleError = (
 const baseHandleError = (RateLimiterRedis.prototype as unknown as { _handleError: HandleError })
   ._handleError;
 
+/** Signature of `rate-limiter-flexible`'s internal store-result mapper (not in its typings). */
+type GetRateLimiterRes = (
+  rlKey: string,
+  changedPoints: number,
+  storeResult: unknown,
+) => RateLimiterRes;
+
+/**
+ * The library's own `_getRateLimiterRes`: it runs only after the store answered a
+ * consume, penalty, reward or non-null get (also when the limit is exceeded).
+ */
+const baseGetRateLimiterRes = (
+  RateLimiterRedis.prototype as unknown as { _getRateLimiterRes: GetRateLimiterRes }
+)._getRateLimiterRes;
+
 /**
  * `RateLimiterRedis` that reports every store error (anything but a
  * `RateLimiterRes` "limit exceeded" rejection) before the library hands the
- * call to the insurance limiter, so the backend can track degraded mode.
+ * call to the insurance limiter, and every store answer, so the backend can
+ * track degraded mode and leave it on the first success. The insurance limiter
+ * is a separate `RateLimiterMemory`, so its decisions never count as a success.
  */
 class ObservedRateLimiterRedis extends RateLimiterRedis {
   /** Called with the store error each time a decision falls back to insurance. */
   onStoreError: (err: unknown) => void = () => {
     // Default no-op until the backend installs its degraded-mode tracker right after construction.
   };
+
+  /** Called each time the store answers a consume, penalty, reward or non-null get. */
+  onStoreSuccess: () => void = () => {
+    // Default no-op until the backend installs its recovery hook right after construction.
+  };
+
+  /**
+   * Map the store result with the library's own implementation, then report the
+   * successful store call.
+   *
+   * @param rlKey - The prefixed store key.
+   * @param changedPoints - The points the call added (negative for a reward).
+   * @param storeResult - The raw store reply.
+   * @returns The library's `RateLimiterRes`, unchanged.
+   */
+  _getRateLimiterRes(rlKey: string, changedPoints: number, storeResult: unknown): RateLimiterRes {
+    const res = baseGetRateLimiterRes.call(this, rlKey, changedPoints, storeResult);
+    this.onStoreSuccess();
+    return res;
+  }
 
   /**
    * Intercept the library's error funnel, then delegate to it unchanged.
@@ -140,7 +181,9 @@ class ObservedRateLimiterRedis extends RateLimiterRedis {
 /**
  * Build a backend on a shared Redis/Valkey store. Use a dedicated client from
  * `createRedisClient()` (fast-fail options); `/ready` reads {@link
- * RateLimitBackend.status}.
+ * RateLimitBackend.status}. A client `error` event or a store error enters
+ * `degraded` (one warn per outage); the client's `ready` event or the first
+ * successful store call leaves it (one info with the fallback-decision count).
  *
  * @param client - The ioredis client (its connection is closed by `close()`).
  * @returns A backend whose status is `ok` or `degraded`.
@@ -159,13 +202,15 @@ export function createRedisBackend(client: RedisLimiterClient): RateLimitBackend
     );
   };
 
-  client.on('error', (err) => enterDegraded(err));
-  client.on('ready', () => {
+  const leaveDegraded = () => {
     if (!degraded) return;
     degraded = false;
     log.info({ store: 'redis', fallbackDecisions }, 'Rate-limit store recovered');
     fallbackDecisions = 0;
-  });
+  };
+
+  client.on('error', (err) => enterDegraded(err));
+  client.on('ready', leaveDegraded);
 
   return {
     kind: 'redis',
@@ -188,6 +233,7 @@ export function createRedisBackend(client: RedisLimiterClient): RateLimitBackend
           fallbackDecisions += 1;
           enterDegraded(err);
         };
+        limiter.onStoreSuccess = leaveDegraded;
         limiters.set(policy.id, limiter);
       }
       return limiter;

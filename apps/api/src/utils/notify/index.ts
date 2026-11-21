@@ -22,6 +22,7 @@ import { template as mentionedInCommentTemplate } from '../../templates/email/ge
 import { template as newFollowerTemplate } from '../../templates/email/generated/new-follower.ts';
 import { template as recipeCommentedTemplate } from '../../templates/email/generated/recipe-commented.ts';
 import { template as recipeLikedTemplate } from '../../templates/email/generated/recipe-liked.ts';
+import { toLoggableMailError } from '../errors.ts';
 import { createLogger } from '../logger/index.ts';
 
 /** A resolved notification recipient with their flat preference row. */
@@ -87,7 +88,10 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
     await getTransporter().sendMail({ from: config.EMAIL_FROM, to, subject, html });
     logger.info({ delivery: 'sent', subject }, 'Notification email sent');
   } catch (err) {
-    logger.error({ err, delivery: 'failed', subject }, 'Notification email failed');
+    logger.error(
+      { err: toLoggableMailError(err), delivery: 'failed', subject },
+      'Notification email failed',
+    );
   }
 }
 

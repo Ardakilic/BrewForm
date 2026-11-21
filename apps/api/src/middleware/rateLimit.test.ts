@@ -262,19 +262,29 @@ describe('Rate Limit Middleware', () => {
     /**
      * App whose handler answers with the status given in `x-status`, behind a
      * failure-only policy, counting handler invocations.
+     *
+     * @param policy - The failure-only policy under test.
+     * @param resetOnSuccess - Passed through to `rateLimitFailures`.
+     * @param delayMs - How long the handler waits before answering (a slow
+     *   password check), so concurrent requests overlap.
      */
-    function buildFailureApp(policy: RateLimitPolicy, resetOnSuccess = false) {
+    function buildFailureApp(policy: RateLimitPolicy, resetOnSuccess = false, delayMs = 0) {
       const handler = vi.fn();
       const app = new Hono();
       app.use('*', async (c, next) => {
         c.set('requestId' as never, 'req-test-2' as never);
         await next();
       });
-      app.post('/t', rateLimitFailures(policy, { key: () => 'acct', resetOnSuccess }), (c) => {
-        handler();
-        const status = Number(c.req.header('x-status') ?? '200');
-        return c.json({ status }, status as 200);
-      });
+      app.post(
+        '/t',
+        rateLimitFailures(policy, { key: () => 'acct', resetOnSuccess }),
+        async (c) => {
+          handler();
+          if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+          const status = Number(c.req.header('x-status') ?? '200');
+          return c.json({ status }, status as 200);
+        },
+      );
       return { app, handler };
     }
 
@@ -306,6 +316,29 @@ describe('Rate Limit Middleware', () => {
         code: 'RATE_LIMITED',
         message: 'Too many test requests, please try again later',
         requestId: 'req-test-2',
+      });
+    });
+
+    it('lets no more concurrent failures through than the policy allows', async () => {
+      spyLogs();
+      const { app, handler } = buildFailureApp(smallPolicy(3, 'failures'), false, 10);
+      const responses = await Promise.all(Array.from({ length: 10 }, () => post(app, 401)));
+      expect(handler).toHaveBeenCalledTimes(3);
+      expect(responses.map((r) => r.status).sort()).toEqual([
+        401, 401, 401, 429, 429, 429, 429, 429, 429, 429,
+      ]);
+    });
+
+    it('gives the point back for successes and non-401 failures', async () => {
+      const policy = smallPolicy(2, 'failures');
+      const { app } = buildFailureApp(policy);
+      const statuses: number[] = [];
+      for (let i = 0; i < 5; i++) statuses.push((await post(app, 200)).status);
+      statuses.push((await post(app, 400)).status);
+      statuses.push((await post(app, 500)).status);
+      expect(statuses).not.toContain(429);
+      expect(await getRateLimitBackend().limiter(policy).get('acct')).toMatchObject({
+        consumedPoints: 0,
       });
     });
 

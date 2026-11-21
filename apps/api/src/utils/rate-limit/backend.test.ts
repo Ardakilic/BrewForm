@@ -52,7 +52,7 @@ function createDeadClient() {
   const client = Object.assign(new EventEmitter(), {
     status: 'end',
     defineCommand: vi.fn(),
-    rlflxIncr: vi.fn(fail),
+    rlflxIncr: vi.fn<(...args: unknown[]) => Promise<unknown>>(fail),
     multi: () => chain,
     del: vi.fn(fail),
     disconnect: vi.fn(),
@@ -141,6 +141,34 @@ describe('createRedisBackend', () => {
     // A second ready without an outage logs nothing new.
     client.emit('ready');
     expect(info).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves degraded mode on the next successful store call while the connection stays up', async () => {
+    const warn = vi.spyOn(log, 'warn').mockImplementation(() => undefined);
+    const info = vi.spyOn(log, 'info').mockImplementation(() => undefined);
+    const client = createDeadClient();
+    client.status = 'ready';
+    client.rlflxIncr.mockImplementation(() => Promise.reject(new Error('Command timed out')));
+    const backend = createRedisBackend(client as unknown as RedisLimiterClient);
+    const limiter = backend.limiter(testPolicy('redis-live', 10));
+
+    // 1. A command timeout on a live connection: degraded, one warn.
+    await limiter.consume('k');
+    expect(backend.status()).toBe('degraded');
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    // 2. The store answers again: ok, one recovery info with the fallback count.
+    client.rlflxIncr.mockResolvedValue([1, 60000]);
+    await limiter.consume('k');
+    expect(backend.status()).toBe('ok');
+    expect(info).toHaveBeenCalledTimes(1);
+    expect(info.mock.calls[0][0]).toEqual({ store: 'redis', fallbackDecisions: 1 });
+
+    // 3. A later failure starts a new outage with its own warn.
+    client.rlflxIncr.mockImplementation(() => Promise.reject(new Error('Command timed out')));
+    await limiter.consume('k');
+    expect(backend.status()).toBe('degraded');
+    expect(warn).toHaveBeenCalledTimes(2);
   });
 
   it('enters degraded mode on a client error event, once per outage', () => {

@@ -1,4 +1,5 @@
 import type { BrewLogCreate, BrewLogUpdate } from '@brewform/shared/schemas';
+import { toLoggableError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import * as recipeModel from '../recipe/model.ts';
 import { canViewRecipe } from '../recipe/service.ts';
@@ -48,7 +49,10 @@ export async function createBrewLog(userId: string, data: BrewLogCreate) {
     logger.debug({ userId, brewLogId: created.id }, 'createBrewLog completed');
     return created;
   } catch (err) {
-    logger.error({ err, userId, recipeId: data.recipeId }, 'createBrewLog failed');
+    logger.error(
+      { err: toLoggableError(err), userId, recipeId: data.recipeId },
+      'createBrewLog failed',
+    );
     throw err;
   }
 }
@@ -70,7 +74,7 @@ export async function getBrewLog(userId: string, id: string) {
     logger.debug({ userId, id }, 'getBrewLog completed');
     return log;
   } catch (err) {
-    logger.error({ err, userId, id }, 'getBrewLog failed');
+    logger.error({ err: toLoggableError(err), userId, id }, 'getBrewLog failed');
     throw err;
   }
 }
@@ -96,7 +100,7 @@ export async function updateBrewLog(userId: string, id: string, data: BrewLogUpd
     logger.debug({ userId, id }, 'updateBrewLog completed');
     return updated;
   } catch (err) {
-    logger.error({ err, userId, id }, 'updateBrewLog failed');
+    logger.error({ err: toLoggableError(err), userId, id }, 'updateBrewLog failed');
     throw err;
   }
 }
@@ -118,7 +122,7 @@ export async function deleteBrewLog(userId: string, id: string) {
     logger.debug({ userId, id }, 'deleteBrewLog completed');
     return deleted;
   } catch (err) {
-    logger.error({ err, userId, id }, 'deleteBrewLog failed');
+    logger.error({ err: toLoggableError(err), userId, id }, 'deleteBrewLog failed');
     throw err;
   }
 }
