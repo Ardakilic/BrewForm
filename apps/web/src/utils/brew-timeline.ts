@@ -86,6 +86,14 @@ export function computeTimelineModel(
   };
 }
 
+/**
+ * Opacity of the accent gradient under the timeline curve, from the top of the
+ * fill to its bottom. Phase labels are contrast-tested against `top` composited
+ * over `--bg-tertiary` and `--bg-secondary` (`utils/chart/contrast.test.ts`), so
+ * raising it can drop `--text-primary` below 4.5:1 in the coffee theme.
+ */
+export const TIMELINE_GRADIENT_OPACITY = { top: 0.4, bottom: 0.1 } as const;
+
 /** Horizontal padding kept on each side of a label inside its phase, in px. */
 export const PHASE_LABEL_PADDING_PX = 6;
 /** Phase title metrics: 11px semibold uppercase with 0.05em tracking. */

@@ -434,7 +434,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
                     {isRecipeAuthor(reply) && (
                       <span className="badge text-xs">{t('comment.op')}</span>
                     )}
-                    <span className="text-xs text-[color:var(--text-tertiary)]">
+                    <span className="text-xs text-[color:var(--text-secondary)]">
                       {formatDate(reply.createdAt, locale)}
                     </span>
                   </div>

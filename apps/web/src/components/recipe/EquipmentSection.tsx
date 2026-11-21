@@ -77,7 +77,7 @@ export function EquipmentSection({
               <span className="font-semibold text-sm truncate text-[color:var(--text-primary)]">
                 {brewerDetails}
               </span>
-              <span className="text-xs uppercase tracking-wide text-[color:var(--text-tertiary)]">
+              <span className="text-xs uppercase tracking-wide text-[color:var(--text-secondary)]">
                 {mainBrewerLabel}
               </span>
             </span>
@@ -107,7 +107,7 @@ export function EquipmentSection({
                 <span className="font-semibold text-sm truncate text-[color:var(--text-primary)]">
                   {item.name ?? ''}
                 </span>
-                <span className="text-xs uppercase tracking-wide text-[color:var(--text-tertiary)]">
+                <span className="text-xs uppercase tracking-wide text-[color:var(--text-secondary)]">
                   {item.type?.replace(/_/g, ' ') ?? ''}
                 </span>
               </span>

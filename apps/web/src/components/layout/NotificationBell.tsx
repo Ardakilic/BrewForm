@@ -105,7 +105,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
           <>
             <span
               aria-hidden="true"
-              className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[color:var(--accent-primary)] px-1 text-[10px] font-bold leading-none text-white"
+              className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[color:var(--accent-primary)] px-1 text-[10px] font-bold leading-none text-[color:var(--bg-primary)]"
             >
               {count > 9 ? '9+' : count}
             </span>

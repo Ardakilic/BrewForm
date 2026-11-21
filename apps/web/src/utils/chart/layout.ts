@@ -131,29 +131,18 @@ export function overlaps(a: Box, b: Box, gap = 0): boolean {
   return !(separatedX || separatedY);
 }
 
-/** Options for {@link fitViewBox}. */
-export interface FitViewBoxOptions {
-  /** Centre the result horizontally on `x = 0` (for charts drawn around the origin). */
-  symmetricX?: boolean;
-}
-
 /**
  * Fits a viewBox around `content` with `margin` on every side.
  *
- * With `symmetricX`, the horizontal extent becomes `[-h - margin, h + margin]`
- * where `h` is the larger of `|left|` and `|right|`, so the origin is centred.
- *
  * @param content - The union of everything the chart draws.
  * @param margin - Padding added on each side (default `0`).
- * @param options - Fit options.
  * @returns The viewBox as a {@link Box}.
  */
-export function fitViewBox(content: Box, margin = 0, options: FitViewBoxOptions = {}): Box {
-  const y = content.y - margin;
-  const height = content.height + 2 * margin;
-  if (options.symmetricX) {
-    const half = Math.max(Math.abs(content.x), Math.abs(content.x + content.width));
-    return { x: -half - margin, y, width: 2 * (half + margin), height };
-  }
-  return { x: content.x - margin, y, width: content.width + 2 * margin, height };
+export function fitViewBox(content: Box, margin = 0): Box {
+  return {
+    x: content.x - margin,
+    y: content.y - margin,
+    width: content.width + 2 * margin,
+    height: content.height + 2 * margin,
+  };
 }

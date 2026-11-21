@@ -86,7 +86,7 @@ const emptyForm: FormData = {
 const CATEGORY_BADGE_COLORS: Record<Category, string> = {
   variety: 'var(--accent-primary)',
   processing: 'var(--accent-secondary)',
-  market_name: 'var(--accent-tertiary)',
+  market_name: 'var(--text-secondary)',
 };
 
 const CATEGORY_LABELS: Record<Category, string> = {
@@ -493,7 +493,7 @@ export function AdminCoffeeVarietiesPage() {
                     className="badge"
                     style={{
                       backgroundColor: CATEGORY_BADGE_COLORS[toCategory(item.category)],
-                      color: '#fff',
+                      color: 'var(--bg-primary)',
                     }}
                   >
                     {categoryLabel(toCategory(item.category))}
@@ -513,14 +513,14 @@ export function AdminCoffeeVarietiesPage() {
                   {item.isSystem ? (
                     <span
                       className="badge"
-                      style={{ backgroundColor: 'var(--warning)', color: '#000' }}
+                      style={{ backgroundColor: 'var(--warning)', color: 'var(--bg-primary)' }}
                     >
                       {t('admin.coffeeVarieties.system')}
                     </span>
                   ) : (
                     <span
                       className="badge"
-                      style={{ backgroundColor: 'var(--success)', color: '#fff' }}
+                      style={{ backgroundColor: 'var(--success)', color: 'var(--bg-primary)' }}
                     >
                       {t('admin.coffeeVarieties.custom')}
                     </span>

@@ -25,7 +25,7 @@ export function CategoryTabs({ tabs, active, onSelect }: CategoryTabsProps) {
           className={[
             'rounded-full px-3 py-1.5 text-sm transition-colors',
             active === tab.value
-              ? 'bg-[color:var(--accent-primary)] text-white'
+              ? 'bg-[color:var(--accent-primary)] text-[color:var(--bg-primary)]'
               : 'bg-[color:var(--bg-tertiary)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-primary)]',
           ].join(' ')}
         >

@@ -295,7 +295,7 @@ export function TasteAutocomplete({
                     background: 'none',
                     border: 'none',
                     padding: 0,
-                    color: 'var(--text-tertiary)',
+                    color: 'var(--text-secondary)',
                     fontSize: '0.75rem',
                   }}
                   aria-label={t('a11y.taste.removeNote').replace('{name}', note.name)}

@@ -136,7 +136,7 @@ export function SettingsPage() {
         ) : (
           <div
             className="mb-4 rounded p-3 text-sm"
-            style={{ backgroundColor: 'var(--success)', color: 'white' }}
+            style={{ backgroundColor: 'var(--success)', color: 'var(--bg-primary)' }}
           >
             {message}
           </div>

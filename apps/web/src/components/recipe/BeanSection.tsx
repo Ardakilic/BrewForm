@@ -147,7 +147,7 @@ export function BeanSection(props: BeanSectionProps) {
       <div className="flex gap-4 items-start">
         {/* Bean image placeholder */}
         <div
-          className="flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center w-[72px] h-[72px] bg-[color:var(--bg-tertiary)] text-[color:var(--text-tertiary)] text-2xl"
+          className="flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center w-[72px] h-[72px] bg-[color:var(--bg-tertiary)] text-[color:var(--text-secondary)] text-2xl"
           aria-label={t('a11y.bean.imagePlaceholder')}
           role="img"
         >

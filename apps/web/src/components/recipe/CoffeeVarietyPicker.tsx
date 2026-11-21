@@ -147,7 +147,7 @@ export function CoffeeVarietyPicker({ value, onChange }: CoffeeVarietyPickerProp
             </button>
           ))}
           {showNoResults && (
-            <p className="px-3 py-2 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+            <p className="px-3 py-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
               {t('recipe.list.coffeeVarietyNoResults')}
             </p>
           )}

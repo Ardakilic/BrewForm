@@ -1,6 +1,10 @@
 import { useEffect, useId, useRef } from 'react';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { computeTimelineModel, layoutPhaseLabels } from '../../utils/brew-timeline.ts';
+import {
+  computeTimelineModel,
+  layoutPhaseLabels,
+  TIMELINE_GRADIENT_OPACITY,
+} from '../../utils/brew-timeline.ts';
 import { clampPct, durationTicks, MIN_CHART_WIDTH_PX } from '../../utils/chart/index.ts';
 import { formatDecimal, formatDuration, formatDurationTick } from '../../utils/format.ts';
 import { createLogger } from '../../utils/logger.ts';
@@ -132,7 +136,7 @@ export function BrewTimeline({
     <div className="card">
       {/* Header: title and flow rate wrap as whole items */}
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3">
-        <span className="text-xs font-semibold uppercase tracking-widest text-[color:var(--text-tertiary)]">
+        <span className="text-xs font-semibold uppercase tracking-widest text-[color:var(--text-secondary)]">
           {t('recipe.brewTimeline.title')}
         </span>
         {showFlowRate && (
@@ -162,8 +166,16 @@ export function BrewTimeline({
           >
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--accent-primary)" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="var(--accent-primary)" stopOpacity="0.1" />
+                <stop
+                  offset="0%"
+                  stopColor="var(--accent-primary)"
+                  stopOpacity={TIMELINE_GRADIENT_OPACITY.top}
+                />
+                <stop
+                  offset="100%"
+                  stopColor="var(--accent-primary)"
+                  stopOpacity={TIMELINE_GRADIENT_OPACITY.bottom}
+                />
               </linearGradient>
             </defs>
 
@@ -216,7 +228,7 @@ export function BrewTimeline({
               }}
             >
               {phase.showTitle && (
-                <span className="text-[11px] font-semibold uppercase tracking-[0.05em] leading-tight whitespace-nowrap text-[color:var(--text-secondary)]">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.05em] leading-tight whitespace-nowrap text-[color:var(--text-primary)]">
                   {phase.title}
                 </span>
               )}

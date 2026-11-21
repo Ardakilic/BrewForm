@@ -49,7 +49,7 @@ export function SessionRestoreBanner() {
     <div
       role="alert"
       className="flex items-center justify-center gap-2 px-4 py-2 text-sm"
-      style={{ backgroundColor: 'var(--error)', color: 'white' }}
+      style={{ backgroundColor: 'var(--error)', color: 'var(--bg-primary)' }}
     >
       <span>{message}</span>
       <button

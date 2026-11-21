@@ -238,13 +238,13 @@ export function TasteNotesFilter({
               {hasVisibleItems ? (
                 visibleRoots.map(({ root, subGroups, orphanItems }) => (
                   <Select.Group key={root.id}>
-                    <Select.GroupLabel className="px-3 py-1.5 text-xs font-semibold text-[color:var(--text-tertiary)] cursor-default select-none">
+                    <Select.GroupLabel className="px-3 py-1.5 text-xs font-semibold text-[color:var(--text-secondary)] cursor-default select-none">
                       {root.name}
                     </Select.GroupLabel>
                     {subGroups.map((sg) => (
                       <div key={sg.parent.id}>
                         <div
-                          className="px-3 py-1 text-xs font-semibold text-[color:var(--text-tertiary)] select-none"
+                          className="px-3 py-1 text-xs font-semibold text-[color:var(--text-secondary)] select-none"
                           style={{ paddingLeft: '1.25rem' }}
                           aria-hidden="true"
                         >
@@ -315,7 +315,7 @@ export function TasteNotesFilter({
                   </Select.Group>
                 ))
               ) : (
-                <div className="px-3 py-4 text-sm text-center text-[color:var(--text-tertiary)]">
+                <div className="px-3 py-4 text-sm text-center text-[color:var(--text-secondary)]">
                   {t('taste.notFound')}
                 </div>
               )}

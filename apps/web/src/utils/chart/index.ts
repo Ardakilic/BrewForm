@@ -33,7 +33,6 @@
 export {
   type Box,
   DEFAULT_LINE_HEIGHT,
-  type FitViewBoxOptions,
   fitViewBox,
   isInside,
   type LabelBoxInput,

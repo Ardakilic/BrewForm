@@ -25,12 +25,57 @@ export const DEFAULT_MAX_TICKS = 8;
 const NICE_MANTISSAS = [1, 2, 5] as const;
 
 /**
+ * Largest accepted multiple index `|k|` of a step. Up to 2^52 the index is an
+ * exact integer and the step is at least one ulp of every tick it builds, so
+ * `k++` always advances and neighbouring ticks never collapse into one double.
+ */
+const MAX_MULTIPLE_INDEX = 2 ** 52;
+
+/** Tolerance, as a fraction of the range, for ticks that float noise puts just outside it. */
+const RANGE_TOLERANCE = 1e-9;
+
+/**
+ * Builds the ticks `valueAt(first) … valueAt(last)` when they are usable.
+ *
+ * Returns `null` (so the caller tries the next, larger step) when an index is
+ * not an exact integer (past {@link MAX_MULTIPLE_INDEX}, `NaN` or infinite),
+ * when there are more than `maxCount` multiples, when none lies inside
+ * `[lo, hi]` (with {@link RANGE_TOLERANCE}), or when the values are not
+ * strictly ascending (a step below float resolution).
+ */
+function collectMultiples(
+  first: number,
+  last: number,
+  maxCount: number,
+  valueAt: (k: number) => number,
+  lo: number,
+  hi: number,
+): number[] | null {
+  if (!(Math.abs(first) <= MAX_MULTIPLE_INDEX && Math.abs(last) <= MAX_MULTIPLE_INDEX)) {
+    return null;
+  }
+  if (last - first + 1 > maxCount) return null;
+  const tolerance = (hi - lo) * RANGE_TOLERANCE;
+  const out: number[] = [];
+  for (let k = first; k <= last; k++) {
+    const value = valueAt(k);
+    if (value >= lo - tolerance && value <= hi + tolerance) out.push(value);
+  }
+  if (out.length === 0) return null;
+  for (let i = 1; i < out.length; i++) if (!(out[i] > out[i - 1])) return null;
+  return out;
+}
+
+/**
  * Counts and (when few enough) builds the multiples of `m × 10^exponent` in `[lo, hi]`.
  *
  * Negative exponents divide by an integer inverse step so values such as
- * `0.15` come out exact instead of accumulating float drift.
+ * `0.15` come out exact instead of accumulating float drift. Both branches
+ * reject a non-finite step and go through {@link collectMultiples}, so every
+ * loop is bounded by `maxCount`.
  *
- * @returns The ticks, or `null` when there are more than `maxCount`.
+ * @returns The ticks, or `null` when this step is unusable (too many
+ *   multiples, none in range, or below float resolution).
  */
 function multiplesInRange(
   lo: number,
@@ -42,51 +87,53 @@ function multiplesInRange(
   const eps = 1e-9;
   if (exponent >= 0) {
     const step = m * 10 ** exponent;
+    if (!Number.isFinite(step)) return null;
     const first = Math.ceil(lo / step - eps);
     const last = Math.floor(hi / step + eps);
-    if (last - first + 1 > maxCount) return null;
-    const out: number[] = [];
-    for (let k = first; k <= last; k++) out.push(k * step + 0);
-    return out;
+    return collectMultiples(first, last, maxCount, (k) => k * step + 0, lo, hi);
   }
   const inverse = 10 ** -exponent / m;
+  if (!Number.isFinite(inverse)) return null;
   const first = Math.ceil(lo * inverse - eps);
   const last = Math.floor(hi * inverse + eps);
-  if (last - first + 1 > maxCount) return null;
-  const out: number[] = [];
-  for (let k = first; k <= last; k++) out.push(k / inverse + 0);
-  return out;
+  return collectMultiples(first, last, maxCount, (k) => k / inverse + 0, lo, hi);
 }
 
 /**
  * Returns "nice" numeric ticks for `[min, max]`: every multiple of the
- * smallest step of the form {1, 2, 5} × 10^k that yields at most `maxCount`
- * ticks inside the range.
+ * smallest step of the form {1, 2, 5} × 10^k that yields between 1 and
+ * `maxCount` ticks inside the range.
  *
  * Reversed bounds are swapped. Non-finite bounds or a `maxCount` below 1
- * return `[]`; an empty range returns `[min]`.
+ * return `[]`; an empty range returns `[min]`; a range whose width overflows
+ * (`max - min` is infinite) returns `[]`. When no nice step fits (possible for
+ * `maxCount` 1, e.g. `[0.6, 0.8]`, or for a range a few subnormals wide) it
+ * returns the lower bound alone. It always terminates: steps finer than the
+ * float resolution of the bounds are skipped, and at most 40 decades are tried.
  *
  * @param min - One end of the range.
  * @param max - The other end of the range.
  * @param maxCount - The maximum number of ticks.
- * @returns Ascending tick values within the range.
+ * @returns Finite, strictly ascending tick values within the range.
  */
 export function niceTicks(min: number, max: number, maxCount: number): number[] {
   if (!Number.isFinite(min) || !Number.isFinite(max) || !(maxCount >= 1)) return [];
   const lo = Math.min(min, max);
   const hi = Math.max(min, max);
   if (lo === hi) return [lo];
+  if (!Number.isFinite(hi - lo)) return [];
   const count = Math.floor(maxCount);
   // Start one decade below the step that would give `count` ticks, so the first
-  // acceptable candidate is the smallest one.
-  let exponent = Math.floor(Math.log10((hi - lo) / count)) - 1;
+  // acceptable candidate is the smallest one. The logarithms are subtracted
+  // because `(hi - lo) / count` underflows to 0 for a subnormal range.
+  let exponent = Math.floor(Math.log10(hi - lo) - Math.log10(count)) - 1;
   for (let guard = 0; guard < 40; guard++, exponent++) {
     for (const m of NICE_MANTISSAS) {
       const ticks = multiplesInRange(lo, hi, m, exponent, count);
       if (ticks) return ticks;
     }
   }
-  return [];
+  return [lo];
 }
 
 /** One duration-axis tick. */

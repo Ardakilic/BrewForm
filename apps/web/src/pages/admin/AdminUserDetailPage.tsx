@@ -92,7 +92,7 @@ export function AdminUserDetailPage() {
       {isSelf && (
         <div
           className="mb-4 p-3 rounded text-sm"
-          style={{ backgroundColor: 'var(--warning-bg, #fffbeb)', color: 'var(--warning)' }}
+          style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning)' }}
         >
           {t('admin.users.selfEditPrefix')}{' '}
           <Link to="/settings" style={{ color: 'var(--accent-primary)' }}>

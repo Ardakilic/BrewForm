@@ -10,6 +10,10 @@
  * phase labels are HTML confined to their phase (hidden durations move to a
  * caption row), every inline percentage is finite and in [0, 100], and an
  * inconsistent pre-infusion renders a single phase plus one warn log.
+ *
+ * wave-6-review-remediation (#19): phase titles use `--text-primary` and the
+ * gradient stops use `TIMELINE_GRADIENT_OPACITY`, the values the contrast test
+ * checks the labels against.
  */
 
 import { render, screen, waitFor, within } from '@testing-library/react';
@@ -17,6 +21,7 @@ import fc from 'fast-check';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { TIMELINE_GRADIENT_OPACITY } from '../../utils/brew-timeline.ts';
 import { BrewTimeline } from './BrewTimeline.tsx';
 
 const { mockWarn } = vi.hoisted(() => ({ mockWarn: vi.fn() }));
@@ -201,6 +206,40 @@ describe('BrewTimeline — stretched SVG', () => {
     for (const el of stroked) {
       expect(el.getAttribute('vector-effect')).toBe('non-scaling-stroke');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase label colours and the gradient they are contrast-tested against
+// ---------------------------------------------------------------------------
+
+describe('BrewTimeline — phase label contrast', () => {
+  it.each([
+    [30, undefined],
+    [28, 3],
+  ])('colours the phase titles with --text-primary (%ss, pre-infusion %s)', (total, pre) => {
+    const { container } = render(
+      withI18n(<BrewTimeline extractionTimeSeconds={total} preInfusionTimeSeconds={pre} />),
+    );
+    const extraction = container.querySelector('[data-phase="extraction"]') as HTMLElement;
+    const title = within(extraction).getByText('Extraction');
+    expect(title.className).toContain('text-[color:var(--text-primary)]');
+    for (const span of Array.from(
+      container.querySelectorAll<HTMLElement>('[data-phase] span:first-child'),
+    )) {
+      expect(span.className).toContain('text-[color:var(--text-primary)]');
+    }
+  });
+
+  it('uses TIMELINE_GRADIENT_OPACITY for the gradient stops', () => {
+    const { container } = render(
+      withI18n(<BrewTimeline extractionTimeSeconds={28} preInfusionTimeSeconds={5} />),
+    );
+    const stops = Array.from(container.querySelectorAll('linearGradient stop'));
+    expect(stops.map((stop) => stop.getAttribute('stop-opacity'))).toEqual([
+      String(TIMELINE_GRADIENT_OPACITY.top),
+      String(TIMELINE_GRADIENT_OPACITY.bottom),
+    ]);
   });
 });
 

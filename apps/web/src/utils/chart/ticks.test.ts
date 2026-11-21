@@ -2,7 +2,8 @@
  * Tests for numeric and duration tick generation.
  *
  * Feature: wave-6-audit-remediation (t6, chart-rendering → "Duration axes use
- * bounded nice ticks", "Numeric nice ticks respect the maximum count")
+ * bounded nice ticks", "Numeric nice ticks respect the maximum count");
+ * wave-6-review-remediation (#21, "Near-equal and huge bounds terminate")
  *
  * The duration formatters are injected, so these tests use small local
  * formatters mirroring the en/tr `chart.duration.*` unit strings; the real
@@ -75,6 +76,80 @@ describe('niceTicks', () => {
         }
       }),
       { numRuns: 500 },
+    );
+  });
+});
+
+/** Moves `x` by `n` units in the last place (a step through the IEEE-754 bit pattern). */
+function moveUlps(x: number, n: number): number {
+  const view = new DataView(new ArrayBuffer(8));
+  view.setFloat64(0, x);
+  view.setBigInt64(0, view.getBigInt64(0) + BigInt(n));
+  return view.getFloat64(0);
+}
+
+/** Asserts 1–`maxCount` finite, strictly ascending ticks inside `[lo, hi]` (float tolerance). */
+function expectValidTicks(ticks: number[], lo: number, hi: number, maxCount: number): void {
+  const ctx = `lo=${lo} hi=${hi} maxCount=${maxCount} ticks=[${ticks.join(', ')}]`;
+  expect(ticks.length, ctx).toBeGreaterThanOrEqual(1);
+  expect(ticks.length, ctx).toBeLessThanOrEqual(maxCount);
+  const eps = (hi - lo) * 1e-9;
+  for (const v of ticks) {
+    expect(Number.isFinite(v), ctx).toBe(true);
+    expect(v, ctx).toBeGreaterThanOrEqual(lo - eps);
+    expect(v, ctx).toBeLessThanOrEqual(hi + eps);
+  }
+  for (let i = 1; i < ticks.length; i++) expect(ticks[i], ctx).toBeGreaterThan(ticks[i - 1]);
+}
+
+describe('niceTicks terminates on near-equal and huge bounds', () => {
+  it('moveUlps steps to the neighbouring doubles', () => {
+    expect(moveUlps(0.3, 1)).toBe(0.1 + 0.2);
+    expect(moveUlps(0, 1)).toBe(Number.MIN_VALUE);
+    expect(moveUlps(Number.MAX_VALUE, 1)).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it('bounds one ulp apart: niceTicks(0.3, 0.1 + 0.2, 4) → [0.3]', () => {
+    expect(niceTicks(0.3, 0.1 + 0.2, 4)).toEqual([0.3]);
+  });
+
+  it('magnitudes beyond 2^53: niceTicks(2 ** 60, 2 ** 60 + 256, 4)', () => {
+    expectValidTicks(niceTicks(2 ** 60, 2 ** 60 + 256, 4), 2 ** 60, 2 ** 60 + 256, 4);
+  });
+
+  it('a subnormal range: niceTicks(0, Number.MIN_VALUE, 4) → [0]', () => {
+    expect(niceTicks(0, Number.MIN_VALUE, 4)).toEqual([0]);
+  });
+
+  it('an overflowing range returns []', () => {
+    expect(niceTicks(-Number.MAX_VALUE, Number.MAX_VALUE, 8)).toEqual([]);
+  });
+
+  it('the top of the double range: niceTicks(Number.MAX_VALUE / 2, Number.MAX_VALUE, 8)', () => {
+    const lo = Number.MAX_VALUE / 2;
+    expectValidTicks(niceTicks(lo, Number.MAX_VALUE, 8), lo, Number.MAX_VALUE, 8);
+  });
+
+  it('PBT: any finite bounds (including a few ulps apart) give valid ticks, or [] on overflow', () => {
+    const double = fc.double({ noNaN: true, noDefaultInfinity: true });
+    const other = fc.oneof(
+      double.map((b) => ({ b })),
+      fc.integer({ min: 1, max: 1000 }).map((ulps) => ({ ulps })),
+    );
+    fc.assert(
+      fc.property(double, other, fc.integer({ min: 1, max: 12 }), (a, pick, maxCount) => {
+        const b = 'b' in pick ? pick.b : moveUlps(a, pick.ulps);
+        fc.pre(Number.isFinite(b) && a !== b);
+        const lo = Math.min(a, b);
+        const hi = Math.max(a, b);
+        const ticks = niceTicks(a, b, maxCount);
+        if (!Number.isFinite(hi - lo)) {
+          expect(ticks).toEqual([]);
+          return;
+        }
+        expectValidTicks(ticks, lo, hi, maxCount);
+      }),
+      { numRuns: 1000 },
     );
   });
 });

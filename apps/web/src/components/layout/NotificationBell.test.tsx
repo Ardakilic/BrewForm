@@ -70,6 +70,13 @@ describe('NotificationBell', () => {
     expect(mockUnreadCount).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
   });
 
+  it('renders the badge count in var(--bg-primary) on the accent fill', async () => {
+    renderBell();
+    const badge = await screen.findByText('3');
+    expect(badge.className).toContain('bg-[color:var(--accent-primary)]');
+    expect(badge.className).toContain('text-[color:var(--bg-primary)]');
+  });
+
   it('hides the badge when the unread count is zero', async () => {
     mockUnreadCount.mockResolvedValue({ count: 0 });
     renderBell();

@@ -82,7 +82,7 @@ function VersionHistory({ title, slug, versions }: VersionHistoryProps) {
           {selected.length === 2 && (
             <Link
               to={`/recipes/${data.slug}/versions/diff?v1=${selected[0]}&v2=${selected[1]}`}
-              className="mt-2 inline-block rounded-md bg-[color:var(--accent-primary)] px-3 py-1.5 text-sm font-medium text-white"
+              className="mt-2 inline-block rounded-md bg-[color:var(--accent-primary)] px-3 py-1.5 text-sm font-medium text-[color:var(--bg-primary)]"
             >
               {t('versionDiff.compareSelected')}
             </Link>

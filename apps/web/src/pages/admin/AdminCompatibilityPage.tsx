@@ -103,7 +103,7 @@ function CompatibilityRow({ rule }: { rule: CompatibilityRule }) {
           className="rounded px-3 py-1 text-xs font-medium"
           style={{
             backgroundColor: isCompatible ? 'var(--success)' : 'var(--bg-tertiary)',
-            color: isCompatible ? 'white' : 'var(--text-primary)',
+            color: isCompatible ? 'var(--bg-primary)' : 'var(--text-primary)',
           }}
         >
           {isCompatible ? t('common.yes') : t('common.no')}

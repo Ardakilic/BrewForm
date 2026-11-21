@@ -7,7 +7,7 @@ export function TypeBadge({ label }: TypeBadgeProps) {
   return (
     <span
       className="text-xs px-2 py-0.5 rounded-full flex-shrink-0 ml-2"
-      style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
+      style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' }}
     >
       {label}
     </span>

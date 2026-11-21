@@ -150,7 +150,7 @@ export function StarRating({
 
   const countLine: ReactNode =
     count !== undefined ? (
-      <p className="text-xs mt-0.5 text-[color:var(--text-tertiary)]">
+      <p className="text-xs mt-0.5 text-[color:var(--text-secondary)]">
         {count === 0
           ? t('recipe.rating.noVotes')
           : t('recipe.rating.voteCount').replace('{count}', String(count))}

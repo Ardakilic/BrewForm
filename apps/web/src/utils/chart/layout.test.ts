@@ -147,18 +147,7 @@ describe('fitViewBox', () => {
     expect(fitViewBox(content)).toEqual(content);
   });
 
-  it('centres x on 0 with the symmetric-x option', () => {
-    // content spans x ∈ [-50, 30] → half-width 50, plus margin 4
-    expect(fitViewBox(content, 4, { symmetricX: true })).toEqual({
-      x: -54,
-      y: -24,
-      width: 108,
-      height: 68,
-    });
-  });
-
   it('contains the content box', () => {
     expect(isInside(content, fitViewBox(content, 2))).toBe(true);
-    expect(isInside(content, fitViewBox(content, 0, { symmetricX: true }))).toBe(true);
   });
 });

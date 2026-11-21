@@ -2,13 +2,17 @@
  * Source guard for chart components.
  *
  * Feature: wave-6-audit-remediation (t6, chart-rendering → "No chart relies on
- * overflow visible", "No text in a stretched SVG", "No hardcoded chart colours")
+ * overflow visible", "No text in a stretched SVG", "No hardcoded chart colours");
+ * wave-6-review-remediation (#19: no `--text-tertiary` chart text)
  *
  * Scans the chart, meter and rating components (and every file under
  * `components/charts/`, where the F17/F03 charts will live) and fails on:
  * - `overflow: 'visible'`, `overflow-visible` or `overflow="visible"`;
  * - a `<text>`/`<tspan>` inside an `<svg>` with `preserveAspectRatio="none"`;
- * - hex colour literals (colours must be theme tokens).
+ * - hex colour literals (colours must be theme tokens);
+ * - `--text-tertiary` used as a text colour (it is reserved for page and card
+ *   surfaces; chart text sits on in-chart fills). Strokes and borders in
+ *   `--text-tertiary` are marks and stay allowed.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -38,6 +42,8 @@ const CHART_FILES = [
 
 const OVERFLOW_VISIBLE = /overflow:\s*['"]visible['"]|overflow-visible|overflow="visible"/;
 const HEX_COLOUR = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/;
+const TERTIARY_TEXT =
+  /text-\[color:var\(--text-tertiary\)\]|color:\s*['"]var\(--text-tertiary\)['"]/;
 
 /** Returns each `<svg …>…</svg>` element source in `source`. */
 function svgElements(source: string): string[] {
@@ -65,6 +71,8 @@ function findViolations(source: string): string[] {
   }
   const hex = source.match(HEX_COLOUR);
   if (hex) violations.push(`hex colour literal: ${hex[0]}`);
+  const tertiary = source.match(TERTIARY_TEXT);
+  if (tertiary) violations.push(`--text-tertiary as a text colour: ${tertiary[0]}`);
   return violations;
 }
 
@@ -81,6 +89,10 @@ describe('chart guard — detector self-test', () => {
     ).toHaveLength(1);
     expect(findViolations('<path fill="#f5a623" />')).toHaveLength(1);
     expect(findViolations("const c = '#FFF';")).toHaveLength(1);
+    expect(findViolations('<span className="text-[color:var(--text-tertiary)]" />')).toHaveLength(
+      1,
+    );
+    expect(findViolations("<p style={{ color: 'var(--text-tertiary)' }} />")).toHaveLength(1);
   });
 
   it('accepts tokens, uniform SVG text and gradient url references', () => {
@@ -89,6 +101,11 @@ describe('chart guard — detector self-test', () => {
       findViolations('<svg preserveAspectRatio="none"><path /></svg><svg><text>x</text></svg>'),
     ).toEqual([]);
     expect(findViolations('<path fill="var(--rating-star)" />')).toEqual([]);
+    // `--text-tertiary` marks (an empty-star stroke, an empty-dot border) are not text.
+    expect(findViolations('<path stroke="var(--text-tertiary)" />')).toEqual([]);
+    expect(findViolations("<span style={{ border: '1px solid var(--text-tertiary)' }} />")).toEqual(
+      [],
+    );
     // Template literal with escapes: the source text `url(#${gradientId})` is not a colour.
     expect(findViolations(`<path fill={\`url(#\${gradientId})\`} />`)).toEqual([]);
   });
@@ -100,7 +117,7 @@ describe('chart guard — chart component sources', () => {
   });
 
   it.each(Object.keys(SOURCES))(
-    '%s has no overflow visible, stretched SVG text or hex colours',
+    '%s has no overflow visible, stretched SVG text, hex colours or tertiary text',
     (file) => {
       expect(findViolations(SOURCES[file])).toEqual([]);
     },
