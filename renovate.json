@@ -6,6 +6,4 @@
   // No customManagers: the built-in `npm` manager tracks package.json +
   // pnpm-lock.yaml (including `catalog:` pins via pnpm-workspace.yaml), and the
   // built-in `node` manager tracks the Node version in `.nvmrc`.
-  // (The old deno.json `catalog` + `.deno-version` regex managers were removed
-  // with the Deno runtime.)
 }

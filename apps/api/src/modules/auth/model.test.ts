@@ -7,8 +7,8 @@
  * SHA-256 hashed email-verification-token lifecycle.
  *
  * Follows the established model-test pattern: test-setup first import,
- * inline `crypto.randomUUID()` fixtures, hard-delete teardown, and
- * `{ sanitizeOps: false, sanitizeResources: false }`.
+ * inline `crypto.randomUUID()` fixtures and hard-delete teardown; the
+ * workspace runs DB-backed files serially (`fileParallelism: false`).
  */
 
 import '../../test-setup.ts';

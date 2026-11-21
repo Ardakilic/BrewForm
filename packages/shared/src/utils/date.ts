@@ -11,8 +11,8 @@ function daysInMonth(year: number, month: number): number {
 function toPlainDate(date: Date | string): PlainYMD {
   if (typeof date === 'string') {
     // Parse the leading YYYY-MM-DD directly (no `new Date()` round-trip, which
-    // would shift the calendar day in timezones behind UTC). `Temporal` is
-    // unavailable on Node 24 (Deno-only global), so plain parsing replaces it.
+    // would shift the calendar day in timezones behind UTC). Plain parsing keeps
+    // this independent of the `Temporal` global, which not every runtime exposes.
     const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(date);
     if (!m) throw new RangeError('Invalid Date');
     const year = Number(m[1]);

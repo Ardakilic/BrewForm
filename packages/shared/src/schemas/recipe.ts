@@ -321,8 +321,8 @@ export const RecipeFilterSchema = z.object({
    * filter when set, but every response emits an RFC 8594 `Deprecation: true`
    * header and a `warn` log line. Tracked by OpenSpec change
    * `d28-remove-deprecated-taste-note-id`; the field itself will be removed
-   * in a follow-up change (D29 or later) once production telemetry confirms
-   * no significant callers remain.
+   * in D44 (`plans/D44-remove-taste-note-id-phase-2.md`) once production
+   * telemetry confirms no significant callers remain.
    *
    * @deprecated Use `tasteNoteIds` instead. See D28.
    */

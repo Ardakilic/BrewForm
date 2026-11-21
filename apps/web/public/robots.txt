@@ -6,6 +6,8 @@ Disallow: /admin
 Disallow: /onboarding
 Disallow: /setups
 Disallow: /beans
+Allow: /equipments
+Allow: /equipment/
 Disallow: /equipment
 
 # Sitemap location derived from VITE_PUBLIC_APP_URL at build time.

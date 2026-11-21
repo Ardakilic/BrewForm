@@ -38,6 +38,8 @@ Disallow: /admin
 Disallow: /onboarding
 Disallow: /setups
 Disallow: /beans
+Allow: /equipments
+Allow: /equipment/
 Disallow: /equipment
 
 Sitemap: ${sitemapUrl}
