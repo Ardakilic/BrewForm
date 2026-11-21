@@ -129,6 +129,7 @@ export type {
   FollowingListItemOutput,
   FollowOutput,
 } from './responses/follow.ts';
+export type { HealthOutput, ReadinessOutput } from './responses/health.ts';
 export * from './responses/index.ts';
 export type { NotificationOutput, UnreadCountOutput } from './responses/notification.ts';
 export type { PhotoOutput } from './responses/photo.ts';

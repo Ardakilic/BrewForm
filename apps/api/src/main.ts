@@ -12,11 +12,11 @@
  *   5. Bind HTTP server via @hono/node-server
  *   6. Register SIGTERM/SIGINT handlers for graceful shutdown
  *
- * Shutdown sequence (on SIGTERM/SIGINT):
- *   1. Shut down HTTP server
- *   2. Close postgres-js client
- *   3. Close email transporter, cache connection and rate-limit store connection
- *   4. Exit cleanly
+ * Shutdown sequence (on SIGTERM/SIGINT, built by `createShutdownHandler` in
+ * utils/lifecycle.ts; a second signal is ignored):
+ *   mark not ready → close HTTP server → database → email transporter → cache
+ *   (then the rate-limit store connection) → exit
+ * Marking first makes GET /ready answer 503 while open connections drain.
  *
  * Middleware stack (applied in order):
  *   cors → requestId → secureHeaders → rateLimit(POLICIES.global: RATE_LIMIT_GLOBAL_MAX/min per
@@ -40,6 +40,7 @@ import routes from './routes/index.ts';
 import type { AppEnv } from './types/hono.ts';
 import { createCacheProvider, NullCacheProvider } from './utils/cache/index.ts';
 import { cacheProvider, setCacheProvider } from './utils/cache/singleton.ts';
+import { createShutdownHandler } from './utils/lifecycle.ts';
 import { createLogger } from './utils/logger/index.ts';
 import { createRedisBackend } from './utils/rate-limit/backend.ts';
 import { POLICIES } from './utils/rate-limit/policies.ts';
@@ -214,30 +215,26 @@ async function startup() {
   const server = serve({ fetch: app.fetch, port: config.APP_PORT });
   logger.info(`BrewForm API running on http://localhost:${config.APP_PORT}`);
 
-  const shutdown = async () => {
-    logger.info('Shutting down gracefully...');
-
-    await new Promise<void>((resolve, reject) => {
-      server.close((err) => (err ? reject(err) : resolve()));
-    });
-
-    const { client } = await import('@brewform/db');
-    await client.end();
-    logger.info('Database connection closed');
-
-    const { closeTransporter } = await import('./utils/notify/index.ts');
-    closeTransporter();
-    logger.info('Email transporter closed');
-
-    await cacheProvider.close?.();
-    logger.info('Cache connection closed');
-
-    await getRateLimitBackend().close();
-    logger.info('Rate-limit store closed');
-
-    logger.info('Graceful shutdown complete');
-    process.exit(0);
-  };
+  const shutdown = createShutdownHandler({
+    closeServer: () =>
+      new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      }),
+    closeDb: async () => {
+      const { client } = await import('@brewform/db');
+      await client.end();
+    },
+    closeTransporter: async () => {
+      const { closeTransporter } = await import('./utils/notify/index.ts');
+      closeTransporter();
+    },
+    closeCache: async () => {
+      await cacheProvider.close?.();
+    },
+    closeRateLimitStore: () => getRateLimitBackend().close(),
+    exit: (code) => process.exit(code),
+    log: logger,
+  });
 
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);

@@ -41,6 +41,7 @@ export {
   FollowingListItemOutputSchema,
   FollowOutputSchema,
 } from './follow.ts';
+export { HealthOutputSchema, ReadinessOutputSchema } from './health.ts';
 export { NotificationOutputSchema, UnreadCountOutputSchema } from './notification.ts';
 export { PhotoOutputSchema } from './photo.ts';
 export { UserPreferencesOutputSchema } from './preference.ts';

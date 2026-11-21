@@ -6,7 +6,8 @@
  *   service.ts  — Business logic and validation
  *   index.ts    — Hono routes with Zod validation (this file's import targets)
  *
- * Health and OpenAPI are mounted at / (no prefix).
+ * The health probes (`GET /health` liveness, `GET /ready` readiness, from
+ * modules/health) and OpenAPI are mounted at / (no prefix).
  * See docs/api.md for the full endpoint reference.
  */
 import { Hono } from 'hono';
@@ -21,6 +22,7 @@ import comment from '../modules/comment/index.ts';
 import contact from '../modules/contact/index.ts';
 import equipment from '../modules/equipment/index.ts';
 import follow from '../modules/follow/index.ts';
+import health from '../modules/health/index.ts';
 import notification from '../modules/notification/index.ts';
 import photo from '../modules/photo/index.ts';
 import preference from '../modules/preference/index.ts';
@@ -33,7 +35,6 @@ import taste from '../modules/taste/index.ts';
 import user from '../modules/user/index.ts';
 import vendor from '../modules/vendor/index.ts';
 import type { AppEnv } from '../types/hono.ts';
-import health from './health.ts';
 import { registerOpenApi } from './openapi.ts';
 import share from './share.ts';
 import sitemap from './sitemap.ts';
