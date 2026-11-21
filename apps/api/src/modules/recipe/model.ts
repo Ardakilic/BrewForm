@@ -57,6 +57,51 @@ import { createLogger } from '../../utils/logger/index.ts';
 
 const modelLog = createLogger('recipe-model');
 
+/**
+ * Shared SQL condition for recipes a viewer may see in a LIST (capability
+ * `recipe-visibility`, "One shared listing condition and predicate pair decides
+ * visibility"): non-deleted recipes that are `public`, plus the viewer's own
+ * recipes of any visibility. The SQL twin of `canListRecipe` in `service.ts`
+ * (a DB-backed parity test keeps them in agreement).
+ *
+ * Discovery surfaces pass `null`: they are viewer-independent, so authors do not
+ * see their own `unlisted`, `draft` or `private` recipes there and any cached
+ * result stays safe to share. Collection item counts pass the owner's id for the
+ * owner's own list. Other models import this instead of comparing
+ * `recipes.visibility` inline.
+ *
+ * @param viewerId - The viewer's user id, or `null` for an anonymous/discovery audience.
+ * @returns A Drizzle condition that always includes `isNull(recipes.deletedAt)`.
+ */
+export function listableRecipeCondition(viewerId: string | null): SQL {
+  const visibility =
+    viewerId === null
+      ? eq(recipes.visibility, 'public')
+      : or(eq(recipes.visibility, 'public'), eq(recipes.authorId, viewerId));
+  // `and()` is typed `SQL | undefined` but is never undefined with defined arguments.
+  return and(isNull(recipes.deletedAt), visibility) as SQL;
+}
+
+/**
+ * Shared SQL condition for recipes a viewer may OPEN (capability
+ * `recipe-visibility`): non-deleted recipes that are `public` or `unlisted`,
+ * plus the viewer's own `draft`/`private` recipes. The SQL twin of
+ * `canViewRecipe` (without the admin bypass) for viewer-only records such as
+ * the caller's Starred list.
+ *
+ * Discovery surfaces pass `null` (and should use {@link listableRecipeCondition}
+ * instead, because `unlisted` recipes are never listed).
+ *
+ * @param viewerId - The viewer's user id, or `null` when anonymous.
+ * @returns A Drizzle condition that always includes `isNull(recipes.deletedAt)`.
+ */
+export function viewableRecipeCondition(viewerId: string | null): SQL {
+  const openable = inArray(recipes.visibility, ['public', 'unlisted']);
+  const visibility = viewerId === null ? openable : or(openable, eq(recipes.authorId, viewerId));
+  // `and()` is typed `SQL | undefined` but is never undefined with defined arguments.
+  return and(isNull(recipes.deletedAt), visibility) as SQL;
+}
+
 /** Return a Drizzle condition that matches recipes whose versions reference the given coffee variety. */
 export function recipeCoffeeVarietyCondition(coffeeVarietyId: string) {
   return inArray(

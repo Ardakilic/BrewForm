@@ -1014,6 +1014,35 @@ export function canViewRecipe(
   return true;
 }
 
+/**
+ * Pure predicate: may the viewer see this recipe in a LIST? (capability
+ * `recipe-visibility`, "One shared listing condition and predicate pair decides
+ * visibility"). True exactly when the recipe is not soft-deleted (`deletedAt`
+ * null or absent) AND it is `public` or the viewer is its author. `unlisted`
+ * recipes open by link ({@link canViewRecipe}) but are never listed to anyone
+ * but their author. The pure twin of `listableRecipeCondition` in `model.ts`.
+ *
+ * There is no admin parameter: admin surfaces do not use this predicate, and
+ * collection items deliberately ignore the admin flag. Callers such as the
+ * collection service use it to filter items and to mask fork sources
+ * (`canListRecipe(source, null)`).
+ *
+ * Pure function with no I/O — intentionally has no entry/exit debug logging,
+ * the same deliberate deviation as {@link canViewRecipe}; the callers log.
+ *
+ * @param recipe - Minimal recipe shape: visibility, authorId and optional deletedAt
+ * @param viewerId - The viewer's user id, or null/undefined when anonymous
+ * @returns true when the recipe may appear in a listing shown to the viewer
+ */
+export function canListRecipe(
+  recipe: { visibility: string; authorId: string; deletedAt?: Date | string | null },
+  viewerId?: string | null,
+): boolean {
+  if (recipe.deletedAt !== null && recipe.deletedAt !== undefined) return false;
+  if (recipe.visibility === 'public') return true;
+  return viewerId !== null && viewerId !== undefined && viewerId === recipe.authorId;
+}
+
 // ponytail: no entry/exit debug logs on these 6 passthroughs — deliberate deviation,
 // same precedent as canViewRecipe above. Add logging if these gain business logic.
 

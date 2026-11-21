@@ -572,20 +572,20 @@ How to use this task list
 
 ## 9. Collection visibility, shared visibility helpers, conflict responses in OpenAPI and error docs (t3, refine D4, OQ1)
 
-- [ ] 9.1 Write the failing predicate test `apps/api/src/modules/recipe/service.visibility.test.ts`:
+- [x] 9.1 Write the failing predicate test `apps/api/src/modules/recipe/service.visibility.test.ts`:
   - `canListRecipe` is evaluated over visibility {`public`, `unlisted`, `private`, `draft`} × `deletedAt` {`null`, a `Date`, an ISO string} × viewer {`null`, the author, another user};
   - it is `true` only for non-deleted `public` (any viewer) and for any non-deleted visibility when the viewer is the author;
   - add a `canViewRecipe` matrix that locks today's behaviour (`public`/`unlisted` → `true` for everyone; `draft`/`private` → only for the author or `isAdmin: true`).
-- [ ] 9.2 Write the failing DB-backed parity test `apps/api/src/modules/recipe/model.visibility.test.ts`:
+- [x] 9.2 Write the failing DB-backed parity test `apps/api/src/modules/recipe/model.visibility.test.ts`:
   - fixtures: author A owns one recipe in each of the 4 visibilities, plus a soft-deleted copy of each;
   - for viewer ∈ {`null`, A, B}, `db.select({ id: recipes.id }).from(recipes).where(and(inArray(recipes.id, fixtureIds), listableRecipeCondition(viewer)))` returns exactly the fixtures for which `canListRecipe(row, viewer)` is `true`;
   - `viewableRecipeCondition(viewer)` returns exactly those for which `canViewRecipe(row, viewer) && row.deletedAt === null`;
   - leave a `describe.todo('maskUnlistableForkSources')` placeholder for task 11.4.
-- [ ] 9.3 Implement the helpers:
+- [x] 9.3 Implement the helpers:
   - in `apps/api/src/modules/recipe/model.ts`, the exported `listableRecipeCondition(viewerId: string | null): SQL` and `viewableRecipeCondition(viewerId: string | null): SQL`, built only from Drizzle `and`/`or`/`eq`/`inArray`/`isNull` with no `sql` fragment, both including `isNull(recipes.deletedAt)`, each with a docblock that cites the `recipe-visibility` capability and states "discovery surfaces pass `null`";
   - in `apps/api/src/modules/recipe/service.ts`, the pure `canListRecipe(recipe: { visibility: string; authorId: string; deletedAt?: Date | string | null }, viewerId?: string | null): boolean` beside `canViewRecipe`, with a docblock and no logging (the same deliberate deviation as `canViewRecipe`).
   - Run `make test-specific filter=src/modules/recipe/service.visibility.test.ts` and `make test-specific filter=src/modules/recipe/model.visibility.test.ts`; both pass.
-- [ ] 9.4 Write failing DB-backed tests first in `apps/api/src/modules/collection/service.test.ts`:
+- [x] 9.4 Write failing DB-backed tests first in `apps/api/src/modules/collection/service.test.ts`:
   - a soft-deleted item is hidden from the anonymous viewer, the owner and the recipe author;
   - another author's recipe made private is hidden from anonymous viewers and from the owner, but returned to its author;
   - another author's recipe made unlisted is hidden from anonymous viewers, from the owner and from a third user, but returned to its author;
@@ -599,22 +599,22 @@ How to use this task list
   - reorder with a hidden item succeeds with visible ids and rejects a payload that contains the hidden id.
 
   In `index.test.ts`, an anonymous `GET /api/v1/collections/:id` body contains neither the private recipe's title and slug nor the unlisted recipe's title and slug.
-- [ ] 9.5 Add `getRecipeVisibilityStates(recipeIds)` to `apps/api/src/modules/collection/model.ts` (select `id`, `visibility`, `authorId`, `deletedAt` from `recipes` with `inArray`, early `[]` on empty input, no `deletedAt` filter); model tests for a soft-deleted id and empty input
-- [ ] 9.6 Change the batched `recipeCount` queries in `findByUserId` and `findAllPublic` (and therefore `findPublicByUserId`) to `innerJoin(recipes, eq(collectionItems.recipeId, recipes.id))`, filtered by the shared condition imported from `../recipe/model.ts`: `listableRecipeCondition(userId)` for the owner's list and `listableRecipeCondition(null)` for public lists. Add an audience parameter so that `findPublicByUserId` counts as anonymous. Do not compare `recipes.visibility` inline. Extend `model.test.ts` with owner-vs-anonymous count cases: public, own draft, own unlisted, another author's unlisted, another author's private, soft-deleted (owner `3`, anonymous `1`).
-- [ ] 9.7 In `apps/api/src/modules/collection/service.ts`, add one `filterItemsForViewer(detail, viewerId, states)` helper:
+- [x] 9.5 Add `getRecipeVisibilityStates(recipeIds)` to `apps/api/src/modules/collection/model.ts` (select `id`, `visibility`, `authorId`, `deletedAt` from `recipes` with `inArray`, early `[]` on empty input, no `deletedAt` filter); model tests for a soft-deleted id and empty input
+- [x] 9.6 Change the batched `recipeCount` queries in `findByUserId` and `findAllPublic` (and therefore `findPublicByUserId`) to `innerJoin(recipes, eq(collectionItems.recipeId, recipes.id))`, filtered by the shared condition imported from `../recipe/model.ts`: `listableRecipeCondition(userId)` for the owner's list and `listableRecipeCondition(null)` for public lists. Add an audience parameter so that `findPublicByUserId` counts as anonymous. Do not compare `recipes.visibility` inline. Extend `model.test.ts` with owner-vs-anonymous count cases: public, own draft, own unlisted, another author's unlisted, another author's private, soft-deleted (owner `3`, anonymous `1`).
+- [x] 9.7 In `apps/api/src/modules/collection/service.ts`, add one `filterItemsForViewer(detail, viewerId, states)` helper:
   - drop items whose recipe is missing from `states`, is soft-deleted, or fails `canListRecipe(state, viewerId)` (import the canonical predicate from `../recipe/service.ts`; do not re-implement it);
   - set `item.recipe.forkedFromId` to `null` when its source is absent from `states` or fails `canListRecipe(sourceState, null)`;
   - recompute `recipeCount`.
 
   Make `toDetailOutput` exclude items whose recipe is null or already deleted at fill time.
-- [ ] 9.8 Apply the filter in `getCollection` on both paths through the same code:
+- [x] 9.8 Apply the filter in `getCollection` on both paths through the same code:
   - after the collection visibility check (cache miss) or re-check (cache hit), call `model.getRecipeVisibilityStates([...itemRecipeIds, ...itemForkSourceIds])` once and pass the states to `filterItemsForViewer`;
   - on a miss, cache the unfiltered, viewer-independent shape and return the filtered one;
   - apply the same filter in the `createCollection`/`updateCollection` outputs, with the owner as viewer;
   - log `hiddenCount` and `maskedForkCount` (counts only) in the `getCollection completed` / `cache hit` debug lines.
-- [ ] 9.9 Rework `reorderCollection` to validate `itemIds` against the owner-listable set (`canListRecipe(recipe, ownerId)` over fresh `getRecipeVisibilityStates`) (no duplicates, same size, all members) and pass the hidden item ids (in current order) to `model.reorderItems` so they receive the trailing `sortOrder` values in the same transaction; update docblocks of `reorderCollection`, `reorderItems`, `getCollection` and `findById`
-- [ ] 9.10 Confirm `removeRecipeFromCollection` and `addRecipeToCollection` behavior is unchanged (add rule: own recipes of any visibility, others' public only) and keep their existing entry/exit logs
-- [ ] 9.11 Add regression locks to `apps/api/src/modules/collection/index.test.ts`. They must pass after tasks 9.7-9.10 and protect the listing rule for collections:
+- [x] 9.9 Rework `reorderCollection` to validate `itemIds` against the owner-listable set (`canListRecipe(recipe, ownerId)` over fresh `getRecipeVisibilityStates`) (no duplicates, same size, all members) and pass the hidden item ids (in current order) to `model.reorderItems` so they receive the trailing `sortOrder` values in the same transaction; update docblocks of `reorderCollection`, `reorderItems`, `getCollection` and `findById`
+- [x] 9.10 Confirm `removeRecipeFromCollection` and `addRecipeToCollection` behavior is unchanged (add rule: own recipes of any visibility, others' public only) and keep their existing entry/exit logs
+- [x] 9.11 Add regression locks to `apps/api/src/modules/collection/index.test.ts`. They must pass after tasks 9.7-9.10 and protect the listing rule for collections:
   - an `unlisted` collection K owned by A is absent from `GET /api/v1/collections/public`;
   - K is absent from `GET /api/v1/users/<A>/collections` for an anonymous caller and for B, and present for A;
   - K is absent from `GET /api/v1/recipes/<slug>/collections` for B for a public recipe inside K;
