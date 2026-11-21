@@ -42,13 +42,14 @@ What it changed:
 ### Open items
 
 Ledgered debt D01–D43 and D99.1–.19 stays resolved (see [`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md)).
-The open items are D44 and D99.20–.62. They come from three sources: what wave 6 deferred
-(its `proposal.md` → Non-Goals), the audit findings it had no owner for, and follow-ups found
-while implementing it.
+The open items are D44 and D99.20–.64, except D99.42, D99.51, D99.52 and D99.61, which
+`wave-6-review-remediation` resolved. They come from four sources: what wave 6 deferred (its
+`proposal.md` → Non-Goals), the audit findings it had no owner for, follow-ups found while
+implementing it, and the follow-ups `wave-6-review-remediation` recorded (D99.63–.64).
 
 | Priority | Id | Item | Effort |
 |----------|----|------|--------|
-| **P1** | [D99.26](D99-debts.md) | Account deletion keeps PII and public content; deleted emails and usernames are never released | Medium |
+| **P1** | [D99.26](D99-debts.md) | Account deletion only hides the identity on display surfaces: the row keeps email, username and profile data, content stays public, identifiers are never released | Medium |
 | **P1** | [D99.38](D99-debts.md) | Auth session hygiene: a password reset does not revoke sessions; reset tokens are stored in plaintext | Medium |
 | **P2** | [D99.21](D99-debts.md) | `SetupUpdateSchema` keeps `isDefault: false`, so a setup PATCH clears the default flag | Low |
 | **P2** | [D99.25](D99-debts.md) | Like, favourite, rate and the photo list skip visibility checks for draft/private recipes | Low–Medium |
@@ -57,7 +58,6 @@ while implementing it.
 | **P2** | [D99.39](D99-debts.md) | Equipment lookups stop at 20 items; admin equipment and recipe lists are unpaginated | Medium |
 | **P2** | [D99.40](D99-debts.md) | Undefined `.input` CSS class on 13 form fields | Low |
 | **P2** | [D99.41](D99-debts.md) | Photos are never shown: `PhotoUpload` is unmounted and there is no gallery | Medium |
-| **P2** | [D99.42](D99-debts.md) | A comment reply can attach to a comment on another recipe | Low |
 | **P2** | [D99.43](D99-debts.md) | Moderation UI (F15a): no Report button and no admin reports page | Small–Medium |
 | **P2** | [D99.44](D99-debts.md) | Like/follow toggles send a new notification and email every time | Low–Medium |
 | **P2** | [D99.45](D99-debts.md) | Cron and email are not multi-instance safe (needed before F29/F30 on more than one replica) | Medium |
@@ -83,15 +83,14 @@ while implementing it.
 | **P3** | [D99.50](D99-debts.md) | `/ready` reports `cache: "ok"` while Valkey is down | Low |
 | **P3** | [D99.58](D99-debts.md) | robots.txt `Sitemap:` URL falls back to the SPA on split domains without `API_UPSTREAM` | Low |
 | **P3** | [D99.60](D99-debts.md) | `grindSize` accepts 100 characters, the column holds 50 | Trivial |
-| **P3** | [D99.61](D99-debts.md) | Taste-note search uses an unescaped, case-sensitive `like` | Low |
 | **P4** | [D99.22](D99-debts.md) | "My notes" listing; an `amendedAt` marker for in-place amends | Medium |
-| **P4** | [D99.51](D99-debts.md) | Unused `recipe/model.ts#update` | Trivial |
-| **P4** | [D99.52](D99-debts.md) | Demo accounts seeded in production (accepted by the user on 2026-11-19; revisit before public sign-ups) | Low |
 | **P4** | [D99.53](D99-debts.md) | Entry/exit logs missing in five API services; mount/unmount logs missing in five web files | Low |
 | **P4** | [D99.54](D99-debts.md) | Log conventions: `durationMs` on exit logs; entity-named id keys instead of a bare `id` | Low–Medium |
 | **P4** | [D99.55](D99-debts.md) | Log sampling and slow-query logging | Medium |
 | **P4** | [D99.56](D99-debts.md) | Web telemetry: navigation timing and `unhandledrejection` logging | Low |
 | **P4** | [D99.62](D99-debts.md) | `make ci` runs the web tests twice | Trivial |
+| **P4** | [D99.63](D99-debts.md) | Substring search folds case by the database ctype, not the Turkish locale (`I`/`ı`, `İ`/`i`) | Medium |
+| **P4** | [D99.64](D99-debts.md) | "Load more replies" for comment threads cut at 20 replies | Low–Medium |
 
 ---
 
@@ -171,7 +170,8 @@ the 2026-11-21 wave-6 refresh. Ship dates are the merge dates of the linked pull
   readiness probes, and one CI workflow with a gated image publish.
 - **Wave 6** (2026-11-18 audit → 2026-11-21): `wave-6-audit-remediation` fixed the
   [audit](AUDIT-2026-11-18.md) findings (see Remaining Debt → Wave 6). Deferrals, unowned
-  findings and implementation follow-ups are ledgered as D44 and D99.20–.62. The plans were
-  refreshed for Node, pnpm, Vitest and sharp (F07, F16, F17, F23, F27, F29, F30). F03, F20, F25,
-  F26 and F28 got F02 refresh notes, F24 was cut to immutability guards, F15 was split into
-  F15a/F15b, and F31 got its frame-header note.
+  findings and implementation follow-ups are ledgered as D44 and D99.20–.62;
+  `wave-6-review-remediation` resolved D99.42, D99.51, D99.52 and D99.61 and recorded D99.63–.64.
+  The plans were refreshed for Node, pnpm, Vitest and sharp (F07, F16, F17, F23, F27, F29, F30).
+  F03, F20, F25, F26 and F28 got F02 refresh notes, F24 was cut to immutability guards, F15 was
+  split into F15a/F15b, and F31 got its frame-header note.

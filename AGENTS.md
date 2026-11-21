@@ -16,6 +16,9 @@ hook is the exception, see "Git Hooks"). Use `make <target>`; `make help` lists 
 - `make install` — install pnpm workspace dependencies (required once)
 - `make email-build` — compile MJML → HTML templates (required before API runs)
 - `make db-generate && make db-migrate && make db-seed` — full DB setup
+- `make db-recount-comments` — recount `recipe.comment_count` (idempotent; updates only drifted
+  rows and logs each repaired recipe id). `make db-migrate` and the API image entrypoint run it
+  after every migration run; a failed recount in the entrypoint only warns and the boot continues.
 - `make dev` — start API (:8000) + Vite HMR (:5173)
 - `make check` — type-check all workspaces
 - `make lint` — lint all apps and packages
@@ -56,8 +59,9 @@ apps/api  ─┬──→ @brewform/shared
 
 - **Frontend NEVER imports from `@brewform/db`** — only `@brewform/shared`.
 - Client runs in Docker; Vite resolves `@brewform/shared/*` via explicit aliases in `apps/web/vite.config.ts`.
-- The Vite dev server proxies `/api/*` to `VITE_API_PROXY_TARGET` (`apps/web/vite.config.ts`;
-  the compose `web-dev` service sets `http://app:8000`, the default is `http://localhost:8000`).
+- The Vite dev server proxies `/api/*` and `/sitemap.xml` to `VITE_API_PROXY_TARGET`
+  (`apps/web/vite.config.ts`; the compose `web-dev` service sets `http://app:8000`, the default is
+  `http://localhost:8000`).
 
 ## API module pattern
 
@@ -75,7 +79,9 @@ Every domain module follows 3-layer pattern: `model.ts` → `service.ts` → `in
   bodyLimit (1 MB on every route except `/api/v1/photos`, which gets the photo cap
   `PHOTO_BODY_MAX_BYTES`; both answer 413 `PAYLOAD_TOO_LARGE`) → cache injection → crawler →
   onError (via `app.onError`, not stack middleware) → optional `/uploads/:path{.+}` static handler
-  (local storage driver only, its own `uploads` policy) → routes.
+  (local storage driver only, its own `uploads` policy; `serveLocalUpload` in
+  `apps/api/src/utils/storage/serve.ts` streams the file from disk with
+  `Cache-Control: public, max-age=31536000, immutable`) → routes.
 - **Rate limiting:** routes mount named policies from `apps/api/src/utils/rate-limit/policies.ts`
   with `rateLimit(POLICIES.<name>)` or `rateLimitFailures(...)`: IP-keyed policies before body
   validation and auth, email-keyed ones after `zValidator`, user-keyed ones after `authMiddleware`.
@@ -126,8 +132,9 @@ stay complete. This is mandatory, like logging — a route without `describeRout
 - Non-JSON routes document their true content type (e.g. `text/html`, `application/xml`, `image/*`)
   and are NOT wrapped in a JSON success envelope.
 - The introspection coverage test `apps/api/src/routes/openapi.coverage.test.ts` builds the real
-  router and enforces, for the 20 base paths in its `IN_SCOPE_BASE_PATHS` list, that every route is
-  documented and tagged and that auth-guarded operations document `401`, plus no orphan tags.
+  router and enforces, for the 21 base paths in its `IN_SCOPE_BASE_PATHS` list (`/sitemap.xml`
+  included), that every route is documented and tagged and that auth-guarded operations document
+  `401`, plus no orphan tags.
   `/api/v1/auth`, `/api/v1/recipes` (including the notes routes), `/api/v1/admin` and the health
   probes are excluded until they are covered: the test only requires at least one tagged operation
   for each. Document the routes you add there anyway, and run `make test-api` after adding routes.
@@ -144,14 +151,18 @@ stay complete. This is mandatory, like logging — a route without `describeRout
   comparisons, `NULLS LAST`) and only for a use listed in the accepted-exception registry of the
   `lint-style` spec (`openspec/specs/lint-style/spec.md`, "Raw SQL is confined to an
   accepted-exception registry"). It must interpolate Drizzle columns and bound values, never
-  concatenate user input, and must carry a `// D03 raw-SQL exception: <why>` comment. No other
-  Postgres-specific operators (`@@`, `%`, `~*`, JSON operators) in application query code.
+  concatenate user input, and must carry a `// D03 raw-SQL exception: <why>` comment within the 10
+  lines above it. `packages/shared/src/lint-policy.test.ts` enforces this: it rejects a fragment
+  without the comment and any `sql.raw(`/`.unsafe(`, and each file's fragment count must match its
+  `RAW_SQL_REGISTRY` entry (a new use adds a registry row and a spec-table row in the same change;
+  a file without an entry allows none). No other Postgres-specific operators (`@@`, `%`, `~*`, JSON operators) in application query code.
   Schema-level Postgres features are permitted: index ordering, CHECK constraints, GIN indexes with
   operator classes, and extensions approved by an ADR in `docs/decisions.md` (currently `pg_trgm`,
   ADR-017 "Database-side search ranking"). An extension is enabled only through a
   `drizzle-kit generate --custom` migration containing `CREATE EXTENSION IF NOT EXISTS <name>;`.
-- **Bounded reads** — every list or search query in `model.ts` applies `limit` (at most the schema's
-  `perPage` maximum). Ordering, ranking and pagination happen in SQL, never by loading a full result
+- **Bounded reads** — every list or search query in `model.ts`, and every sitemap page read in the
+  `deps` of `apps/api/src/routes/sitemap.ts`, applies `limit` (at most the schema's `perPage`
+  maximum, or `SITEMAP_PAGE_SIZE` for a sitemap page). Ordering, ranking and pagination happen in SQL, never by loading a full result
   set into the API process.
 - **Soft deletes** on all main entities (`deletedAt`). Filter with `isNull(t.deletedAt)`, e.g.
   `and(eq(t.id, id), isNull(t.deletedAt))`.
@@ -161,8 +172,9 @@ stay complete. This is mandatory, like logging — a route without `describeRout
   `recipes.visibility` inline (enforced by `visibility.enforcement.test.ts`; admin is exempt).
   Unlisted means direct-link only.
 - **Case-insensitive identifiers:** compare `user.email`/`user.username` with
-  `eq(lower(col), value.toLowerCase())` using the `lower()` helper from `@brewform/db/schema`
-  (served by the `_lower_unique` indexes). Claim unique generated values (recipe slugs) with
+  `eq(lower(col), lower(value))` using the `lower()` helper from `@brewform/db/schema` (a string
+  argument becomes a bound parameter): the database lowers both sides, so lookups agree with the
+  `_lower_unique` indexes on any locale. Claim unique generated values (recipe slugs) with
   `insert … onConflictDoNothing({ target }).returning()` inside the transaction; never catch
   `23505` inside a transaction and keep using it (Postgres aborts the transaction). A soft-deleted
   join row with a composite unique key is revived with `onConflictDoUpdate` that clears
@@ -174,7 +186,7 @@ stay complete. This is mandatory, like logging — a route without `describeRout
 - Migrations: `pnpm run db:generate` (creates SQL) then `pnpm run db:migrate` (applies); seed is `pnpm run db:seed`.
 - **Schema changes:** All schema changes (tables, columns, indexes, enums, constraints) MUST be made in `packages/db/src/schema.ts` (the Drizzle TypeScript schema). Then run `make db-generate && make db-migrate` to auto-generate and apply the migration. **Never manually edit the generated SQL migration files** — Drizzle's hash-based migration tracking depends on them being unmodified, and manual edits cause silent migration failures. `make db-push` (drizzle-kit push) is for prototyping only — use `db-generate` + `db-migrate` for schema changes: push writes no migration and does NOT detect new CHECK constraints or indexes.
 - **`drizzle-kit generate --custom` workaround (TTY-less environments):** Drizzle Kit 0.31's interactive `generate` prompts for column renames require a TTY — non-interactive shells (CI, piped stdin, agents without a PTY) error out with "Interactive prompts require a TTY terminal". The non-interactive pivot is `drizzle-kit generate --custom --name=<tag>` which creates an empty SQL migration shell + a snapshot that is an EXACT COPY of the previous snapshot (NOT regenerated from the current schema). After writing the SQL by hand (per the design's reference template), you MUST also **manually update `meta/<NNNN>_snapshot.json`** to reflect EVERY schema change introduced by the migration — including but not limited to: renamed columns (both the JSON object key AND the `name` value inside), new enum values (under the `enums` section — Drizzle's snapshot stores them as a `values` array), new/dropped columns, new indexes, new constraints. After editing, **run `make db-generate` again and assert it outputs "No schema changes, nothing to migrate 😴"** — if it produces a new migration file, your snapshot is missing a change the schema declares; diff the new migration to find the gap, fold it into the snapshot, delete the stray migration + its snapshot + journal entry, and re-run until clean. CI's `quality` job runs `pnpm run db:generate` followed by `git diff --exit-code` as a freshness check; a snapshot that doesn't match the schema fails the build. The hand-written SQL in the `.sql` file is NOT cross-checked against the snapshot — both must be authored to agree.
-- **Seed idempotency:** `packages/db/src/seed.ts` must be safe to run repeatedly. All seed helpers that insert into tables with unique constraints MUST use `onConflictDoNothing({ target: [...] })` keyed on those constraints, or select-and-reuse existing rows for tables without usable unique keys. This lets `make db-seed` recover when containers are recreated but the Postgres named volume still holds previous seed data. The seed script entrypoint MUST be guarded with `if (import.meta.main)` so the file can be imported by tests without executing the full seed.
+- **Seed idempotency:** `packages/db/src/seed.ts` must be safe to run repeatedly. All seed helpers that insert into tables with unique constraints MUST use `onConflictDoNothing({ target: [...] })` keyed on those constraints, or select-and-reuse existing rows for tables without usable unique keys; a partial unique index (`setup_user_default_unique`) cannot be a conflict target, so that insert uses a target-less `onConflictDoNothing()`. With `APP_ENV=production` the seed creates only the admin and the reference data, no demo accounts or content (`shouldSeedDemoContent`). This lets `make db-seed` recover when containers are recreated but the Postgres named volume still holds previous seed data. The seed script entrypoint MUST be guarded with `if (import.meta.main)` so the file can be imported by tests without executing the full seed.
 - **Full DB reset:** `make db-reset` drops and recreates the dev database, creates the `pg_trgm`
   extension (drizzle-kit push does not manage extensions), pushes the schema fresh with
   `make db-push`, re-seeds, and flushes the API cache. A database built this way has no migration
@@ -206,7 +218,12 @@ TanStack Query, SWR or custom query hooks.
   the `resources/` path (`apps/web/src/routes/resources/`); a new `load()` cancels the previous one.
 - **Auth:** guarded loaders and actions are wrapped in `requireAuth`/`requireAdmin`
   (`apps/web/src/routes/auth-guards.ts`), which redirect a 401 to
-  `/login?next=<encoded path+search>` (and an admin 403 to `/`).
+  `/login?next=<encoded path+search>` (and an admin 403 to `/`). Resource routes are never
+  wrapped and never redirect: a final 401 returns `{ ok: false, code: 'UNAUTHORIZED' }`, which
+  `useActionFeedback` toasts as `error.unauthorized`. Sign-out goes through `useSignOut()`
+  (`hooks/useSignOut.ts`, lands on `/`), never `useAuth().logout` from a component; sign-in and
+  sign-out write the `brewform-auth-change` marker (`utils/auth-broadcast.ts`) and
+  `useAuthTabSync` (mounted once in `App.tsx`) mirrors them in the other tabs.
 - **`useEffect` allowlist:** non-fetch side effects only — subscribing to browser events
   (`storage`, `focus`, media queries), DOM focus management, timers, mount/unmount debug logs,
   document-head sync (`SEOHead`), and triggering `fetcher.load()` / `revalidator.revalidate()` in
@@ -227,7 +244,9 @@ TanStack Query, SWR or custom query hooks.
   their defaults and never writes a default into the URL. A filter, sort, search or tab change
   removes `page` (back to page 1); a page change keeps every other param. Discrete controls push a
   history entry; text inputs commit after a 300 ms debounce with a `replace` navigation and re-sync
-  when the URL changes (Back/Forward, clear-all, a shared link).
+  when the URL changes (Back/Forward, clear-all, a shared link). Every URL write builds on the
+  latest URL through `useLatestSearchParams` (never on params captured by a timer or an earlier
+  render), and `clearAll` first cancels every pending debounced text commit.
 
 ## Testing
 
@@ -236,6 +255,11 @@ TanStack Query, SWR or custom query hooks.
 - Tests run without type-checking (type-checking done separately via `make check` and
   `make check-tests`).
 - Test files use `*.test.ts` (or `*.test.tsx`) naming — never `*_test.ts`.
+- A test imports and exercises the production module it names; it never re-implements the function
+  under test inline (`model-test-coverage`, "Test files exercise the production module they
+  name"). `packages/shared/src/mock-mirror.test.ts` fails on any test file that imports no project
+  module (relative, `@brewform/*` or `@/`); genuinely static scan tests are listed, with a reason,
+  in its `STATIC_SCAN_TESTS`.
 - API test files that load config (every DB-backed test) import the shared setup first, before any
   other import: `import '../../test-setup.ts';` (path relative to the file). It supplies the
   `DATABASE_URL`/`JWT_SECRET` fallbacks and sets `LOG_LEVEL=silent`.
@@ -283,9 +307,24 @@ TanStack Query, SWR or custom query hooks.
   (no DOM measurement). Never put `<text>` inside an SVG with `preserveAspectRatio="none"`: render
   such labels as HTML over the chart (stretched strokes use `vector-effect="non-scaling-stroke"`).
   Take every colour from the theme tokens in `apps/web/src/styles/globals.css` (no hex literals;
-  text ≥ 4.5:1 and marks ≥ 3:1 in the light, dark and coffee themes) and format durations and
-  metrics with `apps/web/src/utils/format.ts`. Every chart change adds geometry tests: each label's
-  box inside its viewBox and not overlapping a sibling, for en and tr labels and edge inputs.
+  text ≥ 4.5:1 and marks ≥ 3:1 in the light, dark and coffee themes, measured against the
+  background the text or mark is actually drawn on: the card, and for in-chart labels the zone or
+  gradient under them; never `--text-tertiary` for chart text) and format durations and metrics
+  with `apps/web/src/utils/format.ts`. Every chart change adds geometry tests: each label's box
+  inside its viewBox and not overlapping a sibling, for en and tr labels and edge inputs.
+- **Theme colours:** `--text-primary` and `--text-secondary` may sit on `--bg-primary`,
+  `--bg-secondary` and `--bg-tertiary`; `--text-tertiary` only on page and card surfaces
+  (`--bg-primary`, `--bg-secondary`), so chips, popups, reply boxes and hover states on
+  `--bg-tertiary` use `--text-secondary` as their lowest level (error text there uses
+  `--error-on-raised`). Text on an accent or status fill uses `var(--bg-primary)`, never a literal.
+  `apps/web/src/utils/chart/contrast.test.ts` locks every allowed pair at ≥ 4.5:1 per theme.
+  `apps/web/src/styles/theme-usage.test.ts` fails on a `white`/`black`/`#fff`/`#000` literal or a
+  `text-white`/`text-black` class in production `.tsx`, on one style object, class string or class
+  array that sets a `--bg-tertiary` background with `--text-tertiary` text, and on any `var(--…)`
+  (in production `.ts`/`.tsx` or `globals.css`) not defined in each of the light (`:root`),
+  `.dark` and `.coffee` blocks of `globals.css` (Tailwind `@theme` tokens and its listed
+  third-party runtime variables are exempt). A scan cannot see a tertiary-text child inside a
+  raised parent; the rule still applies there. A new token goes into all three theme blocks.
 
 ## i18n
 
@@ -315,7 +354,7 @@ Every new feature or change that introduces a codepath must include structured l
 const log = createLogger('module-name');
 log.debug({ userId, recipeId }, 'functionName started');
 log.debug({ userId }, 'functionName completed');
-log.error({ err, userId }, 'functionName failed');
+log.error({ err: toLoggableError(err), userId }, 'functionName failed');
 
 // Web pages
 const log = createLogger('PageName');
@@ -342,8 +381,12 @@ useEffect(() => {
 - Create a module-scoped logger once at the top of the file.
 - Use `log.debug({ relevantIds }, 'message')` — include traceable IDs, exclude payloads.
 - Error logs must include the `err` object: `log.error({ err, ...context }, 'what failed')`.
-  Pass database errors through `toLoggableError(err)` (`apps/api/src/utils/errors.ts`): Drizzle
-  error messages carry the query's bound parameters (emails, password hashes, note text).
+  Every catch that can see a database error logs `err: toLoggableError(err)`
+  (`apps/api/src/utils/errors.ts`): Drizzle error messages carry the query's bound parameters
+  (emails, password hashes, note text). Email-send errors go through `toLoggableMailError(err)`
+  (nodemailer puts recipient addresses in the error). For the files listed in its
+  `SCANNED_FILES`, `apps/api/src/utils/db-error-logging.enforcement.test.ts` fails on any raw
+  `{ err }` / `err: <value>` log.
 - Rate-limit keys never contain raw emails (email keys are the first 32 hex characters of the
   SHA-256 of the normalised address; IP keys are the normalised address, IPv6 as its /64), and
   rate-limit, client-IP and request logs never contain IP addresses, emails, raw header values or
@@ -418,8 +461,16 @@ If you only use Docker, skip the hook and run `make fmt-check` and `make lint` y
   `release.yml` and no `make release`; `make images` builds local `brewform-api:local` /
   `brewform-web:local` tags only. The web image is configured at runtime by
   `docker-web-entrypoint.sh`: `VITE_API_URL` (writes `/config.js`), `API_UPSTREAM` (same-origin
-  proxy for `/api/*`, `/uploads/*`, `/share/*` and `/health`), `TRUSTED_PROXIES` and
-  `PUBLIC_APP_URL`.
+  proxy for `/api/*`, `/uploads/*`, `/share/*`, `/health` and `/sitemap.xml`), `TRUSTED_PROXIES`
+  and `PUBLIC_APP_URL`. `.dockerignore` `!` exceptions name exact paths only (a `**/` exception
+  makes Docker walk into unreadable folders such as `data/postgres`); the `images` job runs
+  `scripts/ci/dockerignore.test.sh` before it builds.
+- **Compose backup and restore:** `make prod-backup` runs one one-shot backup (one-shot runs never
+  prune; pruning happens only in the scheduled loop after a successful run). `make prod-restore`
+  stops api, web and backup, takes a safety backup first (nothing is restored if it fails),
+  restores the dump into a scratch `<db>_restore` database in one transaction and swaps it in only
+  on success (a failed restore leaves the live database unchanged), then starts the stack so
+  `migrate` applies newer migrations.
 - **Cache:** in-memory by default (`CACHE_ENABLED=true`, `CACHE_DRIVER=memory`; no sidecar needed).
   A shared Redis-protocol backend is optional via `CACHE_DRIVER=redis` + `REDIS_URL` (Valkey 9.1 in
   the compose files; `compose.production.yml` defaults to `redis`). `CACHE_ENABLED=false` installs
@@ -428,7 +479,8 @@ If you only use Docker, skip the hook and run `make fmt-check` and `make lint` y
 - **Client IP:** deployments behind a proxy set `TRUST_PROXY` (`none` default, `hops` with
   `TRUST_PROXY_HOPS`, or `cloudflare` with optional `TRUST_PROXY_CIDRS`);
   `compose.production.yml` defaults to `hops` with one hop behind its web edge. With `none` behind
-  a proxy, every client shares one rate-limit bucket.
+  a proxy, every client shares one rate-limit bucket. A proxy in front of the web edge must append
+  to or replace `X-Forwarded-For` (front proxy contract: `docs/deployment_compose.md` §5).
 - **Health:** `GET /health` is liveness and `GET /ready` is readiness (fixed keys, `503` while
   shutting down or when the database does not answer). The API image `HEALTHCHECK` and the compose
   api check run `node /app/healthcheck.mjs /ready`; the web image `HEALTHCHECK` and the compose web

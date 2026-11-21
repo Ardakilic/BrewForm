@@ -1,7 +1,7 @@
 # D99 — Deferred Technical Debt (Post-Feature Batch)
 
 **Severity:** Mixed (Low–High)
-**Status:** D99.1–.19 resolved 2026-07-27 (wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19; remaining-debt-clearance resolved D99.4,.8,.17,.18). **D99.20–.62 open** since 2026-11-21: deferrals and unowned findings of `wave-6-audit-remediation` (2026-11-18 audit); see [Wave-6 follow-ups](#wave-6-follow-ups-d9920) and the status table in [`ROADMAP.md`](ROADMAP.md).
+**Status:** D99.1–.19 resolved 2026-07-27 (wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19; remaining-debt-clearance resolved D99.4,.8,.17,.18). **D99.20–.64 open** since 2026-11-21 except D99.42, .51, .52 and .61, which `wave-6-review-remediation` resolved on 2026-11-21: D99.20–.62 are deferrals and unowned findings of `wave-6-audit-remediation` (2026-11-18 audit), and D99.63–.64 are follow-ups recorded by `wave-6-review-remediation`; see [Wave-6 follow-ups](#wave-6-follow-ups-d9920) and the status table in [`ROADMAP.md`](ROADMAP.md).
 **Relationship:** Aggregates deferred items discovered during F01-recipe-collections implementation, other recent feature work, the 2026-07-19 full audit (D99.10–D99.19) and the 2026-11-18 audit ([`AUDIT-2026-11-18.md`](AUDIT-2026-11-18.md), D99.20+). These are non-blocking polish/hardening tasks; items marked **Scheduled** are carried by the `wave-5-debt-clearance` OpenSpec change (which holds the full task-level detail — this ledger is the index), items marked **Deferred** wait for a future trigger. Individual items may be split into their own D-plan files when picked up.
 
 ---
@@ -689,7 +689,7 @@ Update the `AGENTS.md:50` list to match `main.ts:41-76` verbatim.
 
 ## Wave-6 follow-ups (D99.20+)
 
-Added 2026-11-21 by `wave-6-audit-remediation` (task 27.1). Each entry is a deferral from that change's `proposal.md` → Non-Goals, an audit finding with no wave-6 owner ([`AUDIT-2026-11-18.md`](AUDIT-2026-11-18.md)), or a follow-up found while implementing it. The entries are compact: a status line, one evidence line (paths as of 2026-11-21) and the intended fix. Expand an entry into its own D-plan when you pick it up. Priority and effort use the [`ROADMAP.md`](ROADMAP.md) legend, and ROADMAP's Remaining Debt table is the status index.
+Added 2026-11-21 by `wave-6-audit-remediation` (task 27.1). Each entry is a deferral from that change's `proposal.md` → Non-Goals, an audit finding with no wave-6 owner ([`AUDIT-2026-11-18.md`](AUDIT-2026-11-18.md)), or a follow-up found while implementing it. The entries are compact: a status line, one evidence line (paths as of 2026-11-21) and the intended fix. Expand an entry into its own D-plan when you pick it up. D99.63 and D99.64 were added the same day by `wave-6-review-remediation`, which also resolved D99.42, D99.51, D99.52 and D99.61. Priority and effort use the [`ROADMAP.md`](ROADMAP.md) legend, and ROADMAP's Remaining Debt table is the status index.
 
 ## D99.20 — Recipe merge field parity, and merge copying another user's brewer notes — Open
 
@@ -743,7 +743,7 @@ Added 2026-11-21 by `wave-6-audit-remediation` (task 27.1). Each entry is a defe
 
 **Deferred:** wave-6 Non-Goals plus an unowned audit finding (audit §4 "Account deletion is shallow"). **Priority:** P1 · **Effort:** Medium.
 
-**Evidence:** `apps/api/src/modules/user/model.ts#deleteUser` only sets `deletedAt`, so email, username and profile fields stay in the row and the user's public content stays public. Re-registering with a deleted account's email returns `409 Email already registered`, and deleted usernames are never released, because `user_email_lower_unique`/`user_username_lower_unique` also cover deleted rows.
+**Evidence:** display surfaces now hide a deleted account's identity (wave-6-review-remediation E11: no non-admin response carries its author fields, and the web shows "Deleted user"), but `apps/api/src/modules/user/model.ts#deleteUser` still only sets `deletedAt`, so the row keeps email, username and profile fields and the user's content stays public. Re-registering with a deleted account's email returns `409 Email already registered`, and deleted usernames are never released, because `user_email_lower_unique`/`user_username_lower_unique` also cover deleted rows.
 
 **Fix:** a transactional `deleteAccount` that tombstones email and username (`deleted-<id>`), clears profile PII, unlists or soft-deletes content and revokes sessions (with D99.38). After that, re-registration with the old email can be allowed.
 
@@ -867,7 +867,11 @@ Added 2026-11-21 by `wave-6-audit-remediation` (task 27.1). Each entry is a defe
 
 **Fix:** mount `PhotoUpload` in the recipe editor, and add a gallery on the detail page ordered by `sortOrder` that excludes soft-deleted photos.
 
-## D99.42 — Cross-recipe comment replies — Open
+**Note (wave-6-review-remediation):** a soft-deleted photo's file stays fetchable under `/uploads/…` (local driver) or its storage URL, and local reads are now cached as immutable (`Cache-Control: public, max-age=31536000, immutable`, `apps/api/src/utils/storage/serve.ts`), so browsers and proxies may keep serving it after the delete; decide on file removal or a non-public key together with the gallery.
+
+## D99.42 — Cross-recipe comment replies — ✅ Resolved (2026-11-21, wave-6-review-remediation)
+
+> **Resolved 2026-11-21 (wave-6-review-remediation, #5).** `createComment` throws `COMMENT_NOT_FOUND` for a parent that is missing, on another recipe, or whose resolved top-level comment is on another recipe, and the comment router answers 404 "Parent comment not found"; comment lists also leave out a reply stored under another recipe's comment. Covered by `apps/api/src/modules/comment/index.test.ts` and `model.test.ts`. The original entry is kept below.
 
 **Unowned audit finding** (audit §4). **Priority:** P2 · **Effort:** Low.
 
@@ -939,7 +943,9 @@ Added 2026-11-21 by `wave-6-audit-remediation` (task 27.1). Each entry is a defe
 
 **Fix:** probe the cache backend from the readiness check (a bounded `PING`), or derive the cache state from the shared Valkey connection's state.
 
-## D99.51 — Unused `recipe/model.ts#update` — Open
+## D99.51 — Unused `recipe/model.ts#update` — ✅ Resolved (2026-11-21, wave-6-review-remediation)
+
+> **Resolved 2026-11-21 (wave-6-review-remediation, #34).** `update` was deleted from `apps/api/src/modules/recipe/model.ts` together with the other dead model helpers (`create`, `incrementLikes`, `decrementLikes`, comment `getRecipeAuthorId` and collection `getItems`) and the tests that covered only them. The original entry is kept below.
 
 **Found during wave 6** (group 8). **Priority:** P4 · **Effort:** Trivial.
 
@@ -947,7 +953,9 @@ Added 2026-11-21 by `wave-6-audit-remediation` (task 27.1). Each entry is a defe
 
 **Fix:** delete it, together with any test that covers only it.
 
-## D99.52 — Demo accounts seeded in production — Accepted (user decision 2026-11-19)
+## D99.52 — Demo accounts seeded in production — ✅ Resolved (2026-11-21, wave-6-review-remediation)
+
+> **Resolved 2026-11-21 (wave-6-review-remediation, #12; the user reversed the 2026-11-19 decision).** With `APP_ENV=production` the seed creates only the admin and the reference data (taste notes, equipment, coffee varieties, the real-roaster vendors) and logs `Demo content skipped (APP_ENV=production): admin and reference catalogs only` (`shouldSeedDemoContent` in `packages/db/src/seed.ts`); there is no override. Installs created before this release remove the demo accounts once with the runbook in [`docs/deployment_compose.md`](../docs/deployment_compose.md#installs-created-before-this-release-remove-the-demo-accounts) (§3; the Coolify guide has the same step). The original entry is kept below.
 
 **Non-Goal of wave 6** (audit item 2, §3.2); the user answered "No problems". Recorded so later audits do not report it again. **Priority:** P4 · **Effort:** Low if revisited.
 
@@ -1003,9 +1011,9 @@ The other `TODO_logs.md` items were already done when it was deleted: every P1/P
 
 **Found during wave 6** (group 26, docs checked against code). **Priority:** P3 · **Effort:** Low.
 
-**Evidence:** the `build-robots-txt` plugin in `apps/web/vite.config.ts` and the `PUBLIC_APP_URL` rewrite in `docker-web-entrypoint.sh` both write `Sitemap: <web origin>/api/v1/sitemap.xml`. On Coolify's split domains (web and API on separate hosts, `docs/deployment_coolify.md`) the web container serves static files only unless `API_UPSTREAM` is set, so that URL returns `index.html` instead of the sitemap.
+**Evidence:** the `build-robots-txt` plugin in `apps/web/vite.config.ts` and the `PUBLIC_APP_URL` rewrite in `docker-web-entrypoint.sh` both write `Sitemap: <web origin>/sitemap.xml` (the root-level sitemap index since wave-6-review-remediation E8; the API serves it at `/sitemap.xml` and the web edge proxies that path only through `API_UPSTREAM`). On Coolify's split domains (web and API on separate hosts, `docs/deployment_coolify.md`) the web container serves static files only unless `API_UPSTREAM` is set, so that URL returns `index.html` instead of the sitemap index.
 
-**Fix:** derive the `Sitemap:` line from the API origin when no same-origin proxy is configured (for example from `VITE_API_URL`), or document `API_UPSTREAM` as required for the sitemap; extend `apps/web/src/robots.test.ts` and `scripts/ci/web-entrypoint.test.sh` to cover it.
+**Fix:** derive the `Sitemap:` line from the API origin (`<api origin>/sitemap.xml`) when no same-origin proxy is configured, or document `API_UPSTREAM` as required for `/sitemap.xml`; extend `apps/web/src/robots.test.ts` and `scripts/ci/web-entrypoint.test.sh` to cover it.
 
 ## D99.59 — Reply button shown to the thread author, but the API answers 403 — Open
 
@@ -1023,7 +1031,9 @@ The other `TODO_logs.md` items were already done when it was deleted: every P1/P
 
 **Fix:** lower the schema limit to 50 (and the web input's `maxLength`), with a schema test at 50 and 51 characters.
 
-## D99.61 — Taste-note search uses an unescaped, case-sensitive `like` — Open
+## D99.61 — Taste-note search uses an unescaped, case-sensitive `like` — ✅ Resolved (2026-11-21, wave-6-review-remediation)
+
+> **Resolved 2026-11-21 (wave-6-review-remediation, #4).** Taste-note search now matches `ilike(name, toContainsPattern(term))` with the shared escaping helpers in `apps/api/src/utils/search.ts` (`normalizeSearchTerm`, `toContainsPattern`), so `%` and `_` are literal and letter case is ignored; a blank term returns `[]`. The same fix covered the admin user and coffee-variety lists, the public coffee-variety list, and equipment and vendor search; no plain `like(` is left in any model. The original entry is kept below.
 
 **Found during wave 6** (group 26, docs checked against code). **Priority:** P3 · **Effort:** Low.
 
@@ -1038,3 +1048,19 @@ The other `TODO_logs.md` items were already done when it was deleted: every P1/P
 **Evidence:** the `ci` target in `Makefile` runs `test-coverage` and then `test-web`, and the root `test-coverage` script (`package.json`) already ends with `pnpm --filter @brewform/web run test --coverage`; the root `ci` script repeats the same pair (`test-coverage`, then `pnpm --filter @brewform/web run test`).
 
 **Fix:** drop the second web run from both, and keep `make test-web` as the standalone target.
+
+## D99.63 — Locale-aware case folding for substring search (Turkish `I`/`ı`) — Open
+
+**Deferred:** wave-6-review-remediation (#26 follow-up; the wave-6 "a Turkish collation is a follow-up" risk was never ledgered). **Priority:** P4 · **Effort:** Medium.
+
+**Evidence:** identifier lookups now lower both sides in the database (`eq(lower(col), lower(value))`, `apps/api/src/modules/auth/model.ts`), so they agree with the `_lower_unique` indexes on any locale, but substring search (`ilike(<col>, toContainsPattern(term))` in the recipe, catalog and admin models) still folds case by the database ctype: on an `en_US` database `İstanbul`/`istanbul` and `I`/`ı` do not match the way Turkish users expect.
+
+**Fix:** pick one folding rule for search (an ICU collation on the searched columns, or a stored folded search column), apply it to every `ilike` search, keep the trigram indexes usable, and add model tests with Turkish dotted and dotless `i`.
+
+## D99.64 — "Load more replies" for long comment threads — Open
+
+**Deferred:** wave-6-review-remediation E10 (bounded replies; user decision). **Priority:** P4 · **Effort:** Low–Medium.
+
+**Evidence:** `GET /api/v1/comments/recipe/:recipeId` returns at most `MAX_REPLIES_PER_COMMENT` (20, `packages/shared/src/constants/comments.ts`) replies per top-level comment, oldest first, with `hasMoreReplies`; `CommentSection` shows only "Showing the first 20 replies." (`comment.repliesTruncated`), so the 21st and later replies cannot be read (they are stored, counted and notified).
+
+**Fix:** a bounded keyset endpoint `GET /api/v1/comments/:id/replies?after=<createdAt>,<id>&perPage=` behind the same visibility gate as the comment list (and the same deleted-author masking), plus a "Load more replies" button in `CommentSection` driven by `useFetcher().load()` against a `resources/` route, replacing the hint.

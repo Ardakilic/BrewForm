@@ -41,9 +41,10 @@ Both are configured as pnpm workspace members in `pnpm-workspace.yaml` (`package
 Among the utilities in `@brewform/shared` is `generateUniqueUsername(base, isTaken)`, which cleans
 the base and probes `-1` … `-100` suffixes until `isTaken` reports a free username. Availability is
 checked by `isUsernameTaken` and `isEmailTaken` in `apps/api/src/modules/auth/model.ts`. Both
-compare case-insensitively (`eq(lower(col), value.toLowerCase())`) against **every** user row,
-soft-deleted ones included, so they agree with the `user_email_lower_unique` and
-`user_username_lower_unique` indexes (a deleted account's username stays reserved).
+compare case-insensitively (`eq(lower(col), lower(value))`, both sides lowered by the database)
+against **every** user row, soft-deleted ones included, so they agree with the
+`user_email_lower_unique` and `user_username_lower_unique` indexes on any database locale (a
+deleted account's username stays reserved).
 
 ## Backend Module Pattern
 
@@ -159,17 +160,23 @@ BrewForm targets PostgreSQL only (PostgreSQL 18 in the compose files). The rules
 - **No raw SQL statements** — Drizzle ORM only. No JSONB/UUID columns (IDs are
   `$defaultFn(() => crypto.randomUUID())` strings). Query code in `model.ts` uses Drizzle builders.
   `ilike` is the accepted case-insensitive match operator. A `sql` template **fragment** is allowed
-  only where Drizzle has no builder (e.g. `CASE` expressions, row-value comparisons, `NULLS LAST`).
-  It must interpolate Drizzle columns and bound values, never concatenate user input, and must carry
-  a `// D03 raw-SQL exception: <why>` comment. No other Postgres-specific operators (`@@`, `%`,
-  `~*`, JSON operators) in application query code.
+  only where Drizzle has no builder (e.g. `CASE` expressions, row-value comparisons, `NULLS LAST`)
+  and only for a use listed in the accepted-exception registry of the `lint-style` spec
+  ([`openspec/specs/lint-style/spec.md`](../openspec/specs/lint-style/spec.md), "Raw SQL is
+  confined to an accepted-exception registry"). It must interpolate Drizzle columns and bound
+  values, never concatenate user input, and must carry a `// D03 raw-SQL exception: <why>` comment
+  within the 10 lines above it. `packages/shared/src/lint-policy.test.ts` enforces the registry: it
+  rejects a fragment without the comment and any `sql.raw(`/`.unsafe(`, and each file's fragment
+  count must match `RAW_SQL_REGISTRY`. No other Postgres-specific operators (`@@`, `%`, `~*`, JSON
+  operators) in application query code.
 - **Schema-level Postgres features are permitted**: index ordering, CHECK constraints, GIN indexes
   with operator classes, and extensions approved by an ADR in [`decisions.md`](decisions.md)
   (currently `pg_trgm`, ADR-017). An extension is enabled only through a
   `drizzle-kit generate --custom` migration containing `CREATE EXTENSION IF NOT EXISTS <name>;`.
-- **Bounded reads** — every list or search query in `model.ts` applies `limit` (at most the
-  schema's `perPage` maximum). Ordering, ranking and pagination happen in SQL, never by loading a
-  full result set into the API process.
+- **Bounded reads** — every list or search query in `model.ts`, and every sitemap page read in the
+  `deps` of `apps/api/src/routes/sitemap.ts`, applies `limit` (at most the schema's `perPage`
+  maximum, or `SITEMAP_PAGE_SIZE`). Ordering, ranking and pagination happen in SQL, never by
+  loading a full result set into the API process.
 - **Soft deletes** — filter live rows with `isNull(t.deletedAt)`, e.g.
   `and(eq(t.id, id), isNull(t.deletedAt))` (see [Soft Deletes](#soft-deletes)).
 - **Recipe visibility** — recipe listings build their visibility filter only from
@@ -178,8 +185,8 @@ BrewForm targets PostgreSQL only (PostgreSQL 18 in the compose files). The rules
   compares `recipes.visibility` inline (enforced by `visibility.enforcement.test.ts`; admin is
   exempt). Unlisted means direct-link only.
 - **Case-insensitive identifiers** — compare `user.email`/`user.username` with
-  `eq(lower(col), value.toLowerCase())` using the `lower()` helper from `@brewform/db/schema`.
-  Unique generated values (recipe slugs) are claimed with
+  `eq(lower(col), lower(value))` using the `lower()` helper from `@brewform/db/schema`: the database
+  lowers both sides, so lookups agree with the `_lower_unique` indexes on any locale. Unique generated values (recipe slugs) are claimed with
   `insert … onConflictDoNothing({ target }).returning()` inside the transaction; a `23505` is never
   caught inside a transaction (Postgres aborts the transaction).
 - **Services import from model files**, never from `drizzle-orm` directly.
@@ -236,7 +243,7 @@ rather than a unique lookup, since `deletedAt` is not part of a unique constrain
 `Comment_Service.createComment` and `Comment_Service.deleteComment` both accept an `isAdmin: boolean` parameter that grants elevated permissions:
 
 - **Replies** — when `isAdmin` is `true`, the service allows the caller to reply to any comment on any recipe, bypassing the normal recipe-owner check. When `isAdmin` is `false`, only the recipe owner may reply.
-- **Deletions** — when `isAdmin` is `true`, the service allows the caller to delete any comment regardless of authorship, bypassing the normal author check. When `isAdmin` is `false`, only the comment's own author may delete it.
+- **Deletions** — when `isAdmin` is `true`, the service allows the caller to delete any comment regardless of authorship, bypassing the normal author check. When `isAdmin` is `false`, only the comment's own author may delete it. Deleting a top-level comment also soft-deletes its live replies on the same recipe (`softDeleteReplies`) and decrements the recipe's stored `commentCount` by `1 + replies` (the admin path is the same function). The stored `commentCount` is recounted after every migration run (`packages/db/src/recount-comment-counts.ts`, run by the API image entrypoint and `make db-migrate`; `make db-recount-comments` runs it alone).
 
 The `isAdmin` flag is derived from the authenticated user object (`c.get('user').isAdmin`) set by `authMiddleware` and forwarded by the comment router — no separate `adminMiddleware` is applied to comment routes.
 
@@ -276,7 +283,10 @@ Applied in this order in `apps/api/src/main.ts`:
 8. **Error handler** — `app.onError(errorHandler)` (registered with `onError`, not as stack
    middleware) maps every thrown error to the error envelope
 9. **`/uploads/:path{.+}`** — only with `STORAGE_DRIVER=local`; its own `uploads` policy
-   (600 per minute per IP)
+   (600 per minute per IP). `serveLocalUpload` (`utils/storage/serve.ts`) streams the file from
+   disk (about one read chunk in memory per request, whatever the file size) and answers a 200
+   with `Cache-Control: public, max-age=31536000, immutable`, because upload keys never change
+   content
 10. **Routes** — `app.route('/', routes)` from `apps/api/src/routes/index.ts`
 
 Route-level middleware:
@@ -331,10 +341,10 @@ picked up automatically. Routes without `describeRoute()` are left out of the sp
 validator.
 
 **Coverage scope.** `apps/api/src/routes/openapi.coverage.test.ts` builds the real router and checks
-the generated document. It requires an operation under each of the 20 in-scope base paths (beans,
+the generated document. It requires an operation under each of the 21 in-scope base paths (beans,
 badges, brew-logs, coffee-varieties, collections, comments, contact, equipment, follow,
-notifications, photos, preferences, qrcode, reports, setups, taste-notes, users, vendors, `/share`
-and the sitemap), and for every documented operation: at least one declared tag, no orphan tags, a
+notifications, photos, preferences, qrcode, reports, setups, taste-notes, users, vendors, `/share`,
+the root `/sitemap.xml` and the deprecated `/api/v1/sitemap.xml` redirect), and for every documented operation: at least one declared tag, no orphan tags, a
 response map, and a documented `401` on auth-guarded in-scope operations. Auth, recipes, admin and
 health are outside that scope (the test only asks for at least one operation tagged `Auth`,
 `Recipes`, `Admin` and `Health`), and most admin routes are still undocumented.
@@ -448,15 +458,25 @@ URL change / user action
 - **Writes** run in route `action`s. Expected failures return `{ ok: false, error, code? }`
   (`routes/action-result.ts`) instead of throwing, so the page stays rendered and can toast or roll
   back. Social toggles and comments return the new state to keyed fetchers; `shouldRevalidate` and
-  `defaultShouldRevalidate: false` keep unrelated loaders from re-running.
+  `defaultShouldRevalidate: false` keep unrelated loaders from re-running. A failed action never
+  revalidates the recipe detail loader, and a failed toggle (like, favourite, follow) returns the
+  pre-click state, so the button falls back to the last confirmed value. The add-to-collection
+  modal never revalidates per submission; it revalidates the page once on close, and only after a
+  change.
 - **Cancellation and auth** — every loader and action passes `request.signal` to each API client
-  call. `requireAuth`/`requireAdmin` (`routes/auth-guards.ts`) turn a final 401 into
-  `/login?next=…` and an admin 403 into `/`. Failed loads render the route `errorElement`
-  (`RouteErrorState`), never an empty list.
+  call. The API client refreshes the session on every 401 (one shared `POST /auth/refresh`, then a
+  retry) except from login, register, refresh and logout. `requireAuth`/`requireAdmin`
+  (`routes/auth-guards.ts`) turn a final 401 into `/login?next=…` and an admin 403 into `/`.
+  Resource routes are never wrapped and never redirect: a final 401 returns
+  `{ ok: false, code: 'UNAUTHORIZED' }`, which `useActionFeedback` toasts as `error.unauthorized`.
+  Failed loads render the route `errorElement` (`RouteErrorState`), never an empty list.
 - **URL state** — the URL is the source of truth for list pages. `useListUrlState(parse)` uses the
   same parser as the page's loader; a filter change resets the page, page changes keep the
   filters, and defaults are never written. Text inputs use `useDebouncedUrlText`, which commits
-  after 300 ms with a history `replace`.
+  after 300 ms with a history `replace`. Every URL write builds on the latest URL through
+  `useLatestSearchParams` (the target of a navigation still loading on the same path, else the
+  current URL), so a timer or a quick second click never drops a change; `clearAll` first cancels
+  every pending debounced text commit.
 - **Static lookups** (equipment, flat taste notes) go through the single-flight cache in
   `api/static-cache.ts`; mutations call `invalidateStaticCache()`, and the cross-tab listener calls
   the local-only `clearStaticCache()`.
@@ -465,12 +485,17 @@ URL change / user action
   `Response`s are not logged as errors.
 - **API base URL** — `api/client.ts` uses the runtime `/config.js` value
   (`docker-web-entrypoint.sh` writes it from `VITE_API_URL`), then the build-time `VITE_API_URL`,
-  then same-origin `/api/v1`. In development Vite proxies `/api/*` to `VITE_API_PROXY_TARGET`.
+  then same-origin `/api/v1`. In development Vite proxies `/api/*` and `/sitemap.xml` to
+  `VITE_API_PROXY_TARGET`.
 
 `useEffect` is allowed only for non-fetch work (logging, subscriptions, focus) and for triggering
 `fetcher.load()` or `revalidator.revalidate()`. The one place outside loaders, actions and resource
 routes that calls the API client is the session store `contexts/AuthContext.tsx`, which sits above
-the router. The rules are enforced: a Biome `style/noRestrictedImports` override bans the API client
+the router. Components sign out through `useSignOut()` (`hooks/useSignOut.ts`): the server logout
+runs, the page is replaced with `/`, and only then is the user cleared, so no private page or data
+from the old session stays on screen. Sign-in and sign-out write the `brewform-auth-change` marker
+(`utils/auth-broadcast.ts`), and `useAuthTabSync` (mounted once in `App.tsx`) mirrors them in the
+other tabs from the `storage` event. The rules are enforced: a Biome `style/noRestrictedImports` override bans the API client
 modules in pages and components, `apps/web/src/architecture.test.ts` fails on a `useEffect` that
 calls the API, and `apps/web/src/data-loading.enforcement.test.ts` scans client imports, raw
 `fetch(`, loader placement and data-module imports.

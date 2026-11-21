@@ -14,7 +14,9 @@ The module SHALL export at least:
 - `niceTicks(min, max, maxCount)`: numeric ticks at a power of ten × {1, 2, 5}, never more than
   `maxCount`, finite, strictly ascending and inside `[min, max]`. It SHALL return for every finite
   input, including bounds one floating-point step apart and magnitudes beyond 2^53, and SHALL return
-  `[]` when `max - min` overflows to infinity.
+  `[]` when `max - min` overflows to infinity. When no step of the form {1, 2, 5} × 10^k yields
+  between 1 and `maxCount` ticks inside the range (possible for `maxCount` 1, e.g. `[0.6, 0.8]`,
+  or for a range a few subnormals wide), it SHALL return `[lo]`, the lower bound alone.
 - `durationTicks(totalSeconds, options)`: see "Duration axes use bounded nice ticks".
 - `estimateTextWidth(text, fontSizePx, { bold?, letterSpacingPx? })`: a deterministic,
   conservative width estimate.
@@ -38,6 +40,11 @@ Every exported function SHALL have co-located Vitest unit tests (`*.test.ts`).
 
 - **WHEN** `niceTicks(0.3, 0.1 + 0.2, 4)`, `niceTicks(2 ** 60, 2 ** 60 + 256, 4)` and `niceTicks(-Number.MAX_VALUE, Number.MAX_VALUE, 8)` are called
 - **THEN** they return `[0.3]`, at most 4 strictly ascending values inside the bounds, and `[]` respectively, and none of them loops
+
+#### Scenario: No nice step fits
+
+- **WHEN** `niceTicks(0.6, 0.8, 1)` and `niceTicks(0, Number.MIN_VALUE, 4)` are called
+- **THEN** they return the lower bound alone, `[0.6]` and `[0]` respectively
 
 #### Scenario: Width estimate is conservative against measured system-font widths
 

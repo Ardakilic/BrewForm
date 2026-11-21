@@ -121,6 +121,10 @@ describe('niceTicks terminates on near-equal and huge bounds', () => {
     expect(niceTicks(0, Number.MIN_VALUE, 4)).toEqual([0]);
   });
 
+  it('no nice step fits: niceTicks(0.6, 0.8, 1) → the lower bound alone (spec scenario)', () => {
+    expect(niceTicks(0.6, 0.8, 1)).toEqual([0.6]);
+  });
+
   it('an overflowing range returns []', () => {
     expect(niceTicks(-Number.MAX_VALUE, Number.MAX_VALUE, 8)).toEqual([]);
   });
