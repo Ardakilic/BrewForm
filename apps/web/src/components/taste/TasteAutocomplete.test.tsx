@@ -185,6 +185,21 @@ describe('TasteAutocomplete', () => {
     expect(removeButton).toBeInTheDocument();
   });
 
+  it('gives the chip intensity and remove buttons a 24 × 24 px target (WCAG 2.2 minimum, V6)', async () => {
+    setup({ selectedIds: ['leaf-1'], intensities: { 'leaf-1': 2 } });
+
+    const buttons = [
+      await screen.findByLabelText('Set intensity for Raspberry'),
+      screen.getByLabelText('Remove Raspberry'),
+    ];
+    for (const button of buttons) {
+      // Tailwind `min-w-6`/`min-h-6` = 1.5rem = 24 CSS px (jsdom has no layout: assert the classes).
+      expect(button).toHaveClass('min-w-6', 'min-h-6');
+      expect(button.style.lineHeight).not.toBe('0');
+      expect(button.className).not.toMatch(/leading-(?:\[0\]|none)/);
+    }
+  });
+
   it('cycles intensity when clicking the intensity button', async () => {
     const onIntensitiesChange = vi.fn();
     setup({
@@ -397,6 +412,22 @@ describe('tr locale', () => {
       'title',
       t('a11y.taste.intensityTitle', 'tr').replace('{level}', '2'),
     );
+  });
+
+  it('translates the category part of the group headings like the radar chart (V7)', async () => {
+    const user = userEvent.setup();
+    renderTr();
+
+    await user.click(await screen.findByPlaceholderText(t('taste.autocomplete.placeholder', 'tr')));
+    await screen.findByText('Raspberry');
+
+    // Root headings use the radar's `taste.category.*` labels (Meyvemsi, Çiçeksi) …
+    expect(screen.getByText(t('taste.category.fruity', 'tr'))).toBeInTheDocument();
+    expect(screen.getByText(t('taste.category.floral', 'tr'))).toBeInTheDocument();
+    // … and so does the sub-group heading; the note name itself is catalog data.
+    expect(screen.getByText(`${t('taste.category.fruity', 'tr')} > Berry`)).toBeInTheDocument();
+    expect(screen.queryByText('Fruity')).toBeNull();
+    expect(screen.queryByText('Fruity > Berry')).toBeNull();
   });
 
   it('shows the Turkish empty text when nothing matches', async () => {

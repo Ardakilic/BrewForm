@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { TASTE_NOTES_PATH, type tasteNotesLoader } from '../../routes/resources/taste-notes.ts';
 import { createLogger } from '../../utils/logger.ts';
+import { scaaCategoryLabelKey } from '../../utils/radar-chart-data.ts';
 import { useSafeT } from '../../utils/safe-translation.ts';
 import { IntensityDots } from '../recipe/IntensityDots.tsx';
 
@@ -40,7 +41,9 @@ const NO_NOTES: TasteNote[] = [];
  * logs a failure); a failed load leaves the list in its loading state. Selected chips come from
  * the catalog plus any `linkedNotes` it lacks (soft-deleted notes stay visible and removable);
  * the dropdown lists the catalog only. Every visible string (loading, empty, hint, the
- * flavour-wheel link and the intensity button `title`) goes through `t()`.
+ * flavour-wheel link and the intensity button `title`) goes through `t()`; a group heading's
+ * SCAA category uses the radar's `taste.category.*` label (note names are catalog data). The
+ * chip intensity and remove buttons are at least 24 × 24 CSS px (WCAG 2.2 target size).
  */
 export function TasteAutocomplete({
   selectedIds,
@@ -50,6 +53,11 @@ export function TasteAutocomplete({
   linkedNotes,
 }: Props) {
   const t = useSafeT();
+  /** Translated heading for an SCAA category root name (the radar's label), or the raw name. */
+  const categoryHeading = (name: string): string => {
+    const key = scaaCategoryLabelKey(name);
+    return key ? t(key) : name;
+  };
   const [query, setQuery] = useState('');
   const { load, data } = useFetcher<typeof tasteNotesLoader>();
   const allNotes: TasteNote[] = data?.ok ? data.notes : NO_NOTES;
@@ -261,7 +269,7 @@ export function TasteAutocomplete({
             return (
               <div
                 key={note.id}
-                className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"
+                className="inline-flex items-center gap-1 rounded-full py-0.5 pl-3 pr-1 text-xs font-medium"
                 style={{
                   backgroundColor: 'var(--bg-tertiary)',
                   border: '1px solid var(--border-primary)',
@@ -274,13 +282,7 @@ export function TasteAutocomplete({
                   type="button"
                   onClick={() => cycleIntensity(note.id)}
                   title={t('a11y.taste.intensityTitle').replace('{level}', String(intensity))}
-                  style={{
-                    lineHeight: 0,
-                    cursor: 'pointer',
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                  }}
+                  className="inline-flex min-h-6 min-w-6 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0"
                   aria-label={t('a11y.taste.setIntensity').replace('{name}', note.name)}
                 >
                   <IntensityDots intensity={intensity} />
@@ -289,15 +291,7 @@ export function TasteAutocomplete({
                 <button
                   type="button"
                   onClick={() => toggleNote(note.id)}
-                  style={{
-                    lineHeight: 0,
-                    cursor: 'pointer',
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    color: 'var(--text-secondary)',
-                    fontSize: '0.75rem',
-                  }}
+                  className="inline-flex min-h-6 min-w-6 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-xs text-[color:var(--text-secondary)]"
                   aria-label={t('a11y.taste.removeNote').replace('{name}', note.name)}
                 >
                   ×
@@ -338,7 +332,7 @@ export function TasteAutocomplete({
                   style={{ color: 'var(--text-tertiary)' }}
                   aria-hidden="true"
                 >
-                  {group.root.name}
+                  {categoryHeading(group.root.name)}
                 </li>
                 {group.subGroups.map((sg) => (
                   <Fragment key={sg.parent.id}>
@@ -350,7 +344,7 @@ export function TasteAutocomplete({
                       }}
                       aria-hidden="true"
                     >
-                      {group.root.name} &gt; {sg.parent.name}
+                      {categoryHeading(group.root.name)} &gt; {sg.parent.name}
                     </li>
                     {sg.children.map((item) => (
                       <li
