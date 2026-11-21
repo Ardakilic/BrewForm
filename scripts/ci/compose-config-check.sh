@@ -7,7 +7,7 @@
 # Usage: scripts/ci/compose-config-check.sh [env-file]   (default: scripts/ci/compose-smoke.env)
 #
 # Asserts: health checks on every long-running service; start-up order (migrate ->
-# api -> web); the literal UPLOAD_DIR; the one-variable data sources (named volume by
+# api -> web, and migrate -> backup); the literal UPLOAD_DIR; the one-variable data sources (named volume by
 # default, bind mount for a path, undeclared volume names rejected); no password in any
 # health-check, command or entrypoint string; `restore` only under its profile; memory
 # limits, log rotation and restart policies on every service.
@@ -88,6 +88,8 @@ check "migrate waits for a healthy postgres" "$D" \
 	'.services.migrate.depends_on.postgres.condition == "service_healthy"'
 check "backup waits for a healthy postgres" "$D" \
 	'.services.backup.depends_on.postgres.condition == "service_healthy"'
+check "backup waits for migrate to complete (its start-up dump is never of an empty schema)" "$D" \
+	'.services.backup.depends_on.migrate.condition == "service_completed_successfully"'
 check "api probes readiness with the bundled script" "$D" \
 	'.services.api.healthcheck.test == ["CMD", "node", "/app/healthcheck.mjs", "/ready"]'
 check "web probes its local /healthz" "$D" \

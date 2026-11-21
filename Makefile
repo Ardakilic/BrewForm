@@ -275,8 +275,10 @@ prod-ps: prod-env-check ## Show the production containers and their health
 prod-pull: prod-env-check ## Pull the production images for IMAGE_TAG (default latest)
 	$(PROD_COMPOSE) pull
 
+# --no-deps: a manual backup never (re)runs migrate, so a backup taken after `make prod-pull`
+# still holds the old schema. The stack (postgres) must be running.
 prod-backup: prod-env-check ## Run one database (and uploads) backup now
-	$(PROD_COMPOSE) run --rm -e BACKUP_ONESHOT=1 backup
+	$(PROD_COMPOSE) run --rm --no-deps -e BACKUP_ONESHOT=1 backup
 
 prod-backup-export: prod-env-check ## Copy every backup to a host folder (DEST=./backup-export)
 	mkdir -p $(DEST) && $(PROD_COMPOSE) cp backup:/backups/. $(DEST)

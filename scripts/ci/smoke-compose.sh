@@ -12,13 +12,14 @@
 #
 # Checks, in order:
 #   1. `up -d`, then poll `ps` until postgres, valkey, api, web and backup are healthy and
-#      migrate exited 0 (fails after 300 s).
+#      migrate exited 0 (fails after 300 s); the backup's start-up dump already holds the
+#      migrated schema (backup starts only after migrate completed).
 #   2. Through the web port: /healthz is 200 and /health is {"status":"ok"}; inside the api
 #      container `node /app/healthcheck.mjs /ready` exits 0.
 #   3. A 1x1 PNG written to /app/uploads as `node` survives `up -d --force-recreate api`
 #      and is served as image/png at /uploads/ci-probe.png through the web edge.
-#   4. A one-shot backup (BACKUP_ONESHOT=1) leaves a db-*.dump that `pg_restore --list`
-#      reads and an uploads-*.tar.gz that lists ci-probe.png.
+#   4. A one-shot backup (BACKUP_ONESHOT=1, --no-deps like `make prod-backup`) leaves a
+#      db-*.dump that `pg_restore --list` reads and an uploads-*.tar.gz that lists ci-probe.png.
 #   5. `stop api` exits 0 and the api logs `Graceful shutdown complete`.
 # A trap prints `docker compose logs` on failure and always runs `down -v`.
 # Prints one `ok`/`not ok` line per check and exits 1 on the first failure.
@@ -112,6 +113,14 @@ echo "# 1. start the stack ($PROJECT, $ENV_FILE)"
 dc config --quiet
 dc up -d
 wait_stack "postgres valkey api web backup" migrate
+# The script runs inside the backup container, so its variables must not expand here.
+# shellcheck disable=SC2016
+dc exec -T backup sh -euc '
+	first=$(ls -tr /backups/db-*.dump | head -n 1)
+	pg_restore --list "$first" | grep -q " TABLE public user "
+	echo "$first holds the user table"
+' || die "the backup start-up dump does not hold the migrated schema (backup ran before migrate)"
+ok "backup: the start-up dump holds the migrated schema"
 WEB_PORT=$(dc port web 80 | head -n 1 | sed 's/.*://')
 [ -n "$WEB_PORT" ] || die "the web service publishes no host port"
 WEB="http://127.0.0.1:$WEB_PORT"
@@ -143,7 +152,7 @@ printf '%s' "$headers" | tr '[:upper:]' '[:lower:]' | grep -q '^content-type: im
 ok "the probe is served as image/png"
 
 echo "# 4. one-shot backup"
-dc run --rm -e BACKUP_ONESHOT=1 backup
+dc run --rm --no-deps -e BACKUP_ONESHOT=1 backup
 # The script runs inside the backup container, so its variables must not expand here.
 # shellcheck disable=SC2016
 dc exec -T backup sh -euc '

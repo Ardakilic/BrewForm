@@ -285,13 +285,17 @@ services:
     restart: unless-stopped
 
   # Database dump (and uploads archive with local storage) at start-up and then every
-  # BACKUP_INTERVAL_SECONDS; files older than BACKUP_RETENTION_DAYS are pruned.
-  # `make prod-backup` runs one extra backup (BACKUP_ONESHOT=1) and exits.
+  # BACKUP_INTERVAL_SECONDS; files older than BACKUP_RETENTION_DAYS are pruned. It starts
+  # after `migrate` completed, so the start-up dump of a fresh install holds the schema.
+  # `make prod-backup` runs one extra backup (BACKUP_ONESHOT=1, --no-deps: it never re-runs
+  # migrate) and exits.
   backup:
     image: postgres:18-trixie
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-brewform}
