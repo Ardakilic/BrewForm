@@ -107,7 +107,7 @@ export function AdminUserDetailPage() {
           {user.avatarUrl ? (
             <img
               src={user.avatarUrl}
-              alt={`${user.displayName || user.username}'s avatar`}
+              alt={t('a11y.userAvatar').replace('{name}', user.displayName || user.username)}
               className="w-20 h-20 rounded-full object-cover"
               loading="lazy"
               width={80}

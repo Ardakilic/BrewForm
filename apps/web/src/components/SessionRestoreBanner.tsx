@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createLogger } from '@/utils/logger.ts';
 import { useAuth } from '../contexts/AuthContext.tsx';
+import { useTranslation } from '../contexts/I18nContext.tsx';
 
 const log = createLogger('SessionRestoreBanner');
 
@@ -12,10 +13,13 @@ const log = createLogger('SessionRestoreBanner');
  * `refreshUser` try block sets `sessionError` to null and this component
  * unmounts via the early return. The dismiss button calls
  * `clearSessionError()` to clear the banner without retrying. The banner
- * uses `role='alert'` so screen readers announce it when it appears.
+ * uses `role='alert'` so screen readers announce it when it appears. Its texts come from
+ * `session.restore.networkError` / `session.restore.serverError`, `common.retry`,
+ * `common.retrying` and `common.dismiss`.
  */
 export function SessionRestoreBanner() {
   const { sessionError, clearSessionError, refreshUser } = useAuth();
+  const { t } = useTranslation();
   const [retrying, setRetrying] = useState(false);
 
   if (!sessionError) return null;
@@ -38,8 +42,8 @@ export function SessionRestoreBanner() {
 
   const message =
     sessionError === 'network'
-      ? "Couldn't reach the server. Check your connection and retry."
-      : "Couldn't restore your session — the server had an error. Retry?";
+      ? t('session.restore.networkError')
+      : t('session.restore.serverError');
 
   return (
     <div
@@ -54,10 +58,10 @@ export function SessionRestoreBanner() {
         disabled={retrying}
         className="underline font-medium"
       >
-        {retrying ? 'Retrying...' : 'Retry'}
+        {retrying ? t('common.retrying') : t('common.retry')}
       </button>
       <button type="button" onClick={clearSessionError} className="underline font-medium">
-        Dismiss
+        {t('common.dismiss')}
       </button>
     </div>
   );

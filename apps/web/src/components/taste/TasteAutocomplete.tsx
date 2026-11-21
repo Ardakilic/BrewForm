@@ -22,6 +22,12 @@ interface Props {
   /** Per-note intensity (1–3). Defaults to 2 for newly added notes. */
   intensities?: Record<string, number>;
   onIntensitiesChange?: (intensities: Record<string, number>) => void;
+  /**
+   * Notes already linked to the recipe being edited. A linked note the catalog lacks (it was
+   * soft-deleted since) still gets a selected, removable chip; it is never offered in the
+   * dropdown, so once removed it cannot be re-added.
+   */
+  linkedNotes?: TasteNote[];
 }
 
 /** No taste notes yet: the fetcher has not loaded, or its load failed. */
@@ -31,13 +37,17 @@ const NO_NOTES: TasteNote[] = [];
  * Searchable autocomplete for SCAA taste notes with hierarchical grouping, intensity controls,
  * and keyboard navigation. The flat note list is read once on mount with a fetcher from the
  * `resources/taste-notes` resource route (served by the single-flight static cache, which
- * logs a failure); a failed load leaves the list in its loading state.
+ * logs a failure); a failed load leaves the list in its loading state. Selected chips come from
+ * the catalog plus any `linkedNotes` it lacks (soft-deleted notes stay visible and removable);
+ * the dropdown lists the catalog only. Every visible string (loading, empty, hint, the
+ * flavour-wheel link and the intensity button `title`) goes through `t()`.
  */
 export function TasteAutocomplete({
   selectedIds,
   onSelectionChange,
   intensities = {},
   onIntensitiesChange,
+  linkedNotes,
 }: Props) {
   const t = useSafeT();
   const [query, setQuery] = useState('');
@@ -234,7 +244,12 @@ export function TasteAutocomplete({
     }
   }
 
-  const selectedNotes = allNotes.filter((n) => selectedIds.includes(n.id));
+  // Chips: the catalog plus linked notes it lacks (soft-deleted since), in selection-filter order.
+  const selectedNotes = useMemo(() => {
+    const known = new Set(allNotes.map((n) => n.id));
+    const missing = (linkedNotes ?? []).filter((n) => !known.has(n.id));
+    return [...allNotes, ...missing].filter((n) => selectedIds.includes(n.id));
+  }, [allNotes, linkedNotes, selectedIds]);
 
   return (
     <div ref={wrapperRef} className="relative">
@@ -258,7 +273,7 @@ export function TasteAutocomplete({
                 <button
                   type="button"
                   onClick={() => cycleIntensity(note.id)}
-                  title={`Intensity ${intensity}/3 — click to change`}
+                  title={t('a11y.taste.intensityTitle').replace('{level}', String(intensity))}
                   style={{
                     lineHeight: 0,
                     cursor: 'pointer',
@@ -313,7 +328,7 @@ export function TasteAutocomplete({
         >
           {allNotes.length === 0 ? (
             <li className="px-3 py-4 text-sm text-center" style={{ color: 'var(--text-tertiary)' }}>
-              Loading taste notes...
+              {t('taste.autocomplete.loading')}
             </li>
           ) : groupedResults.length > 0 ? (
             groupedResults.map((group) => (
@@ -403,21 +418,21 @@ export function TasteAutocomplete({
             ))
           ) : (
             <li className="px-3 py-4 text-sm text-center" style={{ color: 'var(--text-tertiary)' }}>
-              No taste notes found.
+              {t('taste.notFound')}
             </li>
           )}
         </ul>
       )}
 
       <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-        Click intensity dots on selected notes to adjust (1–3).{' '}
+        {t('taste.autocomplete.intensityHint')}{' '}
         <a
           href="https://notbadcoffee.com/flavor-wheel-en/"
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: 'var(--accent-primary)' }}
         >
-          SCAA Flavor Wheel Reference
+          {t('taste.reference')}
         </a>
       </p>
     </div>

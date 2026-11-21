@@ -1,6 +1,8 @@
+import { t } from '@brewform/shared/i18n';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import { MetadataBadges } from './MetadataBadges.tsx';
 
 vi.mock('react-router', () => ({
@@ -126,6 +128,22 @@ describe('MetadataBadges — version info (Req 2.4 & 2.5)', () => {
     render(<MetadataBadges {...baseProps} versionNumber={2} versionCount={2} />);
     expect(screen.getByText('v2')).toBeInTheDocument();
     expect(screen.getByText('1 prior version')).toBeInTheDocument();
+  });
+
+  it('shows the Turkish prior-versions text under the tr locale', () => {
+    localStorage.setItem('brewform_locale', 'tr');
+    try {
+      render(
+        <I18nProvider>
+          <MetadataBadges {...baseProps} versionNumber={3} versionCount={3} />
+        </I18nProvider>,
+      );
+      expect(
+        screen.getByText(t('recipe.priorVersions.other', 'tr').replace('{count}', '2')),
+      ).toBeInTheDocument();
+    } finally {
+      localStorage.clear();
+    }
   });
 
   it('does not show version info when versionCount is 1', () => {

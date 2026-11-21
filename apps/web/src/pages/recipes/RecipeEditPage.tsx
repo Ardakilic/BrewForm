@@ -110,7 +110,8 @@ interface RecipeEditFormProps {
 
 /**
  * Recipe edit form pre-filled from the current version, including its taste notes, equipment
- * and coffee variety. The checkbox chooses between amending the current version in place
+ * and coffee variety; a linked taste note or equipment item deleted from the catalog since stays
+ * listed (the picker's `linkedNotes`, the equipment options) so it can be removed. The checkbox chooses between amending the current version in place
  * (default) and saving a new version, and its hint names the version numbers. Submits the
  * {@link buildRecipeUpdatePayload} body (cleared inputs as `null`, cleared lists as `[]`) to
  * the `/recipes/:id/edit` route action with a fetcher, navigates to the recipe on
@@ -169,6 +170,11 @@ function RecipeEditForm({ recipe, equipmentList }: RecipeEditFormProps) {
   );
   const [coffeeVariety, setCoffeeVariety] = useState<CoffeeVarietySelection | null>(
     v.coffeeVarietyId ? { id: v.coffeeVarietyId, name: v.coffeeVarietyName ?? '' } : null,
+  );
+  // The recipe's own taste notes, so a linked note deleted from the catalog keeps a chip.
+  const linkedTasteNotes = useMemo(
+    () => recipe.tasteNotes.map(({ id, name, depth, parentId }) => ({ id, name, depth, parentId })),
+    [recipe],
   );
   const pickableEquipment = useMemo(
     () => equipmentOptions(equipmentList, recipe),
@@ -515,6 +521,7 @@ function RecipeEditForm({ recipe, equipmentList }: RecipeEditFormProps) {
               onSelectionChange={setTasteNoteIds}
               intensities={tasteNoteIntensities}
               onIntensitiesChange={setTasteNoteIntensities}
+              linkedNotes={linkedTasteNotes}
             />
             <FieldErrorText message={fieldErrors.tasteNoteIds} />
           </div>

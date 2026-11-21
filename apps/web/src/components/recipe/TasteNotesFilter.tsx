@@ -26,7 +26,7 @@ interface TasteNotesFilterProps {
 /**
  * Searchable multi-select (Base UI Select) of taste notes grouped by
  * root category and sub-group; enforces `maxSelections` and clears the
- * search on close.
+ * search on close. Its empty state reads `taste.notFound`.
  */
 export function TasteNotesFilter({
   allTasteNotes,
@@ -316,7 +316,7 @@ export function TasteNotesFilter({
                 ))
               ) : (
                 <div className="px-3 py-4 text-sm text-center text-[color:var(--text-tertiary)]">
-                  No taste notes found.
+                  {t('taste.notFound')}
                 </div>
               )}
             </Select.List>

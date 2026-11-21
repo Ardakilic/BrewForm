@@ -1,3 +1,4 @@
+import { t } from '@brewform/shared/i18n';
 import type { TasteNoteOutput } from '@brewform/shared/schemas';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -10,6 +11,7 @@ vi.mock('@/utils/logger.ts', () => ({
 }));
 
 import { tasteNotesLoader } from '../../routes/resources/taste-notes.ts';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 import { TasteAutocomplete } from './TasteAutocomplete.tsx';
 
 // ── Mock the static cache behind the resources/taste-notes route ───────────
@@ -201,6 +203,32 @@ describe('TasteAutocomplete', () => {
     expect(onIntensitiesChange).toHaveBeenCalledWith({ 'leaf-1': 3 });
   });
 
+  it('shows a removable chip for a linked note missing from the catalog', async () => {
+    const user = userEvent.setup();
+    const { onSelectionChange } = setup({
+      selectedIds: ['gone-1'],
+      linkedNotes: [{ id: 'gone-1', name: 'Tobacco', depth: 2, parentId: 'mid-x' }],
+    });
+
+    const remove = await screen.findByRole('button', { name: 'Remove Tobacco' });
+    await user.click(remove);
+
+    expect(onSelectionChange).toHaveBeenCalledWith([]);
+  });
+
+  it('does not offer a linked-only note in the dropdown', async () => {
+    const user = userEvent.setup();
+    setup({
+      selectedIds: ['gone-1'],
+      linkedNotes: [{ id: 'gone-1', name: 'Tobacco', depth: 2, parentId: 'mid-x' }],
+    });
+
+    await user.click(screen.getByPlaceholderText('Search SCAA taste notes...'));
+    await screen.findByText('Raspberry');
+
+    expect(screen.queryByRole('option', { name: /Tobacco/ })).toBeNull();
+  });
+
   it('removes a note when clicking the remove button', async () => {
     const onSelectionChange = vi.fn();
     setup({
@@ -308,5 +336,78 @@ describe('TasteAutocomplete', () => {
 
     await user.click(screen.getByText('Raspberry'));
     expect(onSelectionChange).toHaveBeenCalledWith(['leaf-1']);
+  });
+});
+
+describe('tr locale', () => {
+  beforeEach(() => {
+    mockGetTasteNotes.mockReset();
+    mockGetTasteNotes.mockResolvedValue(tasteNotes as TasteNoteOutput[]);
+    localStorage.clear();
+  });
+
+  /** Renders the picker with the app providers in Turkish and the taste-notes resource route. */
+  function renderTr(props: Partial<React.ComponentProps<typeof TasteAutocomplete>> = {}) {
+    return renderWithAppProviders(
+      [
+        {
+          path: '/',
+          element: (
+            <TasteAutocomplete
+              selectedIds={[]}
+              onSelectionChange={vi.fn()}
+              onIntensitiesChange={vi.fn()}
+              {...props}
+            />
+          ),
+        },
+        { path: '/resources/taste-notes', loader: tasteNotesLoader },
+      ],
+      { locale: 'tr' },
+    );
+  }
+
+  it('renders the hint and the flavour-wheel link in Turkish', async () => {
+    renderTr();
+
+    expect(
+      await screen.findByText(t('taste.autocomplete.intensityHint', 'tr')),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: t('taste.reference', 'tr') })).toBeInTheDocument();
+  });
+
+  it('shows the Turkish loading text while the lookup runs', async () => {
+    mockGetTasteNotes.mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+    renderTr();
+
+    await user.click(await screen.findByPlaceholderText(t('taste.autocomplete.placeholder', 'tr')));
+
+    expect(screen.getByText(t('taste.autocomplete.loading', 'tr'))).toBeInTheDocument();
+  });
+
+  it('titles the intensity button in Turkish', async () => {
+    renderTr({ selectedIds: ['leaf-1'], intensities: { 'leaf-1': 2 } });
+
+    const button = await screen.findByRole('button', {
+      name: t('a11y.taste.setIntensity', 'tr').replace('{name}', 'Raspberry'),
+    });
+
+    expect(button).toHaveAttribute(
+      'title',
+      t('a11y.taste.intensityTitle', 'tr').replace('{level}', '2'),
+    );
+  });
+
+  it('shows the Turkish empty text when nothing matches', async () => {
+    const user = userEvent.setup();
+    renderTr();
+    const input = await screen.findByPlaceholderText(t('taste.autocomplete.placeholder', 'tr'));
+    await user.click(input);
+    await screen.findByText('Raspberry');
+
+    fireEvent.change(input, { target: { value: 'zzz' } });
+
+    expect(await screen.findByText(t('taste.notFound', 'tr'))).toBeInTheDocument();
   });
 });

@@ -17,18 +17,28 @@ const { mockLogger } = vi.hoisted(() => ({
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 // The taste-note picker loads its own lookup through a fetcher; it is not under test here.
-// The stand-in shows how many notes are selected and can remove them all.
+// The stand-in shows how many notes are selected and can remove them all, and renders one
+// button per linked note it was given (its label carries the note's fields).
 vi.mock('../../components/taste/TasteAutocomplete.tsx', () => ({
   TasteAutocomplete: ({
     selectedIds,
     onSelectionChange,
+    linkedNotes = [],
   }: {
     selectedIds: string[];
     onSelectionChange: (ids: string[]) => void;
+    linkedNotes?: { id: string; name: string; depth: number; parentId: string | null }[];
   }) => (
-    <button type="button" onClick={() => onSelectionChange([])}>
-      remove all taste notes ({selectedIds.length})
-    </button>
+    <>
+      <button type="button" onClick={() => onSelectionChange([])}>
+        remove all taste notes ({selectedIds.length})
+      </button>
+      {linkedNotes.map((n) => (
+        <button key={n.id} type="button">
+          linked: {n.name} ({n.id} / {n.depth} / {n.parentId ?? 'none'})
+        </button>
+      ))}
+    </>
   ),
 }));
 
@@ -105,7 +115,7 @@ const recipe = {
     coffeeVarietyId: 'var-bourbon',
     coffeeVarietyName: 'Bourbon',
   },
-  tasteNotes: [{ id: 'tn-1', name: 'Cocoa', intensity: 3 }],
+  tasteNotes: [{ id: 'tn-1', name: 'Cocoa', intensity: 3, depth: 2, parentId: 'tn-parent' }],
   equipment: [LINKED_EQUIPMENT],
 } as unknown as RecipeDetailOutput;
 
@@ -396,6 +406,14 @@ describe('RecipeEditPage — honest saves', () => {
     const body = await saveAndGetBody(user);
 
     expect(body).toMatchObject({ tasteNoteIds: [], tasteNoteIntensities: {} });
+  });
+
+  it("passes the recipe's linked taste notes to the picker (id, name, depth, parentId)", async () => {
+    renderPage();
+
+    expect(
+      await screen.findByRole('button', { name: 'linked: Cocoa (tn-1 / 2 / tn-parent)' }),
+    ).toBeInTheDocument();
   });
 
   it('pre-populates the equipment and sends it unchanged', async () => {
