@@ -171,7 +171,7 @@ exception: blank ones fail fast. `TRUSTED_PROXIES` is the one setting where empt
 | `STORAGE_DRIVER` | `local` | `s3` is recommended for production; then set every `S3_*` value and `BACKUP_UPLOADS=false`. |
 | `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_PUBLIC_URL` | unset | Object storage. Passed to the API only when set. `S3_ENDPOINT` is the account endpoint without the bucket. |
 | `BACKUP_INTERVAL_SECONDS` | `86400` | Seconds between backups ([§10](#10-backups)). |
-| `BACKUP_RETENTION_DAYS` | `14` | Backups older than this are deleted. |
+| `BACKUP_RETENTION_DAYS` | `14` | Backups older than this are deleted by the scheduled runs (a one-shot backup never prunes). |
 | `BACKUP_UPLOADS` | `true` | Archive the uploads with every dump (only with `STORAGE_DRIVER=local`). |
 | `API_MEMORY_LIMIT`, `WEB_MEMORY_LIMIT`, `POSTGRES_MEMORY_LIMIT`, `VALKEY_MEMORY_LIMIT` | `1g`, `256m`, `1g`, `256m` | Container memory limits. |
 | `MIGRATE_MEMORY_LIMIT`, `BACKUP_MEMORY_LIMIT`, `RESTORE_MEMORY_LIMIT` | `512m` each | Memory limits of the one-shot and backup services. |
@@ -230,9 +230,9 @@ message (and without running Compose) when it does not.
 | `make prod-logs` | `logs -f`. |
 | `make prod-ps` | `ps`: state and health of every service. |
 | `make prod-pull` | `pull`: fetch the images for `IMAGE_TAG`. |
-| `make prod-backup` | one immediate backup (`run --rm --no-deps -e BACKUP_ONESHOT=1 backup`); the stack must be running. |
+| `make prod-backup` | one immediate backup (`run --rm --no-deps -e BACKUP_ONESHOT=1 backup`); the stack must be running. It does not prune old backups. |
 | `make prod-backup-export DEST=./backup-export` | copies every backup to a host folder (`cp backup:/backups/. $(DEST)`). |
-| `make prod-restore DUMP=… UPLOADS=…` | stops api and web, runs the `restore` service, starts the stack ([§11](#11-restore-runbook)). |
+| `make prod-restore DUMP=… UPLOADS=…` | stops api, web and backup, takes a safety backup, restores with the `restore` service, starts the stack ([§11](#11-restore-runbook)). |
 | `make prod-check-identifiers [args=…]` | the wave-6 identifier check against the production database ([§14](#14-upgrading-from-the-pre-wave-6-compose-file)). |
 | `make prod-fix-uploads-owner` | `chown -R 1000:1000 /app/uploads` as root in a one-off api container. |
 | `make prod-smoke` | `make images`, then the CI compose smoke test against those local images (uses `scripts/ci/compose-smoke.env`, never `.env.production`). |
@@ -308,7 +308,7 @@ Every long-running service has a health check, and services start in dependency 
 | `valkey` | `valkey-cli ping \| grep -q PONG` (password from `VALKEYCLI_AUTH`, never on a command line) | 10s | 3s | 5 | 10s |
 | `api` | `node /app/healthcheck.mjs /ready` (start interval 2s) | 15s | 5s | 3 | 60s |
 | `web` | `wget -q -O /dev/null http://127.0.0.1/healthz` | 30s | 3s | 3 | 10s |
-| `backup` | a `db-*.dump` in `/backups` younger than twice `BACKUP_INTERVAL_SECONDS` | 60s | 10s | 3 | 600s |
+| `backup` | a `db-*.dump` (and, with local uploads, an `uploads-*.tar.gz`) in `/backups` younger than twice `BACKUP_INTERVAL_SECONDS` | 60s | 10s | 3 | 600s |
 
 `migrate` has no health check: the api waits for it to exit `0`
 (`service_completed_successfully`). Docker never restarts a container because it is unhealthy;
@@ -358,9 +358,20 @@ The `backup` service (same `postgres` image as the database) writes, at start-up
 - `uploads-<UTC timestamp>.tar.gz`: the uploads source, only with `STORAGE_DRIVER=local` and
   `BACKUP_UPLOADS` not `false`.
 
-Files are written under a temporary name and renamed when complete, have mode `0600`, and are
-deleted after `BACKUP_RETENTION_DAYS` (default 14). A failed run is logged and retried at the next
-interval; the service turns `unhealthy` when no dump is younger than twice the interval.
+Files are written under a temporary name and renamed when complete and have mode `0600`. After a
+successful run, the scheduled loop deletes files older than `BACKUP_RETENTION_DAYS` (default 14).
+Only the scheduled runs prune; a one-shot run (`make prod-backup`, the safety backup of
+`make prod-restore`) never does, so an imported dump older than the retention period
+(`docker compose cp` keeps its modification time) is still there when you restore it. A failed run
+is logged and retried at the next interval; the service turns `unhealthy` when no dump is younger
+than twice the interval, or, with local uploads and `BACKUP_UPLOADS` not `false`, no uploads
+archive is.
+
+A photo uploaded while the archive is written makes GNU `tar` exit `1` ("file changed as we read
+it"). The run then keeps the archive when `gzip -t` finds it intact and logs
+`[backup] WARNING: uploads changed while archiving (tar exit 1); archive kept, a file written during the run may be incomplete`;
+the next run archives that file whole. Any other `tar` error, or an archive that fails `gzip -t`,
+deletes the archive and fails the run (`[backup] ERROR: uploads archive failed (tar exit <n>)`).
 
 They go to the named volume `backups` by default. Set `BACKUPS_SOURCE=./backups` (or an absolute
 path) to write them to a host folder instead.
@@ -368,8 +379,9 @@ path) to write them to a host folder instead.
 The `backup` service starts only after `migrate` has completed successfully, so the start-up dump
 of a fresh install already holds the schema. `make prod-backup` runs one extra backup with
 `--no-deps`: it never starts or re-runs `migrate`, so it dumps the schema the database has right
-now (for example the old schema after `make prod-pull`, which is what a rollback needs). It
-connects to the running `postgres` service, so the stack must be up (`make prod-up`) first.
+now (for example the old schema after `make prod-pull`, which is what a rollback needs), and it
+never prunes. It connects to the running `postgres` service, so the stack must be up
+(`make prod-up`) first.
 
 ```sh
 make prod-backup                                              # one backup now (stack running)
@@ -413,15 +425,62 @@ target. `make prod-up` never starts it.
    make prod-restore DUMP=db-20261118T000000Z.dump UPLOADS=uploads-20261118T000000Z.tar.gz
    ```
 
-   This stops `api` and `web`, then the restore container:
-   - accepts only names matching `^db-[0-9]{8}T[0-9]{6}Z\.dump$` and
-     `^uploads-[0-9]{8}T[0-9]{6}Z\.tar\.gz$` (anything else exits `2` and changes nothing);
-   - runs `pg_restore --clean --if-exists --no-owner` into the running database;
-   - extracts the archive into `/app/uploads` and runs `chown -R 1000:1000 /app/uploads`;
+   The target:
+   1. stops `api`, `web` and `backup`, so nothing writes during the restore, and starts
+      `postgres` when it is not running (it waits until it is healthy);
+   2. takes a **safety backup**: a one-shot backup (`--no-deps`, so `migrate` does not run) of the
+      database and uploads as they are now. It is the newest `db-*.dump`/`uploads-*.tar.gz` pair
+      from before the restore. When it fails, the target stops with
+      `safety backup failed: nothing was restored; …` and nothing is changed;
+   3. runs the restore container, which
+      - accepts only names matching `^db-[0-9]{8}T[0-9]{6}Z\.dump$` and
+        `^uploads-[0-9]{8}T[0-9]{6}Z\.tar\.gz$` (anything else exits `2` and changes nothing);
+      - checks the dump with `pg_restore --list`, then restores it into a new database
+        `<POSTGRES_DB>_restore` (`brewform_restore` by default; a leftover one from an interrupted
+        run is dropped first) with `pg_restore --no-owner --single-transaction --exit-on-error`,
+        which applies all or nothing;
+      - only when that succeeded, drops the live database (`dropdb --force`) and renames
+        `<POSTGRES_DB>_restore` into its place. When it failed, it drops the scratch database,
+        prints `[restore] ERROR: pg_restore failed; the database <POSTGRES_DB> was not changed`
+        and exits `1`;
+      - extracts the archive into `/app/uploads` and runs `chown -R 1000:1000 /app/uploads`;
+   4. runs `up -d`: `migrate` runs again on the restored data, applies every migration newer than
+      the dump and ends with the comment-count recount of the restored data; then api, web and
+      backup start (backup writes a fresh start-up dump of the restored database).
 
-   and finally `up -d` starts the stack again. The `migrate` service then applies any migration
-   newer than the dump. If the restore fails, api and web stay stopped: fix the error and run the
-   command again, or `make prod-up`.
+   The restore needs free disk space for a second copy of the database while it runs.
+
+   **If the restore fails**, the target prints `restore failed: api, web and backup are still
+   stopped. A failed database restore leaves the live database unchanged; the newest db-*.dump
+   from before this run is the safety copy. …`. Fix the error (`make prod-logs`, and §16) and run
+   the command again, or `make prod-up` to resume with the unchanged database.
+
+   **A dump from before wave 6** goes through the wave-6 identifier check when `migrate` runs: if
+   `migrate` exits non-zero after the restore, run `make prod-check-identifiers`
+   ([§14](#14-upgrading-from-the-pre-wave-6-compose-file)), fix what it reports, then
+   `make prod-up`.
+
+   **Interrupted between the drop and the rename.** For a few milliseconds only
+   `<POSTGRES_DB>_restore` exists. If the restore container was killed exactly then, `migrate`
+   cannot connect afterwards (database `brewform` does not exist). Rename the restored database
+   into place (adjust `-U` and the names if you changed `POSTGRES_USER`/`POSTGRES_DB`), then run
+   `make prod-up`; or restore the safety dump with the manual command below:
+
+   ```sh
+   docker compose --env-file .env.production -f compose.production.yml exec -T postgres \
+     psql -U brewform -d postgres -c 'ALTER DATABASE brewform_restore RENAME TO brewform'
+   ```
+
+   **When the safety backup cannot be written** (a full disk, a database that cannot be dumped),
+   free space first if you can. Otherwise run the restore without it:
+
+   ```sh
+   docker compose --env-file .env.production -f compose.production.yml stop api web backup
+   docker compose --env-file .env.production -f compose.production.yml --profile restore run --rm \
+     -e RESTORE_DB_DUMP=db-20261118T000000Z.dump \
+     -e RESTORE_UPLOADS_ARCHIVE=uploads-20261118T000000Z.tar.gz restore
+   make prod-up
+   ```
 
 4. **Verify:** sign in, open a few recipes and photos, and check `make prod-ps`.
 
@@ -444,6 +503,17 @@ Read the release notes first: some releases need a step before `make prod-up` (w
 [§14](#14-upgrading-from-the-pre-wave-6-compose-file)). Compare `.env.production` with the new
 `.env.production.example`.
 
+**Comment counts are recounted on every migration run.** `migrate` now ends every run with the
+comment-count recount (`Recounting comment counts...`, then
+`Comment count recount: complete (scanned <n>, repaired <n>, skipped <n>)`). The first start after
+this upgrade repairs `recipe.comment_count` values that drifted before and logs each repaired
+recipe id with its old and new value (`Comment count recount: repaired recipe <id> (<old> -> <new>)`);
+later runs normally print `repaired 0`. A failed recount prints
+`WARNING: comment count recount failed; continuing (the next start retries).` and does not stop
+the start. This release's migration `0020` also rewrites the `recipe` table once (its
+`created_at` column moves to millisecond precision), so the first `migrate` run takes a moment
+longer on a large install.
+
 **Sitemap moved to the site root.** The sitemap is now a sitemap index at
 `<public origin>/sitemap.xml` (the edge proxies it to the API). After the upgrade, resubmit
 `<public origin>/sitemap.xml` in Google Search Console and other webmaster tools; the old
@@ -453,6 +523,27 @@ Read the release notes first: some releases need a step before `make prod-up` (w
 run `make prod-up`; api, migrate and web all use that tag. Database migrations are **not** rolled
 back automatically. When the release you leave changed the schema, restore the dump taken before
 the upgrade ([§11](#11-restore-runbook)) after switching the tag.
+
+**Rollback floor: wave 6.** This compose file runs only images that support the `migrate`
+entrypoint mode, wave 6 and later. An older image ignores the argument and starts the server
+inside the `migrate` one-shot, which then never exits, so the api never starts. To go back to a
+release from before wave 6:
+
+1. Stop the writers:
+   `docker compose --env-file .env.production -f compose.production.yml stop api web backup`.
+2. Restore the dump taken before the upgrade ([§14](#14-upgrading-from-the-pre-wave-6-compose-file)
+   step 1 writes it as `db-<timestamp>.dump`; import it first with `docker compose cp`, §11 step 1)
+   with the `restore` service **directly**. Do not use `make prod-restore`: its final `up -d`
+   runs this release's `migrate`, which would upgrade the restored dump again.
+
+   ```sh
+   docker compose --env-file .env.production -f compose.production.yml --profile restore run --rm \
+     -e RESTORE_DB_DUMP=db-20261118T000000Z.dump restore
+   ```
+
+3. Check out that release's compose file
+   (`git checkout <old tag or commit> -- compose.production.yml`), set its `IMAGE_TAG` in
+   `.env.production` and follow that release's instructions to start it.
 
 Image tags: `latest` follows `main`; every published commit also has its full SHA tag, and
 version tags (`v1.2.0`) are published for releases. Images are published only after every CI job
@@ -486,8 +577,13 @@ that container deletes them**. Follow these steps in order.
 
    ```sh
    docker compose --env-file .env.production -f compose.production.yml exec -T postgres \
-     sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > pre-wave-6.dump
+     sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > "db-$(date -u +%Y%m%dT%H%M%SZ).dump"
    ```
+
+   The file name is one the `restore` service accepts: import it later with
+   `docker compose … cp ./db-<timestamp>.dump backup:/backups/` ([§11](#11-restore-runbook)). To
+   go back to the old release with it, follow the rollback floor in
+   [§12](#12-upgrade-and-rollback).
 
 2. **Keep the old volumes.** The old file had no project name, so its project was named after the
    checkout folder (`docker compose ls` shows it, for example `brewform`). Put that name into
@@ -706,6 +802,11 @@ and `run seed`, or `make db-migrate` / `make db-seed`). Neither image contains s
 build arguments are the public `VITE_API_URL` and `VITE_PUBLIC_APP_URL` of the web image, and the
 web container overrides both at runtime (`VITE_API_URL`, `PUBLIC_APP_URL`).
 
+Local data folders (`data/`, `backups/`, `backup-export/`, `uploads-rescue/`, `*.dump`) are excluded
+from the build context, together with `uploads-*.tar.gz` archives and every env file except the
+three committed `*.env.example` templates (`.dockerignore`; `scripts/ci/dockerignore.test.sh` checks
+it in CI).
+
 ## 16. Troubleshooting
 
 | Symptom | Cause → fix |
@@ -716,6 +817,7 @@ web container overrides both at runtime (`VITE_API_URL`, `PUBLIC_APP_URL`).
 | api log `Upload directory /app/uploads is not writable by uid 1000 gid 1000` and exit `1` | The uploads source is owned by root: `make prod-fix-uploads-owner`, then `make prod-up`. |
 | `/ready` shows `storage: "ephemeral"` | The upload directory is not a mounted volume, so photos are lost on recreate. Do not override the uploads mount; check `docker compose … config`. |
 | `migrate` exits non-zero, api never starts | `make prod-logs` shows the migration error. A unique-index error on `user_*_lower_unique` or `setup_user_default_unique` needs `make prod-check-identifiers` ([§14](#14-upgrading-from-the-pre-wave-6-compose-file)); nothing was changed. |
+| `[restore] ERROR: pg_restore failed; the database … was not changed` | The live database was not changed and no `<POSTGRES_DB>_restore` is left. Check the dump (`pg_restore --list` inside the `backup` container) and the free disk space, then run `make prod-restore` again, or `make prod-up` to resume ([§11](#11-restore-runbook)). |
 | api `unhealthy`, `/ready` `503` with `db: "disconnected"` | Postgres is down or slow; the api recovers without a restart when it answers again. |
 | `413` on photo upload through the edge | `EDGE_MAX_BODY_SIZE` is below the API's photo cap; keep the `16MB` default. |
 | All clients share one rate limit | `TRUSTED_PROXIES` does not match what connects to the web port ([§5](#5-client-ip-and-trusted_proxies)). |

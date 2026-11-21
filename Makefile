@@ -280,23 +280,32 @@ prod-pull: prod-env-check ## Pull the production images for IMAGE_TAG (default l
 	$(PROD_COMPOSE) pull
 
 # --no-deps: a manual backup never (re)runs migrate, so a backup taken after `make prod-pull`
-# still holds the old schema. The stack (postgres) must be running.
+# still holds the old schema. It never prunes (only the scheduled backup runs do). The stack
+# (postgres) must be running.
 prod-backup: prod-env-check ## Run one database (and uploads) backup now
 	$(PROD_COMPOSE) run --rm --no-deps -e BACKUP_ONESHOT=1 backup
 
 prod-backup-export: prod-env-check ## Copy every backup to a host folder (DEST=./backup-export)
 	mkdir -p $(DEST) && $(PROD_COMPOSE) cp backup:/backups/. $(DEST)
 
-# Stops api and web, restores with the profile-gated `restore` service, starts the stack.
-# DUMP and UPLOADS are file names in the backups target (either may be omitted).
-prod-restore: prod-env-check ## Restore backups (DUMP=db-<ts>.dump UPLOADS=uploads-<ts>.tar.gz)
+# Stops api, web and backup, waits for a healthy postgres, takes a safety backup (one-shot,
+# --no-deps: migrate does not run; nothing is restored when it fails), restores with the
+# profile-gated `restore` service (the dump goes into a scratch database that replaces the
+# live one only on success) and starts the stack, so migrate applies migrations newer than
+# the dump. DUMP and UPLOADS are file names in the backups target (either may be omitted).
+prod-restore: prod-env-check ## Back up, then restore (DUMP=db-<ts>.dump UPLOADS=uploads-<ts>.tar.gz)
 	@if [ -z "$(DUMP)$(UPLOADS)" ]; then \
 	  echo "usage: make prod-restore DUMP=db-<ts>.dump UPLOADS=uploads-<ts>.tar.gz (either may be omitted)" >&2; \
 	  exit 2; \
 	fi
-	$(PROD_COMPOSE) stop api web
+	$(PROD_COMPOSE) stop api web backup
+	$(PROD_COMPOSE) up -d --wait postgres
+	$(PROD_COMPOSE) run --rm --no-deps -e BACKUP_ONESHOT=1 backup || { \
+	  echo "safety backup failed: nothing was restored; api, web and backup are stopped. Fix the error, or run 'make prod-up' to resume." >&2; \
+	  exit 1; \
+	}
 	$(PROD_COMPOSE) --profile restore run --rm -e 'RESTORE_DB_DUMP=$(DUMP)' -e 'RESTORE_UPLOADS_ARCHIVE=$(UPLOADS)' restore || { \
-	  echo "restore failed: api and web are still stopped. Fix the error and re-run, or run 'make prod-up'." >&2; \
+	  echo "restore failed: api, web and backup are still stopped. A failed database restore leaves the live database unchanged; the newest db-*.dump from before this run is the safety copy. Fix the error and re-run, or run 'make prod-up'." >&2; \
 	  exit 1; \
 	}
 	$(PROD_COMPOSE) up -d

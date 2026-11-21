@@ -6,6 +6,12 @@
 # KEEP INCLUDED (the images read them): `files/` (SCAA flavour wheel data),
 # `packages/db/drizzle/` (committed migrations + journal), `apps/web/public/` (static
 # assets), `apps/api/src/templates/` (email templates) and every workspace manifest.
+#
+# Exceptions (`!` lines) name exact paths only. A `**/` exception makes Docker walk into
+# every excluded folder to look for re-included files, and an unreadable one (the postgres
+# data folder `data/postgres` is mode 0700, owned by uid 999) then fails the build with
+# "permission denied". A new template in another folder needs its own `!` line.
+# scripts/ci/dockerignore.test.sh checks these rules.
 
 # Dependencies and build or test output, at any depth.
 **/node_modules
@@ -22,10 +28,17 @@
 .vscode
 .idea
 
-# Local data: uploaded photos and database backups never belong in an image.
+# Local data: uploaded photos, the postgres data folder and database backups never belong
+# in an image (the self-hosting guide creates data/, backups/, backup-export/ and
+# uploads-rescue/ inside the checkout, and writes dumps and archives into it).
 uploads
 **/uploads
 backups
+data
+backup-export
+uploads-rescue
+**/*.dump
+**/uploads-*.tar.gz
 
 # Documentation and planning (no build step reads them).
 plans
@@ -38,11 +51,12 @@ garage.toml
 # Keep local env / secret files out of the published images.
 # Both Dockerfile and Dockerfile.web use `COPY . .`, so without these exclusions
 # a populated .env would bake a developer's real secrets into the PUBLIC image.
-# The committed *.env.example templates are re-included by the negations below.
+# The three committed *.env.example templates are re-included below by exact path.
 .env
 *.env
 .env.*
 **/*.env
 **/.env.*
-!*.env.example
-!**/*.env.example
+!.env.example
+!apps/api/.env.example
+!apps/web/.env.example

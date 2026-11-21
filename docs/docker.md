@@ -92,12 +92,16 @@ there, so they are discarded when the container is recreated. The image's own he
 published images and `.env.production`, through the `make prod-*` targets (`prod-up`,
 `prod-down`, `prod-logs`, `prod-ps`, `prod-pull`, `prod-backup`, `prod-backup-export`,
 `prod-restore`, `prod-check-identifiers`, `prod-fix-uploads-owner`); see
-[`docs/deployment_compose.md`](deployment_compose.md). For Coolify see
+[`docs/deployment_compose.md`](deployment_compose.md). `make prod-restore` stops api, web and
+backup, takes a safety backup, restores the dump into a scratch database that replaces the live
+one only when the whole dump restored, and starts the stack again (`migrate` applies newer
+migrations); `make prod-backup` writes one backup and never prunes. For Coolify see
 [`docs/deployment_coolify.md`](deployment_coolify.md).
 
 To test images built from your working tree: `make images` builds `brewform-api:local` and
 `brewform-web:local`, and `make prod-smoke` runs the CI compose smoke test (the full production
-stack under the throwaway project `brewform-ci`) against them. Images are published only by the
+stack under the throwaway project `brewform-ci`, including a backup while the uploads change and
+two `make prod-restore` round-trips) against them. Images are published only by the
 `publish` job of `.github/workflows/ci.yml`, never from a developer machine.
 
 ## Troubleshooting

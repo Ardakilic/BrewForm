@@ -647,6 +647,20 @@ still exist.
   or renames something the running release uses ships in two releases: first add and backfill,
   then remove in a later release. More than one replica would need the migrations moved to a
   single job first.
+- **Comment counts recounted (upgrade note):** every migration run now ends with the
+  comment-count recount, so it runs on every API start with `RUN_MIGRATIONS` left on
+  (`Recounting comment counts...`, then
+  `Comment count recount: complete (scanned <n>, repaired <n>, skipped <n>)`). The first start
+  after this upgrade repairs `recipe.comment_count` values that drifted before and logs each
+  repaired recipe id with its old and new value
+  (`Comment count recount: repaired recipe <id> (<old> -> <new>)`); later starts normally print
+  `repaired 0`. A failed recount prints
+  `WARNING: comment count recount failed; continuing (the next start retries).` and does not stop
+  the start.
+- **Migration 0020 rewrites the `recipe` table (upgrade note):** this release moves
+  `recipe.created_at` to millisecond precision, which rewrites the `recipe` table once under an
+  exclusive lock on the first start of the new API container. The old container keeps serving
+  until the new one is healthy; on a large install that first start takes a moment longer.
 - **Sitemap moved to the site root (upgrade note):** the sitemap is now a sitemap index at
   `/sitemap.xml`, and `/api/v1/sitemap.xml` answers `301` to it. After the upgrade, resubmit
   `<public origin>/sitemap.xml` in Google Search Console (the old URL redirects meanwhile). It is

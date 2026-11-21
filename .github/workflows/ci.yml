@@ -351,6 +351,11 @@ jobs:
 
       - uses: docker/setup-buildx-action@v4
 
+      # Local data folders, dumps and env files never reach the build context, and an
+      # unreadable data/postgres folder does not break the build.
+      - name: Check the build context (.dockerignore)
+        run: scripts/ci/dockerignore.test.sh
+
       # OCI labels only (source, revision, created, version); tags are set in `publish`.
       - name: OCI labels
         id: meta

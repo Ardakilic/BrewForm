@@ -78,7 +78,7 @@
 # not shutting down; 503 otherwise) and is used by the api health check below; it is
 # not proxied by the edge. postgres: pg_isready; valkey: valkey-cli ping (password from
 # VALKEYCLI_AUTH, never in a command line); web: its own /healthz; backup: a dump younger
-# than twice BACKUP_INTERVAL_SECONDS.
+# than twice BACKUP_INTERVAL_SECONDS, and an uploads archive with local storage.
 #
 # --- Upgrading an install from before this file (wave 6) ---
 # Photos were written to /app/apps/api/uploads inside the old api container (outside the
@@ -286,10 +286,11 @@ services:
     restart: unless-stopped
 
   # Database dump (and uploads archive with local storage) at start-up and then every
-  # BACKUP_INTERVAL_SECONDS; files older than BACKUP_RETENTION_DAYS are pruned. It starts
-  # after `migrate` completed, so the start-up dump of a fresh install holds the schema.
-  # `make prod-backup` runs one extra backup (BACKUP_ONESHOT=1, --no-deps: it never re-runs
-  # migrate) and exits.
+  # BACKUP_INTERVAL_SECONDS; after each successful scheduled run, files older than
+  # BACKUP_RETENTION_DAYS are pruned. It starts after `migrate` completed, so the start-up
+  # dump of a fresh install holds the schema. `make prod-backup` (and the safety backup of
+  # `make prod-restore`) runs one extra backup (BACKUP_ONESHOT=1, --no-deps: it never re-runs
+  # migrate), never prunes, and exits.
   backup:
     image: postgres:18-trixie
     depends_on:
@@ -335,22 +336,36 @@ services:
           mv "/backups/.db-$$stamp.partial" "/backups/db-$$stamp.dump"
           echo "[backup] database dump written: db-$$stamp.dump"
           if [ "$$STORAGE_DRIVER" = "local" ] && [ "$$BACKUP_UPLOADS" != "false" ]; then
-            if ! tar -czf "/backups/.uploads-$$stamp.partial" -C /uploads .; then
-              rm -f "/backups/.uploads-$$stamp.partial"
-              echo "[backup] ERROR: uploads archive failed" >&2
+            partial="/backups/.uploads-$$stamp.partial"
+            rc=0
+            tar -czf "$$partial" -C /uploads . || rc=$$?
+            # GNU tar exits 1 when a file changed while it was read (an upload during the run).
+            # gzip can also exit 1, so keep the archive only when gzip -t finds it intact.
+            if [ "$$rc" -eq 1 ] && gzip -t "$$partial"; then
+              echo "[backup] WARNING: uploads changed while archiving (tar exit 1); archive kept, a file written during the run may be incomplete" >&2
+            elif [ "$$rc" -ne 0 ]; then
+              rm -f "$$partial"
+              echo "[backup] ERROR: uploads archive failed (tar exit $$rc)" >&2
               return 1
             fi
-            mv "/backups/.uploads-$$stamp.partial" "/backups/uploads-$$stamp.tar.gz"
+            mv "$$partial" "/backups/uploads-$$stamp.tar.gz"
             echo "[backup] uploads archive written: uploads-$$stamp.tar.gz"
           else
             echo "[backup] uploads archive skipped (STORAGE_DRIVER=$$STORAGE_DRIVER, BACKUP_UPLOADS=$$BACKUP_UPLOADS)"
           fi
+        }
+
+        # Retention. Called only by the scheduled loop after a successful run.
+        prune() {
           find /backups -maxdepth 1 \( -name 'db-*.dump' -o -name 'uploads-*.tar.gz' \) \
             -mtime +"$$BACKUP_RETENTION_DAYS" -print -delete | sed 's|^/backups/|[backup] pruned: |'
           # Leftovers of killed runs (a running dump's .partial is never a day old).
           find /backups -maxdepth 1 -name '.*.partial' -mmin +1440 -delete
         }
 
+        # A one-shot run (make prod-backup, the prod-restore safety backup) never prunes:
+        # `docker compose cp` keeps a file's mtime, so an imported dump older than the
+        # retention period would be deleted right before it is restored.
         if [ "$$BACKUP_ONESHOT" = "1" ] || [ "$$BACKUP_ONESHOT" = "true" ]; then
           run_backup
           exit 0
@@ -358,12 +373,18 @@ services:
         trap 'echo "[backup] stopping"; exit 0' TERM INT
         echo "[backup] every $$BACKUP_INTERVAL_SECONDS s, keeping $$BACKUP_RETENTION_DAYS days"
         while :; do
-          run_backup || echo "[backup] run failed; retrying in $$BACKUP_INTERVAL_SECONDS s" >&2
+          if run_backup; then
+            prune
+          else
+            echo "[backup] run failed; retrying in $$BACKUP_INTERVAL_SECONDS s" >&2
+          fi
           sleep "$$BACKUP_INTERVAL_SECONDS" &
           wait $$! || true
         done
     healthcheck:
-      test: ["CMD-SHELL", "find /backups -maxdepth 1 -name 'db-*.dump' -mmin -$$(( $$BACKUP_INTERVAL_SECONDS / 30 )) | grep -q ."]
+      # Unhealthy without a recent dump or, with local uploads and BACKUP_UPLOADS not false,
+      # without a recent uploads archive (recent: younger than twice BACKUP_INTERVAL_SECONDS).
+      test: ["CMD-SHELL", "m=$$(( $$BACKUP_INTERVAL_SECONDS / 30 )); find /backups -maxdepth 1 -name 'db-*.dump' -mmin -$$m | grep -q . && { [ \"$$STORAGE_DRIVER\" != local ] || [ \"$$BACKUP_UPLOADS\" = false ] || find /backups -maxdepth 1 -name 'uploads-*.tar.gz' -mmin -$$m | grep -q .; }"]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -376,8 +397,12 @@ services:
     restart: unless-stopped
 
   # One-shot restore (`make prod-restore DUMP=… UPLOADS=…`); never started by `up`.
-  # Accepts only backup file names, restores the dump with pg_restore and extracts the
+  # Accepts only backup file names. It restores the dump into `<db>_restore` in one
+  # transaction (pg_restore --single-transaction) and swaps it in for the live database only
+  # on success, so a failed restore leaves the live database unchanged; it extracts the
   # uploads archive into the uploads source, handing it to the API user (1000:1000).
+  # `make prod-restore` stops api, web and backup and takes a safety backup first; run this
+  # service directly only as the guide says (no safety backup possible, rollback floor).
   # Import backups from elsewhere with `docker compose cp <file> backup:/backups/`.
   restore:
     profiles: ["restore"]
@@ -424,9 +449,25 @@ services:
           fi
         done
         if [ -n "$$dump" ]; then
-          echo "[restore] restoring the database from $$dump"
-          pg_restore --clean --if-exists --no-owner -d "$$PGDATABASE" "/backups/$$dump"
-          echo "[restore] database restored"
+          # Restore into a scratch database in one transaction; the live database is replaced
+          # only after the whole dump restored. --maintenance-db: the live database can be
+          # neither dropped nor renamed while connected to it.
+          tmp="$${PGDATABASE}_restore"
+          pg_restore --list "/backups/$$dump" >/dev/null
+          echo "[restore] restoring $$dump into a new database ($$tmp)"
+          dropdb --maintenance-db=postgres --if-exists --force "$$tmp"
+          createdb --maintenance-db=postgres "$$tmp"
+          if ! pg_restore --no-owner --single-transaction --exit-on-error -d "$$tmp" "/backups/$$dump"; then
+            dropdb --maintenance-db=postgres --if-exists --force "$$tmp" || true
+            echo "[restore] ERROR: pg_restore failed; the database $$PGDATABASE was not changed" >&2
+            exit 1
+          fi
+          echo "[restore] replacing $$PGDATABASE with the restored database"
+          dropdb --maintenance-db=postgres --if-exists --force "$$PGDATABASE"
+          # psql -c does no :"var" interpolation, so the statement goes through stdin.
+          printf '%s\n' 'ALTER DATABASE :"src" RENAME TO :"dst";' |
+            psql -X -q -v ON_ERROR_STOP=1 -d postgres -v src="$$tmp" -v dst="$$PGDATABASE"
+          echo "[restore] database restored; migrate applies newer migrations on the next start"
         fi
         if [ -n "$$archive" ]; then
           echo "[restore] extracting $$archive into /app/uploads"
