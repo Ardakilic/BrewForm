@@ -6,7 +6,7 @@ import {
   TIMELINE_GRADIENT_OPACITY,
 } from '../../utils/brew-timeline.ts';
 import { clampPct, durationTicks, MIN_CHART_WIDTH_PX } from '../../utils/chart/index.ts';
-import { formatDecimal, formatDuration, formatDurationTick } from '../../utils/format.ts';
+import { formatDuration, formatDurationTick, formatFlowRate } from '../../utils/format.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { useElementWidth } from '../../utils/useElementWidth.ts';
 
@@ -141,10 +141,7 @@ export function BrewTimeline({
         </span>
         {showFlowRate && (
           <span className="text-sm font-medium whitespace-nowrap text-[color:var(--text-secondary)]">
-            {t('recipe.brewTimeline.flowRate').replace(
-              '{value}',
-              formatDecimal(flowRate, locale, 1),
-            )}
+            {t('recipe.brewTimeline.flowRate').replace('{value}', formatFlowRate(flowRate, locale))}
           </span>
         )}
       </div>

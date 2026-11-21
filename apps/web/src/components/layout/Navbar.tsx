@@ -249,7 +249,7 @@ export function Navbar() {
   }, []);
 
   return (
-    <header className="bg-[color:var(--bg-secondary)] border-b border-[color:var(--border-primary)]">
+    <header className="print-hidden bg-[color:var(--bg-secondary)] border-b border-[color:var(--border-primary)]">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
         {/* Brand / Logo */}
         <Link

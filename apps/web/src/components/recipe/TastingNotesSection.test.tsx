@@ -202,6 +202,19 @@ describe('TastingNotesSection — unit tests', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/recipes?tasteNoteIds=tn1');
   });
 
+  it('leaves the chips and the brewer-note attribution unmarked, so print keeps them (V2)', () => {
+    const notes: TasteNote[] = [
+      makeNote({ id: '1', tasteNoteId: 'tn1', name: 'Jasmine', rootCategoryName: 'Floral' }),
+      makeNote({ id: '2', tasteNoteId: 'tn2', name: 'Blueberry', rootCategoryName: 'Fruity' }),
+    ];
+    render(withI18n(<TastingNotesSection tasteNotes={notes} personalNotes="Floral." />));
+    const chips = screen.getAllByRole('button', { name: /Filter recipes by/ });
+    expect(chips).toHaveLength(2);
+    for (const chip of chips) expect(chip.closest('.print-hidden')).toBeNull();
+    const attribution = screen.getByText(t('recipe.tastingNotes.brewerNote'));
+    expect(attribution.closest('.print-hidden')).toBeNull();
+  });
+
   it('shows personal notes in blockquote when present alongside taste notes', () => {
     const notes: TasteNote[] = [
       makeNote({ id: '1', tasteNoteId: 'tn1', name: 'Jasmine', rootCategoryName: 'Floral' }),

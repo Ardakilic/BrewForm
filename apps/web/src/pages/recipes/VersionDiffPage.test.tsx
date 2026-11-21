@@ -166,4 +166,18 @@ describe('VersionDiffPage', () => {
     expect(screen.queryByText('43200s')).not.toBeInTheDocument();
     expect(screen.queryByText(/2\.2222/)).not.toBeInTheDocument();
   });
+
+  it('shows a slow positive flow rate with two significant digits, never 0 ml/s (V4)', async () => {
+    mockRecipeApi.diffVersions.mockResolvedValue({
+      ...mockDiff,
+      fields: [{ field: 'flowRate', value1: 1.2857143, value2: 500 / 43_200, status: 'modified' }],
+    });
+    renderPage();
+    expect(
+      await screen.findByText(t('recipe.brewTimeline.flowRate').replace('{value}', '0.012')),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(t('recipe.brewTimeline.flowRate').replace('{value}', '0')),
+    ).not.toBeInTheDocument();
+  });
 });

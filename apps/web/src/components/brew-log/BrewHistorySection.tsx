@@ -40,7 +40,10 @@ export function BrewHistorySection({ recipeId, currentVersionId }: BrewHistorySe
         <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
           {t('brewLog.history.title')}
         </h2>
-        <Link to={`/brew-logs/new?${brewAgainQuery}`} className="btn-secondary text-sm">
+        <Link
+          to={`/brew-logs/new?${brewAgainQuery}`}
+          className="btn-secondary text-sm print-hidden"
+        >
           {t('brewLog.history.brewAgain')}
         </Link>
       </div>

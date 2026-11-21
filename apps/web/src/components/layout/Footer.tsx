@@ -7,7 +7,7 @@ export function Footer() {
   const { locale, setLocale, t, availableLocales } = useTranslation();
 
   return (
-    <footer className="bg-[color:var(--bg-secondary)] border-t border-[color:var(--border-primary)]">
+    <footer className="print-hidden bg-[color:var(--bg-secondary)] border-t border-[color:var(--border-primary)]">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           <div>

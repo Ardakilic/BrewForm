@@ -126,6 +126,8 @@ describe('BrewHistorySection', () => {
 
     const link = screen.getByRole('link', { name: 'Brew Again' });
     expect(link.getAttribute('href')).toBe('/brew-logs/new?recipeId=r1&recipeVersionId=v1');
+    // An action, not content: print hides it (print hides only marked elements, V2).
+    expect(link).toHaveClass('print-hidden');
   });
 
   it('omits recipeVersionId from the Brew Again link when it is null', async () => {

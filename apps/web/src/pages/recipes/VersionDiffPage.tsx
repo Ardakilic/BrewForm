@@ -7,7 +7,7 @@ import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
-import { formatDate, formatDecimal, formatDuration } from '../../utils/format.ts';
+import { formatDate, formatDecimal, formatDuration, formatFlowRate } from '../../utils/format.ts';
 import { createLogger } from '../../utils/logger.ts';
 import type { loader } from './VersionDiffPage.data.ts';
 
@@ -126,10 +126,7 @@ export function VersionDiffPage() {
     if (field === 'flowRate') {
       return (v: string | number | null) =>
         v != null
-          ? t('recipe.brewTimeline.flowRate').replace(
-              '{value}',
-              formatDecimal(Number(v), locale, 1),
-            )
+          ? t('recipe.brewTimeline.flowRate').replace('{value}', formatFlowRate(Number(v), locale))
           : '-';
     }
     return undefined;

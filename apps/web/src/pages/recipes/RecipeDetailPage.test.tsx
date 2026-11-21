@@ -583,6 +583,22 @@ const nonOwnerAuth = {
   clearSessionError: vi.fn(),
 };
 
+describe('RecipeDetailPage — print marks (group-20 V2)', () => {
+  it('marks the action buttons, the sidebar and the comments print-hidden', async () => {
+    renderDetailPage();
+
+    const printButton = await screen.findByRole('button', { name: 'Print recipe' });
+    expect(printButton.closest('.print-hidden')).not.toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Focus mode' }).closest('.print-hidden'),
+    ).not.toBeNull();
+    expect(screen.getByTestId('social-actions-card').closest('.print-hidden')).not.toBeNull();
+    expect(screen.getByTestId('comment-section-wrapper')).toHaveClass('print-hidden');
+    // The recipe title is content: never inside a print-hidden element.
+    expect(screen.getByRole('heading', { level: 1 }).closest('.print-hidden')).toBeNull();
+  });
+});
+
 describe('RecipeDetailPage — Social_Actions_Card layout', () => {
   it('guest: social-actions-card inner div has flex and flex-row classes', async () => {
     renderDetailPage();
@@ -718,7 +734,7 @@ describe('RecipeDetailPage — Responsive layout', () => {
     expect(sidebar!.classList.contains('space-y-4')).toBe(true);
   });
 
-  it('sidebar has no-print class for print hiding', async () => {
+  it('sidebar has the print-hidden class for print hiding', async () => {
     renderDetailPage();
 
     await waitFor(() => {
@@ -728,7 +744,7 @@ describe('RecipeDetailPage — Responsive layout', () => {
     const socialActionsCard = screen.getByTestId('social-actions-card');
     const sidebar = socialActionsCard.parentElement;
     expect(sidebar).not.toBeNull();
-    expect(sidebar!.classList.contains('no-print')).toBe(true);
+    expect(sidebar!.classList.contains('print-hidden')).toBe(true);
   });
 
   it('ShareSection is the first child of the sidebar', async () => {
@@ -835,7 +851,7 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
 });
 
 describe('RecipeDetailPage — Print layout hiding', () => {
-  it('comment section wrapper has no-print class', async () => {
+  it('comment section wrapper has the print-hidden class', async () => {
     renderDetailPage();
 
     await waitFor(() => {
@@ -843,7 +859,7 @@ describe('RecipeDetailPage — Print layout hiding', () => {
     });
 
     const commentWrapper = screen.getByTestId('comment-section-wrapper');
-    expect(commentWrapper.classList.contains('no-print')).toBe(true);
+    expect(commentWrapper.classList.contains('print-hidden')).toBe(true);
   });
 });
 

@@ -47,6 +47,8 @@ describe('SessionRestoreBanner', () => {
     });
 
     expect(await screen.findByText(t('session.restore.serverError', 'tr'))).toBeInTheDocument();
+    // Site chrome: print hides only marked elements (V2).
+    expect(screen.getByRole('alert')).toHaveClass('print-hidden');
   });
 
   it('Retry re-reads the session (showing the retrying label meanwhile) and Dismiss clears it', async () => {

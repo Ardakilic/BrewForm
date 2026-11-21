@@ -118,6 +118,18 @@ describe('BrewTimeline — rendering unit tests', () => {
     expect(screen.getByText('1,3 ml/s')).toBeInTheDocument();
   });
 
+  it('never shows a slow positive flow rate as 0 ml/s (500 ml over 12 h, V4)', () => {
+    const { unmount } = renderInLocale(
+      <BrewTimeline extractionTimeSeconds={43_200} flowRate={500 / 43_200} />,
+      'en',
+    );
+    expect(screen.getByText('0.012 ml/s')).toBeInTheDocument();
+    expect(screen.queryByText('0 ml/s')).toBeNull();
+    unmount();
+    renderInLocale(<BrewTimeline extractionTimeSeconds={43_200} flowRate={500 / 43_200} />, 'tr');
+    expect(screen.getByText('0,012 ml/s')).toBeInTheDocument();
+  });
+
   it('does not show flow rate when null', () => {
     render(withI18n(<BrewTimeline extractionTimeSeconds={30} flowRate={null} />));
     expect(screen.queryByText(/ml\/s/)).toBeNull();

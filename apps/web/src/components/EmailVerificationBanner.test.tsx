@@ -57,6 +57,11 @@ describe('EmailVerificationBanner', () => {
     vi.clearAllMocks();
   });
 
+  it('is site chrome marked print-hidden (print hides only marked elements, V2)', () => {
+    renderBanner();
+    expect(screen.getByText('Please verify your email').parentElement).toHaveClass('print-hidden');
+  });
+
   it('shows the localised rate-limit message when the resend is throttled', async () => {
     vi.mocked(authApi.sendVerification).mockRejectedValueOnce(
       new ApiError('RATE_LIMITED', 'Too many verification emails', undefined, 429, 42),

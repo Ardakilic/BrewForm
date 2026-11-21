@@ -172,8 +172,8 @@ export function RecipeDetailPage() {
               }
             />
 
-            {/* Action buttons */}
-            <div className="flex flex-wrap items-center gap-2">
+            {/* Action buttons (controls: hidden in print) */}
+            <div className="flex flex-wrap items-center gap-2 print-hidden">
               {/* Print button */}
               <button
                 type="button"
@@ -317,7 +317,7 @@ export function RecipeDetailPage() {
           </div>
 
           {/* Sidebar (1/3 width on md+) */}
-          <div className="space-y-4 no-print">
+          <div className="space-y-4 print-hidden">
             {/* Share section — at top for reachability */}
             <ShareSection slug={recipe.slug} title={recipe.title} visibility={recipe.visibility} />
 
@@ -424,7 +424,7 @@ export function RecipeDetailPage() {
         </div>
 
         {/* Comment section (full width below grid) */}
-        <div className="mt-6 no-print" data-testid="comment-section-wrapper">
+        <div className="mt-6 print-hidden" data-testid="comment-section-wrapper">
           <CommentSection
             recipeId={recipe.id}
             recipeAuthorId={recipe.authorId}

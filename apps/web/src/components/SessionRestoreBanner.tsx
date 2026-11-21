@@ -48,7 +48,7 @@ export function SessionRestoreBanner() {
   return (
     <div
       role="alert"
-      className="flex items-center justify-center gap-2 px-4 py-2 text-sm"
+      className="print-hidden flex items-center justify-center gap-2 px-4 py-2 text-sm"
       style={{ backgroundColor: 'var(--error)', color: 'var(--bg-primary)' }}
     >
       <span>{message}</span>

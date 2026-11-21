@@ -28,7 +28,7 @@ export function CookieConsent() {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 p-4"
+      className="print-hidden fixed bottom-0 left-0 right-0 p-4"
       style={{
         backgroundColor: 'var(--bg-secondary)',
         borderTop: '1px solid var(--border-primary)',

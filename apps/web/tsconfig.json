@@ -36,6 +36,7 @@
     "src/i18n-literals.test.ts",
     "src/utils/chart/contrast.test.ts",
     "src/styles/theme-usage.test.ts",
+    "src/styles/print-rules.test.ts",
     // Node-API source scans (node:fs/node:path; the web tsconfig has no Node types).
     "src/architecture.test.ts",
     "src/data-loading.enforcement.test.ts",

@@ -170,8 +170,8 @@ export function BeanSection(props: BeanSectionProps) {
             </span>
           )}
 
-          {/* Date + origin grid: 2 columns */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+          {/* Date + origin grid: 1 column on phones, 2 from `sm` (2 columns overlap at 320 px) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
             {roastDate && roastResult && (
               <DateField
                 label={t('recipe.bean.roasted')}
@@ -218,14 +218,15 @@ interface DateFieldProps {
   locale: string;
 }
 
+/** One bean date: an uppercase label above the localized date and its short relative age. */
 function DateField({ label, date, relative, locale }: DateFieldProps) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs uppercase tracking-widest text-[color:var(--text-tertiary)]">
         {label}
       </span>
-      {/* Date + short relative on one line */}
-      <span className="flex items-baseline gap-1.5">
+      {/* Date + short relative on one line; the age wraps below when the column is narrow */}
+      <span className="flex flex-wrap items-baseline gap-x-1.5">
         <span className="text-sm font-bold text-[color:var(--text-primary)]">
           {formatDate(date, locale)}
         </span>

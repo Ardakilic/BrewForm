@@ -211,6 +211,11 @@ beforeEach(() => {
 });
 
 describe('Navbar — i18n', () => {
+  it('is site chrome marked print-hidden (print hides only marked elements, V2)', () => {
+    render(<Navbar />);
+    expect(screen.getByRole('banner')).toHaveClass('print-hidden');
+  });
+
   it('renders nav links using t() — English', () => {
     render(<Navbar />);
     expect(screen.getByText('Recipes')).toBeInTheDocument();

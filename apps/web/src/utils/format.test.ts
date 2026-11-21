@@ -7,6 +7,9 @@
  * Feature: wave-6-audit-remediation (t6, chart-rendering → "Durations and derived
  * metrics render through shared locale-aware formatters")
  * Validates formatDecimal, formatDuration and formatDurationTick in en and tr.
+ *
+ * Feature: wave-6-review-remediation (group-20 V4): formatFlowRate never shows a
+ * positive flow rate as 0.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -15,6 +18,7 @@ import {
   formatDuration,
   formatDurationParts,
   formatDurationTick,
+  formatFlowRate,
   formatNumber,
 } from './format.ts';
 
@@ -89,6 +93,38 @@ describe('formatDecimal', () => {
   it('renders non-finite input as 0 instead of NaN/∞', () => {
     expect(formatDecimal(Number.NaN, 'en', 1)).toBe('0');
     expect(formatDecimal(Number.POSITIVE_INFINITY, 'en', 1)).toBe('0');
+  });
+});
+
+describe('formatFlowRate', () => {
+  it('keeps two significant digits for a positive rate one decimal would round to 0 (V4)', () => {
+    // Blue Mountain cold brew: 500 ml over 12 h.
+    expect(formatFlowRate(500 / 43_200, 'en')).toBe('0.012');
+    expect(formatFlowRate(500 / 43_200, 'tr')).toBe('0,012');
+    expect(formatFlowRate(0.049, 'en')).toBe('0.049');
+    expect(formatFlowRate(0.0004, 'en')).toBe('0.0004');
+  });
+
+  it('never formats a positive flow rate as zero', () => {
+    for (const value of [1e-9, 0.00001, 0.004, 0.0123, 0.0499, 0.05, 0.07, 0.1]) {
+      for (const locale of ['en', 'tr']) {
+        expect(formatFlowRate(value, locale)).not.toMatch(/^0(?:[.,]0*)?$/);
+      }
+    }
+  });
+
+  it('rounds every other rate to one decimal, like formatDecimal', () => {
+    expect(formatFlowRate(1.2857143, 'en')).toBe('1.3');
+    expect(formatFlowRate(1.2857143, 'tr')).toBe('1,3');
+    expect(formatFlowRate(0.05, 'en')).toBe('0.1');
+    expect(formatFlowRate(2.5)).toBe('2.5');
+    expect(formatFlowRate(12.86, 'en')).toBe('12.9');
+  });
+
+  it('renders zero and non-finite input as 0', () => {
+    expect(formatFlowRate(0, 'en')).toBe('0');
+    expect(formatFlowRate(Number.NaN, 'en')).toBe('0');
+    expect(formatFlowRate(Number.POSITIVE_INFINITY, 'tr')).toBe('0');
   });
 });
 

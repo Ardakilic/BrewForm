@@ -40,7 +40,7 @@ export function EmailVerificationBanner() {
   };
 
   return (
-    <div className="btn-primary flex w-full justify-center gap-2 rounded-none text-sm">
+    <div className="btn-primary print-hidden flex w-full justify-center gap-2 rounded-none text-sm">
       <span>{t('emailVerification.banner')}</span>
       <button
         type="button"

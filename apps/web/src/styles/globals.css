@@ -263,17 +263,9 @@
 }
 
 @media print {
-  header,
-  footer,
-  nav,
-  .social-section,
-  .comments-section,
-  .btn-primary,
-  .btn-secondary,
-  .btn-danger,
-  .no-print,
-  .print-hidden,
-  button[type="button"] {
+  /* Print hides only what is marked: site chrome and real controls carry `print-hidden`.
+     Content rendered as buttons or links (equipment, taste chips) stays. */
+  .print-hidden {
     display: none !important;
   }
 

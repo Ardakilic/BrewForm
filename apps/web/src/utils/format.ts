@@ -46,6 +46,34 @@ export function formatDecimal(value: number, locale: string = 'en', maxFractionD
   return formatter.format(sanitizeNumber(value) + 0);
 }
 
+/** Below this, a positive value rounds to 0 at one fraction digit. */
+const ONE_DECIMAL_HALF_STEP = 0.05;
+
+/** Cached two-significant-digit `Intl.NumberFormat` instances keyed by locale. */
+const significantFormatters = new Map<string, Intl.NumberFormat>();
+
+/**
+ * Formats a flow rate in ml/s (the number only: the `recipe.brewTimeline.flowRate` template adds
+ * the unit). It matches `formatDecimal(value, locale, 1)`, except that a positive rate the
+ * one-decimal form would round to 0 keeps two significant digits, so a real flow never reads
+ * "0 ml/s" (500 ml over 12 h: `0.012` en, `0,012` tr). Zero, negative and non-finite input
+ * format as `formatDecimal` does.
+ *
+ * @param value - The flow rate in ml/s.
+ * @param locale - The active locale (default `en`).
+ * @returns The localized number.
+ */
+export function formatFlowRate(value: number, locale: string = 'en'): string {
+  const v = sanitizeNumber(value);
+  if (v <= 0 || v >= ONE_DECIMAL_HALF_STEP) return formatDecimal(v, locale, 1);
+  let formatter = significantFormatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, { maximumSignificantDigits: 2 });
+    significantFormatters.set(locale, formatter);
+  }
+  return formatter.format(v);
+}
+
 /** Duration unit keys under `chart.duration.*`. */
 type DurationUnit = 'seconds' | 'minutes' | 'hours';
 
