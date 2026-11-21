@@ -119,7 +119,10 @@ describe('VerifyEmailPage', () => {
     mockVerify.mockResolvedValue({ message: 'ok' });
     const { unmount } = renderAt('/verify-email?token=t');
     await screen.findByText(t('verifyEmail.successTitle', 'tr'));
-    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'VerifyEmailPage mounted');
+    // The mount effect runs after the commit that renders the loader data.
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'VerifyEmailPage mounted'),
+    );
     unmount();
     expect(mockLogger.debug).toHaveBeenCalledWith({}, 'VerifyEmailPage unmounted');
   });
