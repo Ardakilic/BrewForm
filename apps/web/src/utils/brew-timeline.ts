@@ -90,6 +90,7 @@ export function computeTimelineModel(
 export const PHASE_LABEL_PADDING_PX = 6;
 /** Phase title metrics: 11px semibold uppercase with 0.05em tracking. */
 export const PHASE_TITLE_FONT_PX = 11;
+/** Phase title letter spacing in px (0.05em of {@link PHASE_TITLE_FONT_PX}). */
 export const PHASE_TITLE_TRACKING_PX = 0.55;
 /** Phase value metrics: 18px bold. */
 export const PHASE_VALUE_FONT_PX = 18;

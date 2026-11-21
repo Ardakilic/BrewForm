@@ -8,6 +8,10 @@ interface OwnedItemCardProps {
   deleteLabel: string;
 }
 
+/**
+ * Card for an item the signed-in user owns (beans, setups): title, optional subtitle and meta
+ * row, and a delete button that calls `onDelete`. Confirmation is the caller's job.
+ */
 export function OwnedItemCard({
   title,
   subtitle,

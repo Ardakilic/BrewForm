@@ -84,6 +84,7 @@ export function Modal({ open, onClose, children, ariaLabel, panelClassName }: Mo
   );
 }
 
+/** Translation keys and styling for one {@link ConfirmProvider} dialog (`danger` styles the confirm button as destructive). */
 export interface ConfirmOptions {
   titleKey: string;
   bodyKey: string;

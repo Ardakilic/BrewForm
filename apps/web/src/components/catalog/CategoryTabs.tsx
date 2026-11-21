@@ -1,3 +1,4 @@
+/** One filter pill of {@link CategoryTabs}: the value it selects and its translated label. */
 export interface CategoryTab {
   value: string;
   label: string;
@@ -9,6 +10,10 @@ interface CategoryTabsProps {
   onSelect: (value: string) => void;
 }
 
+/**
+ * Row of pill buttons that filters a catalog page by category. Highlights the tab whose value
+ * equals `active` and calls `onSelect` with a tab's value on click; holds no state itself.
+ */
 export function CategoryTabs({ tabs, active, onSelect }: CategoryTabsProps) {
   return (
     <div className="flex flex-wrap gap-2 mb-4">
