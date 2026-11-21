@@ -1,13 +1,17 @@
 # Recipes
 
 Recipes are the core entity of BrewForm. This document covers the versioning model, brewer and
-private notes, forking, validation rules, and visibility controls.
+private notes, forking, slugs, visibility, validation rules, version diff, and comparison and
+merge. Per-route request and response shapes are in the generated
+[api-reference.md](api-reference.md); shared API conventions (envelopes, partial updates,
+visibility classes) are in [api.md](api.md).
 
 ## Two-Layer Model
 
 A recipe consists of two layers:
 
-- **Recipe** — mutable metadata (title, visibility, fork reference, like/favourite counts)
+- **Recipe** — mutable metadata (title, slug, visibility, fork reference, the `likeCount`,
+  `commentCount` and `forkCount` counters, the `featured` flag)
 - **RecipeVersion** — a snapshot of all brewing parameters (measurements, dates, coffee identity
   including `tds` and the coffee variety, brewer notes, taste notes with intensities, equipment,
   additional preparations and photos)
@@ -25,15 +29,19 @@ current version or saves a new version (`bumpVersion`).
   - API: `GET /api/v1/recipes/:slug/versions` — returns all versions for a recipe
   - UI: `/recipes/:slug/versions` — browsable version history page (linked from the
     recipe detail page when `versionCount > 1`)
+- Two versions can be compared field by field (see [Version diff](#version-diff))
 
 Editing goes through `PATCH /api/v1/recipes/:id` (author only, verified email required; see
-[api.md](api.md)). The body says which fields change: an absent key keeps the
-stored value, `null` clears a field, and `[]` removes every taste note, equipment item or
-additional preparation. An omitted `visibility` or `isFavourite` is always kept.
+[api-reference.md](api-reference.md) and [Partial updates](api.md#partial-updates)). The body
+says which fields change: an absent key keeps the stored value, `null` clears a field, and `[]`
+removes every taste note, equipment item or additional preparation. An omitted `visibility` or
+`isFavourite` is always kept.
 
-- **Amend** (`bumpVersion: false`, the default): every field in the body is written to the
-  current version in one transaction, and only the relations in the body are replaced. No new
-  version is created. The edit page labels this "Updates the current version (vN) in place".
+- **Amend** (`bumpVersion: false`, also when `bumpVersion` is absent): every field in the body
+  is written to the current version in one transaction, and only the relations in the body are
+  replaced. No new version is created, `versionNumber` and `currentVersionId` stay the same, and
+  the stored `brewDate` is kept unless the body sends one. The edit page labels this "Updates the
+  current version (vN) in place".
 - **Bump** (`bumpVersion: true`): a new version numbered one above the highest existing version
   is created in one transaction, and the recipe points at it. The edit page labels this "Save as
   a new version".
@@ -53,8 +61,9 @@ body overrides only what it provides:
 
 All validation (title, cross-field rules on the merged values, referenced records, equipment
 compatibility) runs before the first write, so a rejected edit leaves the recipe and every
-version unchanged. Concurrent edits of the same recipe are serialized, so two bumps get
-consecutive version numbers.
+version unchanged. The write locks the recipe row (`SELECT … FOR UPDATE`) inside its
+transaction, so concurrent edits of the same recipe are serialized and two bumps get
+consecutive version numbers. Earlier versions are never touched.
 
 ## Brewer notes and private notes
 
@@ -66,9 +75,13 @@ A recipe page shows two kinds of notes:
   version, so amend, bump, fork and diff treat them like any other version field).
 - **My private notes** are per viewer: every signed-in user, the author included, can keep one
   private note per recipe they can view, through `GET`, `PUT` and `DELETE
-  /api/v1/recipes/:id/notes` (see [api.md](api.md)). Nobody else, admins included, can read
-  them; they are never part of the recipe payload, search, feeds or forks, and they are scrubbed
-  when deleted or when the account is deleted.
+  /api/v1/recipes/:id/notes` (see [api-reference.md](api-reference.md)). The note belongs to the
+  caller: the user id always comes from the session, never from the request, and every query is
+  keyed by it. Nobody else, admins included, can read it (admin status only widens which recipes
+  an admin may annotate). A recipe the caller cannot view answers `404`. Notes are plain text up
+  to 10,000 characters (markup is stripped before storage); they are never part of the recipe
+  payload, search, feeds or forks, and their text is scrubbed when the note is deleted or the
+  account is deleted.
 
 Before wave 6 the "Personal Notes" box on the recipe page wrote to the author's public notes for
 any signed-in viewer (the removed `POST /api/v1/recipes/:id/notes`). Existing brewer notes were
@@ -76,7 +89,8 @@ left as they are, so authors should review theirs; private notes start empty.
 
 ## Forking
 
-Any public or unlisted recipe can be forked:
+Any public or unlisted recipe can be forked (an author can also fork their own draft or private
+recipe):
 
 ```
 POST /api/v1/recipes/:id/fork
@@ -92,6 +106,8 @@ POST /api/v1/recipes/:id/fork
 - Starts as `draft` visibility
 - Increments `forkCount` on the original recipe
 - The forker can modify any parameters after forking
+- The fork's attribution (`forkedFrom`, `forkedFromId`, `forkedFromSlug`) is shown only while
+  the source is public (see [Visibility](#visibility))
 
 ## Slugs
 
@@ -127,86 +143,135 @@ Recipe URLs are `/recipes/<slug>`. The slug is derived from the title when the r
 
 ## Visibility
 
-| State      | Description                                 | Who Can See          |
-| ---------- | ------------------------------------------- | -------------------- |
-| `draft`    | Work in progress                            | Author only          |
-| `private`  | Saved but not shared                        | Author only          |
-| `unlisted` | Accessible via direct link, not in listings | Anyone with the link |
-| `public`   | Visible to everyone, searchable, indexable  | Everyone             |
+Every recipe has one of four `visibility` values (a new recipe defaults to `draft`, and forks
+and merges always start as `draft`):
 
-Private and draft recipes are only visible to their author. The `optionalAuthMiddleware` enables
-this: anonymous requests see only public recipes, while authenticated requests can also see their
-own drafts/private recipes.
+| Value      | Meaning                                                   | Who can open it                     |
+| ---------- | --------------------------------------------------------- | ----------------------------------- |
+| `draft`    | Work in progress                                          | Author only                         |
+| `private`  | Saved but not shared                                      | Author only                         |
+| `unlisted` | Direct link only                                          | Anyone with the URL or id           |
+| `public`   | Listed on discovery surfaces, searchable and indexable    | Everyone                            |
+
+**`unlisted` = direct link only.** An unlisted recipe opens for anyone who has its URL or id, but
+it never appears in search, browse lists or filters, user profiles, the follow feed, the home
+grids, the equipment and coffee-variety pages, other users' collections (a collection shows it
+only to the recipe's own author), the sitemap or Open Graph/social previews. Its pages carry
+`noindex, nofollow`. Two lists are personal and can contain it: the caller's own **Starred** list
+(recipes they favourited) and their own **brew journal** (recipes they logged). Discovery lists
+show only `public` recipes to everyone, the author included.
+
+**Fork attribution** is hidden unless the source is public: a fork of an unlisted, private, draft
+or deleted recipe shows no `forkedFrom` link (the source's own author still sees it on the recipe
+detail), because an unlisted recipe's id works as its link.
+
+Draft and private recipes open only for their author (`canViewRecipe`); everyone else gets
+`404`. The `optionalAuthMiddleware` on the read routes lets an authenticated author see their own
+drafts and private recipes, while anonymous requests see public and unlisted ones. The API keeps
+these rules in one place: `listableRecipeCondition(viewerId)` and `viewableRecipeCondition(viewerId)`
+in `apps/api/src/modules/recipe/model.ts` (SQL), with `canListRecipe` and `canViewRecipe` as their
+pure twins in `service.ts`. The full surface-by-surface table is in
+[api.md → Visibility](api.md#visibility).
 
 ## Validation
 
-BrewForm implements two levels of validation:
+### Hard validation (blocks the save)
 
-### Hard Validation (blocks save)
+The API rejects a create, edit, fork or merge that breaks any of these rules, before anything is
+written:
 
-- Brew method and drink type must be compatible (per the brew method compatibility matrix)
-- `grindDate` cannot be earlier than `roastDate`
-- Required fields must be present (`title`, `brewMethod`, `drinkType`, `preparationNotes`)
-- Numeric values must be physically valid (non-negative where required, e.g. dose and yield)
-- Taste note IDs must reference existing taste notes
-- Equipment IDs must reference existing equipment
-- Brew method and equipment compatibility is enforced at save time via the
-  `BrewMethodEquipmentRule` table. Incompatible combinations return a `422
-  VALIDATION_ERROR` with a `details` array naming each incompatible equipment type.
+- **Required fields** on create: `title`, `brewMethod`, `drinkType` and `preparationNotes`.
+  A title that is empty after sanitization is a `400 VALIDATION_ERROR` on `title`.
+- **Ranges** (shared Zod schemas in `packages/shared/src/schemas/recipe.ts`): dose
+  (`groundWeightGrams`) and yield (`extractionVolumeMl`) are `>= 0`, `extractionTimeSeconds` is
+  positive, `temperatureCelsius` is between -40 and 100, `tds` is between 0 and 25, `rating` is
+  1-10, `preInfusionTimeSeconds` is a whole number `>= 1`, text fields have maximum lengths.
+- **Cross-field rules** (`recipeCrossFieldIssues`): the grind date and the package-open date are
+  not before the roast date, the grind date is not before the package-open date, the pre-infusion
+  time is shorter than the extraction time, and a pre-infusion time needs an extraction time. An
+  edit is checked on the values merged over the stored version.
+- **References**: taste notes, equipment, the vendor and the coffee variety must exist and not be
+  deleted, and a newly set bean must belong to the author (`400 VALIDATION_ERROR` with one detail
+  per field). Repeated ids in `tasteNoteIds` or `equipmentIds` are rejected with `400`.
+- **Equipment compatibility** with the brew method is enforced through the
+  `BrewMethodEquipmentRule` table. An incompatible combination returns `422 VALIDATION_ERROR`
+  with a `details` array naming each incompatible equipment type.
 
-### Soft Validation (warnings only)
+The create and edit forms offer only the drink types that fit the selected brew method
+(`DRINK_TYPES_LIST[].compatibleMethods` from `@brewform/shared`). The API does not re-check the
+brew method / drink type pair.
 
-- Espresso ratio outside typical range (< 1:1.5 or > 1:3)
-- Extraction time unusually short/long for the brew method
-- Brew temperature outside common ranges
-- Missing commonly expected optional fields
+### Soft validation (advisory)
 
-Soft warnings are returned in the response alongside the data:
-
-```json
-{
-  "success": true,
-  "data": { ... },
-  "meta": {
-    "warnings": [
-      { "field": "extractionTimeSeconds", "message": "Extraction time seems short for espresso" }
-    ]
-  }
-}
-```
+`validateSoftWarnings` in `packages/shared/src/utils/validation.ts` lists advisory hints (espresso
+ratio outside 1:1.5-1:3, espresso extraction under 15 s or over 60 s, espresso temperature
+outside 88-96 °C, a missing grind size, no product name or brand, a milk preparation on a
+non-milk drink, no equipment). It never blocks a save. It is not wired up today: the API does
+not return warnings and the forms do not show them.
 
 ## Canonical Units
 
 All numeric values are stored in canonical (metric) units:
 
-| Measurement      | Storage Unit           |
-| ---------------- | ---------------------- |
-| Coffee weight    | grams                  |
-| Water weight     | grams                  |
-| Brew temperature | Celsius                |
-| Extraction time  | seconds                |
-| Grind size       | micrometers (optional) |
-| TDS (Total Dissolved Solids) | percentage (e.g. 1.35 for 1.35%) |
+| Measurement                          | Storage                              |
+| ------------------------------------ | ------------------------------------ |
+| Coffee dose (`groundWeightGrams`)    | grams                                |
+| Yield (`extractionVolumeMl`)         | millilitres                          |
+| Brew temperature                     | Celsius                              |
+| Extraction and pre-infusion time     | seconds                              |
+| Grind size (`grindSize`)             | free text (for example "18 clicks"), never converted |
+| TDS (Total Dissolved Solids)         | percentage (e.g. 1.35 for 1.35%)     |
+
+`brewRatio` (yield / dose) and `flowRate` (yield / extraction time) are computed by the API from
+the measurements and never accepted from clients.
 
 Extraction Yield is **not stored** — it is derived on the client from TDS, extraction
 volume, and dose when all three are present:
 
   EY% = (TDS% / 100 × extractionVolumeMl) / groundWeightGrams × 100
 
-The UI reads `UserPreferences.unitSystem` and `UserPreferences.temperatureUnit` from
-the preferences API at page load and converts all displayed measurements via
-`packages/shared/src/utils/conversion.ts`.
+The web app reads the signed-in user's `unitSystem` preference from the auth state
+(`useUnitSystem`, `metric` when signed out) and formats displayed values with
+`packages/shared/src/utils/conversion.ts`: `imperial` shows ounces, fluid ounces and °F. The
+recipe pages derive the temperature unit from `unitSystem`; the separate `temperatureUnit`
+preference is stored but not used there.
 
-## Comparison
+## Version diff
 
-Two public recipes can be compared side by side:
+Two versions of the same recipe can be compared field by field:
 
 ```
-GET /api/v1/recipes/compare/:id1/:id2
+GET /api/v1/recipes/:slug/versions/diff?v1=<versionId>&v2=<versionId>
 ```
 
-Returns both recipes' latest versions with all parameters for side-by-side display. If either recipe
-becomes private/draft, the comparison becomes inaccessible.
+The response lists the 20 scalar version fields with their two values and a status (`added`,
+`removed`, `modified` or `unchanged`), plus added, removed and unchanged taste notes and
+equipment by name. Both versions must belong to the recipe (`404` otherwise) and must differ
+(`400`). The recipe must be viewable by the caller, as for the recipe detail. In the UI, the
+version history page lets the reader pick two versions and opens
+`/recipes/:slug/versions/diff?v1=…&v2=…` (always `noindex`).
+
+## Comparison and merge
+
+The web page `/recipes/compare/:slug1/:slug2` shows two recipes side by side. Its loader fetches
+both through `GET /api/v1/recipes/:slugOrId`, so it works for any two recipes the viewer can open
+(public and unlisted for anyone, drafts and private recipes for their author); a recipe the
+viewer cannot open renders the not-found page. There is no dedicated compare endpoint. The page
+is reached by URL (there is no in-app link to it yet) and is always `noindex`.
+
+From the compare page a signed-in user with a verified email can merge the two current versions
+into a new recipe:
+
+```
+POST /api/v1/recipes/merge
+```
+
+The body names the two version ids, the new title and, per field, which side to take (`v1`, `v2`,
+`both` for taste notes, equipment and additional preparations, or `none`). Both source recipes
+must exist and not be deleted (`404`) and the caller must be allowed to view both
+(`canViewRecipe`, otherwise `403`): another user's public or unlisted recipe can be merged, their
+draft or private recipe cannot. The merged recipe is created through the normal create path (same
+slug pipeline and validation), starts as `draft`, and the page then opens its editor.
 
 ## Filtering by Main Brewer
 
@@ -218,24 +283,31 @@ GET /api/v1/recipes?mainBrewer=Lelit%20Mara%20X
 
 This performs a case-insensitive partial match on `recipeVersions.brewerDetails`.
 
-## Like and Favourite
+## Like, Favourite and Rating
 
 - **Like**: Toggle endpoint — `POST /api/v1/recipes/:id/like`. Returns `{ liked: boolean }`. If
-  already liked, unlikes. If not liked, likes.
+  already liked, unlikes. If not liked, likes. The recipe's stored `likeCount` is adjusted in the
+  same transaction, and liking another author's recipe creates a `like` notification (in-app and
+  email, gated by the author's `notifyRecipeLiked` preference).
 - **Favourite**: Toggle endpoint — `POST /api/v1/recipes/:id/favourite`. Returns
-  `{ favourited: boolean }`. Same toggle pattern.
-
-Both increment/decrement the `likeCount`/`favouriteCount` on the recipe.
+  `{ favourited: boolean }`. Same toggle pattern. There is no stored favourite counter: the
+  recipe detail's `favouriteCount` is counted from the favourites, and favourited recipes make up
+  the caller's Starred list (`GET /api/v1/recipes/starred`).
+- **Rating**: `POST /api/v1/recipes/:id/rate` with `{ rating }` (1-10) stores the caller's rating
+  and returns it with the recipe's `avgRating` and `ratingCount`.
 
 ## Featured Recipes
 
-Users can feature one of their recipes on their profile:
+Authors can flag their own recipes as featured:
 
 ```
 POST /api/v1/recipes/:id/feature
 ```
 
-Toggle pattern — if already featured, unfeatures. Only the author can feature their recipe.
+Toggle pattern — if already featured, unfeatures; returns `{ featured: boolean }`. Only the author
+can toggle it, and there is no limit on how many recipes are featured. The flag is part of the
+recipe payload; the web app has a client method for it but does not show a featured section or a
+toggle yet.
 
 ## Recipe Meta (Social Crawlers)
 
@@ -243,5 +315,6 @@ Toggle pattern — if already featured, unfeatures. Only the author can feature 
 GET /api/v1/recipes/meta/:slug
 ```
 
-Returns minimal recipe metadata (title, description, image) for social media crawlers (Open Graph,
-Twitter Cards) without requiring authentication.
+Returns minimal recipe metadata (title, author, counts, product name, brew method and the primary
+photo URL) for social media crawlers (Open Graph, Twitter Cards) without requiring
+authentication. Only `public` recipes are served; any other recipe answers `404`.

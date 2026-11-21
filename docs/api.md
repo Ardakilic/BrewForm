@@ -331,6 +331,11 @@ Every surface belongs to one class, and the class decides which recipes it shows
 | Owner-only lists | `GET /collections`, and `GET /users/:userId/collections` when the caller is that user | Every visibility of the owner's own collections |
 | Admin | `/admin/*`, and `GET /recipes` when an admin passes `visibility` | Exempt from these rules |
 
+> **Known gap (D99.25).** Like, favourite and rating are listed under "Direct link" because that is
+> the intended rule, but today `POST /recipes/:id/like`, `/favourite` and `/rate` (and
+> `GET /photos/recipe/:recipeId`) do not check visibility: a caller who knows a `draft` or
+> `private` recipe's id can use them. Tracked in [`plans/D99-debts.md`](../plans/D99-debts.md).
+
 - Discovery lists are viewer-independent: an author does not see their own `unlisted`, `draft` or
   `private` recipes on them, their own profile included. There is no "my recipes" listing; an
   author reaches an unlisted recipe through its link.
