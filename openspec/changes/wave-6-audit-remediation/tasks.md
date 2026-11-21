@@ -878,16 +878,16 @@ How to use this task list
   - A save failure shows an error.
   - Delete clears the editor.
   - Labels come from the new keys.
-- [ ] 17.8 Add i18n keys to both `en.json` and `tr.json`. Change the value of `recipe.editPage.bumpVersion` to "Save as a new version", and add `recipe.editPage.bumpHint.off` ("Updates the current version (v{current}) in place"), `recipe.editPage.bumpHint.on` ("Creates version v{next}; v{current} stays unchanged"), `recipe.form.coffeeVariety` and `recipe.form.coffeeVariety.placeholder`.
-- [ ] 17.9 Extract the equipment picker from `apps/web/src/pages/recipes/RecipeCreatePage.tsx:300-320` into `apps/web/src/components/recipe/EquipmentPicker.tsx`. Add a `CoffeeVarietyPicker.tsx` typeahead over `coffeeVarietyApi.search` (via a fetcher resource route per web-data-loading). Write component tests for both.
-- [ ] 17.10 Update `apps/web/src/pages/recipes/RecipeEditPage.tsx` (on top of the web-data-loading loader/action migration):
+- [x] 17.8 Add i18n keys to both `en.json` and `tr.json`. Change the value of `recipe.editPage.bumpVersion` to "Save as a new version", and add `recipe.editPage.bumpHint.off` ("Updates the current version (v{current}) in place"), `recipe.editPage.bumpHint.on` ("Creates version v{next}; v{current} stays unchanged"), `recipe.form.coffeeVariety` and `recipe.form.coffeeVariety.placeholder`.
+- [x] 17.9 Extract the equipment picker from `apps/web/src/pages/recipes/RecipeCreatePage.tsx:300-320` into `apps/web/src/components/recipe/EquipmentPicker.tsx`. Add a `CoffeeVarietyPicker.tsx` typeahead over `coffeeVarietyApi.search` (via a fetcher resource route per web-data-loading). Write component tests for both.
+- [x] 17.10 Update `apps/web/src/pages/recipes/RecipeEditPage.tsx` (on top of the web-data-loading loader/action migration):
   - Pre-populate equipment and coffee variety and render both pickers.
   - Show the checkbox with the new label and the state-dependent hint, including version numbers.
   - The payload builder sends `null` for cleared scalar, date, rating and emoji inputs, `[]` for cleared taste notes and equipment, and omits fields the page does not render.
   - Show validation errors inline and navigate only on success.
-- [ ] 17.11 Update `apps/web/src/pages/recipes/RecipeCreatePage.tsx`: send `beanId` when opened with `?beanId=`, add the coffee-variety picker, and send `coffeeVarietyId`.
-- [ ] 17.12 Show the coffee variety on `apps/web/src/pages/recipes/RecipeDetailPage.tsx`: when `currentVersion.coffeeVarietyName` is set, render it as a link to `/coffee-varieties/:coffeeVarietyId`.
-- [ ] 17.13 Extend `RecipeEditPage.test.tsx`:
+- [x] 17.11 Update `apps/web/src/pages/recipes/RecipeCreatePage.tsx`: send `beanId` when opened with `?beanId=`, add the coffee-variety picker, and send `coffeeVarietyId`.
+- [x] 17.12 Show the coffee variety on `apps/web/src/pages/recipes/RecipeDetailPage.tsx`: when `currentVersion.coffeeVarietyName` is set, render it as a link to `/coffee-varieties/:coffeeVarietyId`.
+- [x] 17.13 Extend `RecipeEditPage.test.tsx`:
   - Clearing the grinder sends `grinder: null`.
   - Removing all taste notes sends `tasteNoteIds: []`.
   - The hint text follows the checkbox and the version numbers.

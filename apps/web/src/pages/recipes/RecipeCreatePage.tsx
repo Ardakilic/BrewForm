@@ -14,6 +14,11 @@ import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
 import { useEffect, useState } from 'react';
 import { useFetcher, useLoaderData, useNavigate, useSearchParams } from 'react-router';
 import { Field, Section } from '../../components/form/index.ts';
+import {
+  CoffeeVarietyPicker,
+  type CoffeeVarietySelection,
+} from '../../components/recipe/CoffeeVarietyPicker.tsx';
+import { EquipmentPicker } from '../../components/recipe/EquipmentPicker.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
@@ -61,16 +66,20 @@ export function RecipeCreatePage() {
 interface RecipeCreateFormProps {
   equipmentList: EquipmentOutput[];
   setupList: SetupOutput[];
-  /** The `?beanId` bean whose name, brand/roaster and processing pre-fill the form. */
+  /**
+   * The `?beanId` bean whose name, brand/roaster and processing pre-fill the form; its id is
+   * sent as `beanId` so the new recipe stays linked to it.
+   */
   bean: BeanOutput | null;
   /** The `?setupId` setup selected (and auto-filled) on open. */
   initialSetupId: string;
 }
 
 /**
- * Multi-step form for creating a new brew recipe with bean info, brew parameters, equipment
- * selection, taste notes, and preparation instructions. Submits through the `/recipes/new`
- * route action with a fetcher.
+ * Multi-step form for creating a new brew recipe with bean info, coffee variety, brew
+ * parameters, equipment selection, taste notes, and preparation instructions. Submits through
+ * the `/recipes/new` route action with a fetcher; a recipe opened from a bean (`?beanId=`) is
+ * created linked to that bean.
  */
 function RecipeCreateForm({
   equipmentList,
@@ -112,6 +121,7 @@ function RecipeCreateForm({
   // Equipment & Setup selections
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [selectedSetupId, setSelectedSetupId] = useState(initialSetupId);
+  const [coffeeVariety, setCoffeeVariety] = useState<CoffeeVarietySelection | null>(null);
 
   useActionFeedback(fetcher, {
     onSuccess: (result) => {
@@ -141,13 +151,6 @@ function RecipeCreateForm({
       setDrinkType(compatible[0]?.value || 'espresso');
     }
   }, [brewMethod, drinkType]);
-
-  /** Toggles an equipment item in the selected equipment set. */
-  function toggleEquipment(id: string) {
-    setSelectedEquipmentIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }
 
   /**
    * Builds the `RecipeCreate` payload and submits it to the `/recipes/new` action. The
@@ -191,6 +194,8 @@ function RecipeCreateForm({
       grindDate: grindDate || undefined,
       equipmentIds: selectedEquipmentIds.length > 0 ? selectedEquipmentIds : undefined,
       setupId: selectedSetupId || undefined,
+      beanId: bean?.id,
+      coffeeVarietyId: coffeeVariety?.id,
     };
     // JSON round-trip drops the `undefined` fields, exactly as the HTTP body would.
     fetcher.submit(JSON.parse(JSON.stringify(data)), {
@@ -283,34 +288,11 @@ function RecipeCreateForm({
             </select>
           </Field>
 
-          <Field label={t('equipment.title')}>
-            <div className="space-y-2 mt-1">
-              {equipmentList.length === 0 ? (
-                <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                  {t('recipe.form.noEquipment')}
-                </p>
-              ) : (
-                equipmentList.map((eq) => (
-                  <label
-                    key={eq.id}
-                    className="flex items-center gap-2 text-sm cursor-pointer"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedEquipmentIds.includes(eq.id)}
-                      onChange={() => toggleEquipment(eq.id)}
-                      className="rounded"
-                    />
-                    <span>{eq.name}</span>
-                    <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                      ({eq.type})
-                    </span>
-                  </label>
-                ))
-              )}
-            </div>
-          </Field>
+          <EquipmentPicker
+            equipment={equipmentList}
+            selectedIds={selectedEquipmentIds}
+            onChange={setSelectedEquipmentIds}
+          />
         </Section>
 
         <Section title={t('recipe.form.coffeeIdentity')}>
@@ -366,6 +348,9 @@ function RecipeCreateForm({
                 className="input-field"
               />
             </Field>
+          </div>
+          <div className="mt-4">
+            <CoffeeVarietyPicker value={coffeeVariety} onChange={setCoffeeVariety} />
           </div>
         </Section>
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recipeFormErrorMessage } from './recipe-form-errors.ts';
+import { fieldErrorMap, recipeFormErrorMessage } from './recipe-form-errors.ts';
 
 /** Translator stub: returns the key wrapped so tests can tell it apart from API text. */
 const t = (key: string) => (key === 'error.rateLimited' ? 'Wait {seconds}s' : `[${key}]`);
@@ -34,5 +34,22 @@ describe('recipeFormErrorMessage', () => {
     expect(recipeFormErrorMessage({ error: '' }, t, 'recipe.fork.forkError')).toBe(
       '[recipe.fork.forkError]',
     );
+  });
+});
+
+describe('fieldErrorMap', () => {
+  it('keys each detail by its top-level field and keeps the first message per field', () => {
+    expect(
+      fieldErrorMap([
+        { field: 'grinder', message: 'Too long' },
+        { field: 'tasteNoteIds.1', message: 'Invalid UUID' },
+        { field: 'grinder', message: 'Second message' },
+      ]),
+    ).toEqual({ grinder: 'Too long', tasteNoteIds: 'Invalid UUID' });
+  });
+
+  it('returns an empty map without details', () => {
+    expect(fieldErrorMap(undefined)).toEqual({});
+    expect(fieldErrorMap([])).toEqual({});
   });
 });

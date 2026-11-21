@@ -4,24 +4,33 @@ import {
   EMOJI_TAGS_LIST,
   VISIBILITY_STATES_LIST,
 } from '@brewform/shared/constants';
-import type { RecipeDetailOutput, RecipeUpdate } from '@brewform/shared/schemas';
+import type { EquipmentOutput, RecipeDetailOutput } from '@brewform/shared/schemas';
 import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFetcher, useLoaderData, useNavigate } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
 import { Field, Section } from '../../components/form/index.ts';
+import {
+  CoffeeVarietyPicker,
+  type CoffeeVarietySelection,
+} from '../../components/recipe/CoffeeVarietyPicker.tsx';
+import { EquipmentPicker } from '../../components/recipe/EquipmentPicker.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import type { action, loader } from './RecipeEditPage.data.ts';
-import { recipeFormErrorMessage } from './recipe-form-errors.ts';
+import { buildRecipeUpdatePayload } from './recipe-edit-payload.ts';
+import { fieldErrorMap, recipeFormErrorMessage } from './recipe-form-errors.ts';
 
 const log = createLogger('RecipeEditPage');
 
 /** Id of the public brewer-notes hint, referenced by the textarea's `aria-describedby`. */
 const BREWER_NOTES_HINT_ID = 'recipe-brewer-notes-hint';
+
+/** Id of the version-choice hint, referenced by the checkbox's `aria-describedby`. */
+const BUMP_HINT_ID = 'recipe-bump-version-hint';
 
 /** A recipe whose current version is present (the edit form needs one to pre-fill). */
 type EditableRecipe = RecipeDetailOutput & {
@@ -36,7 +45,7 @@ type EditableRecipe = RecipeDetailOutput & {
  * `recipe.editPage.noVersions`.
  */
 export function RecipeEditPage() {
-  const { recipe } = useLoaderData<typeof loader>();
+  const { recipe, equipment } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -58,7 +67,9 @@ export function RecipeEditPage() {
     );
   }
 
-  return <RecipeEditForm key={recipe.id} recipe={recipe as EditableRecipe} />;
+  return (
+    <RecipeEditForm key={recipe.id} recipe={recipe as EditableRecipe} equipmentList={equipment} />
+  );
 }
 
 /** Date input value (`YYYY-MM-DD`) of an ISO timestamp, or `''`. */
@@ -67,18 +78,55 @@ function dateInput(value: string | null | undefined): string {
 }
 
 /**
- * Recipe edit form pre-filled from the current version; saving can optionally bump a new
- * version. Submits the `RecipeUpdate` payload to the `/recipes/:id/edit` route action with a
- * fetcher, navigates to the recipe on `{ ok: true }` and lists the errors inline on
- * `{ ok: false }`.
+ * The number a version bump would get: one more than the highest existing version number
+ * (the API computes it the same way inside its transaction).
  */
-function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
+function nextVersionNumber(recipe: EditableRecipe): number {
+  const highest = recipe.versions.reduce(
+    (max, version) => Math.max(max, version.versionNumber),
+    recipe.currentVersion.versionNumber,
+  );
+  return highest + 1;
+}
+
+/**
+ * The equipment the picker offers: the loader's lookup plus any item the current version is
+ * linked to that the lookup lacks, so every pre-selected item stays visible and can be
+ * unticked.
+ */
+function equipmentOptions(list: EquipmentOutput[], recipe: EditableRecipe): EquipmentOutput[] {
+  const known = new Set(list.map((eq) => eq.id));
+  const linked = recipe.equipment
+    .filter((eq) => !known.has(eq.equipmentId))
+    .map(({ equipmentId, ...eq }) => ({ ...eq, id: equipmentId }));
+  return [...list, ...linked];
+}
+
+/** Props of {@link RecipeEditForm}: the loader's recipe and equipment lookup. */
+interface RecipeEditFormProps {
+  recipe: EditableRecipe;
+  equipmentList: EquipmentOutput[];
+}
+
+/**
+ * Recipe edit form pre-filled from the current version, including its taste notes, equipment
+ * and coffee variety. The checkbox chooses between amending the current version in place
+ * (default) and saving a new version, and its hint names the version numbers. Submits the
+ * {@link buildRecipeUpdatePayload} body (cleared inputs as `null`, cleared lists as `[]`) to
+ * the `/recipes/:id/edit` route action with a fetcher, navigates to the recipe on
+ * `{ ok: true }`, and on `{ ok: false }` stays on the form, listing the errors above it and
+ * showing each field's validation message under its input.
+ */
+function RecipeEditForm({ recipe, equipmentList }: RecipeEditFormProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const fetcher = useFetcher<typeof action>();
   const loading = fetcher.state !== 'idle';
   const v = recipe.currentVersion;
+  const currentVersion = v.versionNumber;
+  const nextVersion = nextVersionNumber(recipe);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [bumpVersion, setBumpVersion] = useState(false);
 
   const [title, setTitle] = useState(recipe.title);
@@ -116,60 +164,76 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
   const [packageOpenDate, setPackageOpenDate] = useState(dateInput(v.packageOpenDate));
   const [grindDate, setGrindDate] = useState(dateInput(v.grindDate));
   const [brewerDetails, setBrewerDetails] = useState(v.brewerDetails || '');
+  const [equipmentIds, setEquipmentIds] = useState<string[]>(() =>
+    recipe.equipment.map((eq) => eq.equipmentId),
+  );
+  const [coffeeVariety, setCoffeeVariety] = useState<CoffeeVarietySelection | null>(
+    v.coffeeVarietyId ? { id: v.coffeeVarietyId, name: v.coffeeVarietyName ?? '' } : null,
+  );
+  const pickableEquipment = useMemo(
+    () => equipmentOptions(equipmentList, recipe),
+    [equipmentList, recipe],
+  );
 
   useActionFeedback(fetcher, {
     onSuccess: (result) => {
       if (result.ok) navigate(`/recipes/${result.slug}`);
     },
     onError: (result) => {
-      if (!result.ok)
-        setError(recipeFormErrorMessage(result, t, 'recipe.editPage.updateError', true));
+      if (result.ok) return;
+      setError(recipeFormErrorMessage(result, t, 'recipe.editPage.updateError', true));
+      setFieldErrors(fieldErrorMap(result.details));
     },
   });
 
   const compatibleDrinks = DRINK_TYPES_LIST.filter((d) => d.compatibleMethods.includes(brewMethod));
+  const bumpHint = bumpVersion
+    ? t('recipe.editPage.bumpHint.on')
+        .replace('{next}', String(nextVersion))
+        .replace('{current}', String(currentVersion))
+    : t('recipe.editPage.bumpHint.off').replace('{current}', String(currentVersion));
 
   /**
-   * Builds the `RecipeUpdate` payload and submits it to the `/recipes/:id/edit` action; the
-   * result (navigate or error list) is handled by `useActionFeedback` above.
+   * Builds the update body with {@link buildRecipeUpdatePayload} (cleared inputs as `null`,
+   * cleared lists as `[]`, unrendered fields omitted) and submits it to the
+   * `/recipes/:id/edit` action; the result (navigate or errors) is handled by
+   * `useActionFeedback` above.
    */
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
     setError('');
-    // Build the update payload. `RecipeUpdate` is `RecipeCreateObjectSchema`
-    // (all fields optional) plus the required `bumpVersion` flag (Zod
-    // `.default(false)` makes it non-optional in `z.infer`). Optional fields
-    // are sent as `undefined` so the API preserves existing values.
-    const data: RecipeUpdate = {
-      title: title.trim(),
+    setFieldErrors({});
+    const data = buildRecipeUpdatePayload({
+      title,
       visibility,
       brewMethod,
       drinkType,
       bumpVersion,
-      productName: productName || undefined,
-      coffeeBrand: coffeeBrand || undefined,
-      coffeeProcessing: coffeeProcessing || undefined,
-      grinder: grinder || undefined,
-      grindSize: grindSize || undefined,
-      brewerDetails: brewerDetails || undefined,
-      groundWeightGrams: groundWeightGrams ? Number(groundWeightGrams) : undefined,
-      extractionTimeSeconds: extractionTimeSeconds ? Number(extractionTimeSeconds) : undefined,
-      extractionVolumeMl: extractionVolumeMl ? Number(extractionVolumeMl) : undefined,
-      temperatureCelsius: temperatureCelsius ? Number(temperatureCelsius) : undefined,
-      tds: tds !== '' ? Number(tds) : null,
-      personalNotes: personalNotes || undefined,
-      preparationNotes: preparationNotes.trim(),
-      rating: rating ? Number(rating) : undefined,
-      emojiTag: (emojiTag || undefined) as RecipeUpdate['emojiTag'],
-      tasteNoteIds: tasteNoteIds.length > 0 ? tasteNoteIds : undefined,
-      tasteNoteIntensities: tasteNoteIds.length > 0 ? tasteNoteIntensities : undefined,
-      roastDate: roastDate || undefined,
-      packageOpenDate: packageOpenDate || undefined,
-      grindDate: grindDate || undefined,
-    };
-    // JSON round-trip drops the `undefined` fields, exactly as the HTTP body would.
-    fetcher.submit(JSON.parse(JSON.stringify(data)), {
+      productName,
+      coffeeBrand,
+      coffeeProcessing,
+      roastDate,
+      packageOpenDate,
+      grindDate,
+      grinder,
+      grindSize,
+      brewerDetails,
+      groundWeightGrams,
+      extractionTimeSeconds,
+      extractionVolumeMl,
+      temperatureCelsius,
+      tds,
+      rating,
+      emojiTag,
+      preparationNotes,
+      personalNotes,
+      tasteNoteIds,
+      tasteNoteIntensities,
+      equipmentIds,
+      coffeeVarietyId: coffeeVariety?.id ?? null,
+    });
+    fetcher.submit(data, {
       method: 'post',
       encType: 'application/json',
       defaultShouldRevalidate: false,
@@ -187,20 +251,28 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="card">
-          <label className="flex items-center gap-2 mb-4 cursor-pointer">
+          <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={bumpVersion}
               onChange={(e) => setBumpVersion(e.target.checked)}
+              aria-describedby={BUMP_HINT_ID}
             />
             <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               {t('recipe.editPage.bumpVersion')}
             </span>
           </label>
+          <p
+            id={BUMP_HINT_ID}
+            className="text-xs mt-1 ml-6"
+            style={{ color: 'var(--text-tertiary)' }}
+          >
+            {bumpHint}
+          </p>
         </div>
 
         <Section title={t('recipe.form.basicInfo')}>
-          <Field label={t('recipe.form.title')} required>
+          <Field label={t('recipe.form.title')} required error={fieldErrors.title}>
             <input
               type="text"
               value={title}
@@ -208,7 +280,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
               className="input-field"
             />
           </Field>
-          <Field label={t('recipe.visibility')}>
+          <Field label={t('recipe.visibility')} error={fieldErrors.visibility}>
             <select
               value={visibility}
               onChange={(e) => setVisibility(e.target.value as Visibility)}
@@ -225,7 +297,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
 
         <Section title={t('recipe.form.brewConfig')}>
           <div className="grid grid-cols-2 gap-4">
-            <Field label={t('recipe.brewMethod')} required>
+            <Field label={t('recipe.brewMethod')} required error={fieldErrors.brewMethod}>
               <select
                 value={brewMethod}
                 onChange={(e) => setBrewMethod(e.target.value as BrewMethod)}
@@ -238,7 +310,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 ))}
               </select>
             </Field>
-            <Field label={t('recipe.drinkType')} required>
+            <Field label={t('recipe.drinkType')} required error={fieldErrors.drinkType}>
               <select
                 value={drinkType}
                 onChange={(e) => setDrinkType(e.target.value as DrinkType)}
@@ -254,9 +326,18 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
           </div>
         </Section>
 
+        <Section title={t('equipment.title')}>
+          <EquipmentPicker
+            equipment={pickableEquipment}
+            selectedIds={equipmentIds}
+            onChange={setEquipmentIds}
+          />
+          <FieldErrorText message={fieldErrors.equipmentIds} />
+        </Section>
+
         <Section title={t('recipe.form.coffeeIdentity')}>
           <div className="grid grid-cols-2 gap-4">
-            <Field label={t('recipe.productName')}>
+            <Field label={t('recipe.productName')} error={fieldErrors.productName}>
               <input
                 type="text"
                 value={productName}
@@ -264,7 +345,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 className="input-field"
               />
             </Field>
-            <Field label={t('recipe.coffeeBrand')}>
+            <Field label={t('recipe.coffeeBrand')} error={fieldErrors.coffeeBrand}>
               <input
                 type="text"
                 value={coffeeBrand}
@@ -272,7 +353,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 className="input-field"
               />
             </Field>
-            <Field label={t('bean.processing')}>
+            <Field label={t('bean.processing')} error={fieldErrors.coffeeProcessing}>
               <input
                 type="text"
                 value={coffeeProcessing}
@@ -282,7 +363,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-4 mt-4">
-            <Field label={t('recipe.roastDate')}>
+            <Field label={t('recipe.roastDate')} error={fieldErrors.roastDate}>
               <input
                 type="date"
                 value={roastDate}
@@ -290,7 +371,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 className="input-field"
               />
             </Field>
-            <Field label={t('recipe.packageOpenDate')}>
+            <Field label={t('recipe.packageOpenDate')} error={fieldErrors.packageOpenDate}>
               <input
                 type="date"
                 value={packageOpenDate}
@@ -298,7 +379,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 className="input-field"
               />
             </Field>
-            <Field label={t('recipe.grindDate')}>
+            <Field label={t('recipe.grindDate')} error={fieldErrors.grindDate}>
               <input
                 type="date"
                 value={grindDate}
@@ -307,11 +388,15 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
               />
             </Field>
           </div>
+          <div className="mt-4">
+            <CoffeeVarietyPicker value={coffeeVariety} onChange={setCoffeeVariety} />
+            <FieldErrorText message={fieldErrors.coffeeVarietyId} />
+          </div>
         </Section>
 
         <Section title={t('recipe.form.brewParams')}>
           <div className="grid grid-cols-2 gap-4">
-            <Field label={t('recipe.grinder')}>
+            <Field label={t('recipe.grinder')} error={fieldErrors.grinder}>
               <input
                 type="text"
                 value={grinder}
@@ -319,7 +404,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 className="input-field"
               />
             </Field>
-            <Field label={t('recipe.grindSize')}>
+            <Field label={t('recipe.grindSize')} error={fieldErrors.grindSize}>
               <input
                 type="text"
                 value={grindSize}
@@ -327,7 +412,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 className="input-field"
               />
             </Field>
-            <Field label={t('recipe.mainBrewer')}>
+            <Field label={t('recipe.mainBrewer')} error={fieldErrors.brewerDetails}>
               <input
                 type="text"
                 value={brewerDetails}
@@ -336,7 +421,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 placeholder={t('recipe.form.mainBrewerPlaceholder')}
               />
             </Field>
-            <Field label={t('recipe.form.dose')}>
+            <Field label={t('recipe.form.dose')} error={fieldErrors.groundWeightGrams}>
               <input
                 type="number"
                 value={groundWeightGrams}
@@ -346,7 +431,10 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 min="0"
               />
             </Field>
-            <Field label={t('recipe.form.extractionTime')}>
+            <Field
+              label={t('recipe.form.extractionTime')}
+              error={fieldErrors.extractionTimeSeconds}
+            >
               <input
                 type="number"
                 value={extractionTimeSeconds}
@@ -354,7 +442,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 className="input-field"
               />
             </Field>
-            <Field label={t('recipe.form.yield')}>
+            <Field label={t('recipe.form.yield')} error={fieldErrors.extractionVolumeMl}>
               <input
                 type="number"
                 value={extractionVolumeMl}
@@ -364,7 +452,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 min="0"
               />
             </Field>
-            <Field label={t('recipe.form.temperature')}>
+            <Field label={t('recipe.form.temperature')} error={fieldErrors.temperatureCelsius}>
               <input
                 type="number"
                 value={temperatureCelsius}
@@ -373,7 +461,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 step="0.5"
               />
             </Field>
-            <Field label={t('recipe.form.tds')}>
+            <Field label={t('recipe.form.tds')} error={fieldErrors.tds}>
               <input
                 type="number"
                 value={tds}
@@ -390,7 +478,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
 
         <Section title={t('recipe.form.tasteRating')}>
           <div className="grid grid-cols-2 gap-4">
-            <Field label={t('recipe.form.rating')}>
+            <Field label={t('recipe.form.rating')} error={fieldErrors.rating}>
               <input
                 type="number"
                 value={rating}
@@ -400,7 +488,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
                 max="10"
               />
             </Field>
-            <Field label={t('recipe.form.howDidItTaste')}>
+            <Field label={t('recipe.form.howDidItTaste')} error={fieldErrors.emojiTag}>
               <select
                 value={emojiTag}
                 onChange={(e) => setEmojiTag(e.target.value)}
@@ -428,6 +516,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
               intensities={tasteNoteIntensities}
               onIntensitiesChange={setTasteNoteIntensities}
             />
+            <FieldErrorText message={fieldErrors.tasteNoteIds} />
           </div>
         </Section>
 
@@ -439,6 +528,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
             rows={6}
             required
           />
+          <FieldErrorText message={fieldErrors.preparationNotes} />
         </Section>
 
         <Section title={t('recipe.brewerNotes')}>
@@ -457,6 +547,7 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
             aria-label={t('recipe.brewerNotes')}
             aria-describedby={BREWER_NOTES_HINT_ID}
           />
+          <FieldErrorText message={fieldErrors.personalNotes} />
         </Section>
 
         <div className="flex gap-3">
@@ -469,5 +560,15 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
         </div>
       </form>
     </div>
+  );
+}
+
+/** A field-level validation message under a control that is not wrapped in a `Field`. */
+function FieldErrorText({ message }: { message: string | undefined }) {
+  if (!message) return null;
+  return (
+    <span className="block text-xs mt-1" style={{ color: 'var(--error)' }}>
+      {message}
+    </span>
   );
 }

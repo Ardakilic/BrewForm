@@ -1066,3 +1066,29 @@ describe('RecipeDetailPage — head rules by visibility (15.11 d-f)', () => {
     expect(jsonLd()).not.toBeNull();
   });
 });
+
+describe('RecipeDetailPage — coffee variety', () => {
+  it('links the coffee variety to its variety page when one is set', async () => {
+    mockRecipeApiGet.mockResolvedValue({
+      ...sampleRecipe,
+      currentVersion: {
+        ...sampleRecipe.currentVersion,
+        coffeeVarietyId: 'var-pb',
+        coffeeVarietyName: 'Pink Bourbon',
+      },
+    } as unknown as RecipeDetailOutput);
+
+    renderDetailPage();
+
+    const link = await screen.findByRole('link', { name: 'Pink Bourbon' });
+    expect(link).toHaveAttribute('href', '/coffee-varieties/var-pb');
+    expect(screen.getByRole('region', { name: 'recipe.coffeeVariety' })).toContainElement(link);
+  });
+
+  it('shows no variety when the current version has none', async () => {
+    renderDetailPage();
+
+    await screen.findByTestId('stat-cards');
+    expect(screen.queryByRole('region', { name: 'recipe.coffeeVariety' })).toBeNull();
+  });
+});

@@ -240,6 +240,27 @@ export function RecipeDetailPage() {
               bean={recipe.bean ?? v?.bean ?? null}
             />
 
+            {/* The linked catalogue variety, opening its variety page (and recipe list). */}
+            {v?.coffeeVarietyId && v.coffeeVarietyName && (
+              <section className="card" aria-label={t('recipe.coffeeVariety')}>
+                <span
+                  className="text-xs font-semibold uppercase tracking-widest"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
+                  {t('recipe.coffeeVariety')}
+                </span>
+                <p className="mt-2 text-sm">
+                  <Link
+                    to={`/coffee-varieties/${v.coffeeVarietyId}`}
+                    className="font-semibold hover:underline"
+                    style={{ color: 'var(--accent-primary)' }}
+                  >
+                    {v.coffeeVarietyName}
+                  </Link>
+                </p>
+              </section>
+            )}
+
             <BrewTimeline
               extractionTimeSeconds={v?.extractionTimeSeconds}
               preInfusionTimeSeconds={v?.preInfusionTimeSeconds}

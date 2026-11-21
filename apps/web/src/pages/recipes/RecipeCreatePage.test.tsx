@@ -25,6 +25,7 @@ vi.mock('../../api/index.ts', () => ({
   beanApi: { get: vi.fn() },
   recipeApi: { create: vi.fn() },
   setupApi: { list: vi.fn() },
+  coffeeVarietyApi: { search: vi.fn() },
 }));
 
 vi.mock('../../api/static-cache.ts', () => ({
@@ -37,9 +38,10 @@ vi.mock('../../components/taste/TasteAutocomplete.tsx', () => ({
 }));
 
 import { ApiError } from '../../api/errors.ts';
-import { beanApi, recipeApi, setupApi } from '../../api/index.ts';
+import { beanApi, coffeeVarietyApi, recipeApi, setupApi } from '../../api/index.ts';
 import { getEquipmentCached } from '../../api/static-cache.ts';
 import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { coffeeVarietySearchLoader } from '../../routes/resources/coffee-varieties.ts';
 import { renderWithAppProviders } from '../../test-utils/render.tsx';
 import { action, loader } from './RecipeCreatePage.data.ts';
 import { RecipeCreatePage } from './RecipeCreatePage.tsx';
@@ -48,6 +50,7 @@ const mockRecipeApi = vi.mocked(recipeApi);
 const mockBeanApi = vi.mocked(beanApi);
 const mockSetupApi = vi.mocked(setupApi);
 const mockEquipment = vi.mocked(getEquipmentCached);
+const mockVarietySearch = vi.mocked(coffeeVarietyApi.search);
 
 const GRINDER = { id: 'eq-1', name: 'Niche Zero', type: 'grinder' } as EquipmentOutput;
 const SETUP = {
@@ -77,6 +80,7 @@ function renderPage(url = '/recipes/new') {
         errorElement: <RouteErrorState />,
       },
       { path: '/recipes/:slug', element: <div>RECIPE PAGE</div> },
+      { path: '/resources/coffee-varieties/search', loader: coffeeVarietySearchLoader },
     ],
     { initialEntries: [url], auth: 'user' },
   );
@@ -94,7 +98,17 @@ beforeEach(() => {
   mockEquipment.mockResolvedValue([GRINDER]);
   mockSetupApi.list.mockResolvedValue([SETUP]);
   mockBeanApi.get.mockResolvedValue(BEAN);
+  mockVarietySearch.mockResolvedValue([{ id: 'var-gesha', name: 'Gesha', category: 'variety' }]);
 });
+
+/** Clicks submit and returns the `RecipeCreate` body the action forwarded to the API. */
+async function submitAndGetBody(user: ReturnType<typeof userEvent.setup>) {
+  mockRecipeApi.create.mockResolvedValue({ slug: 'morning-shot' } as RecipeDetailOutput);
+  await user.click(screen.getByRole('button', { name: t('recipe.createPage.submit') }));
+  await screen.findByText('RECIPE PAGE');
+  expect(mockRecipeApi.create).toHaveBeenCalledTimes(1);
+  return mockRecipeApi.create.mock.calls[0][0] as Record<string, unknown>;
+}
 
 describe('/recipes/new loader', () => {
   it('loads equipment and setups with request.signal and no bean without ?beanId', async () => {
@@ -218,6 +232,67 @@ describe('/recipes/new action', () => {
     await user.click(screen.getByRole('button', { name: t('recipe.createPage.submit') }));
 
     expect(await screen.findByText('Network down')).toBeInTheDocument();
+  });
+});
+
+describe('RecipeCreatePage — bean and coffee variety links', () => {
+  it('sends beanId when opened from a bean (?beanId=)', async () => {
+    const user = userEvent.setup();
+    renderPage('/recipes/new?beanId=bean-1');
+    await screen.findByDisplayValue('Yirgacheffe');
+
+    await fillRequired(user);
+    const body = await submitAndGetBody(user);
+
+    expect(body.beanId).toBe('bean-1');
+  });
+
+  it('sends no beanId without ?beanId', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Niche Zero');
+
+    await fillRequired(user);
+    const body = await submitAndGetBody(user);
+
+    expect('beanId' in body).toBe(false);
+  });
+
+  it('sends no beanId when the ?beanId bean could not be loaded', async () => {
+    mockBeanApi.get.mockRejectedValue(new ApiError('NOT_FOUND', 'missing', undefined, 404));
+    const user = userEvent.setup();
+    renderPage('/recipes/new?beanId=gone');
+    await screen.findByText('Niche Zero');
+
+    await fillRequired(user);
+    const body = await submitAndGetBody(user);
+
+    expect('beanId' in body).toBe(false);
+  });
+
+  it('sends the selected coffee variety as coffeeVarietyId', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Niche Zero');
+
+    await user.type(screen.getByRole('textbox', { name: t('recipe.form.coffeeVariety') }), 'ges');
+    await user.click(await screen.findByText('Gesha'));
+    await fillRequired(user);
+    const body = await submitAndGetBody(user);
+
+    expect(body.coffeeVarietyId).toBe('var-gesha');
+    expect(mockVarietySearch).toHaveBeenCalledWith('ges', { signal: expect.any(AbortSignal) });
+  });
+
+  it('sends no coffeeVarietyId when no variety is picked', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Niche Zero');
+
+    await fillRequired(user);
+    const body = await submitAndGetBody(user);
+
+    expect('coffeeVarietyId' in body).toBe(false);
   });
 });
 
