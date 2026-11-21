@@ -717,13 +717,30 @@ describe('RecipeFilterSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('accepts dateFrom as ISO string and coerces to Date', () => {
+  it('keeps a YYYY-MM-DD dateFrom as a string', () => {
     const result = RecipeFilterSchema.safeParse({ dateFrom: '2025-01-01' });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.dateFrom).toBeInstanceOf(Date);
+      expect(result.data.dateFrom).toBe('2025-01-01');
     }
   });
+
+  it('keeps a YYYY-MM-DD dateTo as a string', () => {
+    const result = RecipeFilterSchema.safeParse({ dateTo: '2026-11-21' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.dateTo).toBe('2026-11-21');
+    }
+  });
+
+  for (const field of ['dateFrom', 'dateTo'] as const) {
+    for (const value of ['2026-11-21T10:00:00Z', 'not-a-date', '2026-02-30']) {
+      it(`rejects ${field}=${value}`, () => {
+        const result = RecipeFilterSchema.safeParse({ [field]: value });
+        expect(result.success).toBe(false);
+      });
+    }
+  }
 
   it('rejects minRating below 1', () => {
     const result = RecipeFilterSchema.safeParse({ minRating: 0 });

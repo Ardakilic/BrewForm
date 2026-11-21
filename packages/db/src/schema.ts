@@ -159,7 +159,14 @@ export const userPreferences = pgTable('user_preferences', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Recipes; unique `slug`, soft-deleted via `deletedAt`, denormalized like/comment/fork counts. */
+/**
+ * Recipes; unique `slug`, soft-deleted via `deletedAt`, denormalized like/comment/fork counts.
+ *
+ * `createdAt` is `timestamp(3) with time zone` (millisecond precision, migration 0020): it is
+ * the keyset of `findCursor` (recipe list and follow feed), whose cursor carries a JavaScript
+ * `Date` (milliseconds only). With microsecond values a cursor never equalled the stored value,
+ * so ascending pages repeated a row and descending pages skipped rows inside one millisecond.
+ */
 export const recipes = pgTable(
   'recipe',
   {
@@ -183,7 +190,7 @@ export const recipes = pgTable(
       (): AnyPgColumn => recipes.id,
     ),
     featured: boolean('featured').notNull().default(false),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },

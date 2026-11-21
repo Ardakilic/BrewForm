@@ -166,14 +166,14 @@ recipe.get(
         in: 'query',
         required: false,
         schema: { type: 'string', format: 'date' },
-        description: 'Recipes created on or after this date (inclusive)',
+        description: 'Recipes created on or after this UTC day (inclusive, `YYYY-MM-DD`)',
       },
       {
         name: 'dateTo',
         in: 'query',
         required: false,
         schema: { type: 'string', format: 'date' },
-        description: 'Recipes created on or before this date (inclusive)',
+        description: 'Recipes created on or before this UTC day (inclusive, `YYYY-MM-DD`)',
       },
       {
         name: 'minRating',

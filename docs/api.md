@@ -183,6 +183,8 @@ is unchanged.
   `search`. With another `sortBy` or an active search, the cursor is ignored and the response is
   offset page 1 (`meta.pagination`), because those orders do not follow `(createdAt, id)`.
 - A malformed cursor answers `400 INVALID_CURSOR`.
+- `createdAt` has millisecond precision, so the cursor's `createdAt` equals the stored value and
+  keyset pages never repeat or skip a recipe.
 
 ## Recipe search and filters
 
@@ -196,8 +198,8 @@ one filter set; the [reference](api-reference.md#recipes) lists every parameter.
   the match is trigram-indexed (`pg_trgm`). A search uses offset pagination.
 - **`author`**: case-insensitive substring of the author's username or display name (at most 100
   characters, matched literally). `authorId` is the exact-UUID alternative.
-- **`dateFrom` / `dateTo`**: ISO 8601 dates or timestamps on the recipe's creation time, inclusive
-  on both ends and usable on their own. A bare date means midnight UTC at the start of that day.
+- **`dateFrom` / `dateTo`**: UTC calendar days (`YYYY-MM-DD`) on the recipe's creation time,
+  inclusive on both ends and usable on their own. Timestamps are rejected with `400`.
 - **`minRating` / `maxRating`**: integers 1–10 on the recipe's average rating, inclusive and usable
   on their own. Unrated recipes never match a rating filter.
 - **`sortBy`**: `createdAt` (default), `likeCount` or `rating` (average rating, unrated recipes last

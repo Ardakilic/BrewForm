@@ -19,7 +19,7 @@ import {
   users,
 } from '@brewform/db/schema';
 import { decodeCursor, encodeCursor } from '@brewform/shared/utils';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
@@ -391,6 +391,85 @@ describe('Recipe model — findCursor edge cases', () => {
     expect(result.hasMore).toBe(true);
     const decoded = decodeCursor(result.nextCursor!);
     expect(decoded.id).toBe(r2.id);
+  });
+});
+
+describe('findCursor — sub-millisecond created_at', () => {
+  let author: typeof users.$inferSelect;
+  const createdRecipes: string[] = [];
+
+  /**
+   * Insert a recipe and then store a sub-millisecond `created_at` through a `::timestamptz`
+   * cast, the way a `now()` default does, which a JavaScript `Date` cannot express.
+   */
+  async function createRecipeAt(title: string, isoMicros: string) {
+    const recipe = await createRecipe(author.id, title, new Date('2026-01-01T00:00:00.000Z'));
+    createdRecipes.push(recipe.id);
+    await db
+      .update(recipes)
+      .set({ createdAt: sql`${isoMicros}::timestamptz` })
+      .where(eq(recipes.id, recipe.id));
+    return recipe.id;
+  }
+
+  /** Follow `nextCursor` with `perPage=1` for at most 10 pages and collect every page's ids. */
+  async function pageAll(start: { createdAt: string; id: string }, sortOrder: 'asc' | 'desc') {
+    const ids: string[] = [];
+    let cursor = start;
+    let lastHasMore = true;
+    for (let page = 0; page < 10 && lastHasMore; page++) {
+      const result = await model.findCursor(eq(recipes.authorId, author.id), cursor, 1, sortOrder);
+      ids.push(...result.recipes.map((r) => r.id as string));
+      lastHasMore = result.hasMore;
+      if (result.nextCursor) cursor = decodeCursor(result.nextCursor);
+    }
+    return { ids, lastHasMore };
+  }
+
+  beforeAll(async () => {
+    author = await createUser('cursor-micros');
+  });
+
+  afterEach(async () => {
+    if (createdRecipes.length) {
+      await db.delete(recipes).where(inArray(recipes.id, createdRecipes));
+      createdRecipes.length = 0;
+    }
+  });
+
+  afterAll(async () => {
+    if (createdRecipes.length) {
+      await db.delete(recipes).where(inArray(recipes.id, createdRecipes));
+    }
+    await db.delete(users).where(eq(users.id, author.id));
+  });
+
+  it('pages ascending through sub-millisecond rows once each, in order', async () => {
+    const a = await createRecipeAt('Micros A', '2026-01-01T00:00:00.123400Z');
+    const b = await createRecipeAt('Micros B', '2026-01-01T00:00:00.123600Z');
+    const c = await createRecipeAt('Micros C', '2026-01-01T00:00:00.125200Z');
+
+    const { ids, lastHasMore } = await pageAll(
+      { createdAt: '2000-01-01T00:00:00.000Z', id: '00000000-0000-0000-0000-000000000000' },
+      'asc',
+    );
+
+    expect(ids).toEqual([a, b, c]);
+    expect(lastHasMore).toBe(false);
+  });
+
+  it('pages descending without skipping rows inside one millisecond', async () => {
+    const a = await createRecipeAt('Micros D', '2026-01-01T00:00:00.125100Z');
+    const b = await createRecipeAt('Micros E', '2026-01-01T00:00:00.125200Z');
+
+    const { ids, lastHasMore } = await pageAll(
+      { createdAt: '2099-01-01T00:00:00.000Z', id: 'ffffffff-ffff-ffff-ffff-ffffffffffff' },
+      'desc',
+    );
+
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids)).toEqual(new Set([a, b]));
+    expect(lastHasMore).toBe(false);
   });
 });
 

@@ -155,8 +155,6 @@ interface RecipeFilterCriteria {
   mainBrewer?: string;
   coffeeVarietyId?: string;
   author?: string;
-  dateFrom?: Date;
-  dateTo?: Date;
   minRating?: number;
   maxRating?: number;
 }
@@ -249,14 +247,6 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
           .where(or(ilike(users.username, pattern), ilike(users.displayName, pattern))),
       ),
     );
-  }
-
-  // F11: date range filter on recipes.createdAt
-  if (filters.dateFrom) {
-    conditions.push(gte(recipes.createdAt, filters.dateFrom));
-  }
-  if (filters.dateTo) {
-    conditions.push(lte(recipes.createdAt, filters.dateTo));
   }
 
   // F11: rating range filter via avg(userRecipeRatings.rating) subquery
@@ -475,33 +465,6 @@ describe('buildRecipeFilters', () => {
     const orConds = orCond.conditions!;
     expect(orConds[0]).toEqual(ilike(users.username, '%\\%alice\\%%'));
     expect(orConds[1]).toEqual(ilike(users.displayName, '%\\%alice\\%%'));
-  });
-
-  // --- F11: date range filter ---
-  it('buildRecipeFilters: dateFrom generates gte condition', () => {
-    const date = new Date('2025-01-01');
-    const conditions = buildRecipeFilters({ dateFrom: date });
-    expect(conditions).toHaveLength(1);
-    expect(conditions[0].type).toBe('gte');
-    expect(conditions[0].column).toBe(recipes.createdAt);
-    expect(conditions[0].value).toBe(date);
-  });
-
-  it('buildRecipeFilters: dateTo generates lte condition', () => {
-    const date = new Date('2025-12-01');
-    const conditions = buildRecipeFilters({ dateTo: date });
-    expect(conditions).toHaveLength(1);
-    expect(conditions[0].type).toBe('lte');
-    expect(conditions[0].column).toBe(recipes.createdAt);
-    expect(conditions[0].value).toBe(date);
-  });
-
-  it('buildRecipeFilters: both dateFrom and dateTo generate two conditions', () => {
-    const conditions = buildRecipeFilters({
-      dateFrom: new Date('2025-01-01'),
-      dateTo: new Date('2025-12-01'),
-    });
-    expect(conditions).toHaveLength(2);
   });
 
   // --- F11: rating range filter ---

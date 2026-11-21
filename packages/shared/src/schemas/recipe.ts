@@ -362,15 +362,17 @@ export const RecipeFilterSchema = z.object({
    */
   author: z.string().max(100).optional(),
   /**
-   * Filter to recipes created on or after this date (inclusive).
-   * Coerced from ISO 8601 date string. NEW in F11.
+   * Filter to recipes created on or after this UTC calendar day (inclusive): a `YYYY-MM-DD`
+   * string, kept as a string, matched from `00:00:00.000Z` of that day. Timestamps and
+   * impossible days (`2026-02-30`) are rejected. NEW in F11, date-only since wave-6 remediation.
    */
-  dateFrom: z.coerce.date().optional(),
+  dateFrom: z.iso.date().optional(),
   /**
-   * Filter to recipes created on or before this date (inclusive).
-   * Coerced from ISO 8601 date string. NEW in F11.
+   * Filter to recipes created on or before this UTC calendar day (inclusive): a `YYYY-MM-DD`
+   * string, kept as a string, matched up to (excluding) `00:00:00.000Z` of the next day.
+   * Timestamps and impossible days are rejected. NEW in F11, date-only since wave-6 remediation.
    */
-  dateTo: z.coerce.date().optional(),
+  dateTo: z.iso.date().optional(),
   /**
    * Minimum average rating (1-10 inclusive). Recipes with zero ratings
    * are excluded (NULL average fails gte). NEW in F11.

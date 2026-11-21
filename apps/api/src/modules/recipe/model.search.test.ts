@@ -7,7 +7,8 @@
  * single version, never summed), global ordering across pages, the sort key and
  * `recipes.id` tie-breaks, `sortBy=rating` with unrated recipes last, the bounded
  * page size on a 1000-match fixture (two statements captured by a Drizzle
- * logger), literal `%`, `_` and `\` matching, and that hidden recipes never match.
+ * logger), literal `%`, `_` and `\` matching, that hidden recipes never match, and
+ * the inclusive UTC-day `dateFrom`/`dateTo` filter through `service.listRecipes`.
  *
  * Every listing is scoped to the test's own author (`authorId` filter) so seed
  * data and other tests' rows in `brewform_test` cannot change the results. Rows
@@ -18,7 +19,7 @@ import '../../test-setup.ts';
 import { client, db } from '@brewform/db';
 import * as schema from '@brewform/db/schema';
 import { recipes, recipeVersions, userRecipeRatings, users } from '@brewform/db/schema';
-import { RecipeListItemOutputSchema } from '@brewform/shared/schemas';
+import { RecipeFilterSchema, RecipeListItemOutputSchema } from '@brewform/shared/schemas';
 import { inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
@@ -484,6 +485,67 @@ describe('Recipe model — bounded 1000-match search (advanced-search)', () => {
     });
     expect(result.recipes).toEqual([]);
     expect(result.total).toBe(1000);
+  });
+});
+
+describe('date range filter (advanced-search)', () => {
+  let author: typeof users.$inferSelect;
+  const createdRecipes: string[] = [];
+  /** Recipe ids keyed by their creation instant. */
+  const byInstant = new Map<string, string>();
+  const INSTANTS = [
+    '2026-11-20T23:59:59.999Z',
+    '2026-11-21T00:00:00.000Z',
+    '2026-11-21T12:00:00.000Z',
+    '2026-11-21T23:59:59.999Z',
+    '2026-11-22T00:00:00.000Z',
+  ];
+
+  /** List the author's public recipes through the real service with the parsed filters. */
+  async function list(query: Record<string, string>) {
+    const filters = RecipeFilterSchema.parse({ authorId: author.id, ...query });
+    const result = await service.listRecipes(filters, 1, 20);
+    return new Set(result.recipes.map((r) => r.id as string));
+  }
+
+  /** The recipe ids created at the given instants. */
+  function idsAt(...instants: string[]) {
+    return new Set(instants.map((instant) => byInstant.get(instant)));
+  }
+
+  beforeAll(async () => {
+    author = await createUser('search-dates');
+    for (const instant of INSTANTS) {
+      const recipe = await createRecipe(author.id, {
+        title: `Dated ${instant}`,
+        createdAt: new Date(instant),
+      });
+      createdRecipes.push(recipe.id);
+      byInstant.set(instant, recipe.id);
+    }
+  });
+
+  afterAll(async () => {
+    await deleteRecipes(createdRecipes);
+    await db.delete(users).where(inArray(users.id, [author.id]));
+  });
+
+  it('dateFrom and dateTo on the same day return every recipe of that UTC day', async () => {
+    expect(await list({ dateFrom: '2026-11-21', dateTo: '2026-11-21' })).toEqual(
+      idsAt(INSTANTS[1], INSTANTS[2], INSTANTS[3]),
+    );
+  });
+
+  it('dateTo alone includes the whole chosen day', async () => {
+    expect(await list({ dateTo: '2026-11-21' })).toEqual(
+      idsAt(INSTANTS[0], INSTANTS[1], INSTANTS[2], INSTANTS[3]),
+    );
+  });
+
+  it('dateFrom alone starts at midnight UTC of the chosen day', async () => {
+    expect(await list({ dateFrom: '2026-11-21' })).toEqual(
+      idsAt(INSTANTS[1], INSTANTS[2], INSTANTS[3], INSTANTS[4]),
+    );
   });
 });
 

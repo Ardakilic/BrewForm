@@ -46,6 +46,7 @@ import {
   ilike,
   inArray,
   isNull,
+  lt,
   lte,
   max,
   not,
@@ -182,10 +183,10 @@ export interface RecipeFilterCriteria {
   coffeeVarietyId?: string;
   /** NEW F11: author username/displayName substring filter. */
   author?: string;
-  /** NEW F11: recipes created on or after this date (inclusive). */
-  dateFrom?: Date;
-  /** NEW F11: recipes created on or before this date (inclusive). */
-  dateTo?: Date;
+  /** NEW F11: recipes created on or after this UTC day (`YYYY-MM-DD`, inclusive). */
+  dateFrom?: string;
+  /** NEW F11: recipes created on or before this UTC day (`YYYY-MM-DD`, inclusive). */
+  dateTo?: string;
   /** NEW F11: minimum average rating (1-10). */
   minRating?: number;
   /** NEW F11: maximum average rating (1-10). */
@@ -200,6 +201,8 @@ export interface RecipeFilterCriteria {
  * {@link normalizeSearchTerm} and {@link toContainsPattern}: a value that is empty after
  * trimming adds no condition, and `%`, `_` and `\` match literally. `search` becomes a
  * single `inArray(recipes.id, union(titleIds, versionRecipeIds))` condition.
+ * `dateFrom`/`dateTo` are inclusive UTC days: `gte(createdAt, <dateFrom 00:00:00.000Z>)` and
+ * `lt(createdAt, <the day after dateTo 00:00:00.000Z>)`.
  *
  * @param filters - The shared filter criteria (see {@link RecipeFilterCriteria}).
  * @returns The filter conditions only (no visibility or other caller base conditions).
@@ -284,12 +287,15 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
     );
   }
 
-  // F11: date range filter on recipes.createdAt
+  // F11: date range filter on recipes.createdAt. Both ends are whole UTC days (user decision 3):
+  // from 00:00:00.000Z of dateFrom up to, but excluding, 00:00:00.000Z of the day after dateTo.
   if (filters.dateFrom) {
-    conditions.push(gte(recipes.createdAt, filters.dateFrom));
+    conditions.push(gte(recipes.createdAt, new Date(`${filters.dateFrom}T00:00:00.000Z`)));
   }
   if (filters.dateTo) {
-    conditions.push(lte(recipes.createdAt, filters.dateTo));
+    const end = new Date(`${filters.dateTo}T00:00:00.000Z`);
+    end.setUTCDate(end.getUTCDate() + 1);
+    conditions.push(lt(recipes.createdAt, end));
   }
 
   // F11: rating range filter via avg(userRecipeRatings.rating) subquery
