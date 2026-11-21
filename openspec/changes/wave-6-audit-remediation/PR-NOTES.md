@@ -234,3 +234,20 @@ Execution Time: 0.218 ms
 - **Boot against an empty database.** The log order is `Entrypoint mode: serve` → migrations → `Database is empty, running seed...` → `Seeding complete.` → `Starting BrewForm API...`, and the container turns `healthy` through its own `HEALTHCHECK`. The process list shows `tini` plus one `node src/main.ts`. `docker stop` logs `HTTP server closed`, `Database connection closed`, `Email transporter closed`, `Cache connection closed`, `Rate-limit store closed` and `Graceful shutdown complete`, then exits `0`. A restart prints `Seed skipped — database already contains data (N users).`. `migrate` mode exits `0`, and `bogus` exits `2` with usage. A wrong password exits `1` before the API starts. `docker stop` during a hung migration exits at once (143). `RUN_MIGRATIONS=false` prints the skip line. Group 7's `docker run … --entrypoint node <image> /app/packages/db/src/check-identifiers.ts` works with the new image.
 - **`app-preview`.** The compose `runner` target built and booted as `healthy` against a migrated database: `/ready` returned `200`, and the OpenAPI and recipes endpoints returned `200`.
 - **Judgement calls.** The `prod-deps` install is filtered to `@brewform/api...` (only the API's production closure, not the web app's runtime dependencies). It also deletes `*.test.ts`, `test-helpers.ts`, `test-setup.ts`, `src/test-fixtures` and a stray `apps/api/uploads` from the build context. The shutdown handler keeps group 6's rate-limit store close as a fifth step after the cache.
+
+## Lint policy and merge truth fixes (t8, group 23)
+
+### Per-rule lint counts (task 23.14)
+Measured inside Docker before any fix with `pnpm exec biome lint --only=suspicious/useAwait --only=suspicious/noEmptyBlockStatements --only=suspicious/noExplicitAny apps packages` (Biome 2.6.6, `recommended` preset; `noExplicitAny` was a warning, the other two were off):
+
+| Rule | Total | Production | Tests / test utilities | Fix |
+|---|---|---|---|---|
+| `useAwait` | 63 | 6 (api 2, web 4) | 57 (api 30, web 22, db 3, shared 2) | Production loaders and `findById` keep `async` and `return await`; `RedisCacheProvider.close()` resolves explicitly. Test stubs return `Promise.resolve`/`Promise.reject`, and sync test bodies drop `async`. |
+| `noEmptyBlockStatements` | 121 | 2 (api `rate-limit/backend.ts`, db `migrate.ts`) | 119 (api 34, web 75, db 9, logger stream 1) | Every hit was an empty no-op function body; there were no empty `catch` blocks. The two production no-ops now carry an explanatory comment, and the test no-ops are explicit `() => undefined` / `() => Promise.resolve()`. |
+| `noExplicitAny` (unsuppressed) | 1 | 0 | 1 (`TasteNotesPage.test.tsx`, a suppression that formatting had moved off its line) | Typed `displayNameOf` helper. |
+
+There are 294 justified line-level `noExplicitAny` suppressions (293 in tests; 1 in production at the `hono-openapi` `requestBody` boundary in `utils/openapi/index.ts`, kept because the installed 1.x types still reject `z.toJSONSchema` output), plus 1 `noMisleadingCharacterClass` suppression in `sanitize.ts`. After the fixes the three rules are `"error"` in `biome.json`, and `make lint` exits 0. `packages/shared/src/lint-policy.test.ts` rejects range and file-level suppressions and any suppression without a rule path or justification.
+
+### Release notes
+- **Recipe merge.** `POST /api/v1/recipes/merge` now treats a source version whose recipe is soft-deleted as missing (`404 NOT_FOUND`, also for its author). Source access follows the shared `canViewRecipe` rule: another user's `unlisted` recipe can now be merged, and their `private` and `draft` recipes stay `403 FORBIDDEN`.
+- **robots.txt.** `Allow: /equipments` and `Allow: /equipment/` now sit before `Disallow: /equipment`, so the public equipment catalog and detail pages are crawlable again. The private `/equipment` page stays disallowed.
