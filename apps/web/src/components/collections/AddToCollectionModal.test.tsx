@@ -192,7 +192,7 @@ function routesWith(element: () => ReactElement): RouteObject[] {
 
 /** The page: the modal for {@link RECIPE_ID} with {@link modalProps}. */
 function ModalPage() {
-  return <AddToCollectionModal recipeId={RECIPE_ID} onClose={() => {}} {...modalProps} />;
+  return <AddToCollectionModal recipeId={RECIPE_ID} onClose={() => undefined} {...modalProps} />;
 }
 
 /** Renders the modal page on `/recipes/my-espresso`, signed in. */

@@ -940,7 +940,7 @@ describe('CommentSection — comment form', () => {
       user: regularUser,
       isAuthenticated: true,
     } as ReturnType<typeof useAuth>);
-    mockApi.get.mockReturnValue(new Promise(() => {}));
+    mockApi.get.mockReturnValue(new Promise(() => undefined));
 
     renderCommentSection();
 
@@ -948,7 +948,7 @@ describe('CommentSection — comment form', () => {
   });
 
   it('hides the form when not authenticated', () => {
-    mockApi.get.mockReturnValue(new Promise(() => {}));
+    mockApi.get.mockReturnValue(new Promise(() => undefined));
 
     renderCommentSection();
 

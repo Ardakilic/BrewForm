@@ -95,8 +95,8 @@ describe('RegisterPage', () => {
   });
 
   it('waits for the root loader before rendering the form', () => {
-    vi.mocked(authApi.registrationStatus).mockReturnValue(new Promise(() => {}));
-    vi.mocked(userApi.me).mockReturnValue(new Promise(() => {}));
+    vi.mocked(authApi.registrationStatus).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(userApi.me).mockReturnValue(new Promise(() => undefined));
     renderRegisterPage();
     expect(screen.getByText('root loading')).toBeInTheDocument();
     expect(screen.queryByPlaceholderText('you@example.com')).not.toBeInTheDocument();

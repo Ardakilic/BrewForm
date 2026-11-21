@@ -5,7 +5,7 @@ const CONSOLE_METHODS = ['info', 'debug', 'trace', 'warn', 'error'] as const;
 function spyOnAllConsole() {
   const spies: Record<string, ReturnType<typeof vi.spyOn>> = {};
   for (const m of CONSOLE_METHODS) {
-    spies[m] = vi.spyOn(console, m).mockImplementation(() => {});
+    spies[m] = vi.spyOn(console, m).mockImplementation(() => undefined);
   }
   return spies;
 }
@@ -106,7 +106,7 @@ describe('Web Console Logger', () => {
       const mod = await importModule();
       const log = mod.createLogger('test');
 
-      const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+      const spy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
       log.info('msg');
       expect(spy).toHaveBeenCalledWith('[test] msg');
     });
@@ -116,7 +116,7 @@ describe('Web Console Logger', () => {
       const mod = await importModule();
       const log = mod.createLogger('test');
 
-      const spy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      const spy = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
       log.debug('msg');
       expect(spy).toHaveBeenCalledWith('[test] msg');
     });
@@ -126,7 +126,7 @@ describe('Web Console Logger', () => {
       const mod = await importModule();
       const log = mod.createLogger('test');
 
-      const spy = vi.spyOn(console, 'trace').mockImplementation(() => {});
+      const spy = vi.spyOn(console, 'trace').mockImplementation(() => undefined);
       log.trace('msg');
       expect(spy).toHaveBeenCalledWith('[test] msg');
     });
@@ -136,7 +136,7 @@ describe('Web Console Logger', () => {
       const mod = await importModule();
       const log = mod.createLogger('test');
 
-      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
       log.warn('msg');
       expect(spy).toHaveBeenCalledWith('[test] msg');
     });
@@ -146,7 +146,7 @@ describe('Web Console Logger', () => {
       const mod = await importModule();
       const log = mod.createLogger('test');
 
-      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       log.error('msg');
       expect(spy).toHaveBeenCalledWith('[test] msg');
     });
@@ -156,7 +156,7 @@ describe('Web Console Logger', () => {
       const mod = await importModule();
       const log = mod.createLogger('test');
 
-      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       log.fatal('msg');
       expect(spy).toHaveBeenCalledWith('[test] msg');
     });
@@ -168,7 +168,7 @@ describe('Web Console Logger', () => {
       const mod = await importModule();
       const log = mod.createLogger('test');
 
-      const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+      const spy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
       log.info('hello world');
       expect(spy).toHaveBeenCalledWith('[test] hello world');
     });
@@ -178,7 +178,7 @@ describe('Web Console Logger', () => {
       const mod = await importModule();
       const log = mod.createLogger('test');
 
-      const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+      const spy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
       log.info({ key: 'value' }, 'context');
       expect(spy).toHaveBeenCalledWith('[test] context {"key":"value"}');
     });

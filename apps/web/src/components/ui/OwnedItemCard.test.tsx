@@ -5,7 +5,7 @@ import { OwnedItemCard } from './OwnedItemCard.tsx';
 
 describe('OwnedItemCard', () => {
   it('renders the title', () => {
-    render(<OwnedItemCard title="My Beans" onDelete={() => {}} deleteLabel="Delete" />);
+    render(<OwnedItemCard title="My Beans" onDelete={() => undefined} deleteLabel="Delete" />);
     expect(screen.getByText('My Beans')).toBeInTheDocument();
   });
 
@@ -14,7 +14,7 @@ describe('OwnedItemCard', () => {
       <OwnedItemCard
         title="Ethiopia Yirgacheffe"
         subtitle={<p>Acme Coffee</p>}
-        onDelete={() => {}}
+        onDelete={() => undefined}
         deleteLabel="Delete"
       />,
     );
@@ -26,7 +26,7 @@ describe('OwnedItemCard', () => {
       <OwnedItemCard
         title="Test"
         meta={<span>Washed</span>}
-        onDelete={() => {}}
+        onDelete={() => undefined}
         deleteLabel="Delete"
       />,
     );
@@ -35,7 +35,7 @@ describe('OwnedItemCard', () => {
 
   it('does not render meta container when meta is absent', () => {
     const { container } = render(
-      <OwnedItemCard title="Test" onDelete={() => {}} deleteLabel="Delete" />,
+      <OwnedItemCard title="Test" onDelete={() => undefined} deleteLabel="Delete" />,
     );
     expect(container.querySelector('.flex.gap-2')).toBeNull();
   });
@@ -49,7 +49,7 @@ describe('OwnedItemCard', () => {
   });
 
   it('renders delete button with error color', () => {
-    render(<OwnedItemCard title="Test" onDelete={() => {}} deleteLabel="Delete" />);
+    render(<OwnedItemCard title="Test" onDelete={() => undefined} deleteLabel="Delete" />);
     const btn = screen.getByText('Delete');
     expect(btn.style.color).toBe('var(--error)');
   });

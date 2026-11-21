@@ -99,7 +99,7 @@ describe('useRecipeQrDownload', () => {
   });
 
   it('shows the downloading state while the SVG loads', async () => {
-    let resolveSvg: (svg: string) => void = () => {};
+    let resolveSvg: (svg: string) => void = () => undefined;
     mockRecipeSvg.mockImplementation(
       () =>
         new Promise<string>((resolve) => {

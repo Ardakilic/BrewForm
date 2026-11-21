@@ -107,7 +107,7 @@ describe('I18nContext', () => {
 
   it('throws when useTranslation is called outside an I18nProvider', () => {
     // Suppress the expected error output from React for this negative test.
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     expect(() => render(<TestConsumer />)).toThrow(
       'useTranslation must be used within I18nProvider',
     );

@@ -329,7 +329,7 @@ describe('LoginPage', () => {
   });
 
   it('should disable button and show loading text while logging in', async () => {
-    vi.mocked(authApi.login).mockReturnValue(new Promise(() => {}));
+    vi.mocked(authApi.login).mockReturnValue(new Promise(() => undefined));
 
     await renderLoginPage();
     await userEvent.type(screen.getByLabelText(/email/i), 'test@test.com');

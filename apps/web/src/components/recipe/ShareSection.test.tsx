@@ -210,7 +210,7 @@ describe('ShareSection — QR download', () => {
       value: vi.fn(),
       configurable: true,
     });
-    clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
   });
 
   afterEach(() => {

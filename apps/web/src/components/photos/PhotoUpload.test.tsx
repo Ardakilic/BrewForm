@@ -127,7 +127,7 @@ function stubCanvas() {
   const originalGetContext = proto.getContext;
   const originalToBlob = proto.toBlob;
   Object.defineProperty(proto, 'getContext', {
-    value: () => ({ drawImage: () => {} }),
+    value: () => ({ drawImage: () => undefined }),
     configurable: true,
     writable: true,
   });

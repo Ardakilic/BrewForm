@@ -323,7 +323,7 @@ describe('CollectionRecipeList', () => {
   });
 
   it('swaps optimistically, disables the arrows while the reorder is pending, then re-enables', async () => {
-    let resolveReorder: (value: { message: string }) => void = () => {};
+    let resolveReorder: (value: { message: string }) => void = () => undefined;
     mockReorder.mockImplementation(
       () =>
         new Promise((resolve) => {

@@ -264,7 +264,7 @@ describe('TasteAutocomplete', () => {
   });
 
   it('shows loading state when taste notes have not loaded yet', async () => {
-    mockGetTasteNotes.mockImplementation(() => new Promise(() => {})); // never resolves
+    mockGetTasteNotes.mockImplementation(() => new Promise(() => undefined)); // never resolves
     setup();
 
     const input = screen.getByPlaceholderText('Search SCAA taste notes...');

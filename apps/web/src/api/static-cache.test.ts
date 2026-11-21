@@ -236,7 +236,7 @@ describe('static-cache', () => {
     it('invalidateStaticCache drops an in-flight request so the next call starts a new one', async () => {
       const spy = vi
         .spyOn(tasteApi, 'flat')
-        .mockReturnValueOnce(new Promise(() => {}))
+        .mockReturnValueOnce(new Promise(() => undefined))
         .mockResolvedValueOnce([]);
 
       void getTasteNotesCached();
@@ -250,7 +250,7 @@ describe('static-cache', () => {
     it('nulls both slots, including in-flight requests, so the next calls re-fetch', async () => {
       const equipmentSpy = vi
         .spyOn(equipmentApi, 'list')
-        .mockReturnValueOnce(new Promise(() => {}))
+        .mockReturnValueOnce(new Promise(() => undefined))
         .mockResolvedValueOnce([]);
       const tasteSpy = vi.spyOn(tasteApi, 'flat').mockResolvedValue([]);
 

@@ -25,7 +25,7 @@ function renderWithRouter(ui: React.ReactElement) {
         children: [
           {
             path: 'recipes/:id/like',
-            action: () => new Promise(() => {}),
+            action: () => new Promise(() => undefined),
             element: null,
           },
         ],

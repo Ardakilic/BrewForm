@@ -45,7 +45,7 @@ export function makeAuth(fixture: AuthFixture = 'signed-out'): AuthContextType {
     register: () => Promise.resolve(),
     logout: () => Promise.resolve(),
     refreshUser: () => Promise.resolve(),
-    clearSessionError: () => {},
+    clearSessionError: () => undefined,
   };
   if (fixture === 'signed-out') return base;
   if (fixture === 'user') return { ...base, user: TEST_USER, isAuthenticated: true };
@@ -67,10 +67,10 @@ export function ensureMatchMedia(): void {
       matches: false,
       media: query,
       onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      addListener: () => {},
-      removeListener: () => {},
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
       dispatchEvent: () => false,
     }),
   });

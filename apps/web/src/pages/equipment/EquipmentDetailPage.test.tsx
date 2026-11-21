@@ -174,7 +174,7 @@ describe('EquipmentDetailPage', () => {
     const signals: Record<string, AbortSignal | undefined> = {};
     mockGet.mockImplementation((id: string, opts?: RequestOptions) => {
       signals[id] = opts?.signal;
-      if (id === 'eq-a') return new Promise<EquipmentOutput>(() => {});
+      if (id === 'eq-a') return new Promise<EquipmentOutput>(() => undefined);
       return Promise.resolve({ ...STAGG, id, model: 'Model B', name: 'B' } as EquipmentOutput);
     });
     const { router } = renderPage('eq-b');

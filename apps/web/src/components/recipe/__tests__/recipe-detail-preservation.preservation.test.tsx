@@ -13,7 +13,7 @@ import { TastingNotesSection } from '../TastingNotesSection.tsx';
 // tests render it in a plain MemoryRouter, so the download hook is stubbed (it is covered by
 // useRecipeQrDownload.test.tsx and ShareSection.test.tsx).
 vi.mock('../../qrcode/useRecipeQrDownload.ts', () => ({
-  useRecipeQrDownload: () => ({ download: () => {}, downloading: false }),
+  useRecipeQrDownload: () => ({ download: () => undefined, downloading: false }),
 }));
 
 /**

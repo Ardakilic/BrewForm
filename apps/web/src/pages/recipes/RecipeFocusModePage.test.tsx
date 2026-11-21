@@ -171,11 +171,11 @@ describe('/recipes/:slug/focus loader', () => {
 
   it('aborts a superseded load and never renders recipe A under recipe B’s URL', async () => {
     let signalA: AbortSignal | undefined;
-    let resolveB: (r: RecipeDetailOutput) => void = () => {};
+    let resolveB: (r: RecipeDetailOutput) => void = () => undefined;
     mockRecipeApi.get.mockImplementation((slug: string, opts?: { signal?: AbortSignal }) => {
       if (slug === 'a') {
         signalA = opts?.signal;
-        return new Promise(() => {});
+        return new Promise(() => undefined);
       }
       return new Promise((resolve) => {
         resolveB = resolve;

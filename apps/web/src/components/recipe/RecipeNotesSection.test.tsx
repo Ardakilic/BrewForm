@@ -320,7 +320,7 @@ describe('RecipeNotesSection', () => {
 
   it("switching recipes clears the editor until the new recipe's own note loads", async () => {
     storedNote = 'Note on the first recipe';
-    let releaseOther: () => void = () => {};
+    let releaseOther: () => void = () => undefined;
     otherGate = new Promise<void>((resolve) => {
       releaseOther = resolve;
     });

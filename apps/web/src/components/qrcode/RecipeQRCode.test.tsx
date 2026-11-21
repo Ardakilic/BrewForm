@@ -46,7 +46,7 @@ vi.mock('../../contexts/I18nContext.tsx', async () => {
     useTranslation: () => ({
       t: (key: string) => translate(key, 'en'),
       locale: 'en',
-      setLocale: () => {},
+      setLocale: () => undefined,
       availableLocales: ['en', 'tr'],
     }),
   };
@@ -98,7 +98,7 @@ describe('RecipeQRCode', () => {
   });
 
   it('updates the button label to "Downloading..." while the resource route loads the SVG', async () => {
-    let resolveSvg: (svg: string) => void = () => {};
+    let resolveSvg: (svg: string) => void = () => undefined;
     mockRecipeSvg.mockImplementation(
       () =>
         new Promise<string>((resolve) => {
@@ -113,7 +113,9 @@ describe('RecipeQRCode', () => {
       value: vi.fn(),
       configurable: true,
     });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
 
     try {
       const user = userEvent.setup();

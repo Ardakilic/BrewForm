@@ -6,7 +6,7 @@ vi.mock('../../contexts/I18nContext.tsx', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
     locale: 'en',
-    setLocale: () => {},
+    setLocale: () => undefined,
     availableLocales: ['en', 'tr'],
   }),
 }));

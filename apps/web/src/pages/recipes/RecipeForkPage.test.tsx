@@ -182,7 +182,7 @@ describe('/recipes/:id/fork action', () => {
   });
 
   it('disables the button and shows the pending label while forking', async () => {
-    mockRecipeApi.fork.mockReturnValue(new Promise(() => {}));
+    mockRecipeApi.fork.mockReturnValue(new Promise(() => undefined));
     const user = userEvent.setup();
     renderPage();
 

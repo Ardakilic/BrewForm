@@ -49,7 +49,7 @@ describe('AppProviders', () => {
   it('uses the session-restoring AuthProvider when no fixed auth is given', () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(() => new Promise<Response>(() => {})),
+      vi.fn(() => new Promise<Response>(() => undefined)),
     );
     try {
       render(

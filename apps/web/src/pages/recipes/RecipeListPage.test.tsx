@@ -854,7 +854,7 @@ describe('RecipeListPage — coffee variety typeahead (fetcher)', () => {
   });
 
   it('shows only the latest query results when an earlier response arrives late', async () => {
-    let resolveGe: (value: (typeof GEISHA_OLD)[]) => void = () => {};
+    let resolveGe: (value: (typeof GEISHA_OLD)[]) => void = () => undefined;
     mockCoffeeVarietyApi.search.mockImplementation((query: string) =>
       query === 'ge'
         ? new Promise((resolve) => {
