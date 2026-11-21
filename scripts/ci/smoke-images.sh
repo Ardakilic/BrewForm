@@ -15,7 +15,8 @@
 #      the keys status, db, cache, rateLimitStore, storage, shuttingDown and status "ready".
 #   2. The web image with API_UPSTREAM pointing at the API: `healthy` through its own
 #      HEALTHCHECK, /healthz 200, / is the SPA (id="root"), /health is the API liveness
-#      JSON through the edge, /api/v1/sitemap.xml is the API's XML through the edge.
+#      JSON through the edge, /sitemap.xml is the API's XML sitemap index through the edge,
+#      and /api/v1/sitemap.xml answers 301 to it.
 #   3. scripts/ci/web-entrypoint.test.sh against the web image (includes the echo-upstream
 #      client-IP checks: one X-Forwarded-For entry plus X-Real-IP, spoofed headers replaced).
 #   4. Uploads bind mount: the API with RUN_MIGRATIONS=false, an unreachable DATABASE_URL
@@ -243,13 +244,21 @@ assert_eq "GET /healthz returns 200" "$(http_status "$WEB/healthz")" "200"
 assert_contains "GET / returns the SPA index.html" "$(http_body "$WEB/")" 'id="root"'
 assert_json "GET /health through the edge returns the API liveness JSON" \
 	"$(http_body "$WEB/health")" '. == {"status": "ok"}'
-SITEMAP_HEADERS=$(curl -s --max-time 10 -D - -o "$TMP/sitemap.xml" "$WEB/api/v1/sitemap.xml" || true)
-assert_contains "GET /api/v1/sitemap.xml through the edge returns 200" \
+SITEMAP_HEADERS=$(curl -s --max-time 10 -D - -o "$TMP/sitemap.xml" "$WEB/sitemap.xml" || true)
+assert_contains "GET /sitemap.xml through the edge returns 200" \
 	"$(printf '%s' "$SITEMAP_HEADERS" | head -n 1)" " 200"
 assert_contains "the sitemap is served as XML" \
 	"$(printf '%s' "$SITEMAP_HEADERS" | tr '[:upper:]' '[:lower:]' | grep '^content-type:' || true)" "xml"
-assert_contains "the sitemap body is the API's XML urlset" "$(head -c 300 "$TMP/sitemap.xml")" \
-	'<urlset'
+assert_contains "the sitemap body is the API's sitemap index" "$(head -c 300 "$TMP/sitemap.xml")" \
+	'<sitemapindex'
+LEGACY_HEADERS=$(curl -s --max-time 10 -D - -o /dev/null "$WEB/api/v1/sitemap.xml" | tr -d '\r' || true)
+assert_contains "GET /api/v1/sitemap.xml through the edge answers 301" \
+	"$(printf '%s' "$LEGACY_HEADERS" | head -n 1)" " 301"
+LEGACY_LOCATION=$(printf '%s' "$LEGACY_HEADERS" | tr '[:upper:]' '[:lower:]' | grep '^location:' || true)
+case "$LEGACY_LOCATION" in
+*/sitemap.xml) ok "the 301 location ends in /sitemap.xml" ;;
+*) not_ok "the 301 location ends in /sitemap.xml (got: $LEGACY_LOCATION)" ;;
+esac
 
 echo "# 3. web entrypoint and edge behaviour (incl. echo-upstream client-IP checks)"
 if "$SCRIPT_DIR/web-entrypoint.test.sh" "$WEB_IMAGE"; then

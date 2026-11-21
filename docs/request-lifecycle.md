@@ -25,7 +25,8 @@ Client (web SPA)
   │
   ▼  Route aggregator (apps/api/src/routes/index.ts)
   ├─ /health, /ready                      (liveness, readiness)
-  ├─ /share/:slug, /api/v1/sitemap.xml    (HTML / XML, not JSON envelopes)
+  ├─ /share/:slug, /sitemap.xml           (HTML / XML, not JSON envelopes;
+  │                                        /api/v1/sitemap.xml answers 301)
   ├─ /api/v1/openapi.json, /api/v1/docs   (gated by OPENAPI_ENABLED)
   └─ /api/v1/<module>/...                 → 23 sub-routers on 21 prefixes
   │

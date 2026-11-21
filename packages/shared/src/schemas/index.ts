@@ -166,6 +166,8 @@ export type { PublicUserOutput, SelfUserOutput, UserRowOutput } from './response
 export type { VendorOutput } from './responses/vendor.ts';
 export type { SetupCreate, SetupUpdate } from './setup.ts';
 export { SetupCreateSchema, SetupUpdateSchema } from './setup.ts';
+export type { SitemapPart, SitemapQuery } from './sitemap.ts';
+export { SITEMAP_MAX_PAGE, SITEMAP_PARTS, SitemapQuerySchema } from './sitemap.ts';
 export type { TasteNoteCreate, TasteNoteUpdate } from './taste.ts';
 export { TasteNoteCreateSchema, TasteNoteFilterSchema, TasteNoteUpdateSchema } from './taste.ts';
 export type { UserPreferences, UserProfileUpdate } from './user.ts';

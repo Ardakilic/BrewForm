@@ -23,10 +23,10 @@ export default defineConfig({
     tailwindcss(),
     {
       name: 'build-robots-txt',
+      // The sitemap index lives at the site root (served by the API, proxied by the web edge), the
+      // directory of the /recipes/… and /u/… URLs it lists. Without a public URL the line is
+      // relative; the web entrypoint replaces the build-time origin with PUBLIC_APP_URL.
       generateBundle() {
-        const sitemapUrl = vitePublicAppUrl
-          ? `${vitePublicAppUrl}/api/v1/sitemap.xml`
-          : '/api/v1/sitemap.xml';
         this.emitFile({
           type: 'asset',
           fileName: 'robots.txt',
@@ -42,7 +42,7 @@ Allow: /equipments
 Allow: /equipment/
 Disallow: /equipment
 
-Sitemap: ${sitemapUrl}
+Sitemap: ${vitePublicAppUrl}/sitemap.xml
 `,
         });
       },
@@ -69,6 +69,11 @@ Sitemap: ${sitemapUrl}
     port: 5173,
     proxy: {
       '/api': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
+      // The API serves the sitemap index and its pages at the site root.
+      '/sitemap.xml': {
         target: apiProxyTarget,
         changeOrigin: true,
       },

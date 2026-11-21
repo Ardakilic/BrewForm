@@ -13,8 +13,10 @@
 #                      keeps the URL baked in at build time.
 #   API_UPSTREAM       host[:port] of the API (e.g. `api:8000`). When valid, writes
 #                      /etc/caddy/conf.d/api-proxy.caddy: a same-origin reverse proxy for
-#                      /api/*, /uploads/*, /share/* and the exact path /health (API
-#                      liveness for uptime monitors; /ready is deliberately NOT proxied).
+#                      /api/*, /uploads/*, /share/* and the exact paths /health (API
+#                      liveness for uptime monitors; /ready is deliberately NOT proxied)
+#                      and /sitemap.xml (the sitemap index and its ?part=…&page=… pages,
+#                      which must live at the site root).
 #                      Unset or invalid: static files only (split-domain setups).
 #   EDGE_MAX_BODY_SIZE Largest proxied request body (Caddy size, default 16MB). Keep it
 #                      above the API's photo body cap (~11.06 MiB by default).
@@ -96,7 +98,8 @@ apply_api_upstream() {
 	cat >"$CONF_D/api-proxy.caddy" <<EOF
 # Written by docker-web-entrypoint.sh because API_UPSTREAM is set.
 # /health is an exact path (API liveness for uptime monitors); /ready is not proxied.
-@api path /api/* /uploads/* /share/* /health
+# /sitemap.xml is an exact path (the query, ?part=…&page=…, is passed through unchanged).
+@api path /api/* /uploads/* /share/* /health /sitemap.xml
 handle @api {
 	request_body {
 		max_size {\$EDGE_MAX_BODY_SIZE:16MB}
@@ -112,7 +115,7 @@ handle @api {
 	}
 }
 EOF
-	log "API proxy applied: /api/* /uploads/* /share/* /health -> $API_UPSTREAM"
+	log "API proxy applied: /api/* /uploads/* /share/* /health /sitemap.xml -> $API_UPSTREAM"
 }
 
 # TRUSTED_PROXIES -> global.d/trusted.caddy, or trust no proxy.

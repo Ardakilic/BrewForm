@@ -27,8 +27,9 @@ notes.
 - **Advanced Search** — Ranked recipe search (trigram-indexed) with filters (brew method, drink
   type, equipment, coffee variety, taste notes, author, date and rating ranges) and cursor
   pagination
-- **Sitemap and Social Previews** — `/api/v1/sitemap.xml` lists public recipes, and shared links
-  render Open Graph previews for crawlers
+- **Sitemap and Social Previews** — `/sitemap.xml` is a sitemap index whose pages list the static
+  pages, public recipes and their authors' profiles (50,000 URLs per page), and shared links render
+  Open Graph previews for crawlers
 - **🌐 Language Switcher** — Switch between English and Turkish from the footer dropdown
 - **Achievement Badges** — Gamification system with data-driven badge rules
 - **QR Codes** — Generate shareable QR codes for public and unlisted recipes (PNG and SVG)

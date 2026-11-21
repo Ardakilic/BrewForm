@@ -3,7 +3,9 @@
  * dev server) and the `build-robots-txt` plugin in `vite.config.ts` (emitted into `dist/`). The
  * private `/equipment` page stays disallowed while the public `/equipments` catalog and the
  * `/equipment/:id` detail pages stay crawlable: crawlers apply the longest matching rule, so the
- * two `Allow` lines must sit beside `Disallow: /equipment` in both sources.
+ * two `Allow` lines must sit beside `Disallow: /equipment` in both sources. Both sources announce
+ * the root-level sitemap index (`/sitemap.xml`, capability `recipe-visibility`), never the old
+ * `/api/v1/sitemap.xml`, which search engines ignored for every `/recipes/…` and `/u/…` URL.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -43,6 +45,16 @@ describe.each(sources)('robots rules in $name', ({ body }) => {
     expect(rules.indexOf('Allow: /equipments')).toBeLessThan(disallow);
     expect(rules.indexOf('Allow: /equipment/')).toBeGreaterThan(-1);
     expect(rules.indexOf('Allow: /equipment/')).toBeLessThan(disallow);
+  });
+
+  it('announces the root-level sitemap index and never the old /api/v1 path', () => {
+    const sitemapLines = body
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith('Sitemap:'));
+    expect(sitemapLines).toHaveLength(1);
+    expect(sitemapLines[0].endsWith('/sitemap.xml')).toBe(true);
+    expect(body).not.toContain('/api/v1/sitemap.xml');
   });
 
   it('keeps the private areas disallowed', () => {

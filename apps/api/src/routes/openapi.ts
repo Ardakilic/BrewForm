@@ -90,7 +90,7 @@ export const openApiDocumentation: GenerateSpecOptions['documentation'] = {
     { name: 'Taste Notes', description: 'Taste-note hierarchy, search, and admin management' },
     { name: 'Vendors', description: 'Coffee vendor/roaster directory' },
     { name: 'Share', description: 'Server-rendered share/OG preview pages' },
-    { name: 'Sitemap', description: 'XML sitemap for crawlers' },
+    { name: 'Sitemap', description: 'XML sitemap index and its pages for crawlers' },
   ],
 };
 
@@ -102,8 +102,8 @@ export const openApiDocumentation: GenerateSpecOptions['documentation'] = {
 export function registerOpenApi(app: Hono<AppEnv>): void {
   const handler = openAPIRouteHandler(app, {
     documentation: openApiDocumentation,
-    // The sitemap route is mounted at `/api/v1/sitemap.xml`; its path ends in a
-    // file extension, so static-file exclusion would drop it from the spec.
+    // The sitemap routes (`/sitemap.xml` and the legacy `/api/v1/sitemap.xml`) end in a
+    // file extension, so static-file exclusion would drop them from the spec.
     // hono-openapi only documents routes carrying `describeRoute()` metadata, so
     // disabling this does NOT surface the un-annotated `/api/v1/openapi.json` or
     // `/api/v1/docs` meta endpoints. (Requirement 9.2)

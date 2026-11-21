@@ -5,8 +5,10 @@
 #   /etc/caddy/global.d/trusted.caddy  `servers { trusted_proxies static … }`, written only
 #                                      when $TRUSTED_PROXIES is valid (unset = trust no proxy)
 #   /etc/caddy/conf.d/api-proxy.caddy  same-origin reverse proxy for /api/*, /uploads/*,
-#                                      /share/* and the exact path /health, written only
-#                                      when $API_UPSTREAM is a valid host[:port]
+#                                      /share/* and the exact paths /health and
+#                                      /sitemap.xml (the root-level sitemap index; its
+#                                      query passes through), written only when
+#                                      $API_UPSTREAM is a valid host[:port]
 # An import glob that matches no file is not an error, so without them this file serves
 # the static SPA only (the split-domain topology, e.g. Coolify).
 {

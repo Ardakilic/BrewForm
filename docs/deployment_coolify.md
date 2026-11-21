@@ -203,7 +203,8 @@ service), while the env schema and this Coolify setup default to `memory`.
      network alias `brewform-api` (Configuration → Network → **Network Aliases**; on versions
      without that field add `--network-alias=brewform-api` to **Custom Docker Options**) and set
      `API_UPSTREAM=brewform-api:8000` on the web resource ([§7](#7-step-4--web-spa-docker-image)),
-     so the web container proxies `/uploads/*`, `/share/*`, `/api/*` and `/health` to the API.
+     so the web container proxies `/uploads/*`, `/share/*`, `/api/*`, `/health` and
+     `/sitemap.xml` to the API.
      Both resources must be on the same destination (network). An alias is used because container
      names change on every rolling deploy.
 
@@ -357,7 +358,8 @@ service), while the env schema and this Coolify setup default to `memory`.
      effect.)
    - **Optional same-origin mode** `API_UPSTREAM=brewform-api:8000` (required with local photo
      storage, see [§6 step 5](#6-step-3--api-docker-image)). The web container then
-     reverse-proxies `/api/*`, `/uploads/*`, `/share/*` and `/health` (exact path) to the API
+     reverse-proxies `/api/*`, `/uploads/*`, `/share/*`, `/health` and `/sitemap.xml` (exact
+     paths; the sitemap index must sit at the site root) to the API
      through the API's network alias, so the SPA could also use `VITE_API_URL=/api/v1` on the web
      domain. Caveats:
      - both resources must be on the same destination network and the API needs the alias;
@@ -645,6 +647,13 @@ still exist.
   or renames something the running release uses ships in two releases: first add and backfill,
   then remove in a later release. More than one replica would need the migrations moved to a
   single job first.
+- **Sitemap moved to the site root (upgrade note):** the sitemap is now a sitemap index at
+  `/sitemap.xml`, and `/api/v1/sitemap.xml` answers `301` to it. After the upgrade, resubmit
+  `<public origin>/sitemap.xml` in Google Search Console (the old URL redirects meanwhile). It is
+  reachable on the web domain only in same-origin mode (`API_UPSTREAM`,
+  [§7](#7-step-4--web-spa-docker-image)); in the split-domain setup it lives at
+  `https://api.brewform.cc/sitemap.xml` and lists web-domain URLs, so submit it in Search Console
+  for the web domain's property.
 - **Change the API URL** the SPA calls: set `VITE_API_URL` as a runtime env on the **web**
   resource and redeploy — no rebuild ([§7](#7-step-4--web-spa-docker-image)).
 - **Backups:** Postgres via Coolify's Database → Backups (send them to S3, off the server). The API

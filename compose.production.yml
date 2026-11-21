@@ -32,7 +32,8 @@
 # - TLS terminates in a proxy in front of this stack (Cloudflare, Coolify/Traefik, your own
 #   Caddy/nginx). Only the web port (WEB_PORT, default 80) is published.
 # - Same-origin edge: the web container serves the SPA and reverse-proxies /api/*,
-#   /uploads/*, /share/* and /health to `api:8000` (API_UPSTREAM), so the browser calls
+#   /uploads/*, /share/*, /health and /sitemap.xml (the root-level sitemap index) to
+#   `api:8000` (API_UPSTREAM), so the browser calls
 #   `/api/v1` on the web origin (no CORS, no second domain). The api publishes no port.
 #   Request bodies are capped at the edge by EDGE_MAX_BODY_SIZE (default 16MB); keep it
 #   above the API's photo cap (UPLOAD_MAX_SIZE_BYTES + 1 MiB + 64 KiB, ~11.06 MiB).

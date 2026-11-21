@@ -8,7 +8,7 @@
 > rate limits, deprecations) live in [api.md](api.md). The interactive reference is the
 > Scalar UI at `/api/v1/docs` (when `OPENAPI_ENABLED=true`).
 
-BrewForm API 1.0.0: 124 operations in 24 sections. Auth `Bearer` means the route requires `Authorization: Bearer <access token>`; `—` means it is public. Path parameters are always required.
+BrewForm API 1.0.0: 125 operations in 24 sections. Auth `Bearer` means the route requires `Authorization: Bearer <access token>`; `—` means it is public. Path parameters are always required.
 
 ## Contents
 
@@ -35,7 +35,7 @@ BrewForm API 1.0.0: 124 operations in 24 sections. Auth `Bearer` means the route
 - [Taste Notes](#taste-notes) (6)
 - [Vendors](#vendors) (6)
 - [Share](#share) (1)
-- [Sitemap](#sitemap) (1)
+- [Sitemap](#sitemap) (2)
 
 ## Auth
 
@@ -323,8 +323,9 @@ Server-rendered share/OG preview pages
 
 ## Sitemap
 
-XML sitemap for crawlers
+XML sitemap index and its pages for crawlers
 
 | Method | Path | Summary | Auth | Parameters | Responses |
 |---|---|---|---|---|---|
-| `GET` | `/api/v1/sitemap.xml` | Get the XML sitemap | — | — | 200 |
+| `GET` | `/api/v1/sitemap.xml` | Redirect to /sitemap.xml | — | — | 301 |
+| `GET` | `/sitemap.xml` | Get the sitemap index or one sitemap page | — | `part` (query, static \| recipes \| users)<br>`page` (query, integer) | 200, 400, 404 |

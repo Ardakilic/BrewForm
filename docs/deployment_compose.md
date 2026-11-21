@@ -40,7 +40,8 @@ which wrap `docker compose --env-file .env.production -f compose.production.yml`
   │   web  (brewform-web, Caddy edge, the only published port)                      │
   │     /                         → SPA files (index.html fallback)                 │
   │     /healthz                  → answered locally ("ok")                         │
-  │     /api/* /uploads/* /share/* /health  → reverse proxy to api:8000             │
+  │     /api/* /uploads/* /share/*  → reverse proxy to api:8000                     │
+  │     /health /sitemap.xml        → reverse proxy to api:8000 (exact paths)       │
   │                    │                                                            │
   │                    ▼                                                            │
   │   api  (brewform-api, :8000, not published)  ◀── waits for ── migrate (one-shot)│
@@ -442,6 +443,11 @@ make prod-up                # migrate applies new migrations, then the api is re
 Read the release notes first: some releases need a step before `make prod-up` (wave 6 does, see
 [§14](#14-upgrading-from-the-pre-wave-6-compose-file)). Compare `.env.production` with the new
 `.env.production.example`.
+
+**Sitemap moved to the site root.** The sitemap is now a sitemap index at
+`<public origin>/sitemap.xml` (the edge proxies it to the API). After the upgrade, resubmit
+`<public origin>/sitemap.xml` in Google Search Console and other webmaster tools; the old
+`/api/v1/sitemap.xml` answers `301` to it, so existing submissions keep working meanwhile.
 
 **Rollback:** set `IMAGE_TAG` in `.env.production` to a previous full commit SHA or `vX.Y.Z` and
 run `make prod-up`; api, migrate and web all use that tag. Database migrations are **not** rolled

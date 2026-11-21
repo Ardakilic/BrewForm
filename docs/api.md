@@ -14,11 +14,14 @@ not list them. See [Admin routes](#admin-routes).
 ## Base URL and versioning
 
 - Every JSON route lives under `/api/v1` (for example `GET /api/v1/recipes`). The machine-readable
-  routes `/api/v1/sitemap.xml`, `/api/v1/openapi.json` and `/api/v1/docs` share the prefix.
+  routes `/api/v1/openapi.json` and `/api/v1/docs` share the prefix.
 - Outside the prefix: the probes `GET /health` (liveness) and `GET /ready` (readiness), the
-  server-rendered share pages `GET /share/:slug`, and local upload reads `GET /uploads/*` (local
-  storage driver only; streamed from disk and cacheable for a year:
-  `Cache-Control: public, max-age=31536000, immutable`).
+  server-rendered share pages `GET /share/:slug`, the sitemap index `GET /sitemap.xml` (its pages
+  are `?part=static|recipes|users&page=N`; see [seo.md](seo.md#sitemap)), and local upload reads
+  `GET /uploads/*` (local storage driver only; streamed from disk and cacheable for a year:
+  `Cache-Control: public, max-age=31536000, immutable`). `/sitemap.xml` and `/share/*` are served at
+  the API root and proxied by the web edge, so they sit beside the pages they describe.
+  `GET /api/v1/sitemap.xml` is deprecated and answers `301` to `<public origin>/sitemap.xml`.
 - `v1` is the only version. Changes so far have been additive (new routes, fields and optional
   parameters); a parameter that is going away is announced first (see
   [Deprecations](#deprecations)).

@@ -120,26 +120,45 @@ oracle.
 
 ### Sitemap
 
-`GET /api/v1/sitemap.xml` (`apps/api/src/routes/sitemap.ts`) returns
-`application/xml` listing:
+`GET /sitemap.xml` (`apps/api/src/routes/sitemap.ts`) is a [sitemaps.org](https://www.sitemaps.org/protocol.html)
+**sitemap index**. Without a query it lists one entry per sitemap page, each served by the same
+route with `?part=…&page=…`:
 
-- the static pages `/`, `/recipes`, `/taste-notes`, `/privacy` and `/terms`;
-- every non-deleted **public** recipe (`/recipes/:slug`, with `lastmod`), selected with
-  `listableRecipeCondition(null)`, so unlisted, private and draft recipes never appear;
-- the profile (`/u/:username`) of every user who authors at least one public recipe.
+| Part | Page URL | Lists |
+|---|---|---|
+| `static` | `/sitemap.xml?part=static` | the static pages `/`, `/recipes`, `/taste-notes`, `/privacy` and `/terms` (always listed, a single page) |
+| `recipes` | `/sitemap.xml?part=recipes&page=N` | every non-deleted **public** recipe (`/recipes/:slug`, with `lastmod`), selected with `listableRecipeCondition(null)`, so unlisted, private and draft recipes never appear |
+| `users` | `/sitemap.xml?part=users&page=N` | the profile (`/u/:username`, with `lastmod`) of every live user who authors at least one public recipe; soft-deleted accounts are never listed (their public recipes stay listed) |
 
-URLs use the API's `PUBLIC_APP_URL` (falling back to `APP_URL`). The rendered XML is cached for 24
-hours through the injected `CacheProvider`.
+- **Pages of 50,000 URLs.** A sitemap file may hold at most 50,000 URLs and 50 MB, and an index at
+  most 50,000 sitemaps. Each `recipes`/`users` page holds up to `SITEMAP_PAGE_SIZE` (50,000) URLs,
+  read with a SQL `limit`/`offset` ordered by `createdAt`, then `id` (new rows land on the last
+  page); the index lists `ceil(count / 50,000)` pages per part, from `count()` queries with the same
+  conditions. A full page stays near 25 MB even with 255-character slugs. A part without rows is
+  left out of the index, a page past the end answers 404 `NOT_FOUND`, and an invalid `part` or a
+  `page` outside 1-50,000 answers 400 `VALIDATION_ERROR` (`SitemapQuerySchema` in
+  `@brewform/shared/schemas`).
+- **At the site root.** Search engines apply a sitemap only to URLs under its own directory, and
+  the children of an index must sit in the index's directory or lower. The index, its pages and the
+  `/recipes/…` and `/u/…` URLs they list therefore all live at the root: the API serves
+  `/sitemap.xml` outside `/api/v1`, and the web edge and the Vite dev server proxy it. The old
+  location, `GET /api/v1/sitemap.xml`, answers **301** to `${PUBLIC_APP_URL}/sitemap.xml`, so older
+  `robots.txt` files and Search Console submissions keep working.
+- **Caching.** The index and every page are cached separately for 24 hours through the injected
+  `CacheProvider` (keys `sitemap:index` and `sitemap:<part>:<page>`), with one in-flight build per
+  document; a 404 is not cached. Responses carry `Cache-Control: public, max-age=3600`.
+
+URLs use the API's `PUBLIC_APP_URL` (falling back to `APP_URL`).
 
 ### robots.txt
 
 The web app serves `robots.txt` from two sources that must agree (guarded by
-`apps/web/src/robots.test.ts`):
+`apps/web/src/robots.test.ts`, which also rejects the old `/api/v1/sitemap.xml`):
 
 - `apps/web/public/robots.txt`, served by the Vite dev server, with a relative
-  `Sitemap: /api/v1/sitemap.xml`;
+  `Sitemap: /sitemap.xml`;
 - the `build-robots-txt` plugin in `apps/web/vite.config.ts`, which emits the production file with
-  `Sitemap: ${VITE_PUBLIC_APP_URL}/api/v1/sitemap.xml`.
+  `Sitemap: ${VITE_PUBLIC_APP_URL}/sitemap.xml`.
 
 The rules allow everything except private areas:
 
@@ -186,15 +205,16 @@ only for **public** recipes:
 How these are reached depends on the deployment topology:
 
 - **Same-origin edge** (`API_UPSTREAM` set on the web container, the compose default): the web
-  Caddy reverse-proxies `/api/*`, `/uploads/*`, `/share/*` and `/health` to the API. So
-  `${VITE_PUBLIC_APP_URL}/share/:slug` serves the OG page and the sitemap is reachable at
-  `${VITE_PUBLIC_APP_URL}/api/v1/sitemap.xml`. `/recipes/*` is not proxied: it is the SPA, whose
-  `index.html` carries only the site-wide default OG tags.
+  Caddy reverse-proxies `/api/*`, `/uploads/*`, `/share/*` and the exact paths `/health` and
+  `/sitemap.xml` (with its query) to the API. So `${VITE_PUBLIC_APP_URL}/share/:slug` serves the OG
+  page and the sitemap index is reachable at `${VITE_PUBLIC_APP_URL}/sitemap.xml`. `/recipes/*` is
+  not proxied: it is the SPA, whose `index.html` carries only the site-wide default OG tags.
 - **Split domains** (`API_UPSTREAM` unset, e.g. Coolify): the web container serves static files
   only, and the share page and the sitemap live on the API host (`https://<api-host>/share/:slug`,
-  `https://<api-host>/api/v1/sitemap.xml`). The `Sitemap:` line still names the web origin, where
-  `/api/v1/sitemap.xml` falls back to the SPA, so on this topology submit the API-host sitemap URL
-  to search consoles or enable same-origin mode (`API_UPSTREAM`).
+  `https://<api-host>/sitemap.xml`). The `Sitemap:` line still names the web origin, where
+  `/sitemap.xml` falls back to the SPA, and a sitemap on the API host lists URLs of another host,
+  so on this topology submit the API-host sitemap URL in Search Console (for a property that covers
+  the web origin) or, better, enable same-origin mode (`API_UPSTREAM`).
 
 The share buttons on the recipe page (`ShareSection`) copy and share
 `${VITE_PUBLIC_APP_URL}/recipes/:slug`; they are hidden for private and draft recipes.

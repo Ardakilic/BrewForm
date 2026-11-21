@@ -139,6 +139,7 @@ assert_eq "/healthz answers ok" "$(fetch plain /healthz)" "ok"
 assert_contains "/healthz is never cached" "$(headers plain /healthz)" "Cache-Control: no-store"
 assert_contains "unset upstream: /api/v1/x falls back to index.html" "$(fetch plain /api/v1/x)" 'id="root"'
 assert_contains "unset upstream: /health is the SPA, not proxied" "$(fetch plain /health)" 'id="root"'
+assert_contains "unset upstream: /sitemap.xml is the SPA, not proxied" "$(fetch plain /sitemap.xml)" 'id="root"'
 assert_contains "SPA route falls back to index.html" "$(fetch plain /some/spa/route)" 'id="root"'
 assert_contains "default /config.js is the empty config" "$(fetch plain /config.js)" \
 	'globalThis.__BREWFORM_CONFIG__ = globalThis.__BREWFORM_CONFIG__ || {};'
@@ -203,7 +204,7 @@ assert_contains "PUBLIC_APP_URL rewrites twitter:image" "$INDEX" \
 	'<meta name="twitter:image" content="https://brew.example.org/og-default.png"'
 assert_not_contains "no build-time origin remains in index.html" "$INDEX" "http://localhost:8080"
 assert_contains "PUBLIC_APP_URL rewrites the robots Sitemap line" "$(fetch public /robots.txt)" \
-	"Sitemap: https://brew.example.org/api/v1/sitemap.xml"
+	"Sitemap: https://brew.example.org/sitemap.xml"
 assert_contains "valid VITE_API_URL is written to config.js" "$(fetch public /config.js)" \
 	'globalThis.__BREWFORM_CONFIG__ = { apiUrl: "https://api.example.com/api/v1" };'
 assert_contains "logs: PUBLIC_APP_URL applied" "$(logs public)" \
@@ -219,6 +220,10 @@ start_web edge -e "API_UPSTREAM=$P-echo:9000"
 assert_contains "logs: API proxy applied" "$(logs edge)" "API proxy applied"
 assert_contains "/api/* is proxied with path and query" "$(fetch edge '/api/v1/sitemap.xml?a=1')" \
 	"uri=/api/v1/sitemap.xml?a=1"
+assert_contains "/sitemap.xml is proxied with its query" \
+	"$(fetch edge '/sitemap.xml?part=recipes&page=2')" "uri=/sitemap.xml?part=recipes&page=2"
+assert_contains "logs: the proxy covers /sitemap.xml" "$(logs edge)" \
+	"API proxy applied: /api/* /uploads/* /share/* /health /sitemap.xml"
 assert_contains "/uploads/* is proxied" "$(fetch edge /uploads/x.png)" "uri=/uploads/x.png"
 assert_contains "/share/* is proxied" "$(fetch edge /share/abc)" "uri=/share/abc"
 assert_contains "/health (exact) is proxied" "$(fetch edge /health)" "uri=/health"
