@@ -5,9 +5,9 @@ import { recipeApi } from '../api/index.ts';
 const logger = createLogger('favourite');
 
 /**
- * Action toggling the favourite state of recipe `:id` via
- * `recipeApi.favourite`. Returns `{ ok: true }` or `{ ok: false, error }`
- * so `FavouriteButton` can settle its optimistic UI.
+ * Action toggling the favourite state of recipe `:id` via `recipeApi.favourite`. Returns
+ * `{ ok: true, favourited }` (the server's new state) or `{ ok: false, error }`, so
+ * `FavouriteButton` can settle its optimistic UI without revalidating the recipe loader.
  */
 export const favouriteAction = async ({ params }: ActionFunctionArgs) => {
   const id = params.id;
@@ -18,9 +18,9 @@ export const favouriteAction = async ({ params }: ActionFunctionArgs) => {
   logger.debug({ id }, 'favouriteAction started');
 
   try {
-    await recipeApi.favourite(id);
+    const { favourited } = await recipeApi.favourite(id);
     logger.debug({ id }, 'favouriteAction completed');
-    return { ok: true };
+    return { ok: true, favourited };
   } catch (err: unknown) {
     logger.error({ err, id }, 'favouriteAction failed');
     return { ok: false, error: err instanceof Error ? err.message : 'Favourite failed' };

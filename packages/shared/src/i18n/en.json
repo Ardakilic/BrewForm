@@ -482,6 +482,7 @@
   "comment.posted": "Comment posted successfully",
   "comment.replyPosted": "Reply posted successfully",
   "comment.error": "Failed to post comment. Please try again.",
+  "comment.deleteFailed": "Failed to delete comment. Please try again.",
   "comment.replyBy": "Reply by {name}",
   "onboarding.welcomeDescription": "Let's set up your brewing profile so you can start logging and sharing your coffee recipes.",
   "onboarding.equipmentDescription": "Set up your espresso machine, grinder, and accessories. You can create setups for different brewing configurations.",

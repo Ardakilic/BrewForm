@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLoaderData, useSearchParams } from 'react-router';
 import { BrewLogCard } from '../../components/brew-log/BrewLogCard.tsx';
 import { CollectionCard } from '../../components/collections/CollectionCard.tsx';
@@ -49,13 +49,27 @@ function FollowList({ data, emptyMsg }: { data: FollowRecord[]; emptyMsg: string
  * Public profile page with recipes/badges/followers/following/collections tabs (driven by
  * `?tab=`, plus the brew journal on the viewer's own profile), a follow button for other
  * users, and the profile header, all from the `/u/:username` route loader
- * (`UserProfilePage.data.ts`). Own-profile checks compare ids, never usernames.
+ * (`UserProfilePage.data.ts`). Own-profile checks compare ids, never usernames. A follow or
+ * unfollow does not revalidate the loader, so the follower count shown is the loaded count
+ * plus the toggles made since that load.
  */
 export function UserProfilePage() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { profile, followData, collectionsData, brewsData } = useLoaderData<typeof loader>();
+  // Follower-count adjustment for follows made since this profile was loaded; tied to the
+  // loaded profile object, so a fresh load (which already counts them) starts from zero.
+  const [followDelta, setFollowDelta] = useState({ base: profile, delta: 0 });
+  const followerDelta = followDelta.base === profile ? followDelta.delta : 0;
+
+  /** Adjusts the shown follower count after a successful follow (`true`) or unfollow. */
+  function handleFollowToggle(next: boolean) {
+    setFollowDelta((d) => ({
+      base: profile,
+      delta: (d.base === profile ? d.delta : 0) + (next ? 1 : -1),
+    }));
+  }
 
   // Compare ids: the URL username may differ in case from the stored one (`/u/arda` → `Arda`).
   const isSelf = user != null && user.id === profile?.id;
@@ -147,7 +161,8 @@ export function UserProfilePage() {
                 <strong>{profile.recipeCount}</strong> {t('user.recipes').toLowerCase()}
               </span>
               <span>
-                <strong>{profile.followerCount}</strong> {t('user.followers').toLowerCase()}
+                <strong>{profile.followerCount + followerDelta}</strong>{' '}
+                {t('user.followers').toLowerCase()}
               </span>
               <span>
                 <strong>{profile.followingCount}</strong> {t('user.following').toLowerCase()}
@@ -160,7 +175,13 @@ export function UserProfilePage() {
                 {t('user.editProfile')}
               </Link>
             ) : (
-              user && <FollowButton userId={profile.id} initialFollowing={profile.isFollowing} />
+              user && (
+                <FollowButton
+                  userId={profile.id}
+                  initialFollowing={profile.isFollowing}
+                  onToggle={handleFollowToggle}
+                />
+              )
             )}
           </div>
         </div>

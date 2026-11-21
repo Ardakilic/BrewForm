@@ -5,7 +5,7 @@ import type {
   RecipeDetailOutput,
   TasteNoteOutput,
 } from '@brewform/shared/schemas';
-import { type LoaderFunctionArgs, redirect } from 'react-router';
+import { type LoaderFunctionArgs, redirect, type ShouldRevalidateFunctionArgs } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
 import { ApiError, isAbortError } from '../../api/errors.ts';
 import { collectionApi, commentApi, recipeApi } from '../../api/index.ts';
@@ -76,4 +76,33 @@ export async function loader({ params, request }: LoaderFunctionArgs): Promise<D
     ]);
     return { recipe, tasteNotes, comments, collections };
   });
+}
+
+/**
+ * Submissions whose success leaves the detail loader's data valid: like, favourite, follow,
+ * and comment create/delete (the components settle their own UI from the action result).
+ * Rating is deliberately absent, because the community average comes from the loader.
+ */
+const SELF_SETTLING_ACTION_RE =
+  /^\/(?:recipes\/[^/]+\/(?:like|favourite)|follow\/[^/]+|comments\/recipe\/[^/]+|comments\/[^/]+)$/;
+
+/**
+ * `shouldRevalidate` for `/recipes/:slug`: skips re-running the 3-request detail loader after
+ * a successful like, favourite, follow or comment action (`actionResult.ok === true`), so a
+ * like sends exactly one request and loaded comment pages are kept. A failed action, a rating
+ * and every navigation fall back to React Router's default.
+ */
+export function shouldRevalidate({
+  formAction,
+  actionResult,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs): boolean {
+  if (formAction && actionResult?.ok === true) {
+    const path = new URL(formAction, 'http://localhost').pathname;
+    if (SELF_SETTLING_ACTION_RE.test(path)) {
+      log.debug({ path }, 'RecipeDetailPage revalidation skipped');
+      return false;
+    }
+  }
+  return defaultShouldRevalidate;
 }

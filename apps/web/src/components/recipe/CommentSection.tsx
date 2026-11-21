@@ -1,14 +1,16 @@
-import type {
-  CommentOutput,
-  CommentWithAuthorOutput,
-  CommentWithRepliesOutput,
-} from '@brewform/shared/schemas';
+import type { CommentWithAuthorOutput, CommentWithRepliesOutput } from '@brewform/shared/schemas';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useFetcher } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import type {
+  createCommentAction,
+  deleteCommentAction,
+  listCommentsLoader,
+} from '../../routes/comments.ts';
 import { formatDate } from '../../utils/format.ts';
+import { useToast } from '../ui/Toast.tsx';
 
 const log = createLogger('CommentSection');
 
@@ -60,6 +62,20 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
   return nodes.length > 0 ? nodes : [text];
 }
 
+/**
+ * Merges a revalidated first page into the accumulated comment list: the fresh page-1
+ * comments first (server order), then every previously shown comment that is not on the
+ * fresh page (comments from later "Load more" pages and ones pushed off page 1), so loaded
+ * pages survive a revalidation instead of collapsing back to page 1.
+ */
+function mergeFirstPage(
+  prev: CommentWithRepliesOutput[],
+  fresh: CommentWithRepliesOutput[],
+): CommentWithRepliesOutput[] {
+  const freshIds = new Set(fresh.map((c) => c.id));
+  return [...fresh, ...prev.filter((c) => !freshIds.has(c.id))];
+}
+
 function getAuthorUsername(comment: CommentWithAuthorOutput): string | null {
   return comment.author?.username || null;
 }
@@ -94,13 +110,19 @@ function AuthorLink({
 // CommentSection
 // ---------------------------------------------------------------------------
 /**
- * Threaded comment section for a recipe: paginated list, top-level and
- * reply forms with limited inline markdown, and optimistic delete with
- * snapshot rollback. Mutations go through comment route fetchers.
+ * Threaded comment section for a recipe: paginated list, top-level and reply forms with
+ * limited inline markdown, and optimistic delete with snapshot rollback. Mutations go through
+ * fetchers to the comment route actions (`routes/comments.ts`), submitted with
+ * `defaultShouldRevalidate: false` (the section settles itself from the result, so no loader
+ * or fetcher re-runs), which return `{ ok: true, … } | { ok: false, error }`: a failed post keeps the typed text and toasts
+ * `comment.error`, a failed delete restores the snapshot and toasts `comment.deleteFailed`.
+ * When the recipe loader revalidates, the fresh first page is merged into the loaded pages
+ * (see {@link mergeFirstPage}); the list resets only when `recipeId` changes.
  */
 export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Props) {
   const { user, isAuthenticated } = useAuth();
   const { t, locale } = useTranslation();
+  const toast = useToast();
   const [comments, setComments] = useState<CommentWithRepliesOutput[]>(initialComments.data);
   const [newComment, setNewComment] = useState('');
   const [page, setPage] = useState(initialComments.meta.pagination.page);
@@ -112,42 +134,45 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
   const [statusMessage, setStatusMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const submitFetcher = useFetcher();
-  const deleteFetcher = useFetcher();
-  const loadMoreFetcher = useFetcher();
+  const submitFetcher = useFetcher<typeof createCommentAction>();
+  const deleteFetcher = useFetcher<typeof deleteCommentAction>();
+  const loadMoreFetcher = useFetcher<typeof listCommentsLoader>();
+  const syncedRecipeId = useRef(recipeId);
 
   const submitIntent = useRef<string | { type: 'reply'; parentCommentId: string } | null>(null);
   const deleteSnapshotRef = useRef<{ comments: CommentWithRepliesOutput[]; total: number } | null>(
     null,
   );
 
+  // New loader data: a different recipe resets the list; a revalidation of the same recipe
+  // merges its fresh first page into the loaded pages and keeps any typed text.
   useEffect(() => {
-    setComments(initialComments.data);
-    setPage(initialComments.meta.pagination.page);
+    if (syncedRecipeId.current !== recipeId) {
+      syncedRecipeId.current = recipeId;
+      setComments(initialComments.data);
+      setPage(initialComments.meta.pagination.page);
+      setNewComment('');
+    } else {
+      setComments((prev) => mergeFirstPage(prev, initialComments.data));
+    }
     setTotal(initialComments.meta.pagination.total);
-    setNewComment('');
-  }, [initialComments]);
+  }, [initialComments, recipeId]);
 
   useEffect(() => {
-    if (deleteFetcher.state !== 'idle') return;
-    if (!deleteFetcher.data) return;
+    if (deleteFetcher.state !== 'idle' || !deleteFetcher.data || !deleteSnapshotRef.current) {
+      return;
+    }
     const snapshot = deleteSnapshotRef.current;
     deleteSnapshotRef.current = null;
-    if (
-      deleteFetcher.data &&
-      typeof deleteFetcher.data === 'object' &&
-      'error' in deleteFetcher.data
-    ) {
-      if (snapshot) {
-        log.debug({ recipeId }, 'handleDelete rolled back');
-        setComments(snapshot.comments);
-        setTotal(snapshot.total);
-      }
-      setStatusMessage(t('comment.deleteFailed') ?? 'Delete failed');
-    } else {
+    if (deleteFetcher.data.ok) {
       log.debug({ recipeId }, 'handleDelete settled successfully');
+      return;
     }
-  }, [deleteFetcher.state, deleteFetcher.data, recipeId, t]);
+    log.debug({ recipeId }, 'handleDelete rolled back');
+    setComments(snapshot.comments);
+    setTotal(snapshot.total);
+    toast.error('comment.deleteFailed');
+  }, [deleteFetcher.state, deleteFetcher.data, recipeId, toast]);
 
   useEffect(() => {
     if (!statusMessage) return;
@@ -166,7 +191,14 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
     if (submitFetcher.state !== 'idle' || !submitFetcher.data || !submitIntent.current) return;
     const intent = submitIntent.current;
     submitIntent.current = null;
-    const data = submitFetcher.data as CommentOutput;
+    const result = submitFetcher.data;
+    if (!result.ok) {
+      // Keep the typed comment or reply (and the open reply form) so the user can retry.
+      log.debug({ recipeId }, 'comment submit failed');
+      toast.error('comment.error');
+      return;
+    }
+    const data = result.comment;
 
     if (typeof intent === 'string') {
       // Top-level comment: API returns `CommentOutput` (no `author`/`replies`);
@@ -211,17 +243,18 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
       setReplyingToId(null);
       setStatusMessage(t('comment.replyPosted'));
     }
-  }, [submitFetcher.state, submitFetcher.data, user, t]);
+  }, [submitFetcher.state, submitFetcher.data, user, t, toast, recipeId]);
 
   // Process loadMoreFetcher completion
   useEffect(() => {
     if (loadMoreFetcher.state !== 'idle' || !loadMoreFetcher.data) return;
-    const result = loadMoreFetcher.data as {
-      data: CommentWithRepliesOutput[];
-      meta: { pagination: { total: number; page: number; perPage: number; totalPages: number } };
-    };
+    const result = loadMoreFetcher.data;
     if (!Array.isArray(result.data)) return;
-    setComments((prev) => [...prev, ...result.data]);
+    // Skip comments already shown (a revalidated first page may have pulled some forward).
+    setComments((prev) => {
+      const shown = new Set(prev.map((c) => c.id));
+      return [...prev, ...result.data.filter((c) => !shown.has(c.id))];
+    });
     setPage(result.meta.pagination.page);
     setTotal(result.meta.pagination.total);
   }, [loadMoreFetcher.state, loadMoreFetcher.data]);
@@ -251,6 +284,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
         method: 'post',
         action: `/comments/recipe/${recipeId}`,
         encType: 'application/x-www-form-urlencoded',
+        defaultShouldRevalidate: false,
       },
     );
   }
@@ -266,6 +300,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
         method: 'post',
         action: `/comments/recipe/${recipeId}`,
         encType: 'application/x-www-form-urlencoded',
+        defaultShouldRevalidate: false,
       },
     );
   }
@@ -274,7 +309,11 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
     if (deleteFetcher.state !== 'idle') return;
     log.debug({ recipeId, commentId }, 'handleDelete started');
     deleteSnapshotRef.current = { comments, total };
-    deleteFetcher.submit(null, { method: 'delete', action: `/comments/${commentId}` });
+    deleteFetcher.submit(null, {
+      method: 'delete',
+      action: `/comments/${commentId}`,
+      defaultShouldRevalidate: false,
+    });
     setComments((prev) => {
       const isTopLevel = prev.some((c) => c.id === commentId);
       if (isTopLevel) setTotal((n) => Math.max(0, n - 1));

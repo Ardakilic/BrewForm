@@ -125,7 +125,7 @@ describe('FavouriteButton — action failure rollback', () => {
     });
   });
 
-  it('completes normally when action returns ok', async () => {
+  it('keeps the starred state and count after { ok: true, favourited } (no revalidation)', async () => {
     const user = userEvent.setup();
     const router = createMemoryRouter(
       [
@@ -137,7 +137,7 @@ describe('FavouriteButton — action failure rollback', () => {
           children: [
             {
               path: 'recipes/:id/favourite',
-              action: () => ({ ok: true }),
+              action: () => ({ ok: true, favourited: true }),
               element: null,
             },
           ],
@@ -152,7 +152,8 @@ describe('FavouriteButton — action failure rollback', () => {
 
     await waitFor(() => {
       expect(button).not.toBeDisabled();
-      expect(button.textContent).toContain('5');
+      expect(button.textContent).toContain('6');
+      expect(button.textContent).toContain('⭐');
     });
   });
 });

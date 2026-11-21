@@ -6,8 +6,8 @@ const logger = createLogger('like');
 
 /**
  * Action toggling the like state of recipe `:id` via `recipeApi.like`.
- * Returns `{ ok: true }` or `{ ok: false, error }` so `LikeButton` can
- * settle its optimistic UI.
+ * Returns `{ ok: true, liked }` (the server's new state) or `{ ok: false, error }`, so
+ * `LikeButton` can settle its optimistic UI without revalidating the recipe loader.
  */
 export const likeAction = async ({ params }: ActionFunctionArgs) => {
   const id = params.id;
@@ -22,9 +22,9 @@ export const likeAction = async ({ params }: ActionFunctionArgs) => {
   logger.debug({ id }, 'likeAction started');
 
   try {
-    await recipeApi.like(id);
+    const { liked } = await recipeApi.like(id);
     logger.debug({ id }, 'likeAction completed');
-    return { ok: true };
+    return { ok: true, liked };
   } catch (err: unknown) {
     const errorType = err instanceof Error ? err.name : typeof err;
     const errorMessage = err instanceof Error ? err.message : undefined;

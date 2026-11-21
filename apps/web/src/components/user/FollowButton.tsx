@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useFetcher } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
+import type { followAction } from '../../routes/follow.ts';
 
 interface Props {
   userId: string;
@@ -12,14 +13,20 @@ interface Props {
 const log = createLogger('FollowButton');
 
 /**
- * Optimistic follow/unfollow toggle backed by a fetcher to `/follow/:userId`.
- * Calls `onToggle` when the mutation settles successfully and
- * `onToggleRollback` when the action returns an error.
+ * Optimistic follow/unfollow toggle backed by a fetcher (keyed by user) to `/follow/:userId`,
+ * submitted with `defaultShouldRevalidate: false` so a follow does not re-run the page loader.
+ * While pending it shows the submitted value; once settled it shows the `following` state the
+ * action returned (`{ ok: true, following }`), or the loader's `initialFollowing` after
+ * `{ ok: false }`. Calls `onToggle` when the mutation settles successfully (the parent adjusts
+ * any counts it shows) and `onToggleRollback` when the action returns an error.
  */
 export function FollowButton({ userId, initialFollowing, onToggle, onToggleRollback }: Props) {
-  const fetcher = useFetcher();
+  const fetcher = useFetcher<typeof followAction>({ key: `follow-${userId}` });
   const optimistic = fetcher.formData ? fetcher.formData.get('following') === 'true' : null;
-  const following = optimistic ?? initialFollowing;
+  const settled = fetcher.data;
+  const settledFollowing =
+    settled?.ok && typeof settled.following === 'boolean' ? settled.following : null;
+  const following = optimistic ?? settledFollowing ?? initialFollowing;
 
   const pendingNextRef = useRef<boolean | null>(null);
   const wasSettledRef = useRef<boolean>(true);
@@ -35,6 +42,7 @@ export function FollowButton({ userId, initialFollowing, onToggle, onToggleRollb
         method: next ? 'post' : 'delete',
         action: `/follow/${userId}`,
         encType: 'application/x-www-form-urlencoded',
+        defaultShouldRevalidate: false,
       },
     );
   };
@@ -48,7 +56,7 @@ export function FollowButton({ userId, initialFollowing, onToggle, onToggleRollb
     wasSettledRef.current = true;
     const next = pendingNextRef.current;
     pendingNextRef.current = null;
-    if (fetcher.data && typeof fetcher.data === 'object' && 'error' in fetcher.data) {
+    if (fetcher.data && !fetcher.data.ok) {
       log.debug({ userId }, 'fetcher settled with error');
       onToggleRollback?.(initialFollowing);
       return;

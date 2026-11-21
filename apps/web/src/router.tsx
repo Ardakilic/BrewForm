@@ -53,7 +53,10 @@ import { HomePage } from './pages/HomePage.tsx';
 import { loader as notificationListLoader } from './pages/notifications/NotificationListPage.data.ts';
 import { NotificationListPage } from './pages/notifications/NotificationListPage.tsx';
 import { PrivacyPage } from './pages/PrivacyPage.tsx';
-import { loader as detailLoader } from './pages/recipes/RecipeDetailPage.data.ts';
+import {
+  loader as detailLoader,
+  shouldRevalidate as shouldRevalidateDetail,
+} from './pages/recipes/RecipeDetailPage.data.ts';
 import { RecipeDetailPage } from './pages/recipes/RecipeDetailPage.tsx';
 import { loader as recipeListLoader } from './pages/recipes/RecipeListPage.data.ts';
 import { RecipeListPage } from './pages/recipes/RecipeListPage.tsx';
@@ -207,6 +210,7 @@ export const routes: RouteObject[] = [
         path: 'recipes/:slug',
         element: <RecipeDetailPage />,
         loader: detailLoader,
+        shouldRevalidate: shouldRevalidateDetail,
         errorElement: <RouteErrorState />,
       },
       {

@@ -482,6 +482,7 @@
   "comment.posted": "Yorum başarıyla gönderildi",
   "comment.replyPosted": "Yanıt başarıyla gönderildi",
   "comment.error": "Yorum gönderilemedi. Lütfen tekrar deneyin.",
+  "comment.deleteFailed": "Yorum silinemedi. Lütfen tekrar deneyin.",
   "comment.replyBy": "{name} tarafından yanıt",
   "onboarding.welcomeDescription": "Kahve tariflerinizi kaydetmeye ve paylaşmaya başlamak için demleme profilinizi ayarlayalım.",
   "onboarding.equipmentDescription": "Espresso makinenizi, değirmeninizi ve aksesuarlarınızı ekleyin. Farklı demleme yapılandırmaları için kurulumlar oluşturabilirsiniz.",
