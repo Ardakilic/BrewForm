@@ -824,6 +824,7 @@
   "collection.modal.add": "Koleksiyona Ekle",
   "collection.modal.adding": "Ekleniyor...",
   "collection.modal.alreadyIn": "Bu koleksiyonda zaten var",
+  "collection.modal.hiddenRecipeNote": "Bu tarifi herkese açık yapana kadar koleksiyonlarında yalnızca sen görebilirsin.",
   "collection.modal.success": "Başarıyla eklendi!",
   "collection.visibility.private": "Özel",
   "collection.visibility.unlisted": "Listelenmemiş",

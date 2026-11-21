@@ -102,7 +102,10 @@ auth.post(
     responses: {
       201: { description: 'Account created; tokens issued' },
       403: { description: 'Registration disabled' },
-      409: { description: 'Email or username already in use' },
+      409: {
+        description: 'Email or username already in use (envelope code CONFLICT)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
       429: rateLimited('5 requests per hour per client IP'),
     },
   }),

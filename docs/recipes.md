@@ -41,6 +41,38 @@ POST /api/v1/recipes/:id/fork
 - Increments `forkCount` on the original recipe
 - The forker can modify any parameters after forking
 
+## Slugs
+
+Recipe URLs are `/recipes/<slug>`. The slug is derived from the title when the recipe is created
+(also for forks and merges) and never changes afterwards, even when the title is renamed.
+
+- **Built-in ASCII transliteration** (`generateSlug` in `packages/shared/src/utils/slug.ts`, no
+  library): apostrophes are dropped, the title is lowercased, nine letters without a decomposition
+  (`ı ß æ œ ø đ ð ł þ`) are mapped, `normalize('NFKD')` strips accents (so Turkish
+  `Türk Kahvesi` becomes `turk-kahvesi`), every run outside `[a-z0-9]` becomes `-`, and the result
+  is trimmed and capped at 93 characters at a hyphen boundary.
+- **Fallback for non-Latin titles**: a title that leaves nothing (for example all CJK or Cyrillic)
+  gets `recipe-<suffix>`.
+- **Suffix when taken**: if the bare slug already exists, a 6-character suffix drawn from
+  `23456789bcdfghjkmnpqrstvwxz` (no vowels, no look-alikes) is appended: `<base>-<suffix>`. Slugs
+  are unique across all recipes, soft-deleted ones included, so a deleted recipe's slug is never
+  reused and old links never open a different recipe.
+- **Reserved words and UUID-shaped titles** (`new`, `edit`, `starred`, `unavailable`, `compare`,
+  `meta`, `merge`, `versions`, `diff`, `focus`, `fork`, `search`, `feed`, `share`, `recipe`,
+  `recipes`) are always suffixed, so they never shadow a static route or a recipe id.
+- **Claimed in the transaction**: the recipe insert is the first write of the create and fork
+  transactions and uses `ON CONFLICT (slug) DO NOTHING` per candidate (the bare slug, then five
+  suffixed ones). A taken candidate moves on to the next one without an error; if every candidate
+  is taken the API answers `409 SLUG_CONFLICT`. Concurrent requests for the same title always end
+  with distinct slugs.
+- **Forks**: the fork title is sanitized and falls back to `Fork of <source title>`, then follows
+  the same pipeline.
+- **Legacy slugs**: older slugs may contain `_`. They stay addressable, and the QR code route
+  accepts them (`QR_CODE_FILENAME_PATTERN`); new slugs never contain `_`.
+- **`unlisted` is not secret**: slugs are derived from the title, so an `unlisted` recipe's URL
+  can be guessed. `unlisted` means "not listed anywhere"; use `private` for a recipe nobody else
+  may open.
+
 ## Visibility
 
 | State      | Description                                 | Who Can See          |

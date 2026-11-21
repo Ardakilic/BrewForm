@@ -824,6 +824,7 @@
   "collection.modal.add": "Add to Collection",
   "collection.modal.adding": "Adding...",
   "collection.modal.alreadyIn": "Already in this collection",
+  "collection.modal.hiddenRecipeNote": "Only you can see this recipe in your collections until you make it public.",
   "collection.modal.success": "Added successfully!",
   "collection.visibility.private": "Private",
   "collection.visibility.unlisted": "Unlisted",

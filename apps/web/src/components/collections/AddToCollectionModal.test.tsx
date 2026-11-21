@@ -2,6 +2,7 @@ import type { CollectionListItemOutput, PaginatedResponse } from '@brewform/shar
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AddToCollectionButton } from './AddToCollectionButton.tsx';
 import { AddToCollectionModal } from './AddToCollectionModal.tsx';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -144,5 +145,42 @@ describe('AddToCollectionModal', () => {
       expect(mockAddRecipe).toHaveBeenCalledWith('c2', 'recipe-1');
     });
     expect(mockRemoveRecipe).not.toHaveBeenCalled();
+  });
+});
+
+describe('AddToCollectionModal — hidden-recipe note', () => {
+  for (const recipeVisibility of ['draft', 'private', 'unlisted'] as const) {
+    it(`renders the hidden-recipe note for a ${recipeVisibility} recipe`, async () => {
+      render(<AddToCollectionModal {...defaultProps} recipeVisibility={recipeVisibility} />);
+
+      await screen.findByText('Alpha');
+      expect(screen.getByText('collection.modal.hiddenRecipeNote')).toBeInTheDocument();
+    });
+  }
+
+  it('does not render the note for a public recipe', async () => {
+    render(<AddToCollectionModal {...defaultProps} recipeVisibility="public" />);
+
+    await screen.findByText('Alpha');
+    expect(screen.queryByText('collection.modal.hiddenRecipeNote')).toBeNull();
+  });
+
+  it('does not render the note when no visibility is passed', async () => {
+    render(<AddToCollectionModal {...defaultProps} />);
+
+    await screen.findByText('Alpha');
+    expect(screen.queryByText('collection.modal.hiddenRecipeNote')).toBeNull();
+  });
+});
+
+describe('AddToCollectionButton', () => {
+  it('forwards recipeVisibility to the modal it opens', async () => {
+    render(<AddToCollectionButton recipeId="recipe-1" recipeVisibility="unlisted" />);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'collection.modal.add' }));
+
+    await screen.findByText('Alpha');
+    expect(screen.getByText('collection.modal.hiddenRecipeNote')).toBeInTheDocument();
   });
 });

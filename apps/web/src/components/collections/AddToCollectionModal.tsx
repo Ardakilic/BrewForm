@@ -14,7 +14,16 @@ interface AddToCollectionModalProps {
   recipeId: string;
   open: boolean;
   onClose: () => void;
+  /**
+   * The current recipe's visibility. When it is `draft`, `private` or
+   * `unlisted`, the modal explains that only the author sees the recipe in
+   * their collections until it is public.
+   */
+  recipeVisibility?: string;
 }
+
+/** Recipe visibilities that collections hide from everyone but the recipe's author. */
+const HIDDEN_IN_COLLECTIONS: ReadonlySet<string> = new Set(['draft', 'private', 'unlisted']);
 
 /**
  * Modal for adding a recipe to collections. Lists the user's collections with
@@ -22,8 +31,18 @@ interface AddToCollectionModalProps {
  * flag returned when listing with a `recipeId` context), toggles membership on
  * click (add vs. remove based on `containsRecipe`, with a 409→remove fallback
  * for stale state), and supports inline creation of a new collection.
+ *
+ * When `recipeVisibility` is `draft`, `private` or `unlisted`, a note under the
+ * collection list (`collection.modal.hiddenRecipeNote`) explains that the recipe
+ * stays hidden from other viewers of the collection until it is made public:
+ * collection items follow the recipe listing rule (`canListRecipe` on the API).
  */
-export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectionModalProps) {
+export function AddToCollectionModal({
+  recipeId,
+  open,
+  onClose,
+  recipeVisibility,
+}: AddToCollectionModalProps) {
   const { t } = useTranslation();
   const [collections, setCollections] = useState<CollectionListItemOutput[]>([]);
   const [loading, setLoading] = useState(true);
@@ -186,6 +205,12 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
             ))
           )}
         </div>
+      )}
+
+      {recipeVisibility && HIDDEN_IN_COLLECTIONS.has(recipeVisibility) && (
+        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+          {t('collection.modal.hiddenRecipeNote')}
+        </p>
       )}
 
       <div className="border-t pt-4" style={{ borderColor: 'var(--border-primary)' }}>

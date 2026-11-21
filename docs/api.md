@@ -50,21 +50,25 @@ List endpoints return `meta.pagination` with:
 
 ## Error Codes
 
-| Code                    | HTTP Status | Description                              |
-| ----------------------- | ----------- | ---------------------------------------- |
-| `VALIDATION_ERROR`      | 400         | Request body/query validation failed     |
-| `UNAUTHORIZED`          | 401         | Authentication required or invalid token |
-| `FORBIDDEN`             | 403         | Insufficient permissions                 |
-| `NOT_FOUND`             | 404         | Resource not found                       |
-| `CONFLICT`              | 409         | Duplicate resource (email/username)      |
-| `USER_BANNED`           | 403         | User account is banned                   |
-| `INVALID_CREDENTIALS`   | 401         | Wrong email or password                  |
-| `INVALID_REFRESH_TOKEN` | 401         | Invalid or expired refresh token         |
-| `INVALID_RESET_TOKEN`   | 400         | Invalid password reset token             |
-| `TOKEN_EXPIRED`         | 400         | Reset token has expired                  |
-| `TOKEN_USED`            | 400         | Reset token already used                 |
-| `QUERY_TOO_SHORT`       | 400         | Search query needs 3+ characters         |
-| `INTERNAL_ERROR`        | 500         | Unexpected server error                  |
+| Code                    | HTTP Status | Description                                                                   |
+| ----------------------- | ----------- | ----------------------------------------------------------------------------- |
+| `VALIDATION_ERROR`      | 400         | Request body/query validation failed, or a referenced record does not exist   |
+| `BAD_REQUEST`           | 400         | Malformed request the framework rejects (for example invalid JSON)            |
+| `UNAUTHORIZED`          | 401         | Authentication required or invalid token                                      |
+| `FORBIDDEN`             | 403         | Insufficient permissions                                                      |
+| `NOT_FOUND`             | 404         | Resource not found                                                            |
+| `CONFLICT`              | 409         | Unique-constraint conflict (for example an email or username already in use)  |
+| `SLUG_CONFLICT`         | 409         | No free recipe slug after every candidate was tried (see recipes.md)          |
+| `PAYLOAD_TOO_LARGE`     | 413         | Request body is over the size limit                                           |
+| `RATE_LIMITED`          | 429         | Too many requests; retry after the `Retry-After` header                       |
+| `USER_BANNED`           | 403         | User account is banned                                                        |
+| `INVALID_CREDENTIALS`   | 401         | Wrong email or password                                                       |
+| `INVALID_REFRESH_TOKEN` | 401         | Invalid or expired refresh token                                              |
+| `INVALID_RESET_TOKEN`   | 400         | Invalid password reset token                                                  |
+| `TOKEN_EXPIRED`         | 400         | Reset token has expired                                                       |
+| `TOKEN_USED`            | 400         | Reset token already used                                                      |
+| `QUERY_TOO_SHORT`       | 400         | Search query needs 3+ characters                                              |
+| `INTERNAL_ERROR`        | 500         | Unexpected server error                                                       |
 
 ---
 
@@ -436,6 +440,42 @@ Only the recipe author can reply to comments (OP-only reply rule).
 | GET    | `/follow/:userId/followers` | none     | List a user's followers (paginated) |
 | GET    | `/follow/:userId/following` | none     | List who a user follows (paginated) |
 | GET    | `/follow/feed`              | required | Feed of recipes from followed users |
+
+---
+
+## Collections
+
+| Method | Endpoint                             | Auth     | Description                                                        |
+| ------ | ------------------------------------ | -------- | ------------------------------------------------------------------ |
+| GET    | `/collections`                       | required | The caller's own collections, every visibility (paginated)         |
+| GET    | `/collections/public`                | none     | Browse public collections of every user (paginated)                |
+| GET    | `/collections/:id`                   | optional | Collection detail with its items                                   |
+| POST   | `/collections`                       | required | Create a collection                                                |
+| PATCH  | `/collections/:id`                   | required | Update a collection (owner only)                                   |
+| DELETE | `/collections/:id`                   | required | Soft-delete a collection (owner only)                              |
+| POST   | `/collections/:id/recipes`           | required | Add a recipe (own recipes of any visibility, others' public only)  |
+| DELETE | `/collections/:id/recipes/:recipeId` | required | Remove a recipe (works whether or not the recipe is still visible) |
+| PATCH  | `/collections/:id/reorder`           | required | Reorder the items the owner sees (`itemIds`)                       |
+| GET    | `/users/:userId/collections`         | optional | A user's public collections; every visibility for the user         |
+| GET    | `/recipes/:slugOrId/collections`     | optional | Public collections containing a recipe, plus the caller's own      |
+
+### Visibility of items
+
+- Collection items follow the recipe listing rule: a `public` recipe is shown to everyone, while
+  `unlisted`, `private` and `draft` recipes are shown only to their own author. A soft-deleted
+  recipe is shown to nobody.
+- Owning the collection grants nothing: the owner does not see another author's recipe that is, or
+  later becomes, non-public. A recipe that changes visibility or is deleted disappears on the next
+  request, even while the collection detail is cached.
+- Counts follow the audience: `recipeCount` on a detail equals the items returned; the owner's own
+  list counts the owner's own non-public recipes; public lists (`/collections/public`, and
+  `/users/:userId/collections` for anyone but that user) count public recipes only.
+- Reorder sends the ids of the items the owner sees; hidden items keep their relative order after
+  them.
+- An `unlisted` collection opens for anyone with its direct link (`GET /collections/:id`, items
+  filtered as above) and is never listed to anyone but its owner. `private` and `draft`
+  collections return `403` to everyone else.
+- See [Visibility](#visibility) for the meaning of each visibility value on every surface.
 
 ---
 

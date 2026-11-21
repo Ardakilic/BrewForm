@@ -199,7 +199,9 @@ export function RecipeDetailPage() {
               )}
 
               {/* Add to Collection button — authenticated users */}
-              {isAuthenticated && <AddToCollectionButton recipeId={recipe.id} />}
+              {isAuthenticated && (
+                <AddToCollectionButton recipeId={recipe.id} recipeVisibility={recipe.visibility} />
+              )}
 
               {/* Edit button — owner only */}
               {isOwner && (

@@ -99,18 +99,43 @@ Two layers:
 
 ## Error path
 
-Errors bubble up through the layers as `Error` instances whose `.message` is a domain-specific
-string constant (e.g. `RECIPE_NOT_FOUND`, `FORBIDDEN`, `EMAIL_ALREADY_EXISTS`). The route handler
-catches each, maps it to an envelope code/HTTP status via `error(c, code, msg, status, details?)`,
-and returns. Anything _not_ handled at the route level falls through to `onError(errorHandler)`,
-which:
+Route handlers catch the domain errors they expect and answer with
+`error(c, code, msg, status, details?)`. Everything else falls through to
+`app.onError(errorHandler)` (`apps/api/src/middleware/errorHandler.ts`), which maps the error to
+the standard envelope with `c.json` (so CORS, request-id and secure headers set earlier are kept).
+It checks, in order:
 
-1. Reads `requestId` from context.
-2. Logs the error with the requestId attached (Pino, with secret redaction).
-3. Returns the standard error envelope with HTTP 500 and `code: INTERNAL_ERROR`.
+1. **`HTTPException`** (framework errors such as malformed JSON): keeps its status, with
+   `error.code` derived from it (`BAD_REQUEST` 400, `PAYLOAD_TOO_LARGE` 413, `RATE_LIMITED` 429,
+   …). A custom `res` is returned unchanged; 4xx is logged at warn. (The body-limit and
+   rate-limit middleware answer their own 413 and 429 envelopes before any route runs.)
+2. **Typed `AppError`** (`apps/api/src/utils/errors.ts`: `NotFoundError`, `ForbiddenError`,
+   `ConflictError`, `ValidationError`): its own status, code (for example `SLUG_CONFLICT`) and
+   `details`. New service code throws these instead of string codes.
+3. **`EQUIPMENT_INCOMPATIBLE`**: 422 `VALIDATION_ERROR` with one detail per equipment item.
+4. **Postgres errors**: drizzle-orm wraps every driver error in `DrizzleQueryError`, so
+   `getPostgresError` walks the `cause` chain (up to 5 levels) and recognises the driver error by
+   shape (`name === 'PostgresError'` plus a 5-character SQLSTATE `code`). The SQLSTATE table:
+   `23505` → 409 `CONFLICT`; `23503` → 400 `VALIDATION_ERROR` on insert/update (409 `CONFLICT` on
+   delete); `23502`, `23514` and class `22` → 400 `VALIDATION_ERROR`; `57014` (statement timeout)
+   → 503 `QUERY_TIMEOUT`. Other SQLSTATEs fall through to 500. Responses never contain SQL text,
+   parameters, or constraint, table or column names.
+5. **`ZodError`**: 400 `VALIDATION_ERROR` with per-field `details`.
+6. **Auth/JWT failures**: 401 `UNAUTHORIZED`.
+7. **Legacy string codes** (`new Error('UPPER_SNAKE')` that no handler caught), mapped by
+   convention with a warn log: `FORBIDDEN` → 403, `*_NOT_FOUND` → 404 `NOT_FOUND`,
+   `ALREADY_*` / `*_ALREADY_EXISTS` → 409 `CONFLICT`, `VALIDATION_ERROR…` → 400.
+8. **Anything else**: 500 `INTERNAL_ERROR`. The message is `Something went wrong` in production;
+   outside production it is the error message, except `Database error` for database errors
+   (Drizzle's message embeds the query parameters).
 
-The client receives the same envelope shape on success and on failure — see `docs/api.md` for the
-schema.
+Database errors are logged without query parameters or row values: mapped constraint errors log
+only `{ pgCode, constraint, table }` at warn, and unmapped errors go through `toLoggableError`
+(name, SQL text without params, SQLSTATE, constraint, stack). Every log line carries the
+`requestId`.
+
+The client receives the same envelope shape on success and on failure. The codes are listed in
+`docs/api.md` → "Error Codes".
 
 ## Response envelope
 

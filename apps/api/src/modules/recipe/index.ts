@@ -648,6 +648,12 @@ recipe.post(
         description: 'Forbidden (email not verified or not authorized)',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
+      409: {
+        description:
+          'SLUG_CONFLICT when every slug candidate for the title is taken, or CONFLICT on any ' +
+          'other unique-constraint conflict',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
     },
   }),
   authGuard,
@@ -702,6 +708,12 @@ recipe.post(
       },
       404: {
         description: 'One or both recipe versions not found',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      409: {
+        description:
+          'SLUG_CONFLICT when every slug candidate for the merged title is taken, or CONFLICT on ' +
+          'any other unique-constraint conflict',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
     },
@@ -780,7 +792,8 @@ recipe.patch(
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       409: {
-        description: 'Conflict with existing data',
+        description:
+          'CONFLICT on a unique-constraint conflict (for example a concurrent version bump)',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       422: {
@@ -849,8 +862,18 @@ recipe.post(
     security: [{ bearerAuth: [] }],
     responses: {
       201: { description: 'Forked recipe created' },
+      400: {
+        description: 'Validation error: invalid body (for example an over-long title)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
       403: { description: 'Source recipe is not forkable for this user' },
       404: { description: 'Source recipe not found' },
+      409: {
+        description:
+          'SLUG_CONFLICT when every slug candidate for the fork title is taken, or CONFLICT on ' +
+          'any other unique-constraint conflict',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
     },
   }),
   authGuard,
