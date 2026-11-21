@@ -174,7 +174,7 @@ services:
     restart: unless-stopped
 
   valkey:
-    image: valkey/valkey:9.1-alpine
+    image: valkey/valkey:9.2-alpine
     # The password goes into a generated config file, never into a command line.
     # maxmemory stays below the container limit; the policy stays noeviction so
     # rate-limit counters are never evicted early (a full Valkey rejects writes instead).
