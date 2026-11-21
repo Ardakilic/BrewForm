@@ -512,4 +512,13 @@ Existing entries that stay open with updated text: D99.58 (the `Sitemap:` URL on
 | D99.67 `recipe.comment_count` values that drifted before this change | r1 decision 11; Migration Plan 11 | 8.14-8.16, 17.4, 17.11, 18.3, 19.1-19.3, 21.12, 22.3 |
 | Pre-wave-6 rollback floor | r3 decision 9; Migration Plan 9 | 17.11 |
 | Wave-6 manual checks 10.36, 16.9, 17.22, 19.27 | r5 decision 3 | 1.3, 20.1-20.5 |
+| Group-20 B1 `/admin` dashboard crashes (stats response and web type disagree; regression of `31da818`) | found during apply (task 20.2) | 4.11, 4.13, 20.2 |
+| Group-20 B2 admin recipe list shows no author (already on `main`) | found during apply (task 20.3); Extras E11 (admin keeps names) | 4.12, 4.13, 20.3 |
+| Group-20 B3 a failed rating after an earlier rating keeps the unsaved stars | found during apply (task 20.4); r4 decision 2 | 13.10, 13.11, 20.4 |
+| Group-20 V6 taste-chip buttons have zero height | found during apply (task 20.4) | 15.6, 15.8 |
+| Group-20 V7 taste-picker group headings stay English under `tr` | found during apply (task 20.4); Extras E9 | 15.7, 15.8 |
+| Group-20 V1 bean card dates overlap at 320 px | found during apply (task 20.4) | 16.9, 16.12 |
+| Group-20 V2 print hides the equipment list and taste chips (already on `main`) | found during apply (task 20.4) | 16.10, 16.12 |
+| Group-20 V4 small flow rates show "0 ml/s" | found during apply (task 20.4) | 16.11, 16.12 |
+| Group-20 V3 (pre-infusion title hidden in en) and V5 (12 h axis skips 10h) | follow the `chart-rendering` rules; recorded for the reviewer, no change | 20.5, 22.3 |
 | Wave-6 29.14 post-merge part | r5 decision 3; Migration Plan 10 | 1.3, 22.7 |
