@@ -40,7 +40,7 @@ afterEach(() => {
 
 describe('assertMigrationPreflight (stub client)', () => {
   it('throws the "not available" message when pg_trgm is neither installed nor available', async () => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const { stub } = stubClient({ installed: false, available: false, can_create: true });
     await expect(assertMigrationPreflight(stub)).rejects.toThrow(PG_TRGM_NOT_AVAILABLE_MESSAGE);
     expect(PG_TRGM_NOT_AVAILABLE_MESSAGE).toBe(
@@ -49,7 +49,7 @@ describe('assertMigrationPreflight (stub client)', () => {
   });
 
   it('throws the "lacks CREATE" message naming the role and database', async () => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const { stub } = stubClient({ installed: false, available: true, can_create: false });
     await expect(assertMigrationPreflight(stub)).rejects.toThrow(
       'role brewform_app lacks CREATE on database brewform_prod; run "CREATE EXTENSION pg_trgm;" as the database owner, then rerun migrations',
@@ -60,7 +60,7 @@ describe('assertMigrationPreflight (stub client)', () => {
   });
 
   it('passes when pg_trgm is already installed, even without CREATE', async () => {
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const { stub } = stubClient({ installed: true, available: true, can_create: false });
     await expect(assertMigrationPreflight(stub)).resolves.toBeUndefined();
     const lines = log.mock.calls.map((call) => call.join(' ')).join('\n');
@@ -69,13 +69,13 @@ describe('assertMigrationPreflight (stub client)', () => {
   });
 
   it('passes when pg_trgm is available and the role may create it', async () => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const { stub } = stubClient({ installed: false, available: true, can_create: true });
     await expect(assertMigrationPreflight(stub)).resolves.toBeUndefined();
   });
 
   it('reads only catalog data in one query', async () => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const { stub, queries } = stubClient({ installed: true });
     await assertMigrationPreflight(stub);
     expect(queries).toHaveLength(1);
@@ -95,7 +95,7 @@ describe('assertMigrationPreflight (stub client)', () => {
 
 describe('assertMigrationPreflight (brewform_test)', () => {
   it('passes on the official postgres image', async () => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
     await expect(assertMigrationPreflight(client)).resolves.toBeUndefined();
   });
 });

@@ -107,8 +107,10 @@ export function createMigrationRunnerDeps(databaseUrl: string): MigrationRunnerD
   const client = postgres(databaseUrl, {
     max: 1,
     connect_timeout: 10,
-    // `CREATE SCHEMA IF NOT EXISTS` and friends raise NOTICEs on re-runs; keep stdout clean.
-    onnotice: () => {},
+    onnotice: () => {
+      // `CREATE SCHEMA IF NOT EXISTS` and friends raise NOTICEs on re-runs; drop them so
+      // stdout stays clean (errors still reject the query).
+    },
   });
   return {
     client,

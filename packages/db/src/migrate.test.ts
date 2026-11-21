@@ -58,12 +58,12 @@ async function appliedMigrations() {
 /** Build stub deps; every function is a spy. */
 function stubDeps(overrides: Partial<MigrationRunnerDeps> = {}) {
   const client = Object.assign(async () => [] as never[], {
-    end: vi.fn(async () => {}),
+    end: vi.fn(() => Promise.resolve()),
   }) as unknown as MigrationRunnerDeps['client'] & { end: ReturnType<typeof vi.fn> };
   const deps = {
     client,
-    preflight: vi.fn(async () => {}),
-    migrate: vi.fn(async () => {}),
+    preflight: vi.fn(() => Promise.resolve()),
+    migrate: vi.fn(() => Promise.resolve()),
     output: { log: vi.fn(), error: vi.fn() },
     ...overrides,
   };
