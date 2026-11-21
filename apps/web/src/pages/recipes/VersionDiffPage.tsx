@@ -32,7 +32,7 @@ const FIELD_LABELS: Record<string, string> = {
   preInfusionTimeSeconds: 'recipe.preInfusionTime',
   tds: 'recipe.tds',
   preparationNotes: 'recipe.preparationNotes',
-  personalNotes: 'recipe.personalNotes',
+  personalNotes: 'recipe.brewerNotes',
   rating: 'recipe.rating',
   emojiTag: 'recipe.emojiTag',
 };

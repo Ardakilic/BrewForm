@@ -116,7 +116,8 @@ vi.mock('../../components/recipe/ShareSection.tsx', () => ({
   ShareSection: () => <div data-testid="share-section" />,
 }));
 vi.mock('../../components/recipe/RecipeNotesSection.tsx', () => ({
-  RecipeNotesSection: () => <div data-testid="recipe-notes-section" />,
+  // A spy, so tests can assert the props (only `recipeId`) and that a guest never mounts it.
+  RecipeNotesSection: vi.fn(() => <div data-testid="recipe-notes-section" />),
 }));
 vi.mock('../../components/brew-log/RecipeBrewStats.tsx', () => ({
   RecipeBrewStats: () => <div data-testid="recipe-brew-stats" />,
@@ -136,6 +137,7 @@ import type {
 import { ApiError } from '../../api/errors.ts';
 import { collectionApi, commentApi, recipeApi } from '../../api/index.ts';
 import { getTasteNotesCached } from '../../api/static-cache.ts';
+import { RecipeNotesSection } from '../../components/recipe/RecipeNotesSection.tsx';
 import { StarRating } from '../../components/recipe/StarRating.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
@@ -149,6 +151,7 @@ const mockCollectionApiListByRecipe = vi.mocked(collectionApi.listByRecipe);
 const mockGetTasteNotesCached = vi.mocked(getTasteNotesCached);
 const mockSEOHead = vi.mocked(SEOHead);
 const mockStarRating = vi.mocked(StarRating);
+const mockRecipeNotesSection = vi.mocked(RecipeNotesSection);
 
 // ── Translation helpers ────────────────────────────────────────────────────
 
@@ -753,7 +756,7 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
     clearSessionError: vi.fn(),
   };
 
-  it('guest (isAuthenticated=false): recipe notes section is NOT rendered', async () => {
+  it('guest (isAuthenticated=false): recipe notes section is NOT rendered and never mounted', async () => {
     renderDetailPage();
 
     await waitFor(() => {
@@ -761,6 +764,8 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
     });
 
     expect(screen.queryByTestId('recipe-notes-section')).toBeNull();
+    // The section is the only notes reader, so never mounting it means no notes request is sent.
+    expect(mockRecipeNotesSection).not.toHaveBeenCalled();
   });
 
   it('authenticated user: recipe notes section IS rendered', async () => {
@@ -771,6 +776,21 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
     await waitFor(() => {
       expect(screen.getByTestId('recipe-notes-section')).toBeInTheDocument();
     });
+  });
+
+  it("passes only recipeId: the private editor is never pre-filled from the brewer's notes", async () => {
+    mockUseAuth.mockReturnValue(authenticatedAuth as ReturnType<typeof useAuth>);
+    // sampleRecipe.currentVersion.personalNotes is 'Great shot' (the author's public note).
+
+    renderDetailPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-notes-section')).toBeInTheDocument();
+    });
+    for (const [props] of mockRecipeNotesSection.mock.calls) {
+      expect(props).toEqual({ recipeId: 'recipe-1' });
+    }
+    expect(JSON.stringify(mockRecipeNotesSection.mock.calls)).not.toContain('Great shot');
   });
 
   it('recipe owner: recipe notes section IS rendered', async () => {

@@ -196,6 +196,21 @@ describe('RecipeEditPage', () => {
     expect(screen.getByDisplayValue('Pull a shot')).toBeInTheDocument();
   });
 
+  it("labels the author's notes as public brewer notes with the visibility hint", async () => {
+    renderPage();
+
+    const field = await screen.findByRole('textbox', { name: t('recipe.brewerNotes') });
+    expect(field).toHaveAccessibleDescription(t('recipe.brewerNotes.hint'));
+    expect(screen.getByRole('heading', { name: t('recipe.brewerNotes') })).toBeInTheDocument();
+  });
+
+  it('shows the brewer-notes label and hint in Turkish', async () => {
+    renderPage('tr');
+
+    const field = await screen.findByRole('textbox', { name: t('recipe.brewerNotes', 'tr') });
+    expect(field).toHaveAccessibleDescription(t('recipe.brewerNotes.hint', 'tr'));
+  });
+
   it('shows the no-versions message for a recipe without a current version', async () => {
     mockRecipeApi.get.mockResolvedValue({ ...recipe, currentVersion: null } as never);
     renderPage();

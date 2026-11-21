@@ -22,6 +22,7 @@ interface TasteNote {
 
 interface TastingNotesSectionProps {
   tasteNotes: TasteNote[];
+  /** The author's public brewer notes (`currentVersion.personalNotes`), shown read-only. */
   personalNotes?: string | null;
   // Full hierarchy for resolving root categories
   allTasteNotes?: Array<{ id: string; name: string; parentId: string | null; depth: number }>;
@@ -56,7 +57,9 @@ function getRootCategoryName(
 /**
  * Tasting-notes card: one SCAA radar chart (when every note resolves to a
  * root category) plus intensity chips grouped by category, each linking
- * to the filtered recipe list. Also shows optional personal notes.
+ * to the filtered recipe list. Also shows the author's public brewer notes
+ * (`personalNotes` on the wire) read-only, labelled `recipe.tastingNotes.brewerNote`, for every
+ * viewer including the author; the viewer's private notes live in `RecipeNotesSection`.
  *
  * The card is a container-query `@container`: the chart sits beside the chip
  * groups only when the card is at least 520px wide, and above them otherwise.
@@ -163,17 +166,17 @@ export function TastingNotesSection({
         </div>
       )}
 
-      {/* Personal notes blockquote */}
+      {/* The author's public brewer note */}
       {personalNotes && (
         <blockquote className="[border-left:3px_solid_var(--accent-primary)] pl-4 m-0 text-[color:var(--text-secondary)]">
           <p className="text-sm italic leading-[1.6] m-0">{personalNotes}</p>
           <footer className="text-xs mt-2 uppercase tracking-widest text-[color:var(--text-tertiary)] not-italic">
-            {t('recipe.tastingNotes.personalNote')}
+            {t('recipe.tastingNotes.brewerNote')}
           </footer>
         </blockquote>
       )}
 
-      {/* Empty state: no taste notes and no personal notes */}
+      {/* Empty state: no taste notes and no brewer note */}
       {!hasTasteNotes && !personalNotes && (
         <p className="text-sm text-[color:var(--text-tertiary)]">
           {t('recipe.tastingNotes.empty')}

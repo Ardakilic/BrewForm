@@ -11,6 +11,7 @@
  * intensity value (1, 2, or 3).
  */
 
+import { t } from '@brewform/shared/i18n';
 import { render, screen, within } from '@testing-library/react';
 import fc from 'fast-check';
 import type { ReactNode } from 'react';
@@ -109,8 +110,20 @@ describe('TastingNotesSection — unit tests', () => {
     const blockquote = document.querySelector('blockquote');
     expect(blockquote).not.toBeNull();
     expect(screen.getByText('Bright and citrusy.')).toBeInTheDocument();
+    // The author's public note is labelled as the brewer's note (recipe.tastingNotes.brewerNote).
+    expect(
+      within(blockquote as HTMLElement).getByText(t('recipe.tastingNotes.brewerNote')),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/personal note/i)).toBeNull();
     // No radar chart when no taste notes
     expect(screen.queryAllByTestId('scaa-radar-chart')).toHaveLength(0);
+  });
+
+  it('labels the brewer note in Turkish under the tr locale', () => {
+    render(
+      withTurkish(<TastingNotesSection tasteNotes={[]} personalNotes="Parlak ve narenciye." />),
+    );
+    expect(screen.getByText(t('recipe.tastingNotes.brewerNote', 'tr'))).toBeInTheDocument();
   });
 
   it('renders exactly one radar chart when taste notes are present (no CSS-toggled duplicate)', () => {

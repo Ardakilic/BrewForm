@@ -221,6 +221,16 @@ describe('/recipes/new action', () => {
   });
 });
 
+describe('RecipeCreatePage — brewer notes', () => {
+  it("labels the author's notes as public brewer notes with the visibility hint", async () => {
+    renderPage();
+
+    const field = await screen.findByRole('textbox', { name: t('recipe.brewerNotes') });
+    expect(field).toHaveAccessibleDescription(t('recipe.brewerNotes.hint'));
+    expect(screen.getByRole('heading', { name: t('recipe.brewerNotes') })).toBeInTheDocument();
+  });
+});
+
 describe('RecipeCreatePage — mount/unmount logging', () => {
   it('logs mount and unmount', async () => {
     const { unmount } = renderPage();

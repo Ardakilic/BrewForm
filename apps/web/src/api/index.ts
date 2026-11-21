@@ -35,6 +35,7 @@ import type {
   RecipeMerge,
   RecipeNotes,
   RecipeUpdate,
+  RecipeUserNoteOutput,
   RecipeWithAuthorOutput,
   RecipeWithVersionsOutput,
   SetupCreate,
@@ -150,8 +151,9 @@ export const contactApi = {
 };
 
 /**
- * Recipe API client — paginated list/starred feeds, CRUD, fork, versions, and the social
- * actions (like, favourite, feature, rate, save notes).
+ * Recipe API client — paginated list/starred feeds, CRUD, fork, versions, the social
+ * actions (like, favourite, feature, rate), and the caller's own private note
+ * (`getMyNote`/`saveMyNote`/`deleteMyNote`).
  */
 export const recipeApi = {
   list: (params?: Record<string, string>, opts?: RequestOptions) =>
@@ -179,8 +181,24 @@ export const recipeApi = {
     api.post<{ featured: boolean }>(`/recipes/${id}/feature`, {}, opts),
   rate: (id: string, rating: number, opts?: RequestOptions) =>
     api.post<RateResponse>(`/recipes/${id}/rate`, { rating }, opts),
-  saveNotes: (id: string, notes: string, opts?: RequestOptions) =>
-    api.post<{ message: string }>(`/recipes/${id}/notes`, { notes } as RecipeNotes, opts),
+  /**
+   * Fetch the caller's own private note on recipe `id` (`GET /recipes/:id/notes`). The payload
+   * has `notes: null` and `updatedAt: null` when the caller has no note.
+   */
+  getMyNote: (id: string, opts?: RequestOptions) =>
+    api.get<RecipeUserNoteOutput>(`/recipes/${id}/notes`, opts),
+  /**
+   * Create or replace the caller's own private note on recipe `id` (`PUT /recipes/:id/notes`).
+   * Never touches the author's public brewer notes or another user's note.
+   */
+  saveMyNote: (id: string, body: RecipeNotes, opts?: RequestOptions) =>
+    api.put<RecipeUserNoteOutput, RecipeNotes>(`/recipes/${id}/notes`, body, opts),
+  /**
+   * Delete the caller's own private note on recipe `id` (`DELETE /recipes/:id/notes`);
+   * idempotent, resolves to the absent-note payload.
+   */
+  deleteMyNote: (id: string, opts?: RequestOptions) =>
+    api.delete<RecipeUserNoteOutput>(`/recipes/${id}/notes`, opts),
   merge: (body: RecipeMerge, opts?: RequestOptions) =>
     api.post<RecipeDetailOutput, RecipeMerge>('/recipes/merge', body, opts),
   /** Fetch the version history (title, slug and version rows) of a recipe. */

@@ -96,6 +96,11 @@ import {
 } from './routes/resources/notifications.ts';
 import { uploadPhotoAction } from './routes/resources/photos.ts';
 import { recipeQrLoader, shouldRevalidateRecipeQr } from './routes/resources/qrcode.ts';
+import {
+  recipeNoteAction,
+  recipeNoteLoader,
+  shouldRevalidateRecipeNote,
+} from './routes/resources/recipe-notes.ts';
 import { shouldRevalidateTasteNotes, tasteNotesLoader } from './routes/resources/taste-notes.ts';
 import { ROOT_ROUTE_ID, rootLoader, shouldRevalidateRoot } from './routes/root.ts';
 
@@ -501,6 +506,12 @@ export const routes: RouteObject[] = [
         path: 'resources/qrcode/recipe/:slug',
         loader: recipeQrLoader,
         shouldRevalidate: shouldRevalidateRecipeQr,
+      },
+      {
+        path: 'resources/recipes/:id/notes',
+        loader: recipeNoteLoader,
+        action: recipeNoteAction,
+        shouldRevalidate: shouldRevalidateRecipeNote,
       },
 
       { path: '*', element: <NotFoundPage /> },

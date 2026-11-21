@@ -114,8 +114,6 @@ function format(v: Violation): string {
 const PENDING = new Set<string>([
   // useEffect fetch block: waits for task 9.13 (recipeVisibility prop) before task 15.13
   'components/collections/AddToCollectionModal.tsx',
-  // mutation-only module: moved onto the caller-scoped notes resource route by task 17.4
-  'components/recipe/RecipeNotesSection.tsx',
 ]);
 
 describe('data-loading enforcement — self-check', () => {

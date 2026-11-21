@@ -854,10 +854,10 @@ How to use this task list
 
 ## 17. Private notes and recipe write — web, then the data-loading guard flip (t1, t5)
 
-- [ ] 17.1 Add i18n keys to both `packages/shared/src/i18n/en.json` and `tr.json`: `recipe.brewerNotes`, `recipe.brewerNotes.hint`, `recipe.tastingNotes.brewerNote`, `recipe.myNotes`, `recipe.myNotes.hint`, `recipe.notes.delete`, `recipe.notes.deleted`, `recipe.notes.saveError`, `recipe.notes.loadError` and `recipe.myNotes.placeholder`. Remove `recipe.personalNotes`, `recipe.tastingNotes.personalNote` and `recipe.notes.placeholder` once nothing references them. Run `make test-shared` (key-parity test).
-- [ ] 17.2 Add `recipeApi.getMyNote(id, { signal })`, `saveMyNote(id, notes)` (PUT) and `deleteMyNote(id)` to `apps/web/src/api/index.ts`, typed with `RecipeUserNoteOutput`, with `saveMyNote` taking the shared `RecipeNotes` request type. Remove `saveNotes` and update `apps/web/src/api/index.test.ts`. This matches the two modified `web-api-boundary` requirements ("Missing request schema types are exported and re-exported", "apps/web/src/api/index.ts uses shared types, not Record<string, unknown>"). Assert in `api/index.test.ts` that `'saveNotes' in recipeApi` is `false` and that no client method issues `POST` to `/recipes/:id/notes`.
-- [ ] 17.3 Add the resource route `resources/recipes/:id/notes` in `apps/web/src/routes/` (registered in `apps/web/src/router.tsx`), following the web-data-loading capability. The loader calls `getMyNote` with `request.signal`. The action handles intents `save` and `delete` and returns `{ ok: true, note }` or `{ ok: false, error }`. It logs entry, exit and failure with no note text.
-- [ ] 17.4 Rewrite `apps/web/src/components/recipe/RecipeNotesSection.tsx`. Failing test first: write the `RecipeNotesSection.test.tsx` cases of task 17.7 and the single-`PUT` assertion below, run `make test-web` and see them fail against the current editor (pre-filled from `currentVersion.personalNotes`, posting to `POST /notes`), then implement:
+- [x] 17.1 Add i18n keys to both `packages/shared/src/i18n/en.json` and `tr.json`: `recipe.brewerNotes`, `recipe.brewerNotes.hint`, `recipe.tastingNotes.brewerNote`, `recipe.myNotes`, `recipe.myNotes.hint`, `recipe.notes.delete`, `recipe.notes.deleted`, `recipe.notes.saveError`, `recipe.notes.loadError` and `recipe.myNotes.placeholder`. Remove `recipe.personalNotes`, `recipe.tastingNotes.personalNote` and `recipe.notes.placeholder` once nothing references them. Run `make test-shared` (key-parity test).
+- [x] 17.2 Add `recipeApi.getMyNote(id, { signal })`, `saveMyNote(id, notes)` (PUT) and `deleteMyNote(id)` to `apps/web/src/api/index.ts`, typed with `RecipeUserNoteOutput`, with `saveMyNote` taking the shared `RecipeNotes` request type. Remove `saveNotes` and update `apps/web/src/api/index.test.ts`. This matches the two modified `web-api-boundary` requirements ("Missing request schema types are exported and re-exported", "apps/web/src/api/index.ts uses shared types, not Record<string, unknown>"). Assert in `api/index.test.ts` that `'saveNotes' in recipeApi` is `false` and that no client method issues `POST` to `/recipes/:id/notes`.
+- [x] 17.3 Add the resource route `resources/recipes/:id/notes` in `apps/web/src/routes/` (registered in `apps/web/src/router.tsx`), following the web-data-loading capability. The loader calls `getMyNote` with `request.signal`. The action handles intents `save` and `delete` and returns `{ ok: true, note }` or `{ ok: false, error }`. It logs entry, exit and failure with no note text.
+- [x] 17.4 Rewrite `apps/web/src/components/recipe/RecipeNotesSection.tsx`. Failing test first: write the `RecipeNotesSection.test.tsx` cases of task 17.7 and the single-`PUT` assertion below, run `make test-web` and see them fail against the current editor (pre-filled from `currentVersion.personalNotes`, posting to `POST /notes`), then implement:
   - Takes a single `recipeId` prop.
   - Loads with `useFetcher().load('/resources/recipes/:id/notes')`; saves and deletes with `fetcher.submit`.
   - Shows a Delete button when a note exists, plus the `recipe.myNotes` label and hint.
@@ -867,12 +867,12 @@ How to use this task list
   - Saving sends exactly one `PUT /api/v1/recipes/:id/notes` (never `POST /notes`, never `PATCH /recipes/:id`); assert this in `RecipeNotesSection.test.tsx`.
 
   This also completes t5's move of `RecipeNotesSection` onto a resource action.
-- [ ] 17.5 Update `apps/web/src/pages/recipes/RecipeDetailPage.tsx`: render `<RecipeNotesSection recipeId={recipe.id} />` only when `isAuthenticated`, with no `initialNotes`.
-- [ ] 17.6 Relabel the author's notes:
+- [x] 17.5 Update `apps/web/src/pages/recipes/RecipeDetailPage.tsx`: render `<RecipeNotesSection recipeId={recipe.id} />` only when `isAuthenticated`, with no `initialNotes`.
+- [x] 17.6 Relabel the author's notes:
   - `TastingNotesSection.tsx` uses `recipe.tastingNotes.brewerNote`.
   - The create and edit pages use `recipe.brewerNotes` plus the hint.
   - `VersionDiffPage.tsx:37` uses `recipe.brewerNotes`.
-- [ ] 17.7 Rewrite `apps/web/src/components/recipe/RecipeNotesSection.test.tsx` and update `RecipeDetailPage.test.tsx`:
+- [x] 17.7 Rewrite `apps/web/src/components/recipe/RecipeNotesSection.test.tsx` and update `RecipeDetailPage.test.tsx`:
   - The editor is empty for a non-author, never pre-filled from `currentVersion.personalNotes`.
   - It is hidden for anonymous viewers, and no notes request is sent.
   - A save failure shows an error.

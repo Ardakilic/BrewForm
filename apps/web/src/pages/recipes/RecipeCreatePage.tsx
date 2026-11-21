@@ -25,6 +25,9 @@ import { recipeFormErrorMessage } from './recipe-form-errors.ts';
 
 const log = createLogger('RecipeCreatePage');
 
+/** Id of the public brewer-notes hint, referenced by the textarea's `aria-describedby`. */
+const BREWER_NOTES_HINT_ID = 'recipe-brewer-notes-hint';
+
 /**
  * `/recipes/new`: the recipe creation form. The equipment lookup, the user's setups and the
  * optional `?beanId` bean come from the route loader (`RecipeCreatePage.data.ts`); saving
@@ -499,13 +502,22 @@ function RecipeCreateForm({
           />
         </Section>
 
-        <Section title={t('recipe.personalNotes')}>
+        <Section title={t('recipe.brewerNotes')}>
+          <p
+            id={BREWER_NOTES_HINT_ID}
+            className="text-sm mb-2"
+            style={{ color: 'var(--text-tertiary)' }}
+          >
+            {t('recipe.brewerNotes.hint')}
+          </p>
           <textarea
             value={personalNotes}
             onChange={(e) => setPersonalNotes(e.target.value)}
             className="input-field"
             rows={4}
             placeholder={t('recipe.form.personalNotesPlaceholder')}
+            aria-label={t('recipe.brewerNotes')}
+            aria-describedby={BREWER_NOTES_HINT_ID}
           />
         </Section>
 

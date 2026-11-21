@@ -281,9 +281,8 @@ export function RecipeDetailPage() {
               allTasteNotes={allTasteNotes}
             />
 
-            {isAuthenticated && (
-              <RecipeNotesSection recipeId={recipe.id} initialNotes={v?.personalNotes ?? ''} />
-            )}
+            {/* The viewer's private note (the brewer's public note is in TastingNotesSection). */}
+            {isAuthenticated && <RecipeNotesSection recipeId={recipe.id} />}
           </div>
 
           {/* Sidebar (1/3 width on md+) */}

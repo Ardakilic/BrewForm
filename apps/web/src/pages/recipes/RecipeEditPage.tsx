@@ -20,6 +20,9 @@ import { recipeFormErrorMessage } from './recipe-form-errors.ts';
 
 const log = createLogger('RecipeEditPage');
 
+/** Id of the public brewer-notes hint, referenced by the textarea's `aria-describedby`. */
+const BREWER_NOTES_HINT_ID = 'recipe-brewer-notes-hint';
+
 /** A recipe whose current version is present (the edit form needs one to pre-fill). */
 type EditableRecipe = RecipeDetailOutput & {
   currentVersion: NonNullable<RecipeDetailOutput['currentVersion']>;
@@ -438,12 +441,21 @@ function RecipeEditForm({ recipe }: { recipe: EditableRecipe }) {
           />
         </Section>
 
-        <Section title={t('recipe.personalNotes')}>
+        <Section title={t('recipe.brewerNotes')}>
+          <p
+            id={BREWER_NOTES_HINT_ID}
+            className="text-sm mb-2"
+            style={{ color: 'var(--text-tertiary)' }}
+          >
+            {t('recipe.brewerNotes.hint')}
+          </p>
           <textarea
             value={personalNotes}
             onChange={(e) => setPersonalNotes(e.target.value)}
             className="input-field"
             rows={4}
+            aria-label={t('recipe.brewerNotes')}
+            aria-describedby={BREWER_NOTES_HINT_ID}
           />
         </Section>
 

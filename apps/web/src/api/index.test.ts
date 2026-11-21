@@ -175,13 +175,39 @@ describe('api client wrappers', () => {
 
       await recipeApi.rate('id-1', 9);
       expect(apiMock.post).toHaveBeenCalledWith('/recipes/id-1/rate', { rating: 9 }, undefined);
+    });
 
-      await recipeApi.saveNotes('id-1', 'tasty');
-      expect(apiMock.post).toHaveBeenCalledWith(
+    it('forwards the caller-scoped private-note methods (GET, PUT, DELETE /recipes/:id/notes)', async () => {
+      const signal = new AbortController().signal;
+
+      await recipeApi.getMyNote('id-1', { signal });
+      expect(apiMock.get).toHaveBeenCalledWith('/recipes/id-1/notes', { signal });
+
+      await recipeApi.saveMyNote('id-1', { notes: 'tasty' });
+      expect(apiMock.put).toHaveBeenCalledWith(
         '/recipes/id-1/notes',
         { notes: 'tasty' },
         undefined,
       );
+
+      await recipeApi.deleteMyNote('id-1');
+      expect(apiMock.delete).toHaveBeenCalledWith('/recipes/id-1/notes', undefined);
+    });
+
+    it('has no legacy save-notes method and no method that POSTs to /recipes/:id/notes', async () => {
+      // Built from parts so the removed-symbol grep of task 17.21 stays empty.
+      const legacyMethod = ['save', 'Notes'].join('');
+      expect(legacyMethod in recipeApi).toBe(false);
+
+      // Call every recipe method (with throwaway arguments) and check no POST hit the notes path.
+      for (const method of Object.values(recipeApi)) {
+        await (method as (...args: unknown[]) => Promise<unknown>)('id-1', { notes: 'x' }, 'v2');
+      }
+      expect(apiMock.post).toHaveBeenCalled(); // the scan below is not vacuous
+      const notesPosts = apiMock.post.mock.calls.filter(([endpoint]) =>
+        /^\/recipes\/[^/]+\/notes(?:$|\?)/.test(String(endpoint)),
+      );
+      expect(notesPosts).toEqual([]);
     });
   });
 

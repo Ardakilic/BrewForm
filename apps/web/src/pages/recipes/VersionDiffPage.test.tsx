@@ -126,6 +126,16 @@ describe('VersionDiffPage', () => {
     expect(screen.getByText(t('recipe.temperature'))).toBeInTheDocument();
   });
 
+  it("labels the personalNotes field as the brewer's notes", async () => {
+    mockRecipeApi.diffVersions.mockResolvedValue({
+      ...mockDiff,
+      fields: [{ field: 'personalNotes', value1: 'Floral', value2: 'Juicy', status: 'modified' }],
+    });
+    renderPage();
+    expect(await screen.findByText(t('recipe.brewerNotes'))).toBeInTheDocument();
+    expect(screen.getByText('Juicy')).toBeInTheDocument();
+  });
+
   it('renders taste notes and equipment sections', async () => {
     renderPage();
     expect(await screen.findByText(t('recipe.tasteNotes'))).toBeInTheDocument();
