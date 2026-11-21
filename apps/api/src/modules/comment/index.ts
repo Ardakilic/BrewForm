@@ -177,7 +177,10 @@ comment.delete(
   describeRoute({
     tags: ['Comments'],
     summary: 'Delete a comment',
-    description: 'Deletes a comment owned by the authenticated user (or by an admin).',
+    description:
+      'Deletes a comment owned by the authenticated user (or by an admin). ' +
+      "Deleting a top-level comment also deletes its replies; the recipe's `commentCount` " +
+      'drops by the number of comments removed.',
     security: [{ bearerAuth: [] }],
     parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {

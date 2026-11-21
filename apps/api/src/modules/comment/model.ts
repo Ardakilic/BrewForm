@@ -38,6 +38,9 @@ export async function findById(id: string) {
 /**
  * List paginated top-level comments for a recipe with nested replies.
  *
+ * Replies are loaded only from the listed recipe, so a cross-recipe reply stored
+ * before the same-recipe rule never appears in another recipe's thread.
+ *
  * @param recipeId - The recipe to fetch comments for
  * @param page - 1-based page number
  * @param perPage - Number of top-level comments per page
@@ -100,7 +103,13 @@ export async function findByRecipe(recipeId: string, page: number, perPage: numb
       })
       .from(comments)
       .leftJoin(users, eq(comments.authorId, users.id))
-      .where(and(inArray(comments.parentCommentId, parentIds), isNull(comments.deletedAt)))
+      .where(
+        and(
+          inArray(comments.parentCommentId, parentIds),
+          eq(comments.recipeId, recipeId),
+          isNull(comments.deletedAt),
+        ),
+      )
       .orderBy(asc(comments.createdAt));
 
     const repliesByParent = new Map<string, typeof allReplies>();
@@ -135,6 +144,33 @@ export async function softDelete(id: string) {
     .where(and(eq(comments.id, id), isNull(comments.deletedAt)))
     .returning();
   return result ?? null;
+}
+
+/**
+ * Soft-delete the live replies of a top-level comment on the same recipe.
+ *
+ * Used by the thread delete (E1): each reply is changed, and so counted, only by
+ * the statement that soft-deleted it (READ COMMITTED re-evaluates the WHERE).
+ * Replies already deleted keep their `deletedAt`; a reply stored under another
+ * recipe is left alone.
+ *
+ * @param parentId - The top-level comment whose replies to delete
+ * @param recipeId - The recipe of that comment
+ * @returns The ids of the replies this call soft-deleted
+ */
+export async function softDeleteReplies(parentId: string, recipeId: string): Promise<string[]> {
+  const rows = await db
+    .update(comments)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(
+        eq(comments.parentCommentId, parentId),
+        eq(comments.recipeId, recipeId),
+        isNull(comments.deletedAt),
+      ),
+    )
+    .returning({ id: comments.id });
+  return rows.map((row) => row.id);
 }
 
 /** Get the author ID of a recipe (for permission checks). */

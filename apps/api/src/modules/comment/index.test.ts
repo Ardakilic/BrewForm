@@ -15,7 +15,7 @@
 import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { comments, notifications, recipes, userBadges, users } from '@brewform/db/schema';
-import { inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import type { Context, Next } from 'hono';
 import { Hono } from 'hono';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -428,6 +428,29 @@ describe('D99.9 — comment visibility gate (routes)', () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.success).toBe(true);
+  });
+
+  it('POST answers 404 "Parent comment not found" for a parent on another recipe (#5)', async () => {
+    const [foreignParent] = await db
+      .insert(comments)
+      .values({ recipeId: privateRecipeId, authorId, content: 'parent on another recipe' })
+      .returning({ id: comments.id });
+    const app = createGateTestApp({ id: authorId, isAdmin: false });
+    const res = await app.request(`/api/v1/comments/recipe/${publicRecipeId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'cross-recipe reply', parentCommentId: foreignParent.id }),
+    });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('NOT_FOUND');
+    expect(body.error.message).toBe('Parent comment not found');
+    const stored = await db
+      .select({ id: comments.id })
+      .from(comments)
+      .where(eq(comments.parentCommentId, foreignParent.id));
+    expect(stored).toEqual([]);
   });
 
   it('GET returns 404 for an invisible recipe when anonymous', async () => {

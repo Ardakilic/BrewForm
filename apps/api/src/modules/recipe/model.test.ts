@@ -581,6 +581,48 @@ describe('upsertUserRating — concurrent first rating', () => {
   });
 });
 
+/** E1: `decrementComments(id, by)` lowers the stored count by the number of comments removed. */
+describe('decrementComments — by a bound amount', () => {
+  let userId: string;
+  let recipeId: string;
+
+  beforeEach(async () => {
+    userId = crypto.randomUUID();
+    recipeId = crypto.randomUUID();
+    await realDb.insert(usersTable).values({
+      id: userId,
+      email: `decrement-${userId}@example.com`,
+      username: `decrement-${userId.slice(0, 8)}`,
+      passwordHash: 'hash',
+    });
+    await realDb.insert(recipesTable).values({
+      id: recipeId,
+      slug: `decrement-${recipeId}`,
+      title: 'Decrement comments',
+      authorId: userId,
+      visibility: 'public',
+      commentCount: 5,
+    });
+  });
+
+  afterEach(async () => {
+    await realDb.delete(recipesTable).where(drizzleEq(recipesTable.id, recipeId));
+    await realDb.delete(usersTable).where(drizzleEq(usersTable.id, userId));
+  });
+
+  it('lowers commentCount by 3 with by = 3, then by 1 with the default', async () => {
+    const afterThree = await recipeModel.decrementComments(recipeId, 3);
+    expect(afterThree!.commentCount).toBe(2);
+    const afterOne = await recipeModel.decrementComments(recipeId);
+    expect(afterOne!.commentCount).toBe(1);
+    const [row] = await realDb
+      .select({ commentCount: recipesTable.commentCount })
+      .from(recipesTable)
+      .where(drizzleEq(recipesTable.id, recipeId));
+    expect(row.commentCount).toBe(1);
+  });
+});
+
 /** `recipe_version` columns every write path leaves to the database or sets itself. */
 const VERSION_KEY_COLUMNS = ['id', 'recipeId', 'versionNumber', 'createdAt'];
 

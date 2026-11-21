@@ -1504,11 +1504,19 @@ export async function incrementComments(id: string) {
   return result ?? null;
 }
 
-/** Atomically decrement a recipe's `commentCount` by 1. Returns the updated row or null. */
-export async function decrementComments(id: string) {
+/**
+ * Atomically decrement a recipe's `commentCount` by the number of comments removed.
+ *
+ * @param id - The recipe
+ * @param by - How many comments one delete removed (1, or 1 + the replies a thread delete removed)
+ * @returns The updated row, or null when the recipe does not exist
+ */
+export async function decrementComments(id: string, by = 1) {
   const [result] = await db
     .update(recipes)
-    .set({ commentCount: sql`${recipes.commentCount} - 1` })
+    // D03 raw-SQL exception: Drizzle has no arithmetic SET builder; an in-place decrement by a
+    // bound value avoids a read-then-write race between concurrent deletes.
+    .set({ commentCount: sql`${recipes.commentCount} - ${by}` })
     .where(eq(recipes.id, id))
     .returning();
   return result ?? null;

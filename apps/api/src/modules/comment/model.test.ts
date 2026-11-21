@@ -176,6 +176,28 @@ describe('findByRecipe', () => {
     expect(result.comments.some((c) => c.id === deletedCommentId)).toBe(false);
   });
 
+  it('leaves out a reply stored under another recipe (#5)', async () => {
+    const other = await insertRecipeFixture(userId);
+    const parent = await model.create({ recipeId, authorId: userId, content: 'Lonely parent' });
+    const foreign = await model.create({
+      recipeId: other.recipeId,
+      authorId: userId,
+      content: 'Cross-recipe reply',
+      parentCommentId: parent.id,
+    });
+    try {
+      const result = await model.findByRecipe(recipeId, 1, 20);
+      const listed = result.comments.find((c) => c.id === parent.id);
+      expect(listed).toBeDefined();
+      expect(listed!.replies).toEqual([]);
+    } finally {
+      await db.delete(comments).where(eq(comments.id, foreign.id));
+      await db.delete(comments).where(eq(comments.id, parent.id));
+      await db.delete(recipeVersions).where(eq(recipeVersions.id, other.versionId));
+      await db.delete(recipes).where(eq(recipes.id, other.recipeId));
+    }
+  });
+
   it('should join the author profile on top-level comments and replies', async () => {
     const result = await model.findByRecipe(recipeId, 1, 10);
     expect(result.comments.length).toBe(1);
@@ -292,6 +314,91 @@ describe('softDelete', () => {
     expect(second).toBeNull();
     const [row] = await db.select().from(comments).where(eq(comments.id, commentId));
     expect(row.deletedAt!.getTime()).toBe(firstDeletedAt);
+  });
+});
+
+/**
+ * softDeleteReplies — Soft-delete the live replies of a top-level comment on the
+ * same recipe and return the ids it changed (E1 thread delete).
+ */
+describe('softDeleteReplies', () => {
+  let userId: string;
+  let recipeA: { recipeId: string; versionId: string };
+  let recipeB: { recipeId: string; versionId: string };
+  const createdIds: string[] = [];
+
+  beforeEach(async () => {
+    userId = crypto.randomUUID();
+    await db.insert(users).values({
+      id: userId,
+      email: `test-${userId}@example.com`,
+      username: `testuser-${userId}`,
+      passwordHash: 'hash',
+    });
+    recipeA = await insertRecipeFixture(userId);
+    recipeB = await insertRecipeFixture(userId);
+  });
+
+  afterEach(async () => {
+    for (const id of createdIds.reverse()) {
+      await db.delete(comments).where(eq(comments.id, id));
+    }
+    createdIds.length = 0;
+    for (const fixture of [recipeA, recipeB]) {
+      await db.delete(recipeVersions).where(eq(recipeVersions.id, fixture.versionId));
+      await db.delete(recipes).where(eq(recipes.id, fixture.recipeId));
+    }
+    await db.delete(users).where(eq(users.id, userId));
+  });
+
+  /** Insert a comment through the model and track it for cleanup. */
+  async function insert(data: Omit<typeof comments.$inferInsert, 'authorId'>) {
+    const row = await model.create({ ...data, authorId: userId });
+    createdIds.push(row.id);
+    return row;
+  }
+
+  it('deletes exactly the live same-recipe replies and returns their ids', async () => {
+    const parent = await insert({ recipeId: recipeA.recipeId, content: 'P' });
+    const r1 = await insert({
+      recipeId: recipeA.recipeId,
+      content: 'r1',
+      parentCommentId: parent.id,
+    });
+    const r2 = await insert({
+      recipeId: recipeA.recipeId,
+      content: 'r2',
+      parentCommentId: parent.id,
+    });
+    const oldDeletedAt = new Date('2026-01-02T03:04:05.000Z');
+    const r3 = await insert({
+      recipeId: recipeA.recipeId,
+      content: 'r3',
+      parentCommentId: parent.id,
+      deletedAt: oldDeletedAt,
+    });
+    const x = await insert({
+      recipeId: recipeB.recipeId,
+      content: 'x',
+      parentCommentId: parent.id,
+    });
+
+    const ids = await model.softDeleteReplies(parent.id, recipeA.recipeId);
+
+    expect([...ids].sort()).toEqual([r1.id, r2.id].sort());
+    const rows = await db.select().from(comments).where(eq(comments.parentCommentId, parent.id));
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    expect(byId.get(r1.id)!.deletedAt).not.toBeNull();
+    expect(byId.get(r2.id)!.deletedAt).not.toBeNull();
+    expect(byId.get(r3.id)!.deletedAt!.getTime()).toBe(oldDeletedAt.getTime());
+    expect(byId.get(x.id)!.deletedAt).toBeNull();
+    const [parentRow] = await db.select().from(comments).where(eq(comments.id, parent.id));
+    expect(parentRow.deletedAt).toBeNull();
+  });
+
+  it('returns an empty list when the comment has no live replies', async () => {
+    const parent = await insert({ recipeId: recipeA.recipeId, content: 'P' });
+    expect(await model.softDeleteReplies(parent.id, recipeA.recipeId)).toEqual([]);
   });
 });
 

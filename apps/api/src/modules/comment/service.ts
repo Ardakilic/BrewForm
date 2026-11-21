@@ -35,10 +35,13 @@ export const deps = {
 /**
  * Create a comment with thread-flattening, @mention, sanitization, and side-effects.
  *
- * Only recipe authors and admins may add replies. Nested replies are flattened
- * to always attach under the top-level comment. If the direct reply target is
- * nested, the author's @username is prepended to the content. Triggers async
- * notification and badge evaluation.
+ * Only recipe authors and admins may add replies. A parent comment must belong to
+ * the same recipe: a missing parent, a parent on another recipe, or a thread whose
+ * resolved top-level comment is on another recipe all throw `COMMENT_NOT_FOUND`
+ * before any write or side effect. Nested replies are flattened to always attach
+ * under the top-level comment. If the direct reply target is nested, the author's
+ * @username is prepended to the content. Triggers async notification and badge
+ * evaluation.
  *
  * @param userId - The comment author
  * @param recipeId - The recipe being commented on
@@ -68,7 +71,10 @@ export async function createComment(
 
   if (parentCommentId) {
     const targetComment = await deps.model.findById(parentCommentId);
-    if (!targetComment) throw new Error('COMMENT_NOT_FOUND');
+    if (!targetComment || targetComment.recipeId !== recipeId) {
+      logger.debug({ userId, recipeId, parentCommentId }, 'createComment rejected parent');
+      throw new Error('COMMENT_NOT_FOUND');
+    }
 
     if (!isAdmin && recipe.authorId !== userId) {
       throw new Error('FORBIDDEN');
@@ -88,7 +94,11 @@ export async function createComment(
         current = parent;
       }
 
-      // current is now the Top_Level_Comment
+      // current is now the Top_Level_Comment; a legacy chain may lead to another recipe.
+      if (current.recipeId !== recipeId) {
+        logger.debug({ userId, recipeId, parentCommentId }, 'createComment rejected parent');
+        throw new Error('COMMENT_NOT_FOUND');
+      }
       effectiveParentCommentId = current.id;
 
       // Prepend @username mention if author username is available
@@ -234,11 +244,37 @@ export async function listComments(
   return deps.model.findByRecipe(recipeId, page, perPage);
 }
 
-/** Delete a comment. Only the author or an admin may delete. */
+/**
+ * Delete a comment. Only the author or an admin may delete.
+ *
+ * Deleting a top-level comment also soft-deletes its live replies on the same
+ * recipe, and the recipe's `commentCount` drops by the number of comments
+ * removed (1 + those replies); a reply delete removes one. The counter changes
+ * only after this call's own soft delete changed the row: when `softDelete`
+ * returns `null` a concurrent request deleted the comment first, so this one
+ * throws `COMMENT_NOT_FOUND` (the answer a sequential second delete gets) and
+ * neither cascades nor touches the counter.
+ *
+ * @param userId - The caller
+ * @param id - The comment to delete
+ * @param isAdmin - Whether the caller has admin privileges
+ * @throws Error `COMMENT_NOT_FOUND` when the comment is missing, already deleted or lost a race
+ * @throws Error `FORBIDDEN` when a non-admin caller is not the author
+ */
 export async function deleteComment(userId: string, id: string, isAdmin: boolean): Promise<void> {
+  logger.debug({ userId, commentId: id }, 'deleteComment started');
   const comment = await deps.model.findById(id);
   if (!comment) throw new Error('COMMENT_NOT_FOUND');
   if (!isAdmin && comment.authorId !== userId) throw new Error('FORBIDDEN');
-  await deps.model.softDelete(id);
-  await deps.recipeModel.decrementComments(comment.recipeId);
+  const deleted = await deps.model.softDelete(id);
+  if (!deleted) throw new Error('COMMENT_NOT_FOUND');
+  const replies =
+    comment.parentCommentId === null
+      ? await deps.model.softDeleteReplies(id, comment.recipeId)
+      : [];
+  await deps.recipeModel.decrementComments(comment.recipeId, 1 + replies.length);
+  logger.debug(
+    { userId, commentId: id, recipeId: comment.recipeId, removedReplies: replies.length },
+    'deleteComment completed',
+  );
 }
