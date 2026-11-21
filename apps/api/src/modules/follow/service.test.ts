@@ -3,7 +3,8 @@ import { db } from '@brewform/db';
 import { notifications, userBadges, userFollows, users } from '@brewform/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { followUser } from './service.ts';
+import { VisibilityFixtures, type VisibilityScenario } from '../recipe/test-helpers.ts';
+import { followUser, getFeed } from './service.ts';
 
 describe('Follow Service Logic', () => {
   describe('Self-follow prevention', () => {
@@ -167,5 +168,43 @@ describe('Follow Service — DB integration (F05 follow notification fan-out)', 
         ),
       );
     expect(after.length).toBe(before.length);
+  });
+});
+
+/**
+ * Regression lock for capability `recipe-visibility` (task 11.1): the follow feed is a
+ * discovery surface, so it lists only the followed authors' public recipes, in offset and
+ * cursor mode.
+ */
+describe('getFeed — unlisted recipes are never listed (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let scenario: VisibilityScenario;
+
+  beforeAll(async () => {
+    scenario = await fixtures.scenario('vis-feed');
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  /** The ids of a feed result's rows. */
+  function ids(result: { recipes: Record<string, unknown>[] }): unknown[] {
+    return result.recipes.map((r) => r.id);
+  }
+
+  it('offset mode returns only the public recipe', async () => {
+    const result = await getFeed(scenario.userB.id, 1, 20);
+    expect(ids(result)).toEqual([scenario.publicP.id]);
+    expect((result as { total: number }).total).toBe(1);
+  });
+
+  it('cursor mode excludes the unlisted recipe', async () => {
+    const result = await getFeed(scenario.userB.id, 1, 20, {
+      createdAt: new Date(Date.now() + 60_000).toISOString(),
+      id: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    });
+    expect(ids(result)).toEqual([scenario.publicP.id]);
+    expect(ids(result)).not.toContain(scenario.unlistedU.id);
   });
 });

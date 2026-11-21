@@ -671,7 +671,7 @@ How to use this task list
 
 ## 11. Unlisted visibility on every discovery surface (recipe-visibility; refine OQ1, D4)
 
-- [ ] 11.1 Write regression locks first. They pass before the refactor of task 11.3 and protect it. Fixtures: author A, public recipe P and unlisted recipe U, both using equipment E and coffee variety V in their current version, and user B following A.
+- [x] 11.1 Write regression locks first. They pass before the refactor of task 11.3 and protect it. Fixtures: author A, public recipe P and unlisted recipe U, both using equipment E and coffee variety V in their current version, and user B following A.
   - `apps/api/src/modules/recipe/service.test.ts`: `listRecipes({ search: U.title }, 1, 20, viewer, false)` for viewer `null`, A and B never returns U and `total` excludes it; `listRecipes({ authorId: A })` returns only P for all three; the cursor path (`listRecipes({ cursor })`) excludes U; an admin `listRecipes({ visibility: 'unlisted' }, 1, 20, adminId, true)` returns U.
   - `apps/api/src/modules/follow/service.test.ts`: `getFeed(B)` excludes U in offset and cursor mode.
   - `apps/api/src/modules/equipment/model.test.ts`: `getRecipesUsingEquipment(E, 1, 10)` excludes U from `data` and `total`.
@@ -679,13 +679,13 @@ How to use this task list
   - `apps/api/src/modules/user/service.test.ts`: `getPublicProfile(<A's username>, viewer)` for `undefined`, B and A has `recipes` without U and `recipeCount === 1`.
   - `apps/api/src/routes/sitemap.test.ts`: a new DB-backed `describe` calls the real `deps.getPublicRecipes()` and `deps.getActiveUsers()`. U's slug is absent, and user C, whose only recipe is unlisted, is absent.
   - Run `make test-api`; every new case passes.
-- [ ] 11.2 Write failing Starred tests in `apps/api/src/modules/recipe/service.test.ts`. B favourites A's unlisted U, A's public P, and A's public X, which A then changes to `private`. Then:
+- [x] 11.2 Write failing Starred tests in `apps/api/src/modules/recipe/service.test.ts`. B favourites A's unlisted U, A's public P, and A's public X, which A then changes to `private`. Then:
   - `listStarredRecipes({}, 1, 20, B)` returns P and U, but not X;
   - A's own favourited draft is returned to A;
   - `total` matches the rows;
   - with `search` set to U's title, it returns U.
   - Confirm the tests fail today, because the Starred list is public-only.
-- [ ] 11.3 Refactor every discovery query to the shared condition. Behaviour is preserved except for Starred:
+- [x] 11.3 Refactor every discovery query to the shared condition. Behaviour is preserved except for Starred:
   - `buildListRecipesWhere` (`recipe/model.ts`): non-admins, and admins without a filter, get `listableRecipeCondition(null)`. The admin filter branch keeps `eq(recipes.visibility, filters.visibility)` with a trailing `// visibility-exempt: admin filter (recipe-visibility)`.
   - `getFeed`: `and(inArray(recipes.authorId, authorIds), listableRecipeCondition(null))`.
   - `findStarred`: base condition `viewableRecipeCondition(userId)` plus the favourites subquery. Its docblock describes the viewer-only rule.
@@ -695,26 +695,26 @@ How to use this task list
   - `apps/api/src/routes/sitemap.ts`: both `deps` queries.
   - Remove imports that become unused, and update every touched docblock ("public" now names the helper).
   - Run `make test-api`. The tests of task 11.1 still pass and those of task 11.2 now pass.
-- [ ] 11.4 Write failing fork-masking tests. Fixture: B forks A's unlisted U into public F, and separately forks public P into public G.
+- [x] 11.4 Write failing fork-masking tests. Fixture: B forks A's unlisted U into public F, and separately forks public P into public G.
   - `apps/api/src/modules/recipe/index.test.ts`, anonymous and B: `GET /api/v1/recipes/<F slug>` returns `forkedFrom: null`, `forkedFromId: null`, `forkedFromSlug: null`.
   - The same request by A returns U's `{ id, slug, title }` and no `visibility`/`authorId`/`deletedAt` keys inside `forkedFrom`.
   - G keeps P's attribution.
   - After P is soft-deleted, G is masked for B.
   - F's row has `forkedFromId: null` in `GET /api/v1/recipes`, in the follow feed (`follow/index.test.ts`), in `GET /api/v1/equipment/<E>/recipes` and in `GET /api/v1/coffee-varieties/<V>/recipes`.
   - In `recipe/model.visibility.test.ts`, replace the `describe.todo` with `maskUnlistableForkSources` cases: no query when no row has a source (spy on `db.select`); public sources are kept; unlisted, private and deleted sources are masked.
-- [ ] 11.5 Implement `maskUnlistableForkSources<T extends { forkedFromId: string | null }>(rows: T[]): Promise<T[]>` in `recipe/model.ts`:
+- [x] 11.5 Implement `maskUnlistableForkSources<T extends { forkedFromId: string | null }>(rows: T[]): Promise<T[]>` in `recipe/model.ts`:
   - collect the distinct non-null `forkedFromId`s and return `rows` unchanged when there are none;
   - otherwise run one query, `db.select({ id: recipes.id }).from(recipes).where(and(inArray(recipes.id, ids), listableRecipeCondition(null)))`;
   - map `forkedFromId` to `null` for every source missing from the result;
   - log `modelLog.debug({ rowCount, maskedCount }, 'maskUnlistableForkSources completed')`;
   - write a docblock.
   Apply it to the returned rows of `findListPage` (t7), `findCursor`, `getRecipesUsingEquipment` and `getRecipesUsingVariety`. Run the list cases of task 11.4.
-- [ ] 11.6 Fork attribution on the detail:
+- [x] 11.6 Fork attribution on the detail:
   - In `findById`/`findBySlug`, change the relation to `forkedFrom: { columns: { id: true, slug: true, title: true, visibility: true, authorId: true, deletedAt: true } }`.
   - Add `resolveForkAttribution(forkedFrom, viewerId)` to `recipe/service.ts`. It returns `{ forkedFrom: { id, slug, title } | null, forkedFromId: string | null, forkedFromSlug: string | null }` and keeps the source only when `canListRecipe(forkedFrom, viewerId)`. Write a docblock and add entry/exit debug logs with `{ viewerId, masked }`.
   - In the `GET /:slugOrId` handler (`recipe/index.ts` ~:541-585), spread its result after `...r` so the raw `forkedFromId` and `forkedFrom` are overwritten. Delete the `forkedFromSlug: r.forkedFrom?.slug ?? null` line.
   - Run `make test-specific filter=src/modules/recipe/index.test.ts`.
-- [ ] 11.7 Brew log on unlisted recipes:
+- [x] 11.7 Brew log on unlisted recipes:
   - Add failing cases to `apps/api/src/modules/brew-log/service.test.ts`: `createBrewLog(B, { recipeId: U })` succeeds; `createBrewLog(B, { recipeId: <A's private> })` and `<A's draft>` throw `RECIPE_NOT_FOUND`. Add a failing case to `brew-log/index.test.ts`: B's `POST /api/v1/brew-logs` for U returns `201`, and A's `GET /api/v1/brew-logs` does not contain B's log.
   - Then replace the check at `brew-log/service.ts:27` with `if (!recipe || !canViewRecipe(recipe, userId)) throw new Error('RECIPE_NOT_FOUND')`, importing `canViewRecipe` from `../recipe/service.ts`. Keep the existing logs, and update the `createBrewLog` docblock ("visible to the user per `canViewRecipe`").
 - [ ] 11.8 Write failing `X-Robots-Tag` tests:

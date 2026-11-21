@@ -3,21 +3,26 @@
  * `recipe-visibility`): the SQL conditions `listableRecipeCondition` /
  * `viewableRecipeCondition` must select exactly the rows the pure predicates
  * `canListRecipe` / `canViewRecipe` accept, for every visibility, active and
- * soft-deleted, and for viewer `null`, the author and another user.
+ * soft-deleted, and for viewer `null`, the author and another user. Also covers the
+ * viewer-independent list fork mask `maskUnlistableForkSources`.
  */
 
 import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { recipes, type users } from '@brewform/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   cleanupRecipes,
   cleanupUsers,
   createRecipe,
   createUser,
 } from '../brew-log/test-helpers.ts';
-import { listableRecipeCondition, viewableRecipeCondition } from './model.ts';
+import {
+  listableRecipeCondition,
+  maskUnlistableForkSources,
+  viewableRecipeCondition,
+} from './model.ts';
 import { canListRecipe, canViewRecipe } from './service.ts';
 
 const VISIBILITIES = ['public', 'unlisted', 'private', 'draft'] as const;
@@ -112,5 +117,80 @@ describe('recipe visibility helpers — SQL/predicate parity', () => {
   });
 });
 
-// Placeholder for the viewer-independent list fork mask (task 11.4).
-describe.todo('maskUnlistableForkSources');
+/**
+ * The viewer-independent list fork mask (capability `recipe-visibility`, "Fork attribution
+ * never reveals a recipe the viewer could not list"): one primary-key query, and every
+ * `forkedFromId` whose source is not listable to an anonymous viewer becomes `null`.
+ */
+describe('maskUnlistableForkSources', () => {
+  let author: typeof users.$inferSelect;
+  /** Fork sources by label: one per visibility, plus a soft-deleted public one. */
+  const sources: Record<string, typeof recipes.$inferSelect> = {};
+
+  beforeAll(async () => {
+    author = await createUser('vis-mask');
+    for (const visibility of VISIBILITIES) {
+      sources[visibility] = await createRecipe(author.id, visibility);
+    }
+    const deleted = await createRecipe(author.id, 'public');
+    const [softDeleted] = await db
+      .update(recipes)
+      .set({ deletedAt: new Date() })
+      .where(eq(recipes.id, deleted.id))
+      .returning();
+    sources.deleted = softDeleted;
+  });
+
+  afterAll(async () => {
+    await cleanupRecipes(Object.values(sources).map((r) => r.id));
+    await cleanupUsers([author.id]);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('returns the rows unchanged without a query when no row has a fork source', async () => {
+    const selectSpy = vi.spyOn(db, 'select');
+    const rows = [
+      { id: 'row-1', forkedFromId: null },
+      { id: 'row-2', forkedFromId: null },
+    ];
+    expect(await maskUnlistableForkSources(rows)).toEqual(rows);
+    expect(await maskUnlistableForkSources([])).toEqual([]);
+    expect(selectSpy).not.toHaveBeenCalled();
+  });
+
+  it('keeps public sources, with one query for every row', async () => {
+    const selectSpy = vi.spyOn(db, 'select');
+    const rows = [
+      { id: 'row-1', forkedFromId: sources.public.id, title: 'first' },
+      { id: 'row-2', forkedFromId: sources.public.id, title: 'second' },
+      { id: 'row-3', forkedFromId: null, title: 'original' },
+    ];
+    expect(await maskUnlistableForkSources(rows)).toEqual(rows);
+    expect(selectSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('masks unlisted, private, draft and soft-deleted sources and keeps other fields', async () => {
+    const hidden = ['unlisted', 'private', 'draft', 'deleted'];
+    const rows = hidden.map((label) => ({
+      id: `row-${label}`,
+      forkedFromId: sources[label].id,
+      title: label,
+    }));
+    const masked = await maskUnlistableForkSources([
+      ...rows,
+      { id: 'row-public', forkedFromId: sources.public.id, title: 'public' },
+    ]);
+    expect(masked).toEqual([
+      ...rows.map((r) => ({ ...r, forkedFromId: null })),
+      { id: 'row-public', forkedFromId: sources.public.id, title: 'public' },
+    ]);
+  });
+
+  it('masks a source id that matches no recipe', async () => {
+    const rows = [{ id: 'row-1', forkedFromId: crypto.randomUUID() }];
+    expect(await maskUnlistableForkSources(rows)).toEqual([{ id: 'row-1', forkedFromId: null }]);
+  });
+});

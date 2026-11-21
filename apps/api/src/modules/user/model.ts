@@ -15,6 +15,7 @@ import {
   users,
 } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, gt, isNull, like, or } from 'drizzle-orm';
+import { listableRecipeCondition } from '../recipe/model.ts';
 
 /**
  * Find a user by ID, including preferences via LEFT JOIN.
@@ -94,6 +95,10 @@ export async function deleteUser(id: string) {
 /**
  * Get aggregated stats for a user (public recipe count, followers, following).
  *
+ * `recipeCount` is a discovery count (capability `recipe-visibility`): it counts the
+ * user's recipes that `listableRecipeCondition(null)` selects (non-deleted `public`
+ * only), for every viewer including the user, matching {@link getUserPublicRecipes}.
+ *
  * @returns Object with recipeCount, followerCount, and followingCount
  */
 export async function getUserStats(id: string) {
@@ -101,9 +106,7 @@ export async function getUserStats(id: string) {
     db
       .select({ count: count() })
       .from(recipes)
-      .where(
-        and(eq(recipes.authorId, id), isNull(recipes.deletedAt), eq(recipes.visibility, 'public')),
-      ),
+      .where(and(eq(recipes.authorId, id), listableRecipeCondition(null))),
     db.select({ count: count() }).from(userFollows).where(eq(userFollows.followingId, id)),
     db.select({ count: count() }).from(userFollows).where(eq(userFollows.followerId, id)),
   ]);
@@ -114,15 +117,17 @@ export async function getUserStats(id: string) {
   };
 }
 
-/** Get a user's public recipes with their latest version's brew method and drink type. */
+/**
+ * Get a user's public recipes with their latest version's brew method and drink type.
+ *
+ * The profile `recipes` array is a discovery surface (capability `recipe-visibility`):
+ * it lists what `listableRecipeCondition(null)` selects (non-deleted `public` only), for
+ * every viewer including the profile owner.
+ */
 export async function getUserPublicRecipes(userId: string) {
   // Fetch the user's public recipes with their latest version's brew method and drink type.
   const userRecipes = await db.query.recipes.findMany({
-    where: and(
-      eq(recipes.authorId, userId),
-      eq(recipes.visibility, 'public'),
-      isNull(recipes.deletedAt),
-    ),
+    where: and(eq(recipes.authorId, userId), listableRecipeCondition(null)),
     orderBy: desc(recipes.createdAt),
     columns: {
       id: true,

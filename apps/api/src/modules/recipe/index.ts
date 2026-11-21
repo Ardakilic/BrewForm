@@ -615,6 +615,8 @@ recipe.get(
       ]);
       const payload = {
         ...r,
+        // Fork fields are masked unless the viewer may list the source (recipe-visibility).
+        ...service.resolveForkAttribution(r.forkedFrom, userId),
         currentVersion,
         tasteNotes:
           currentVersion?.tasteNotes?.map((t) => ({
@@ -630,7 +632,6 @@ recipe.get(
           })) ?? [],
         bean: currentVersion?.bean ?? null,
         versionCount: r.versions?.length ?? 1,
-        forkedFromSlug: r.forkedFrom?.slug ?? null,
         userLiked: likeStatus.userLiked,
         userFavourited: likeStatus.userFavourited,
         favouriteCount,
@@ -848,7 +849,11 @@ recipe.patch(
     const body = c.req.valid('json');
     try {
       const r = await service.updateRecipe(recipeId, authorId, body);
-      return success(c, r);
+      // Same fork-field masking as the detail: never echo the source's visibility state.
+      return success(
+        c,
+        r ? { ...r, ...service.resolveForkAttribution(r.forkedFrom, authorId) } : r,
+      );
     } catch (err: unknown) {
       const invalid = validationFailure(c, err);
       if (invalid) return invalid;

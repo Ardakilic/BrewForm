@@ -32,10 +32,16 @@ import { errorHandler, log as errorHandlerLog } from '../../middleware/errorHand
 import type { AppEnv } from '../../types/hono.ts';
 import { signAccessToken } from '../auth/jwt.ts';
 import coffeeVarietyRouter from '../coffee-variety/index.ts';
+import equipmentRouter from '../equipment/index.ts';
 import recipeRouter, { deps } from './index.ts';
 import * as model from './model.ts';
 import * as service from './service.ts';
-import { RecipeWriteFixtures, recipeInput } from './test-helpers.ts';
+import {
+  type ForkScenario,
+  RecipeWriteFixtures,
+  recipeInput,
+  VisibilityFixtures,
+} from './test-helpers.ts';
 
 // Spy on the model so one test can make `findListPage` fail with a statement timeout;
 // every other call goes through to the real implementation.
@@ -1464,5 +1470,163 @@ describe('Recipe write integrity — POST / and PATCH /:id', () => {
     expect(body.data.versions[0].coffeeVarietyId).toBe(variety.id);
     expect(body.data.versions[0].coffeeVarietyName).toBe(variety.name);
     expect(body.data.currentVersionId).toBe(body.data.versions[0].id);
+  });
+});
+
+/** Sign a Bearer token for a fixture user (the real optional-auth middleware resolves it). */
+function visibilityBearer(user: typeof users.$inferSelect): Promise<string> {
+  return signAccessToken({
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    isAdmin: false,
+  });
+}
+
+/** App with the recipe, equipment and coffee-variety routers, the real auth and the error handler. */
+function visibilityApp(): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
+  app.use('*', async (c, next) => {
+    c.set('requestId', crypto.randomUUID());
+    await next();
+  });
+  app.route('/api/v1/recipes', recipeRouter);
+  app.route('/api/v1/equipment', equipmentRouter);
+  app.route('/api/v1/coffee-varieties', coffeeVarietyRouter);
+  app.onError(errorHandler);
+  return app;
+}
+
+/**
+ * GET a path on {@link visibilityApp}, optionally as a signed-in fixture user.
+ *
+ * @returns The status, the headers and the parsed JSON body.
+ */
+async function visibilityGet(path: string, user?: typeof users.$inferSelect) {
+  const headers: Record<string, string> = user
+    ? { Authorization: `Bearer ${await visibilityBearer(user)}` }
+    : {};
+  const res = await visibilityApp().request(path, { headers });
+  // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+  return { status: res.status, headers: res.headers, body: (await res.json()) as any };
+}
+
+/** The `forkedFromId` of the row with `id` in a list payload. */
+function forkedFromIdOf(rows: Array<{ id: string; forkedFromId: string | null }>, id: string) {
+  const row = rows.find((r) => r.id === id);
+  expect(row, `row ${id} is listed`).toBeDefined();
+  return row?.forkedFromId;
+}
+
+/**
+ * Fork attribution never reveals a recipe the viewer could not list (capability
+ * `recipe-visibility`, task 11.4): B's public fork F of A's unlisted U carries no source on
+ * any surface a stranger can read; the source's author still sees it on the detail.
+ */
+describe('Fork attribution masking (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let s: ForkScenario;
+
+  beforeAll(async () => {
+    s = await fixtures.forkScenario('vis-fork');
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  it('masks all three fork fields on the detail of F for an anonymous viewer and for B', async () => {
+    for (const viewer of [undefined, s.userB]) {
+      const { status, body } = await visibilityGet(`/api/v1/recipes/${s.forkF.slug}`, viewer);
+      const label = viewer ? 'B' : 'anonymous';
+      expect(status, label).toBe(200);
+      expect(body.data.forkedFrom, label).toBeNull();
+      expect(body.data.forkedFromId, label).toBeNull();
+      expect(body.data.forkedFromSlug, label).toBeNull();
+    }
+  });
+
+  it("shows U's id, slug and title (and nothing else) on F's detail to U's author", async () => {
+    const { status, body } = await visibilityGet(`/api/v1/recipes/${s.forkF.slug}`, s.authorA);
+    expect(status).toBe(200);
+    expect(body.data.forkedFrom).toEqual({
+      id: s.unlistedU.id,
+      slug: s.unlistedU.slug,
+      title: s.unlistedU.title,
+    });
+    expect(body.data.forkedFromId).toBe(s.unlistedU.id);
+    expect(body.data.forkedFromSlug).toBe(s.unlistedU.slug);
+  });
+
+  it("keeps the public source P's attribution on G", async () => {
+    const { body } = await visibilityGet(`/api/v1/recipes/${s.forkG.slug}`);
+    expect(body.data.forkedFrom).toEqual({
+      id: s.publicP.id,
+      slug: s.publicP.slug,
+      title: s.publicP.title,
+    });
+    expect(body.data.forkedFromId).toBe(s.publicP.id);
+    expect(body.data.forkedFromSlug).toBe(s.publicP.slug);
+  });
+
+  it('masks a fork once its public source is soft-deleted', async () => {
+    const source = await fixtures.recipe(s.authorA.id, 'public');
+    const fork = await fixtures.recipe(s.userB.id, 'public', { forkedFromId: source.id });
+    await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, source.id));
+    const { status, body } = await visibilityGet(`/api/v1/recipes/${fork.slug}`, s.userB);
+    expect(status).toBe(200);
+    expect(body.data.forkedFrom).toBeNull();
+    expect(body.data.forkedFromId).toBeNull();
+    expect(body.data.forkedFromSlug).toBeNull();
+  });
+
+  it("masks F's forkedFromId in GET /api/v1/recipes and keeps G's", async () => {
+    const { status, body } = await visibilityGet(`/api/v1/recipes?authorId=${s.userB.id}`);
+    expect(status).toBe(200);
+    expect(forkedFromIdOf(body.data, s.forkF.id)).toBeNull();
+    expect(forkedFromIdOf(body.data, s.forkG.id)).toBe(s.publicP.id);
+  });
+
+  it("masks F's forkedFromId on the cursor path of GET /api/v1/recipes", async () => {
+    const cursor = encodeCursor({
+      createdAt: new Date(Date.now() + 60_000).toISOString(),
+      id: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    });
+    const { status, body } = await visibilityGet(
+      `/api/v1/recipes?authorId=${s.userB.id}&cursor=${encodeURIComponent(cursor)}`,
+    );
+    expect(status).toBe(200);
+    expect(forkedFromIdOf(body.data, s.forkF.id)).toBeNull();
+    expect(forkedFromIdOf(body.data, s.forkG.id)).toBe(s.publicP.id);
+  });
+
+  it("masks F's forkedFromId on the equipment page", async () => {
+    const { status, body } = await visibilityGet(`/api/v1/equipment/${s.equipmentId}/recipes`);
+    expect(status).toBe(200);
+    expect(forkedFromIdOf(body.data, s.forkF.id)).toBeNull();
+    expect(forkedFromIdOf(body.data, s.forkG.id)).toBe(s.publicP.id);
+  });
+
+  it("masks F's forkedFromId on the coffee-variety page", async () => {
+    const { status, body } = await visibilityGet(`/api/v1/coffee-varieties/${s.varietyId}/recipes`);
+    expect(status).toBe(200);
+    expect(forkedFromIdOf(body.data, s.forkF.id)).toBeNull();
+    expect(forkedFromIdOf(body.data, s.forkG.id)).toBe(s.publicP.id);
+  });
+
+  it("masks the fork fields in B's PATCH response for F (no source visibility state)", async () => {
+    const res = await visibilityApp().request(`/api/v1/recipes/${s.forkF.id}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${await visibilityBearer(s.userB)}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ title: `Fork F renamed ${crypto.randomUUID().slice(0, 8)}` }),
+    });
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.data.forkedFrom).toBeNull();
+    expect(body.data.forkedFromId).toBeNull();
+    expect(body.data.forkedFromSlug).toBeNull();
   });
 });

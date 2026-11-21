@@ -17,6 +17,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
 import { signAccessToken } from '../auth/jwt.ts';
 import { evaluateBadges } from '../badge/service.ts';
+import { type ForkScenario, VisibilityFixtures } from '../recipe/test-helpers.ts';
 import followRouter from './index.ts';
 
 async function createUser(prefix: string) {
@@ -225,5 +226,57 @@ describe('Follow routes — re-follow after unfollow (join rows are re-creatable
       .from(userFollows)
       .where(and(eq(userFollows.followerId, follower.id), eq(userFollows.followingId, target.id)));
     expect(rows).toHaveLength(1);
+  });
+});
+
+/**
+ * Fork attribution on the feed (capability `recipe-visibility`, task 11.4): A follows B, whose
+ * public fork F of A's unlisted U must carry `forkedFromId: null`, in offset and cursor mode,
+ * while B's public fork G of public P keeps P's id.
+ */
+describe('Follow routes — feed masks unlistable fork sources (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let s: ForkScenario;
+
+  beforeAll(async () => {
+    s = await fixtures.forkScenario('vis-feed-fork');
+    await fixtures.follow(s.authorA.id, s.userB.id);
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  /** The `forkedFromId` of the row with `id` in a feed payload. */
+  function forkedFromIdOf(rows: Array<{ id: string; forkedFromId: string | null }>, id: string) {
+    const row = rows.find((r) => r.id === id);
+    expect(row, `row ${id} is in the feed`).toBeDefined();
+    return row?.forkedFromId;
+  }
+
+  it('offset mode', async () => {
+    const app = createTestApp(s.authorA.id);
+    const res = await authedRequest(app, '/api/v1/follow/feed?page=1&perPage=50', s.authorA.id);
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(forkedFromIdOf(body.data, s.forkF.id)).toBeNull();
+    expect(forkedFromIdOf(body.data, s.forkG.id)).toBe(s.publicP.id);
+  });
+
+  it('cursor mode', async () => {
+    const cursor = encodeCursor({
+      createdAt: new Date(Date.now() + 60_000).toISOString(),
+      id: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    });
+    const app = createTestApp(s.authorA.id);
+    const res = await authedRequest(
+      app,
+      `/api/v1/follow/feed?perPage=50&cursor=${encodeURIComponent(cursor)}`,
+      s.authorA.id,
+    );
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(forkedFromIdOf(body.data, s.forkF.id)).toBeNull();
+    expect(forkedFromIdOf(body.data, s.forkG.id)).toBe(s.publicP.id);
   });
 });

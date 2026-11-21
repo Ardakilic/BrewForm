@@ -42,6 +42,8 @@ describe('brew-log service — createBrewLog', () => {
   let publicRecipe: typeof recipes.$inferSelect;
   let ownPrivate: typeof recipes.$inferSelect;
   let otherPrivate: typeof recipes.$inferSelect;
+  let otherUnlisted: typeof recipes.$inferSelect;
+  let otherDraft: typeof recipes.$inferSelect;
   let deletedRecipe: typeof recipes.$inferSelect;
   const recipeIds: string[] = [];
 
@@ -51,8 +53,17 @@ describe('brew-log service — createBrewLog', () => {
     publicRecipe = await createRecipe(other.id, 'public');
     ownPrivate = await createRecipe(user.id, 'private');
     otherPrivate = await createRecipe(other.id, 'private');
+    otherUnlisted = await createRecipe(other.id, 'unlisted');
+    otherDraft = await createRecipe(other.id, 'draft');
     deletedRecipe = await createRecipe(other.id, 'public');
-    recipeIds.push(publicRecipe.id, ownPrivate.id, otherPrivate.id, deletedRecipe.id);
+    recipeIds.push(
+      publicRecipe.id,
+      ownPrivate.id,
+      otherPrivate.id,
+      otherUnlisted.id,
+      otherDraft.id,
+      deletedRecipe.id,
+    );
     await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, deletedRecipe.id));
   });
 
@@ -119,6 +130,25 @@ describe('brew-log service — createBrewLog', () => {
       .select({ id: brewLogs.id })
       .from(brewLogs)
       .where(eq(brewLogs.recipeId, otherPrivate.id));
+    expect(rows.length).toBe(0);
+  });
+
+  // recipe-visibility: a signed-in link holder can log a brew of an unlisted recipe
+  // ("Brew again" works on any recipe that passes canViewRecipe).
+  it("creates a log on another user's unlisted recipe", async () => {
+    const created = await service.createBrewLog(user.id, { recipeId: otherUnlisted.id });
+    expect(created.userId).toBe(user.id);
+    expect(created.recipeId).toBe(otherUnlisted.id);
+  });
+
+  it("throws RECIPE_NOT_FOUND for another user's draft recipe and inserts nothing", async () => {
+    await expect(service.createBrewLog(user.id, { recipeId: otherDraft.id })).rejects.toThrow(
+      'RECIPE_NOT_FOUND',
+    );
+    const rows = await db
+      .select({ id: brewLogs.id })
+      .from(brewLogs)
+      .where(eq(brewLogs.recipeId, otherDraft.id));
     expect(rows.length).toBe(0);
   });
 

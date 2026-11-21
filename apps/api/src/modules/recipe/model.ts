@@ -104,6 +104,51 @@ export function viewableRecipeCondition(viewerId: string | null): SQL {
   return and(isNull(recipes.deletedAt), visibility) as SQL;
 }
 
+/**
+ * Mask fork sources that are not listable (capability `recipe-visibility`, "Fork attribution
+ * never reveals a recipe the viewer could not list"). An `unlisted` recipe's id works as its
+ * link, so a list row must not carry the id of a source an anonymous viewer could not list.
+ *
+ * Viewer-independent, like every discovery list: collects the distinct non-null
+ * `forkedFromId`s and returns `rows` unchanged (no query) when there are none; otherwise runs
+ * ONE primary-key query for the sources that {@link listableRecipeCondition}`(null)` selects
+ * (non-deleted `public`) and sets `forkedFromId` to `null` on every row whose source is
+ * missing from that result (`unlisted`, `private`, `draft`, soft-deleted or gone). Every other
+ * field, the row order and the stored column are unchanged.
+ *
+ * Applied to the rows of {@link findListPage}, {@link findCursor} and the equipment and
+ * coffee-variety recipe lists.
+ *
+ * @param rows - List rows carrying a nullable `forkedFromId`.
+ * @returns The rows, with unlistable fork sources replaced by `null` (new objects only for masked rows).
+ */
+export async function maskUnlistableForkSources<T extends { forkedFromId: string | null }>(
+  rows: T[],
+): Promise<T[]> {
+  const ids = [
+    ...new Set(
+      rows.map((row) => row.forkedFromId).filter((id): id is string => typeof id === 'string'),
+    ),
+  ];
+  if (ids.length === 0) return rows;
+
+  const listable = await db
+    .select({ id: recipes.id })
+    .from(recipes)
+    .where(and(inArray(recipes.id, ids), listableRecipeCondition(null)));
+  const listableIds = new Set(listable.map((row) => row.id));
+
+  let maskedCount = 0;
+  const masked = rows.map((row) => {
+    const sourceId = row.forkedFromId;
+    if (typeof sourceId !== 'string' || listableIds.has(sourceId)) return row;
+    maskedCount++;
+    return { ...row, forkedFromId: null };
+  });
+  modelLog.debug({ rowCount: rows.length, maskedCount }, 'maskUnlistableForkSources completed');
+  return masked;
+}
+
 /** Return a Drizzle condition that matches recipes whose versions reference the given coffee variety. */
 export function recipeCoffeeVarietyCondition(coffeeVarietyId: string) {
   return inArray(
@@ -359,24 +404,26 @@ export interface RecipeListFilters extends RecipeFilterCriteria {
 /**
  * Build the Drizzle `WHERE` clause for the public recipe-listing endpoint.
  *
- * Composes the admin-aware visibility condition, the shared filter branches
- * from {@link buildRecipeFilters}, and an optional `authorId` scope. Admins
- * may filter by a specific `visibility`; non-admins are always restricted to
- * `visibility = 'public'`.
+ * Composes the visibility condition, the shared filter branches from
+ * {@link buildRecipeFilters}, and an optional `authorId` scope. `GET /recipes` is a
+ * discovery surface (capability `recipe-visibility`), so non-admins, and admins
+ * without a `visibility` filter, get {@link listableRecipeCondition}`(null)`: non-deleted
+ * `public` recipes only, for every viewer including the author. An admin who passes
+ * `visibility` filters on exactly that value (the admin exemption).
  *
  * @param filters - Filter criteria (see {@link RecipeListFilters})
- * @param isAdmin - Whether the requester is an admin (allows a `visibility`
- *                  other than `'public'`)
+ * @param isAdmin - Whether the requester is an admin (allows a `visibility` filter)
  * @returns A single Drizzle `SQL` expression, or `undefined` when no conditions apply
  */
 export function buildListRecipesWhere(
   filters: RecipeListFilters,
   isAdmin: boolean,
 ): SQL | undefined {
+  const { visibility } = filters;
   const visibilityCondition =
-    isAdmin && filters.visibility
-      ? eq(recipes.visibility, filters.visibility)
-      : eq(recipes.visibility, 'public');
+    isAdmin && visibility
+      ? eq(recipes.visibility, visibility) // visibility-exempt: admin filter (recipe-visibility)
+      : listableRecipeCondition(null);
   const filterConditions = buildRecipeFilters(filters);
   const conditions: SQL[] = [visibilityCondition, ...filterConditions];
   if (filters.authorId) conditions.push(eq(recipes.authorId, filters.authorId));
@@ -393,7 +440,9 @@ export async function create(data: typeof recipes.$inferInsert) {
  * Fetch a recipe by its UUID primary key, excluding soft-deleted rows.
  *
  * Loads all relations: author, versions (with taste notes, equipment, preparations,
- * photos, bean), photos, and forked-from recipe.
+ * photos, bean), photos, and forked-from recipe. The fork source is loaded unfiltered with
+ * its `visibility`, `authorId` and `deletedAt`, so the service can decide whether the viewer
+ * may see it (`resolveForkAttribution`); never return that relation to a client as is.
  */
 export function findById(id: string) {
   return db.query.recipes.findFirst({
@@ -411,7 +460,16 @@ export function findById(id: string) {
         },
       },
       photos: true,
-      forkedFrom: { columns: { id: true, slug: true, title: true } },
+      forkedFrom: {
+        columns: {
+          id: true,
+          slug: true,
+          title: true,
+          visibility: true,
+          authorId: true,
+          deletedAt: true,
+        },
+      },
     },
   });
 }
@@ -420,7 +478,8 @@ export function findById(id: string) {
  * Fetch a recipe by its unique slug, excluding soft-deleted rows.
  *
  * Loads the same relation tree as {@link findById}: author, versions (with taste notes,
- * equipment, preparations, photos, bean), photos, and forked-from recipe.
+ * equipment, preparations, photos, bean), photos, and forked-from recipe (with the source's
+ * visibility state, for `resolveForkAttribution`).
  */
 export function findBySlug(slug: string) {
   return db.query.recipes.findFirst({
@@ -438,7 +497,16 @@ export function findBySlug(slug: string) {
         },
       },
       photos: true,
-      forkedFrom: { columns: { id: true, slug: true, title: true } },
+      forkedFrom: {
+        columns: {
+          id: true,
+          slug: true,
+          title: true,
+          visibility: true,
+          authorId: true,
+          deletedAt: true,
+        },
+      },
     },
   });
 }
@@ -590,6 +658,11 @@ export function buildListCountQuery(where: SQL | undefined, executor: ListQueryE
  * and {@link buildListCountQuery} in parallel (exactly two statements). Search requests
  * are relevance-ranked in SQL; nothing is ranked or sorted in the API process.
  *
+ * The page rows then pass through {@link maskUnlistableForkSources} (capability
+ * `recipe-visibility`), so a fork of a non-public source carries `forkedFromId: null`. That
+ * mask adds one primary-key statement on the shared `db`, and only when a returned row has
+ * a fork source.
+ *
  * @param opts - Paging, sorting, search and the caller's WHERE (see {@link ListPageOptions}).
  * @param executor - The database handle to run on (defaults to the shared `db`).
  * @returns `{ recipes, total }`: at most `perPage` list items (no `versions`, no score) and
@@ -606,10 +679,11 @@ export async function findListPage(opts: ListPageOptions, executor: ListQueryExe
   };
   modelLog.debug(logContext, 'findListPage started');
 
-  const [rows, totalResult] = await Promise.all([
+  const [pageRows, totalResult] = await Promise.all([
     buildListPageQuery(opts, executor),
     buildListCountQuery(opts.where, executor),
   ]);
+  const rows = await maskUnlistableForkSources(pageRows);
 
   modelLog.debug({ ...logContext, resultCount: rows.length }, 'findListPage completed');
   return { recipes: rows, total: totalResult[0].count };
@@ -1701,7 +1775,9 @@ function buildCursorWhere(cursor: { createdAt: string; id: string }, sortOrder: 
  *
  * Fetches `perPage + 1` rows so we can detect whether more pages exist without
  * an additional round-trip. The cursor filter is combined with the caller's
- * existing `where` conditions via `and()`.
+ * existing `where` conditions via `and()`. The page rows pass through
+ * {@link maskUnlistableForkSources}, so a fork of a non-public source carries
+ * `forkedFromId: null` (capability `recipe-visibility`).
  *
  * @param where       - Existing list WHERE conditions (visibility, filters, etc.)
  * @param cursor      - Decoded `{ createdAt, id }` cursor.
@@ -1747,7 +1823,7 @@ export async function findCursor(
   ]);
 
   const hasMore = rows.length > perPage;
-  const recipesPage = rows.slice(0, perPage);
+  const recipesPage = await maskUnlistableForkSources(rows.slice(0, perPage));
   const nextCursor = hasMore
     ? encodeCursor({
         createdAt: (recipesPage[recipesPage.length - 1].createdAt as Date).toISOString(),
@@ -1769,8 +1845,10 @@ export async function findCursor(
 /**
  * Fetch a paginated feed of public recipes from a set of followed author IDs.
  *
- * When `cursor` is provided, delegates to {@link findCursor} for cursor-based
- * pagination (DESC by `createdAt`); otherwise falls back to {@link findMany}
+ * The feed is a discovery surface (capability `recipe-visibility`): it lists only what
+ * {@link listableRecipeCondition}`(null)` selects, so `unlisted`, `draft` and `private`
+ * recipes never appear. When `cursor` is provided, delegates to {@link findCursor} for
+ * cursor-based pagination (DESC by `createdAt`); otherwise falls back to {@link findMany}
  * offset-based pagination.
  *
  * @param authorIds - UUIDs of followed authors whose public recipes to include.
@@ -1788,7 +1866,7 @@ export function getFeed(
 ): Promise<
   { recipes: Record<string, unknown>[]; total: number } | CursorResult<Record<string, unknown>>
 > {
-  const where = and(inArray(recipes.authorId, authorIds), eq(recipes.visibility, 'public'));
+  const where = and(inArray(recipes.authorId, authorIds), listableRecipeCondition(null));
   if (cursor) {
     return findCursor(where, cursor, perPage, 'desc');
   }
@@ -1798,12 +1876,18 @@ export function getFeed(
 /**
  * Fetch a paginated, filtered list of recipes the given user has favourited.
  *
+ * Starred is a viewer-only record (capability `recipe-visibility`): only the caller ever
+ * sees it, so it lists the favourites the caller can OPEN, through
+ * {@link viewableRecipeCondition}`(userId)`: non-deleted `public` and `unlisted` recipes,
+ * plus the caller's own `draft`/`private` recipes. Another author's recipe that became
+ * `private` or `draft`, or was soft-deleted, drops out.
+ *
  * The shared filter branches (`brewMethod`, `drinkType`, `search`, `mainBrewer`,
  * `author`, dates, ratings, `equipmentId`, `tasteNoteIds` / `tasteNoteId`,
  * `coffeeVarietyId`) are built by {@link buildRecipeFilters}; this function prepends
- * the `eq(recipes.visibility, 'public')` base condition and the favourites-scope
- * subquery (`userRecipeFavourites`), then delegates to {@link findListPage}, so a
- * starred search is relevance-ranked by the same bounded query as `/recipes`.
+ * the viewer-only visibility condition and the favourites-scope subquery
+ * (`userRecipeFavourites`), then delegates to {@link findListPage}, so a starred search
+ * is relevance-ranked by the same bounded query as `/recipes`.
  *
  * @param userId  - UUID of the user whose favourites to query
  * @param filters - Optional filter criteria (see {@link RecipeFilterCriteria}) plus sorting
@@ -1826,7 +1910,7 @@ export function findStarred(
     .where(eq(userRecipeFavourites.userId, userId));
 
   const finalWhere = and(
-    eq(recipes.visibility, 'public'),
+    viewableRecipeCondition(userId),
     inArray(recipes.id, starredSubquery),
     ...buildRecipeFilters(filters),
   );

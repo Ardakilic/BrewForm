@@ -27,6 +27,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 import * as service from './service.ts';
 import { canViewRecipe } from './service.ts';
+import { VisibilityFixtures, type VisibilityScenario } from './test-helpers.ts';
 
 describe('Recipe Service Logic', () => {
   describe('Slug generation', () => {
@@ -1090,5 +1091,164 @@ describe('Recipe Service — DB integration', () => {
       // Title match (score 3) should be first despite being oldest by createdAt
       expect(recipesList[0].title).toBe('Espresso Title Match');
     });
+  });
+});
+
+/**
+ * Regression locks for the discovery rule of capability `recipe-visibility` (task 11.1):
+ * `GET /recipes` search, author filter, cursor path and the admin filter. Written before the
+ * shared-condition refactor and kept unchanged after it.
+ */
+describe('listRecipes — unlisted recipes are never listed (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let scenario: VisibilityScenario;
+  let admin: typeof users.$inferSelect;
+
+  beforeAll(async () => {
+    scenario = await fixtures.scenario('vis-list');
+    admin = await fixtures.user('vis-list-admin');
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  /** The three discovery viewers: anonymous, the author and a follower. */
+  const viewers = (): Array<{ label: string; id: string | null }> => [
+    { label: 'anonymous', id: null },
+    { label: 'the author', id: scenario.authorA.id },
+    { label: 'a follower', id: scenario.userB.id },
+  ];
+
+  /** The ids of a list result's rows. */
+  function ids(result: { recipes: unknown[] }): string[] {
+    return (result.recipes as Array<{ id: string }>).map((r) => r.id);
+  }
+
+  it("search for U's exact title never returns U, and total excludes it", async () => {
+    for (const viewer of viewers()) {
+      const filters = RecipeFilterSchema.parse({ search: scenario.unlistedU.title });
+      const result = (await service.listRecipes(filters, 1, 20, viewer.id, false)) as {
+        recipes: unknown[];
+        total: number;
+      };
+      expect(ids(result), viewer.label).not.toContain(scenario.unlistedU.id);
+      expect(result.total, viewer.label).toBe(0);
+    }
+  });
+
+  it("authorId=A returns only A's public recipe", async () => {
+    for (const viewer of viewers()) {
+      const filters = RecipeFilterSchema.parse({ authorId: scenario.authorA.id });
+      const result = (await service.listRecipes(filters, 1, 20, viewer.id, false)) as {
+        recipes: unknown[];
+        total: number;
+      };
+      expect(ids(result), viewer.label).toEqual([scenario.publicP.id]);
+      expect(result.total, viewer.label).toBe(1);
+    }
+  });
+
+  it('the cursor path excludes U', async () => {
+    const cursor = encodeCursor({
+      createdAt: new Date(Date.now() + 60_000).toISOString(),
+      id: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    });
+    for (const viewer of viewers()) {
+      const filters = RecipeFilterSchema.parse({
+        cursor,
+        sortBy: 'createdAt',
+        authorId: scenario.authorA.id,
+        includeTotal: 'true',
+      });
+      const result = (await service.listRecipes(filters, 1, 20, viewer.id, false)) as {
+        recipes: unknown[];
+        total?: number;
+        nextCursor?: string | null;
+      };
+      expect(result.nextCursor, viewer.label).toBeNull();
+      expect(ids(result), viewer.label).toEqual([scenario.publicP.id]);
+      expect(result.total, viewer.label).toBe(1);
+    }
+  });
+
+  it('an admin visibility=unlisted filter returns U (admin exemption)', async () => {
+    const filters = RecipeFilterSchema.parse({ visibility: 'unlisted' });
+    const result = (await service.listRecipes(filters, 1, 20, admin.id, true)) as {
+      recipes: unknown[];
+    };
+    expect(ids(result)).toContain(scenario.unlistedU.id);
+    expect(ids(result)).not.toContain(scenario.publicP.id);
+  });
+});
+
+/**
+ * Starred is a viewer-only record (capability `recipe-visibility`, "Viewer-only records may
+ * include unlisted recipes the viewer can open", task 11.2): it lists the caller's favourites
+ * that the caller can open (`viewableRecipeCondition(userId)`), so a favourited unlisted recipe
+ * appears and another author's recipe that became private drops out.
+ */
+describe('listStarredRecipes — viewer-only visibility (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let scenario: VisibilityScenario;
+  let becamePrivateX: typeof recipes.$inferSelect;
+  let draftOfA: typeof recipes.$inferSelect;
+
+  beforeAll(async () => {
+    scenario = await fixtures.scenario('vis-starred');
+    const { authorA, userB, publicP, unlistedU } = scenario;
+    becamePrivateX = await fixtures.recipe(authorA.id, 'public');
+    for (const recipe of [unlistedU, publicP, becamePrivateX]) {
+      await fixtures.favourite(userB.id, recipe.id);
+    }
+    await db
+      .update(recipes)
+      .set({ visibility: 'private' })
+      .where(eq(recipes.id, becamePrivateX.id));
+    draftOfA = await fixtures.recipe(authorA.id, 'draft');
+    await fixtures.favourite(authorA.id, draftOfA.id);
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  /** The sorted ids of a list result's rows. */
+  function sortedIds(result: { recipes: unknown[] }): string[] {
+    return (result.recipes as Array<{ id: string }>).map((r) => r.id).sort();
+  }
+
+  it("returns B's favourited public and unlisted recipes but not the one that became private", async () => {
+    const result = await service.listStarredRecipes(
+      RecipeFilterSchema.parse({}),
+      1,
+      20,
+      scenario.userB.id,
+    );
+    expect(sortedIds(result)).toEqual([scenario.publicP.id, scenario.unlistedU.id].sort());
+    expect(sortedIds(result)).not.toContain(becamePrivateX.id);
+    expect(result.total).toBe(2);
+  });
+
+  it("returns the author's own favourited draft to the author", async () => {
+    const result = await service.listStarredRecipes(
+      RecipeFilterSchema.parse({}),
+      1,
+      20,
+      scenario.authorA.id,
+    );
+    expect(sortedIds(result)).toEqual([draftOfA.id]);
+    expect(result.total).toBe(1);
+  });
+
+  it("finds the unlisted recipe by its title in B's starred search", async () => {
+    const result = await service.listStarredRecipes(
+      RecipeFilterSchema.parse({ search: scenario.unlistedU.title }),
+      1,
+      20,
+      scenario.userB.id,
+    );
+    expect(sortedIds(result)).toEqual([scenario.unlistedU.id]);
+    expect(result.total).toBe(1);
   });
 });

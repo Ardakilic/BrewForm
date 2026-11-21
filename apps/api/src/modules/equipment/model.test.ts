@@ -9,7 +9,8 @@ import {
   users,
 } from '@brewform/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { VisibilityFixtures, type VisibilityScenario } from '../recipe/test-helpers.ts';
 import * as model from './model.ts';
 
 describe('findById', () => {
@@ -634,5 +635,29 @@ describe('getRecipesUsingEquipment', () => {
     const result = await model.getRecipesUsingEquipment(equipmentId, 1, 10);
     expect(result.data).toEqual([]);
     expect(result.total).toBe(0);
+  });
+});
+
+/**
+ * Regression lock for capability `recipe-visibility` (task 11.1): the equipment detail recipe
+ * list is a discovery surface, so an unlisted recipe whose current version uses the equipment
+ * is neither listed nor counted.
+ */
+describe('getRecipesUsingEquipment — unlisted recipes (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let scenario: VisibilityScenario;
+
+  beforeAll(async () => {
+    scenario = await fixtures.scenario('vis-equip');
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  it('excludes the unlisted recipe from data and total', async () => {
+    const result = await model.getRecipesUsingEquipment(scenario.equipmentId, 1, 10);
+    expect(result.data.map((r) => r.id)).toEqual([scenario.publicP.id]);
+    expect(result.total).toBe(1);
   });
 });

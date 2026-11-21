@@ -11,7 +11,10 @@
  * evaluation before deleting `user_badge` rows and users.
  * {@link RecipeWriteFixtures} adds the referenced rows a recipe write links to
  * (taste notes, equipment, coffee varieties, vendors, beans, photos) and deletes
- * them too. Excluded from coverage by the `src/**\/test-helpers.ts` pattern in
+ * them too. {@link VisibilityFixtures} adds recipes linked to equipment and a coffee
+ * variety, follows and favourites for the `recipe-visibility` tests (recipe, follow,
+ * equipment, coffee-variety, user and sitemap suites).
+ * Excluded from coverage by the `src/**\/test-helpers.ts` pattern in
  * `apps/api/vitest.config.ts`.
  */
 import { db } from '@brewform/db';
@@ -29,6 +32,7 @@ import {
   setups,
   tasteNotes,
   userBadges,
+  userFollows,
   userRecipeFavourites,
   userRecipeLikes,
   users,
@@ -415,5 +419,177 @@ export class RecipeWriteFixtures extends SlugFixtures {
       list.length = 0;
     }
     await this.deleteUsers();
+  }
+}
+
+/** Options for {@link VisibilityFixtures.recipe}. */
+export interface VisibilityRecipeOptions {
+  /** Recipe title (default: a unique title naming the visibility). */
+  title?: string;
+  /** Equipment linked to the recipe's current version. */
+  equipmentId?: string;
+  /** Coffee variety referenced by the recipe's current version. */
+  coffeeVarietyId?: string;
+  /** The fork source (stored `forkedFromId`). */
+  forkedFromId?: string;
+  /** Create the recipe soft-deleted. */
+  deleted?: boolean;
+}
+
+/**
+ * The standard `recipe-visibility` scenario (task 11.1): author A owns public recipe P and
+ * unlisted recipe U, both of whose current versions use equipment E and coffee variety V, and
+ * user B follows A.
+ */
+export interface VisibilityScenario {
+  /** The author of P and U. */
+  authorA: typeof users.$inferSelect;
+  /** A user who follows A. */
+  userB: typeof users.$inferSelect;
+  /** Equipment used by the current version of P and U. */
+  equipmentId: string;
+  /** Coffee variety used by the current version of P and U. */
+  varietyId: string;
+  /** A's public recipe. */
+  publicP: typeof recipes.$inferSelect;
+  /** A's unlisted recipe (its title is unique, so a search for it matches nothing else). */
+  unlistedU: typeof recipes.$inferSelect;
+}
+
+/** The {@link VisibilityScenario} plus B's public forks F (of unlisted U) and G (of public P). */
+export interface ForkScenario extends VisibilityScenario {
+  /** B's public fork of A's unlisted U. */
+  forkF: typeof recipes.$inferSelect;
+  /** B's public fork of A's public P. */
+  forkG: typeof recipes.$inferSelect;
+}
+
+/**
+ * {@link RecipeWriteFixtures} plus the rows the `recipe-visibility` tests need: recipes with a
+ * current version linked to equipment and a coffee variety, follows and favourites. Inserts go
+ * straight to the database (no notifications, no badge evaluation). `cleanup()` deletes the
+ * follows and favourites of the tracked users, then everything {@link RecipeWriteFixtures} deletes.
+ */
+export class VisibilityFixtures extends RecipeWriteFixtures {
+  /**
+   * Insert a recipe with a first version set as its current version (the circular-FK dance:
+   * recipe, version, `currentVersionId`, then the optional equipment link).
+   *
+   * @param authorId - The author (a tracked user).
+   * @param visibility - The recipe's visibility.
+   * @param options - Title, version links, fork source and soft-delete flag.
+   * @returns The stored recipe row (with `currentVersionId` and `deletedAt` as stored).
+   */
+  async recipe(
+    authorId: string,
+    visibility: 'public' | 'draft' | 'private' | 'unlisted',
+    options: VisibilityRecipeOptions = {},
+  ): Promise<typeof recipes.$inferSelect> {
+    const id = crypto.randomUUID();
+    await db.insert(recipes).values({
+      id,
+      slug: `vis-${id.slice(0, 8)}`,
+      title: options.title ?? `Visibility ${visibility} ${slugMarker()}`,
+      authorId,
+      visibility,
+      forkedFromId: options.forkedFromId ?? null,
+    });
+    const [version] = await db
+      .insert(recipeVersions)
+      .values({
+        recipeId: id,
+        versionNumber: 1,
+        brewMethod: 'v60',
+        drinkType: 'pour_over',
+        preparationNotes: 'Bloom 45s',
+        coffeeVarietyId: options.coffeeVarietyId ?? null,
+      })
+      .returning();
+    if (options.equipmentId) {
+      await db
+        .insert(recipeEquipment)
+        .values({ recipeVersionId: version.id, equipmentId: options.equipmentId });
+    }
+    const [stored] = await db
+      .update(recipes)
+      .set({ currentVersionId: version.id, deletedAt: options.deleted ? new Date() : null })
+      .where(eq(recipes.id, id))
+      .returning();
+    return stored;
+  }
+
+  /**
+   * Make `followerId` follow `followingId`.
+   *
+   * @param followerId - The follower (a tracked user).
+   * @param followingId - The followed user.
+   */
+  async follow(followerId: string, followingId: string): Promise<void> {
+    await db.insert(userFollows).values({ followerId, followingId });
+  }
+
+  /**
+   * Add a recipe to a user's favourites.
+   *
+   * @param userId - The user (a tracked user).
+   * @param recipeId - The favourited recipe.
+   */
+  async favourite(userId: string, recipeId: string): Promise<void> {
+    await db.insert(userRecipeFavourites).values({ userId, recipeId });
+  }
+
+  /**
+   * Build the standard {@link VisibilityScenario}.
+   *
+   * @param prefix - Short label for the users' emails and usernames.
+   */
+  async scenario(prefix: string): Promise<VisibilityScenario> {
+    const authorA = await this.user(`${prefix}-a`);
+    const userB = await this.user(`${prefix}-b`);
+    await this.follow(userB.id, authorA.id);
+    const equipmentId = await this.equipmentItem();
+    const { id: varietyId } = await this.variety('Visibility');
+    const links = { equipmentId, coffeeVarietyId: varietyId };
+    const publicP = await this.recipe(authorA.id, 'public', links);
+    const unlistedU = await this.recipe(authorA.id, 'unlisted', {
+      ...links,
+      title: `Unlisted lock ${slugMarker()}`,
+    });
+    return { authorA, userB, equipmentId, varietyId, publicP, unlistedU };
+  }
+
+  /**
+   * Build the fork-masking {@link ForkScenario} (task 11.4): the standard scenario, plus B's
+   * public fork F of A's unlisted U and B's public fork G of A's public P. F and G use the same
+   * equipment and coffee variety, so they appear on those detail lists too.
+   *
+   * @param prefix - Short label for the users' emails and usernames.
+   */
+  async forkScenario(prefix: string): Promise<ForkScenario> {
+    const base = await this.scenario(prefix);
+    const links = { equipmentId: base.equipmentId, coffeeVarietyId: base.varietyId };
+    const forkF = await this.recipe(base.userB.id, 'public', {
+      ...links,
+      forkedFromId: base.unlistedU.id,
+    });
+    const forkG = await this.recipe(base.userB.id, 'public', {
+      ...links,
+      forkedFromId: base.publicP.id,
+    });
+    return { ...base, forkF, forkG };
+  }
+
+  /** Delete the tracked users' follows and favourites, then the recipes, references and users. */
+  override async cleanup(): Promise<void> {
+    const { userIds } = this;
+    if (userIds.length > 0) {
+      await db
+        .delete(userFollows)
+        .where(
+          or(inArray(userFollows.followerId, userIds), inArray(userFollows.followingId, userIds)),
+        );
+      await db.delete(userRecipeFavourites).where(inArray(userRecipeFavourites.userId, userIds));
+    }
+    await super.cleanup();
   }
 }

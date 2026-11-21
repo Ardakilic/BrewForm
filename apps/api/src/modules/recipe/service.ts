@@ -714,7 +714,9 @@ async function runListQuery<T>(
  * @param page              - Page number (1-based) for offset mode.
  * @param perPage           - Items per page.
  * @param _requestingUserId - Unused; reserved for future scoped queries.
- * @param isAdmin           - Whether the requester is an admin (bypasses visibility restrictions).
+ * @param isAdmin           - Whether the requester is an admin: only an admin's `visibility` filter
+ *                            is honoured; everyone else gets the public discovery list
+ *                            (`listableRecipeCondition(null)`, capability `recipe-visibility`).
  * @param requestId         - The request id for log lines.
  * @returns Either `{ recipes, total }` for offset mode or
  *          `{ recipes, hasMore, nextCursor, total? }` for cursor mode.
@@ -843,6 +845,11 @@ export async function listRecipes(
 
 /**
  * List starred recipes, always using offset pagination.
+ *
+ * Starred is a viewer-only record (capability `recipe-visibility`): it lists the
+ * caller's favourites that the caller can open (`viewableRecipeCondition(userId)` in
+ * {@link model.findStarred}), so favourited `unlisted` recipes appear and another
+ * author's recipe that became `private`/`draft` or was deleted drops out.
  *
  * Starred queries (`/recipes/starred`) involve a favourites subquery JOIN that
  * is not yet compatible with cursor pagination; a cursor parameter is silently
@@ -1032,6 +1039,55 @@ export function canListRecipe(
   if (recipe.deletedAt !== null && recipe.deletedAt !== undefined) return false;
   if (recipe.visibility === 'public') return true;
   return viewerId !== null && viewerId !== undefined && viewerId === recipe.authorId;
+}
+
+/** The fork fields of a recipe response (capability `recipe-visibility`). */
+export interface ForkAttribution {
+  /** The source's public identity, or `null` when the viewer may not list the source. */
+  forkedFrom: { id: string; slug: string; title: string } | null;
+  /** The source's id, or `null` when masked (or not a fork). */
+  forkedFromId: string | null;
+  /** The source's slug, or `null` when masked (or not a fork). */
+  forkedFromSlug: string | null;
+}
+
+/** The fork source as loaded by `findById`/`findBySlug`: identity plus visibility state. */
+export interface ForkSourceState {
+  id: string;
+  slug: string;
+  title: string;
+  visibility: string;
+  authorId: string;
+  deletedAt: Date | string | null;
+}
+
+/**
+ * Decide the fork fields a viewer may see on a recipe detail (capability
+ * `recipe-visibility`, "Fork attribution never reveals a recipe the viewer could not
+ * list"). An `unlisted` recipe's id works as its link, so the source is kept only when
+ * {@link canListRecipe}`(source, viewerId)` is true: it is not soft-deleted and is `public`,
+ * or the viewer is the source's author. Otherwise all three fields are `null`.
+ *
+ * The returned `forkedFrom` carries only `{ id, slug, title }`, never the source's
+ * `visibility`, `authorId` or `deletedAt`. Callers spread the result over the loaded recipe,
+ * so the raw `forkedFromId` and `forkedFrom` are overwritten.
+ *
+ * @param forkedFrom - The loaded fork source, or `null`/`undefined` when the recipe is not a fork.
+ * @param viewerId - The viewer's user id, or `null`/`undefined` when anonymous.
+ * @returns `{ forkedFrom, forkedFromId, forkedFromSlug }` for the response.
+ */
+export function resolveForkAttribution(
+  forkedFrom: ForkSourceState | null | undefined,
+  viewerId?: string | null,
+): ForkAttribution {
+  logger.debug({ viewerId }, 'resolveForkAttribution started');
+  if (!forkedFrom || !canListRecipe(forkedFrom, viewerId)) {
+    logger.debug({ viewerId, masked: Boolean(forkedFrom) }, 'resolveForkAttribution completed');
+    return { forkedFrom: null, forkedFromId: null, forkedFromSlug: null };
+  }
+  const { id, slug, title } = forkedFrom;
+  logger.debug({ viewerId, masked: false }, 'resolveForkAttribution completed');
+  return { forkedFrom: { id, slug, title }, forkedFromId: id, forkedFromSlug: slug };
 }
 
 // ponytail: no entry/exit debug logs on these 6 passthroughs — deliberate deviation,

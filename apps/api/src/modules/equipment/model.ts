@@ -7,6 +7,7 @@ import {
   recipeVersions,
 } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, isNull, like, or, type SQL, sql } from 'drizzle-orm';
+import { listableRecipeCondition, maskUnlistableForkSources } from '../recipe/model.ts';
 
 /** Find an equipment item by ID. Returns null if deleted or not found. */
 export async function findById(id: string) {
@@ -120,10 +121,17 @@ export async function findManyWithFilters(params: {
 /**
  * List public, non-deleted recipes whose current version uses the given
  * equipment item, paginated with total count and author relation joined.
+ *
+ * The equipment page is a discovery surface (capability `recipe-visibility`), so
+ * both the data and the count branch share one `recipeConditions =
+ * listableRecipeCondition(null)` from the recipe model: `unlisted`, `draft` and
+ * `private` recipes are never listed or counted, for any viewer. The rows pass
+ * through `maskUnlistableForkSources`, so a fork of a non-public source carries
+ * `forkedFromId: null`.
  */
 export async function getRecipesUsingEquipment(equipmentId: string, page: number, perPage: number) {
   const offset = (page - 1) * perPage;
-  const recipeConditions = and(eq(recipes.visibility, 'public'), isNull(recipes.deletedAt));
+  const recipeConditions = listableRecipeCondition(null);
   // NOTE: Drizzle's `exists()` combinator generates a subquery that references
   // the physical table name ("recipe_equipment"."recipe_version_id"), but the
   // relational `db.query.recipes.findMany` API aliases the outer table as
@@ -151,7 +159,7 @@ export async function getRecipesUsingEquipment(equipmentId: string, page: number
       .innerJoin(recipeEquipment, eq(recipeVersions.id, recipeEquipment.recipeVersionId))
       .where(and(eq(recipeEquipment.equipmentId, equipmentId), recipeConditions)),
   ]);
-  return { data, total: Number(countResult[0]?.count ?? 0) };
+  return { data: await maskUnlistableForkSources(data), total: Number(countResult[0]?.count ?? 0) };
 }
 
 /** Insert an equipment delete request for admin review. */

@@ -2,7 +2,8 @@ import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions, users } from '@brewform/db/schema';
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { VisibilityFixtures, type VisibilityScenario } from '../recipe/test-helpers.ts';
 import * as model from './model.ts';
 
 describe('Coffee Variety Model', () => {
@@ -382,5 +383,29 @@ describe('Coffee Variety Model', () => {
       expect(result.total).toBe(0);
       expect(result.data.length).toBe(0);
     });
+  });
+});
+
+/**
+ * Regression lock for capability `recipe-visibility` (task 11.1): the coffee-variety detail
+ * recipe list is a discovery surface, so an unlisted recipe whose current version uses the
+ * variety is neither listed nor counted.
+ */
+describe('getRecipesUsingVariety — unlisted recipes (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let scenario: VisibilityScenario;
+
+  beforeAll(async () => {
+    scenario = await fixtures.scenario('vis-variety');
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  it('excludes the unlisted recipe from data and total', async () => {
+    const result = await model.getRecipesUsingVariety(scenario.varietyId, 1, 10);
+    expect(result.data.map((r) => r.id)).toEqual([scenario.publicP.id]);
+    expect(result.total).toBe(1);
   });
 });

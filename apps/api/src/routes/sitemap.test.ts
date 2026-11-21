@@ -1,6 +1,7 @@
 import '../test-setup.ts';
 import { Hono } from 'hono';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { VisibilityFixtures, type VisibilityScenario } from '../modules/recipe/test-helpers.ts';
 import { cacheProvider } from '../utils/cache/singleton.ts';
 import sitemap, { buildXml, deps, SITEMAP_CACHE_KEY } from './sitemap.ts';
 
@@ -160,5 +161,39 @@ describe('Sitemap Route', () => {
     expect(xml).toContain('<loc>https://brewform.cc/u/coffee-lover</loc>');
     expect(xml).toContain('<lastmod>2025-03-15</lastmod>');
     expect(xml).toContain('<priority>0.5</priority>');
+  });
+});
+
+/**
+ * Regression lock for capability `recipe-visibility` (task 11.1), against the real database:
+ * the sitemap lists public recipes only, and a user only when they have a listable recipe.
+ */
+describe('Sitemap deps — unlisted recipes and their authors (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let scenario: VisibilityScenario;
+  let userC: Awaited<ReturnType<VisibilityFixtures['user']>>;
+  let unlistedOfC: Awaited<ReturnType<VisibilityFixtures['recipe']>>;
+
+  beforeAll(async () => {
+    scenario = await fixtures.scenario('vis-sitemap');
+    userC = await fixtures.user('vis-sitemap-c');
+    unlistedOfC = await fixtures.recipe(userC.id, 'unlisted');
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  it('getPublicRecipes returns the public recipe and never an unlisted one', async () => {
+    const slugs = (await deps.getPublicRecipes()).map((r) => r.slug);
+    expect(slugs).toContain(scenario.publicP.slug);
+    expect(slugs).not.toContain(scenario.unlistedU.slug);
+    expect(slugs).not.toContain(unlistedOfC.slug);
+  });
+
+  it('getActiveUsers lists an author of a public recipe but not a user whose only recipe is unlisted', async () => {
+    const usernames = (await deps.getActiveUsers()).map((u) => u.username);
+    expect(usernames).toContain(scenario.authorA.username);
+    expect(usernames).not.toContain(userC.username);
   });
 });

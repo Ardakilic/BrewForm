@@ -2,7 +2,8 @@ import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { users } from '@brewform/db/schema';
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { VisibilityFixtures, type VisibilityScenario } from '../recipe/test-helpers.ts';
 import * as recipeNoteService from '../recipe-note/service.ts';
 import { NoteFixtures } from '../recipe-note/test-helpers.ts';
 import { deleteAccount, getProfile, getPublicProfile, log, updateProfile } from './service.ts';
@@ -211,5 +212,39 @@ describe('User Service — deleteAccount scrubs private recipe notes', () => {
       .where(eq(users.id, user.id));
     expect(row.deletedAt).toBeNull();
     notesSpy.mockRestore();
+  });
+});
+
+/**
+ * Regression lock for capability `recipe-visibility` (task 11.1): the public profile's
+ * `recipes` and `recipeCount` are a discovery surface for every viewer, the profile owner
+ * included.
+ */
+describe('getPublicProfile — unlisted recipes (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let scenario: VisibilityScenario;
+
+  beforeAll(async () => {
+    scenario = await fixtures.scenario('vis-profile');
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  it('lists and counts only the public recipe for an anonymous viewer, a follower and the owner', async () => {
+    const viewers: Array<{ label: string; id: string | undefined }> = [
+      { label: 'anonymous', id: undefined },
+      { label: 'a follower', id: scenario.userB.id },
+      { label: 'the owner', id: scenario.authorA.id },
+    ];
+    for (const viewer of viewers) {
+      const profile = await getPublicProfile(scenario.authorA.username, viewer.id);
+      expect(
+        profile.recipes.map((r) => r.id),
+        viewer.label,
+      ).toEqual([scenario.publicP.id]);
+      expect(profile.recipeCount, viewer.label).toBe(1);
+    }
   });
 });
