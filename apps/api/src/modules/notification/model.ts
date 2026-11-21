@@ -164,7 +164,8 @@ export async function findById(id: string) {
 /**
  * Resolve @mention usernames to active users with their preference row joined.
  *
- * Matching is case-insensitive (`lower(username)`, served by the
+ * Matching is case-insensitive: both sides are lowered in SQL
+ * (`lower(username) IN (lower($1), …)`, served by the
  * `user_username_lower_unique` index; usernames are unique ignoring case);
  * soft-deleted (`isNull(deletedAt)`) and banned (`isBanned = false`) users are
  * excluded so neither receives a mention notification or email. Users without a
@@ -192,7 +193,7 @@ export async function findMentionTargets(usernames: string[]) {
       and(
         inArray(
           lower(users.username),
-          usernames.map((u) => u.toLowerCase()),
+          usernames.map((u) => lower(u)),
         ),
         isNull(users.deletedAt),
         eq(users.isBanned, false),

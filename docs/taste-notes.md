@@ -83,7 +83,7 @@ All paths are under `/api/v1`; shapes are in [api-reference.md](api-reference.md
 | ------ | ----------------------------- | ----- | ----------------------------------- |
 | GET    | `/taste-notes/hierarchy`      | none  | Full tree structure                 |
 | GET    | `/taste-notes/flat`           | none  | Flat list of all notes              |
-| GET    | `/taste-notes/search?search=` | none  | Notes whose name contains the term (case-sensitive `LIKE`) plus their siblings; at least 3 characters (`400 QUERY_TOO_SHORT`), no term returns the flat list |
+| GET    | `/taste-notes/search?search=` | none  | Notes whose name contains the term (case-insensitive literal substring match: `ilike` with `%`, `_` and `\` escaped) plus their siblings; at least 3 characters (`400 QUERY_TOO_SHORT`), no term returns the flat list |
 | POST   | `/taste-notes`                | admin | Create a taste note (flushes cache) |
 | PATCH  | `/taste-notes/:id`            | admin | Update a taste note (flushes cache) |
 | DELETE | `/taste-notes/:id`            | admin | Soft-delete a taste note (flushes cache) |

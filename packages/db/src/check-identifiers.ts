@@ -36,9 +36,14 @@
  *   defaults) is left after the requested fixes, `0` otherwise. Empty legacy slugs are a
  *   non-blocking warning.
  *
+ * Case duplicates are grouped on keys lowered by the database (`lower(email)` and
+ * `lower(username)`, loaded through the `lower()` helper), so the report predicts exactly what the
+ * expression indexes reject under that database's locale.
+ *
  * Privacy rule: the report NEVER prints email addresses (only ids and usernames, which are
- * public). It loads only `id`, `email`, `username`, `deletedAt` and `createdAt` from `user`,
- * `id`, `userId` and `updatedAt` from active default setups, and `id` from recipes with `slug = ''`.
+ * public), and the raw email is never loaded: the check reads only `id`, `lower(email)`,
+ * `username`, `lower(username)`, `deletedAt` and `createdAt` from `user`, `id`, `userId` and
+ * `updatedAt` from active default setups, and `id` from recipes with `slug = ''`.
  *
  * Required env: `DATABASE_URL`.
  *
@@ -49,13 +54,19 @@ import { parseArgs } from 'node:util';
 import { randomSlugSuffix, SLUG_SUFFIX_ATTEMPTS, slugCandidates } from '@brewform/shared/utils';
 import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { client, db } from './index.ts';
-import { recipes, setups, users } from './schema.ts';
+import { lower, recipes, setups, users } from './schema.ts';
 
-/** A `user` row as loaded by the check (only the columns the report needs). */
+/**
+ * A `user` row as loaded by the check (only the columns the report needs). The keys are lowered by
+ * the database, like the `_lower_unique` indexes; the raw email is never loaded.
+ */
 export interface IdentifierUserRow {
   id: string;
-  email: string;
+  /** `lower(email)`, computed by the database. */
+  emailKey: string;
   username: string;
+  /** `lower(username)`, computed by the database. */
+  usernameKey: string;
   deletedAt: Date | null;
   createdAt: Date;
 }
@@ -77,7 +88,7 @@ export interface DuplicateMember {
   fixable: boolean;
 }
 
-/** Accounts whose `email` (or `username`) collide when lower-cased. */
+/** Accounts whose `email` (or `username`) collide when lowered by the database. */
 export interface DuplicateGroup {
   key: 'email' | 'username';
   members: DuplicateMember[];
@@ -132,11 +143,13 @@ function noFixes(): AppliedFixes {
 }
 
 /**
- * Group users whose `email` or `username` collide case-insensitively (the same comparison the
- * `lower()` unique indexes make). Groups and members keep input order.
+ * Group users whose `email` or `username` collide case-insensitively: rows are grouped on the
+ * database-lowered `emailKey` / `usernameKey`, the same values the `lower()` unique indexes
+ * compare. Groups and members keep input order.
  *
  * @param rows - User rows (soft-deleted ones included).
- * @param key - The identifier column to compare.
+ * @param key - The identifier to compare (`email` groups on `emailKey`, `username` on
+ *   `usernameKey`).
  * @returns One group per colliding value with two or more members; soft-deleted members are
  *   marked fixable.
  */
@@ -146,7 +159,7 @@ export function groupCaseInsensitiveDuplicates(
 ): DuplicateGroup[] {
   const buckets = new Map<string, IdentifierUserRow[]>();
   for (const row of rows) {
-    const value = row[key].toLowerCase();
+    const value = key === 'email' ? row.emailKey : row.usernameKey;
     const bucket = buckets.get(value);
     if (bucket) bucket.push(row);
     else buckets.set(value, [row]);
@@ -315,8 +328,9 @@ async function loadRows(database: typeof db) {
   const userRows = await database
     .select({
       id: users.id,
-      email: users.email,
+      emailKey: lower(users.email),
       username: users.username,
+      usernameKey: lower(users.username),
       deletedAt: users.deletedAt,
       createdAt: users.createdAt,
     })

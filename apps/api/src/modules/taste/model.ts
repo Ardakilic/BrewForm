@@ -7,7 +7,8 @@
  */
 import { db } from '@brewform/db';
 import { tasteNotes } from '@brewform/db/schema';
-import { and, asc, eq, isNull, like } from 'drizzle-orm';
+import { and, asc, eq, ilike, isNull } from 'drizzle-orm';
+import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
 
 /** A taste-note row with its nested children, used by getHierarchy. */
 type TasteNoteNode = typeof tasteNotes.$inferSelect & {
@@ -32,12 +33,18 @@ export function findChildren(parentId: string) {
     .orderBy(asc(tasteNotes.name));
 }
 
-/** Search taste notes by name (LIKE match), limited to 50 results. */
-export function searchByName(query: string) {
-  return db
+/**
+ * Search taste notes by name (case-insensitive literal substring match through
+ * `ilike(name, toContainsPattern(term))`), limited to 50 results. A term that is empty after
+ * trimming returns `[]` without querying.
+ */
+export async function searchByName(query: string) {
+  const term = normalizeSearchTerm(query);
+  if (term === '') return [];
+  return await db
     .select()
     .from(tasteNotes)
-    .where(and(like(tasteNotes.name, `%${query}%`), isNull(tasteNotes.deletedAt)))
+    .where(and(ilike(tasteNotes.name, toContainsPattern(term)), isNull(tasteNotes.deletedAt)))
     .orderBy(asc(tasteNotes.depth), asc(tasteNotes.name))
     .limit(50);
 }

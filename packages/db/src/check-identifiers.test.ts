@@ -97,21 +97,26 @@ function fakeDatabase(
   return { database: database as unknown as typeof db, updates, passes: () => pass };
 }
 
-/** Build a user row for the pure helpers. */
+/**
+ * Build a user row for the pure helpers. The row carries the keys the database would compute:
+ * `emailKey` is already lowered (as `lower(email)` returns it) and `usernameKey` defaults to the
+ * ASCII-lowered username.
+ */
 function userRow(
   id: string,
-  email: string,
+  emailKey: string,
   username: string,
   deleted = false,
   createdAt = new Date('2026-01-01T00:00:00Z'),
+  usernameKey = username.toLowerCase(),
 ): IdentifierUserRow {
-  return { id, email, username, deletedAt: deleted ? new Date() : null, createdAt };
+  return { id, emailKey, username, usernameKey, deletedAt: deleted ? new Date() : null, createdAt };
 }
 
 describe('groupCaseInsensitiveDuplicates', () => {
-  it('groups emails that differ only in case and marks soft-deleted members fixable', () => {
+  it('groups emails whose database-lowered keys are equal and marks soft-deleted members fixable', () => {
     const rows = [
-      userRow('u-active', 'A@x.io', 'alice'),
+      userRow('u-active', 'a@x.io', 'alice'),
       userRow('u-deleted', 'a@x.io', 'alice-old', true),
       userRow('u-other', 'b@x.io', 'bob'),
     ];
@@ -136,6 +141,15 @@ describe('groupCaseInsensitiveDuplicates', () => {
     const rows = [userRow('u1', 'one@x.io', 'one'), userRow('u2', 'two@x.io', 'two')];
     expect(groupCaseInsensitiveDuplicates(rows, 'email')).toEqual([]);
   });
+
+  it('groups on the database keys, not on a JavaScript lower-casing of the username', () => {
+    // Under a tr_TR database locale lower('Ilker') is 'ılker', so the index accepts both rows.
+    const rows = [
+      userRow('u1', 'one@x.io', 'Ilker', false, undefined, 'ılker'),
+      userRow('u2', 'two@x.io', 'ilker', false, undefined, 'ilker'),
+    ];
+    expect(groupCaseInsensitiveDuplicates(rows, 'username')).toEqual([]);
+  });
 });
 
 describe('findMultipleDefaults', () => {
@@ -151,7 +165,7 @@ describe('findMultipleDefaults', () => {
 
 describe('formatReport and hasBlockingIssues', () => {
   const duplicateRows = [
-    userRow('u-active', 'A@x.io', 'alice'),
+    userRow('u-active', 'a@x.io', 'alice'),
     userRow('u-deleted', 'a@x.io', 'alice-old', true),
     userRow('u-other', 'b@x.io', 'bob'),
   ];
@@ -251,7 +265,7 @@ describe('runCheck fixes (fake client)', () => {
   it('tombstones only soft-deleted duplicates, clears older defaults and reloads', async () => {
     const before: FakeSnapshot = {
       users: [
-        userRow('u-active', 'A@x.io', 'alice', false, created),
+        userRow('u-active', 'a@x.io', 'alice', false, created),
         userRow(deletedId, 'a@x.io', 'Alice', true, created),
       ],
       defaults: [olderDefault, newerDefault],
@@ -259,7 +273,7 @@ describe('runCheck fixes (fake client)', () => {
     };
     const after: FakeSnapshot = {
       users: [
-        userRow('u-active', 'A@x.io', 'alice', false, created),
+        userRow('u-active', 'a@x.io', 'alice', false, created),
         userRow(deletedId, `deleted+${deletedId}@deleted.invalid`, 'deleted-0a1b2c3d4e5f', true),
       ],
       defaults: [newerDefault],

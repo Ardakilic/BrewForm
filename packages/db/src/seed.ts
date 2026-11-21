@@ -208,8 +208,8 @@ type SeedUserValues = typeof users.$inferInsert;
 
 /**
  * Find the account that already holds a seed identity, matching case-insensitively the way the
- * `user_email_lower_unique` / `user_username_lower_unique` indexes do (soft-deleted rows
- * included, since they keep their identifiers reserved). An email match wins over a username
+ * `user_email_lower_unique` / `user_username_lower_unique` indexes do: both sides are lowered in
+ * SQL (soft-deleted rows included, since they keep their identifiers reserved). An email match wins over a username
  * match held by another account.
  *
  * @param tx - The seed transaction.
@@ -225,7 +225,7 @@ async function findSeedUser(
   const matches = await tx
     .select()
     .from(users)
-    .where(or(eq(lower(users.email), email), eq(lower(users.username), username.toLowerCase())))
+    .where(or(eq(lower(users.email), lower(email)), eq(lower(users.username), lower(username))))
     .limit(2);
   return matches.find((user) => user.email.toLowerCase() === email) ?? matches[0];
 }

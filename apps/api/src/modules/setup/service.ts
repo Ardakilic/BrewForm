@@ -48,9 +48,6 @@ export async function getSetup(id: string) {
  */
 export async function createSetup(userId: string, data: SetupCreate) {
   log.debug({ userId }, 'createSetup started');
-  if (data.isDefault) {
-    log.debug({ userId }, 'createSetup clearing defaults for user');
-  }
   const result = await model.create({ ...data, userId });
   log.debug({ userId, setupId: result.id }, 'createSetup completed');
   return result;
@@ -90,9 +87,6 @@ export async function updateSetup(userId: string, id: string, data: UpdateSetupP
     throw new Error('FORBIDDEN');
   }
 
-  if (data.isDefault) {
-    log.debug({ userId }, 'updateSetup clearing defaults for user');
-  }
   const updated = await model.update(id, data, userId);
   if (!updated) {
     const err = new Error('SETUP_NOT_FOUND');
@@ -151,7 +145,6 @@ export async function setDefault(userId: string, id: string) {
     throw new Error('FORBIDDEN');
   }
 
-  log.debug({ userId }, 'setDefault clearing defaults for user');
   const result = await model.update(id, { isDefault: true }, userId);
   log.debug({ userId, id }, 'setDefault completed');
   return result;

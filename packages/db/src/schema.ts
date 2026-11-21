@@ -14,7 +14,7 @@ import {
   UNIT_SYSTEM_VALUES,
   VISIBILITY_VALUES,
 } from '@brewform/shared/constants';
-import { relations, type SQL, sql } from 'drizzle-orm';
+import { relations, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
   boolean,
@@ -34,17 +34,21 @@ import {
 } from 'drizzle-orm/pg-core';
 
 /**
- * `lower(<column>)` as a Drizzle SQL expression, for the case-insensitive unique indexes on
- * `user.email` / `user.username` and the matching lookups
- * (`eq(lower(users.email), value.toLowerCase())`), which the expression indexes serve.
- * Models import it from `@brewform/db/schema`; services never do.
+ * `lower(<value>)` as a Drizzle SQL expression, for the case-insensitive unique indexes on
+ * `user.email` / `user.username` and the matching lookups, which lower both sides in SQL
+ * (`eq(lower(users.email), lower(email))`,
+ * `inArray(lower(users.username), usernames.map((u) => lower(u)))`). The database then applies
+ * the same case rules to the column, the value and the expression indexes on any locale
+ * (JavaScript `toLowerCase()` disagrees with PostgreSQL `lower('I')` under `tr_TR`), and the
+ * indexes serve the lookup. Models import it from `@brewform/db/schema`; services never do.
  *
- * @param column - The text column to lower-case.
- * @returns The `lower(<column>)` SQL fragment.
+ * @param value - A column or SQL expression, embedded as it is, or a string, sent as a bound
+ *   parameter.
+ * @returns The `lower(<value>)` SQL fragment.
  */
-export function lower(column: AnyPgColumn): SQL {
+export function lower(value: AnyPgColumn | SQLWrapper | string): SQL<string> {
   // D03 raw-SQL exception: Drizzle has no lower() builder; used by the case-insensitive unique indexes and the matching lookups.
-  return sql`lower(${column})`;
+  return sql<string>`lower(${value})`;
 }
 
 /**

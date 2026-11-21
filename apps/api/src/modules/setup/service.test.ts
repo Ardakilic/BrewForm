@@ -105,21 +105,16 @@ describe('Setup Service Logic', () => {
   });
 
   describe('createSetup', () => {
-    it('should log entry/exit and debug clearDefault when creating a default setup', async () => {
+    it('should log entry/exit when creating a default setup', async () => {
       await db.insert(setups).values({ name: 'Existing Default', userId, isDefault: true });
 
       const result = await createSetup(userId, { name: 'New Default', isDefault: true });
 
       expect(result.isDefault).toBe(true);
-      expect(debugSpy).toHaveBeenCalledTimes(3);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
       expect(debugSpy).toHaveBeenNthCalledWith(1, { userId }, 'createSetup started');
       expect(debugSpy).toHaveBeenNthCalledWith(
         2,
-        { userId },
-        'createSetup clearing defaults for user',
-      );
-      expect(debugSpy).toHaveBeenNthCalledWith(
-        3,
         { userId, setupId: result.id },
         'createSetup completed',
       );
@@ -161,18 +156,25 @@ describe('Setup Service Logic', () => {
       );
     });
 
-    it('should log debug clearDefault when promoting setup to default', async () => {
+    it('should log entry/exit when promoting setup to default', async () => {
       const [setup] = await db.insert(setups).values({ name: 'Setup One', userId }).returning();
       await db.insert(setups).values({ name: 'Existing Default', userId, isDefault: true });
 
       await updateSetup(userId, setup.id, { isDefault: true });
 
-      expect(debugSpy).toHaveBeenCalledTimes(3);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId, id: setup.id }, 'updateSetup started');
       expect(debugSpy).toHaveBeenNthCalledWith(
         2,
-        { userId },
-        'updateSetup clearing defaults for user',
+        { userId, id: setup.id },
+        'updateSetup completed',
       );
+
+      const rows = await db
+        .select({ id: setups.id, isDefault: setups.isDefault })
+        .from(setups)
+        .where(eq(setups.userId, userId));
+      expect(rows.filter((r) => r.isDefault).map((r) => r.id)).toEqual([setup.id]);
     });
 
     it('should log error and throw SETUP_NOT_FOUND when setup does not exist', async () => {
@@ -258,20 +260,15 @@ describe('Setup Service Logic', () => {
   });
 
   describe('setDefault', () => {
-    it('should log entry/exit and debug clearDefault when setting default', async () => {
+    it('should log entry/exit when setting default', async () => {
       const [setup] = await db.insert(setups).values({ name: 'Setup One', userId }).returning();
 
       const result = await setDefault(userId, setup.id);
 
       expect(result!.isDefault).toBe(true);
-      expect(debugSpy).toHaveBeenCalledTimes(3);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
       expect(debugSpy).toHaveBeenNthCalledWith(1, { userId, id: setup.id }, 'setDefault started');
-      expect(debugSpy).toHaveBeenNthCalledWith(
-        2,
-        { userId },
-        'setDefault clearing defaults for user',
-      );
-      expect(debugSpy).toHaveBeenNthCalledWith(3, { userId, id: setup.id }, 'setDefault completed');
+      expect(debugSpy).toHaveBeenNthCalledWith(2, { userId, id: setup.id }, 'setDefault completed');
     });
 
     it('should log error and throw SETUP_NOT_FOUND when setup does not exist', async () => {

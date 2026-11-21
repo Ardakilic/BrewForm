@@ -210,7 +210,42 @@ describe('findManyWithFilters', () => {
     const ids = result.items.map((i) => i.id);
     expect(ids).not.toContain(equipmentIds[2]);
   });
+
+  it('should match the search ignoring letter case', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertEquipment(equipmentIds, userId, {
+      name: 'V60 Dripper',
+      brand: `Hario${tag}`,
+    });
+    const result = await model.findManyWithFilters({ search: `hario${tag}`, page: 1, perPage: 10 });
+    expect(result.items.map((i) => i.id)).toEqual([id]);
+  });
+
+  it('should match an underscore in the search literally', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertEquipment(equipmentIds, userId, { name: `a_c${tag}` });
+    await insertEquipment(equipmentIds, userId, { name: `abc${tag}` });
+    const result = await model.findManyWithFilters({ search: `a_c${tag}`, page: 1, perPage: 10 });
+    expect(result.items.map((i) => i.id)).toEqual([id]);
+  });
 });
+
+/**
+ * Insert a grinder owned by `userId` with the given name, brand and model, and register its id
+ * in `ids` for the caller's cleanup.
+ */
+async function insertEquipment(
+  ids: string[],
+  userId: string,
+  values: { name: string; brand?: string; model?: string },
+): Promise<string> {
+  const id = crypto.randomUUID();
+  ids.push(id);
+  await db
+    .insert(equipment)
+    .values({ id, ...values, type: 'grinder', isSystem: false, createdBy: userId });
+  return id;
+}
 
 describe('search', () => {
   let userId: string;
@@ -309,6 +344,28 @@ describe('search', () => {
     }
     const results = await model.search('BatchGrinder');
     expect(results.length).toBeLessThanOrEqual(10);
+  });
+
+  it('should match the brand ignoring letter case', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertEquipment(equipmentIds, userId, {
+      name: 'V60 Dripper',
+      brand: `Hario${tag}`,
+    });
+    const results = await model.search(`hario${tag}`);
+    expect(results.map((r) => r.id)).toEqual([id]);
+  });
+
+  it('should match an underscore literally', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertEquipment(equipmentIds, userId, { name: `a_c${tag}` });
+    await insertEquipment(equipmentIds, userId, { name: `abc${tag}` });
+    const results = await model.search(`a_c${tag}`);
+    expect(results.map((r) => r.id)).toEqual([id]);
+  });
+
+  it('should return no rows for a whitespace-only query', async () => {
+    expect(await model.search('   ')).toEqual([]);
   });
 });
 

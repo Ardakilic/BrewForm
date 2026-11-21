@@ -273,20 +273,31 @@ Emails and usernames are unique **case-insensitively** and **across soft-deleted
 row, so a deleted account's identifiers stay reserved and nobody inherits its profile links or
 mentions. Emails are stored lower-cased; usernames keep the case the user chose.
 
+Every lookup lowers **both sides in the database**: `eq(lower(users.email), lower(email))`,
+`eq(lower(users.username), lower(username))` and, for mentions,
+`inArray(lower(users.username), usernames.map((u) => lower(u)))`, with the `lower()` helper from
+`@brewform/db/schema` (a column is embedded, a string becomes a bound parameter). The column, the
+value and the `_lower_unique` indexes are then folded by the same rules on any database locale
+(JavaScript `toLowerCase()` and PostgreSQL `lower('I')` disagree under `tr_TR`), and the indexes
+serve the lookups. `apps/api/src/modules/auth/identifier.enforcement.test.ts` rejects a lookup
+whose value side is not lowered in SQL.
+
 | Scenario | Behavior |
 | --- | --- |
 | **Self-registration** (`POST /auth/register`) | User provides username. If taken (in any case, by any account) or reserved → `409 CONFLICT "Username already taken"`; a taken email → `409 CONFLICT "Email already registered"`. No auto-suffix. |
 | **Admin create** (explicit username) | If taken → `409 CONFLICT "Username is already taken."`. No auto-suffix. |
-| **Admin edit** (change username) | Checked against every other user row. If taken → `409 CONFLICT "Username is already taken by another user."`. |
+| **Admin edit** (change username) | The unique indexes check it against every other user row. If taken → `409 CONFLICT "Username is already taken by another user."`. |
 | **Admin edit** (same username) | No-op. Allowed without error. |
 | **Future: OAuth/social login** | `generateUniqueUsername()` utility in `@brewform/shared`: tries a base name from the email prefix, appends `-1`, `-2` etc. on conflict. Max 100 attempts. |
 | **Soft-deleted users** | Their email and username stay reserved. |
 
 Registration checks availability with `isEmailTaken()` and `isUsernameTaken()` in
-`apps/api/src/modules/auth/model.ts`, which compare `lower(column)` against every user row,
-soft-deleted ones included, so they agree with the unique indexes and answer `409` before the
-insert. A conflict that still reaches the insert (two simultaneous registrations) is mapped from the
-unique-constraint error to the same `409`:
+`apps/api/src/modules/auth/model.ts`, which compare `lower(column)` with `lower(value)` against
+every user row, soft-deleted ones included, so they agree with the unique indexes and answer `409`
+before the insert. Admin create and edit have no pre-check: the unique-constraint error of their
+insert or update maps to their `409` messages. A conflict that still reaches the registration
+insert (two simultaneous registrations) is mapped from the unique-constraint error to the same
+`409`:
 
 ```json
 {

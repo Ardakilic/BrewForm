@@ -19,7 +19,6 @@ import {
   equipment,
   equipmentDeleteRequests,
   equipmentTypeEnum,
-  lower,
   type RecipeVisibility,
   recipes,
   recipeVersions,
@@ -29,18 +28,26 @@ import {
   vendors,
 } from '@brewform/db/schema';
 import { hashSync } from 'bcryptjs';
-import { and, asc, count, desc, eq, gte, isNull, like, ne, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
 import { userIdentifierConflict } from '../auth/model.ts';
 
-/** Fetch a paginated list of non-deleted users, optionally filtered by email, username, or display name. */
+/**
+ * Fetch a paginated list of non-deleted users, optionally filtered by a case-insensitive literal
+ * substring match on email, username or display name: the term is trimmed with
+ * `normalizeSearchTerm` and matched with `ilike(<col>, toContainsPattern(term))`, so letter case is
+ * ignored and `%`, `_` and `\` match literally. An empty or whitespace-only term applies no filter.
+ */
 export async function listUsers(page: number, perPage: number, query?: string) {
-  const where = query
+  const term = normalizeSearchTerm(query);
+  const pattern = term === '' ? null : toContainsPattern(term);
+  const where = pattern
     ? and(
         isNull(users.deletedAt),
         or(
-          like(users.email, `%${query}%`),
-          like(users.username, `%${query}%`),
-          like(users.displayName, `%${query}%`),
+          ilike(users.email, pattern),
+          ilike(users.username, pattern),
+          ilike(users.displayName, pattern),
         ),
       )
     : isNull(users.deletedAt);
@@ -64,38 +71,6 @@ export async function listUsers(page: number, perPage: number, query?: string) {
     db.select({ count: count() }).from(users).where(where),
   ]);
   return { users: data, total: totalResult[0].count };
-}
-
-/**
- * Check whether an email is already taken, case-insensitively, by any user row
- * (soft-deleted ones included, matching the unique indexes), excluding an
- * optional user ID. Deliberately skips the soft-delete filter.
- */
-export async function isEmailTaken(email: string, excludeId?: string) {
-  const conditions = [eq(lower(users.email), email.toLowerCase())];
-  if (excludeId) conditions.push(ne(users.id, excludeId));
-  const [result] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(and(...conditions))
-    .limit(1);
-  return !!result;
-}
-
-/**
- * Check whether a username is already taken, case-insensitively, by any user
- * row (soft-deleted ones included, so deleted usernames stay reserved),
- * excluding an optional user ID. Deliberately skips the soft-delete filter.
- */
-export async function isUsernameTaken(username: string, excludeId?: string) {
-  const conditions = [eq(lower(users.username), username.toLowerCase())];
-  if (excludeId) conditions.push(ne(users.id, excludeId));
-  const [result] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(and(...conditions))
-    .limit(1);
-  return !!result;
 }
 
 /** Fetch a single non-deleted user by ID. Returns null if not found. */
@@ -666,7 +641,12 @@ export async function getTopUsers(limit: number) {
 
 // --- Coffee Varieties ---
 
-/** List non-deleted coffee varieties with optional category filter and name/species/origin search, paginated alphabetically. */
+/**
+ * List non-deleted coffee varieties with an optional category filter and an optional
+ * case-insensitive literal substring match on name, species or origin
+ * (`ilike(<col>, toContainsPattern(term))`; an empty term applies no filter), paginated
+ * alphabetically.
+ */
 export async function listCoffeeVarieties(
   page: number,
   perPage: number,
@@ -680,13 +660,14 @@ export async function listCoffeeVarieties(
       eq(coffeeVarieties.category, category as typeof coffeeVarieties.category._.data),
     );
   }
-  if (search) {
-    const searchPattern = `%${search}%`;
+  const term = normalizeSearchTerm(search);
+  if (term !== '') {
+    const pattern = toContainsPattern(term);
     conditions.push(
       or(
-        like(coffeeVarieties.name, searchPattern),
-        like(coffeeVarieties.species, searchPattern),
-        like(coffeeVarieties.origin, searchPattern),
+        ilike(coffeeVarieties.name, pattern),
+        ilike(coffeeVarieties.species, pattern),
+        ilike(coffeeVarieties.origin, pattern),
       )!,
     );
   }

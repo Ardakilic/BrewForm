@@ -3,7 +3,7 @@
  *
  * Provides user lookup by ID or username, profile updates, soft-delete,
  * aggregated stats (recipe/follower/following counts), public recipe listing
- * with latest version metadata, and full-text username/displayName search.
+ * with latest version metadata, and active-user id batching.
  */
 import { db } from '@brewform/db';
 import {
@@ -14,7 +14,7 @@ import {
   userPreferences,
   users,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, gt, isNull, like, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, isNull } from 'drizzle-orm';
 import { listableRecipeCondition } from '../recipe/model.ts';
 
 /**
@@ -57,14 +57,15 @@ export async function findById(id: string) {
 }
 
 /**
- * Find a user by username, case-insensitively (served by `user_username_lower_unique`), so
- * `/users/ARDA` resolves `Arda`. Returns null if deleted or not found.
+ * Find a user by username, case-insensitively: both sides are lowered in SQL
+ * (`lower(username) = lower($1)`, served by `user_username_lower_unique`), so `/users/ARDA`
+ * resolves `Arda` with the database's own case rules. Returns null if deleted or not found.
  */
 export async function findByUsername(username: string) {
   const result = await db
     .select()
     .from(users)
-    .where(and(eq(lower(users.username), username.toLowerCase()), isNull(users.deletedAt)))
+    .where(and(eq(lower(users.username), lower(username)), isNull(users.deletedAt)))
     .limit(1);
   return result[0] ?? null;
 }
@@ -155,39 +156,6 @@ export async function getUserPublicRecipes(userId: string) {
     createdAt: r.createdAt,
     currentVersion: r.versions?.[0] ?? null,
   }));
-}
-
-/**
- * Search users by username or displayName with pagination.
- *
- * @param query - Search term (LIKE match)
- * @param page - 1-based page number
- * @param perPage - Results per page
- * @returns Paginated user list with total count
- */
-export async function searchUsers(query: string, page: number, perPage: number) {
-  const where = and(
-    isNull(users.deletedAt),
-    or(like(users.username, `%${query}%`), like(users.displayName, `%${query}%`)),
-  );
-  const [data, totalResult] = await Promise.all([
-    db
-      .select({
-        id: users.id,
-        username: users.username,
-        displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
-        bio: users.bio,
-        createdAt: users.createdAt,
-      })
-      .from(users)
-      .where(where)
-      .orderBy(desc(users.createdAt), asc(users.id))
-      .limit(perPage)
-      .offset((page - 1) * perPage),
-    db.select({ count: count() }).from(users).where(where),
-  ]);
-  return { users: data, total: totalResult[0].count };
 }
 
 /**

@@ -6,7 +6,8 @@ import {
   recipes,
   recipeVersions,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, isNull, like, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
 import { listableRecipeCondition, maskUnlistableForkSources } from '../recipe/model.ts';
 
 /** Find an equipment item by ID. Returns null if deleted or not found. */
@@ -38,18 +39,25 @@ export async function findMany(where: SQL | undefined, page: number, perPage: nu
   return { items, total: totalResult[0].count };
 }
 
-/** Search non-deleted equipment by name, brand, or model (LIKE match), limited to 10 results. */
-export function search(query: string) {
-  return db
+/**
+ * Search non-deleted equipment by name, brand, or model (case-insensitive literal substring
+ * match through `ilike(<col>, toContainsPattern(term))`), limited to 10 results. A term that is
+ * empty after trimming returns `[]` without querying.
+ */
+export async function search(query: string) {
+  const term = normalizeSearchTerm(query);
+  if (term === '') return [];
+  const pattern = toContainsPattern(term);
+  return await db
     .select()
     .from(equipment)
     .where(
       and(
         isNull(equipment.deletedAt),
         or(
-          like(equipment.name, `%${query}%`),
-          like(equipment.brand, `%${query}%`),
-          like(equipment.model, `%${query}%`),
+          ilike(equipment.name, pattern),
+          ilike(equipment.brand, pattern),
+          ilike(equipment.model, pattern),
         ),
       ),
     )
@@ -80,8 +88,9 @@ export async function softDelete(id: string) {
 }
 
 /**
- * List non-deleted equipment with optional type and name/brand/model search
- * filters, paginated and ordered by name, with total count.
+ * List non-deleted equipment with an optional type filter and an optional case-insensitive
+ * literal substring match on name, brand or model (`ilike(<col>, toContainsPattern(term))`; an
+ * empty term applies no filter), paginated and ordered by name, with total count.
  */
 export async function findManyWithFilters(params: {
   type?: string;
@@ -93,13 +102,14 @@ export async function findManyWithFilters(params: {
   if (params.type) {
     conditions.push(eq(equipment.type, params.type as typeof equipment.type._.data));
   }
-  if (params.search) {
-    const pattern = `%${params.search}%`;
+  const term = normalizeSearchTerm(params.search);
+  if (term !== '') {
+    const pattern = toContainsPattern(term);
     conditions.push(
       or(
-        like(equipment.name, pattern),
-        like(equipment.brand, pattern),
-        like(equipment.model, pattern),
+        ilike(equipment.name, pattern),
+        ilike(equipment.brand, pattern),
+        ilike(equipment.model, pattern),
       )!,
     );
   }

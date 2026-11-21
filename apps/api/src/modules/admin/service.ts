@@ -23,14 +23,20 @@ import { createLogger } from '../../utils/logger/index.ts';
 import { sendWelcomeEmail } from '../auth/email.ts';
 import * as model from './model.ts';
 
-const logger = createLogger('admin-service');
+/** Module logger of the admin service (exported so tests can spy on it). */
+export const logger = createLogger('admin-service');
 
 // --- Users ---
 
-/** Pass-through: fetch a paginated list of non-deleted users with optional search. */
+/**
+ * Pass-through: fetch a paginated list of non-deleted users with an optional case-insensitive
+ * literal substring search on email, username and display name. Only the trimmed query's length
+ * is logged (`queryLength`), never the query, because admins search by email.
+ */
 export async function listUsers(page: number, perPage: number, query?: string, requestId?: string) {
   const start = Date.now();
-  logger.debug({ page, perPage, query, requestId }, 'listUsers started');
+  const queryLength = query?.trim().length ?? 0;
+  logger.debug({ page, perPage, queryLength, requestId }, 'listUsers started');
   const result = await model.listUsers(page, perPage, query);
   logger.debug(
     { page, perPage, total: result.total, requestId, durationMs: Date.now() - start },

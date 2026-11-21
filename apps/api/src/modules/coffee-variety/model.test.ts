@@ -118,6 +118,31 @@ describe('Coffee Variety Model', () => {
       expect(ids).toContain(varietyId1);
       expect(ids).toContain(varietyId2);
     });
+
+    /** Insert a variety owned by the describe's user (removed by its afterEach). */
+    async function insertVariety(name: string): Promise<string> {
+      const id = crypto.randomUUID();
+      await db
+        .insert(coffeeVarieties)
+        .values({ id, name, category: 'variety', isSystem: false, createdBy: userId });
+      return id;
+    }
+
+    it('should match an underscore in the search literally', async () => {
+      const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+      const id = await insertVariety(`a_c${tag}`);
+      await insertVariety(`abc${tag}`);
+      const result = await model.findMany({ search: `a_c${tag}`, page: 1, perPage: 10 });
+      expect(result.data.map((v) => v.id)).toEqual([id]);
+    });
+
+    it('should match a percent sign in the search literally', async () => {
+      const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+      const id = await insertVariety(`100%${tag} Blend`);
+      await insertVariety(`1000${tag} Blend`);
+      const result = await model.findMany({ search: `100%${tag}`, page: 1, perPage: 10 });
+      expect(result.data.map((v) => v.id)).toEqual([id]);
+    });
   });
 
   describe('findById null filtering', () => {

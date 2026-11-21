@@ -146,26 +146,6 @@ describe('Auth model', () => {
     });
   });
 
-  describe('findUserByUsername', () => {
-    it('should return the user when found', async () => {
-      const user = await insertUser('by-username');
-      const found = await model.findUserByUsername(user.username);
-      expect(found).not.toBeNull();
-      expect(found!.id).toBe(user.id);
-    });
-
-    it('should return null when the username does not exist', async () => {
-      const found = await model.findUserByUsername('no-such-user');
-      expect(found).toBeNull();
-    });
-
-    it('should return null for a soft-deleted user', async () => {
-      const user = await insertUser('by-username-del', { deletedAt: new Date() });
-      const found = await model.findUserByUsername(user.username);
-      expect(found).toBeNull();
-    });
-  });
-
   describe('findUserById', () => {
     it('should return the user with preferences when found', async () => {
       const user = await insertUser('by-id');

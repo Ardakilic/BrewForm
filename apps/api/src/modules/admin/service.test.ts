@@ -28,13 +28,18 @@ import {
   vendors,
 } from '@brewform/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InMemoryCacheProvider } from '../../utils/cache/index.ts';
 import { closeTestCaches, testCache } from '../../utils/cache/test-helpers.ts';
 import * as service from './service.ts';
 
 // Close every provider created with testCache() so no sweep timer leaks.
 afterEach(closeTestCaches);
+
+// Restore logger spies.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -199,6 +204,19 @@ describe('listUsers', () => {
     for (const id of userIds) {
       await db.delete(users).where(eq(users.id, id));
     }
+  });
+
+  it('should log the query length, never the query itself', async () => {
+    const debugSpy = vi.spyOn(service.logger, 'debug');
+    await service.listUsers(1, 10, 'someone@example.com');
+
+    for (const call of debugSpy.mock.calls) {
+      expect(JSON.stringify(call)).not.toContain('someone@example.com');
+    }
+    expect(debugSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, perPage: 10, queryLength: 19 }),
+      'listUsers started',
+    );
   });
 
   it('should return only users matching the search query', async () => {

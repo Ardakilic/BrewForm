@@ -119,7 +119,7 @@ describe('search', () => {
     await cleanupTestUser(userId);
   });
 
-  it('should return matching vendors by name (LIKE match)', async () => {
+  it('should return matching vendors by name (substring match)', async () => {
     const id = crypto.randomUUID();
     vendorIds.push(id);
     await db.insert(vendors).values({ id, name: 'Blue Bottle Coffee', createdBy: userId });
@@ -148,6 +148,29 @@ describe('search', () => {
     }
     const results = await model.search('BatchRoaster');
     expect(results.length).toBeLessThanOrEqual(10);
+  });
+
+  /** Insert a vendor owned by the describe's user and register it for cleanup. */
+  async function insertVendor(name: string): Promise<string> {
+    const id = crypto.randomUUID();
+    vendorIds.push(id);
+    await db.insert(vendors).values({ id, name, createdBy: userId });
+    return id;
+  }
+
+  it('should match the name ignoring letter case', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertVendor(`Onyx${tag}`);
+    const results = await model.search(`onyx${tag}`);
+    expect(results.map((r) => r.id)).toEqual([id]);
+  });
+
+  it('should match an underscore literally', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertVendor(`a_c${tag}`);
+    await insertVendor(`abc${tag}`);
+    const results = await model.search(`a_c${tag}`);
+    expect(results.map((r) => r.id)).toEqual([id]);
   });
 });
 

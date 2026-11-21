@@ -2,6 +2,7 @@ import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions } from '@brewform/db/schema';
 import type { CoffeeVarietyCategory } from '@brewform/shared';
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
+import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
 import { listableRecipeCondition, maskUnlistableForkSources } from '../recipe/model.ts';
 
 /** Find a non-deleted coffee variety by ID. */
@@ -13,7 +14,9 @@ export async function findById(id: string) {
 
 /**
  * List non-deleted coffee varieties with optional category and search filters
- * (name/species/origin ILIKE), paginated and ordered by name, with total count.
+ * (a case-insensitive literal substring match on name, species or origin through
+ * `ilike(<col>, toContainsPattern(term))`; an empty term applies no filter), paginated
+ * and ordered by name, with total count.
  */
 export async function findMany(params: {
   category?: string;
@@ -26,13 +29,14 @@ export async function findMany(params: {
   if (params.category) {
     conditions.push(eq(coffeeVarieties.category, params.category as CoffeeVarietyCategory));
   }
-  if (params.search) {
-    const searchPattern = `%${params.search}%`;
+  const term = normalizeSearchTerm(params.search);
+  if (term !== '') {
+    const pattern = toContainsPattern(term);
     conditions.push(
       or(
-        ilike(coffeeVarieties.name, searchPattern),
-        ilike(coffeeVarieties.species, searchPattern),
-        ilike(coffeeVarieties.origin, searchPattern),
+        ilike(coffeeVarieties.name, pattern),
+        ilike(coffeeVarieties.species, pattern),
+        ilike(coffeeVarieties.origin, pattern),
       )!,
     );
   }
