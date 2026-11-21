@@ -92,9 +92,7 @@ describe('Crawler Middleware', () => {
   it('falls through when getRecipeMeta throws', async () => {
     const orig = deps.getRecipeMeta;
     try {
-      deps.getRecipeMeta = async () => {
-        throw new Error('RECIPE_NOT_FOUND');
-      };
+      deps.getRecipeMeta = () => Promise.reject(new Error('RECIPE_NOT_FOUND'));
       const res = await app.request('/recipes/missing', {
         headers: { 'User-Agent': 'Discordbot/1.0' },
       });
@@ -191,18 +189,14 @@ describe('Crawler Middleware', () => {
     });
 
     it('marks the fall-through for an unknown recipe', async () => {
-      deps.getRecipeMeta = async () => {
-        throw new Error('RECIPE_NOT_FOUND');
-      };
+      deps.getRecipeMeta = () => Promise.reject(new Error('RECIPE_NOT_FOUND'));
       const res = await app.request('/recipes/no-such-recipe', { headers: googlebot });
       expect(await res.text()).toBe('SPA fallback');
       expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
     });
 
     it('marks the fall-through when the lookup fails with a generic error', async () => {
-      deps.getRecipeMeta = async () => {
-        throw new Error('connection reset');
-      };
+      deps.getRecipeMeta = () => Promise.reject(new Error('connection reset'));
       const res = await app.request('/recipes/v60-ethiopian', { headers: googlebot });
       expect(await res.text()).toBe('SPA fallback');
       expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');

@@ -16,21 +16,25 @@ function recordingDeps(overrides: Partial<Omit<ShutdownDeps, 'log'>> = {}) {
   const events: string[] = [];
   let flagAtServerClose: boolean | undefined;
   const deps = {
-    closeServer: vi.fn(async () => {
+    closeServer: vi.fn(() => {
       flagAtServerClose = isShuttingDown();
       events.push('server');
+      return Promise.resolve();
     }),
-    closeDb: vi.fn(async () => {
+    closeDb: vi.fn(() => {
       events.push('db');
+      return Promise.resolve();
     }),
     closeTransporter: vi.fn(() => {
       events.push('transporter');
     }),
-    closeCache: vi.fn(async () => {
+    closeCache: vi.fn(() => {
       events.push('cache');
+      return Promise.resolve();
     }),
-    closeRateLimitStore: vi.fn(async () => {
+    closeRateLimitStore: vi.fn(() => {
       events.push('rateLimitStore');
+      return Promise.resolve();
     }),
     exit: vi.fn((code: number) => {
       events.push(`exit:${code}`);
@@ -115,9 +119,7 @@ describe('createShutdownHandler', () => {
   it('logs an error with err and exits 1 when a step rejects', async () => {
     const failure = new Error('pool end failed');
     const { deps, events } = recordingDeps({
-      closeDb: vi.fn(async () => {
-        throw failure;
-      }),
+      closeDb: vi.fn(() => Promise.reject(failure)),
     });
     await createShutdownHandler(deps)();
 

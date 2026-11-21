@@ -197,9 +197,7 @@ describe('checkStorageHealth', () => {
 
   it('should return degraded when the access check rejects', async () => {
     await verifyStorage(localConfig(), makeDeps(), makeLog() as unknown as StorageLogger);
-    const access = vi.fn(async () => {
-      throw fsError('EACCES');
-    });
+    const access = vi.fn(() => Promise.reject(fsError('EACCES')));
     await expect(checkStorageHealth(localConfig(), { access })).resolves.toBe('degraded');
   });
 

@@ -1,4 +1,5 @@
 import '../../test-setup.ts';
+import { Readable } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FailSoftCacheProvider } from './failSoft.ts';
 import { createCacheProvider, InMemoryCacheProvider, NullCacheProvider } from './index.ts';
@@ -83,9 +84,8 @@ function createFakeRedisClient(): RedisClient & { store: Map<string, string> } {
     scanStream: ({ match }: { match: string; count: number }) => {
       const pattern = globToRegExp(match);
       const keys = [...store.keys()].filter((k) => pattern.test(k));
-      return (async function* () {
-        if (keys.length > 0) yield keys;
-      })();
+      // A Readable stream is an AsyncIterable, like ioredis's real scanStream.
+      return Readable.from(keys.length > 0 ? [keys] : []);
     },
     disconnect: () => {},
   };
@@ -242,7 +242,7 @@ describe('InMemoryCacheProvider bounds (LRU cap and expiry sweep)', () => {
     expect(await cache.get(['a'])).toBeNull();
   });
 
-  it('reports the memory status', async () => {
+  it('reports the memory status', () => {
     expect(provider().status()).toBe('memory');
   });
 });
@@ -378,7 +378,7 @@ describe('createCacheProvider', () => {
     await provider.close?.();
   });
 
-  it('should throw for redis driver without a URL', async () => {
+  it('should throw for redis driver without a URL', () => {
     expect(() => createCacheProvider('redis')).toThrow('REDIS_URL is required');
   });
 

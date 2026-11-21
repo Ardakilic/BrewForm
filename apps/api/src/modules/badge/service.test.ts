@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 describe('Badge Service Logic', () => {
   describe('Badge evaluation triggers', () => {
-    it('should list all available badges', async () => {
+    it('should list all available badges', () => {
       const badges = [
         {
           id: 'badge-1',

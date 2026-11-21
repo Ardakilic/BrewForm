@@ -57,9 +57,10 @@ export class RedisCacheProvider implements CacheProvider {
     }
   }
 
-  /** Disconnect the underlying client. */
-  async close(): Promise<void> {
+  /** Disconnect the underlying client (synchronous in ioredis; resolves at once). */
+  close(): Promise<void> {
     this.client.disconnect();
+    return Promise.resolve();
   }
 }
 

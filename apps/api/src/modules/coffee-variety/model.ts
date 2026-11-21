@@ -6,7 +6,7 @@ import { listableRecipeCondition, maskUnlistableForkSources } from '../recipe/mo
 
 /** Find a non-deleted coffee variety by ID. */
 export async function findById(id: string) {
-  return db.query.coffeeVarieties.findFirst({
+  return await db.query.coffeeVarieties.findFirst({
     where: and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)),
   });
 }

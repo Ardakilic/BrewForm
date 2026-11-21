@@ -116,12 +116,12 @@ describe('Photo Service', () => {
   }
 
   /** Files currently stored in the test UPLOAD_DIR (empty when it does not exist). */
-  async function storedFiles(): Promise<string[]> {
+  function storedFiles(): Promise<string[]> {
     return readdir(uploadDir).catch(() => []);
   }
 
   /** Photo rows currently linked to the seeded recipe. */
-  async function photoRows() {
+  function photoRows() {
     return db.select().from(photos).where(eq(photos.recipeId, recipeId));
   }
 
@@ -297,14 +297,14 @@ describe('Photo Service', () => {
     /** A fake driver whose second `save` fails; `delete` fails too when `failDelete` is set. */
     function installFailingDriver(failDelete: boolean): void {
       storageDeps.driver = {
-        save: async (_data, key) => {
-          if (saved.length >= 1) throw new Error('thumbnail write failed');
+        save: (_data, key) => {
+          if (saved.length >= 1) return Promise.reject(new Error('thumbnail write failed'));
           saved.push(key);
-          return `/uploads/${key}`;
+          return Promise.resolve(`/uploads/${key}`);
         },
-        delete: async (key) => {
+        delete: (key) => {
           deleted.push(key);
-          if (failDelete) throw new Error('cleanup failed');
+          return failDelete ? Promise.reject(new Error('cleanup failed')) : Promise.resolve();
         },
       };
     }

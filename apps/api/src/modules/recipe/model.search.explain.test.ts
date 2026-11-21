@@ -90,7 +90,7 @@ function withSeqscan<T>(seqscan: boolean, fn: (tx: TransactionClient) => Promise
 }
 
 /** Explain a compiled statement with sequential scans disabled. */
-async function explainWithoutSeqscan(query: CompiledQuery): Promise<PlanNode> {
+function explainWithoutSeqscan(query: CompiledQuery): Promise<PlanNode> {
   return withSeqscan(false, async (tx) => {
     const rows = await tx.unsafe(`EXPLAIN (FORMAT JSON) ${query.sql}`, query.params as never[]);
     return (rows[0]['QUERY PLAN'] as Array<{ Plan: PlanNode }>)[0].Plan;

@@ -112,7 +112,7 @@ describe('Photo Routes — authenticated upload', () => {
   let originalDriver: StorageDriver;
   let author: PhotoAuthor;
 
-  beforeAll(async () => {
+  beforeAll(() => {
     originalUploadDir = config.UPLOAD_DIR;
     originalAppEnv = config.APP_ENV;
   });
@@ -245,11 +245,12 @@ describe('Photo Routes — authenticated upload', () => {
   it('hides storage errors in production behind 500 INTERNAL_ERROR', async () => {
     setConfig('APP_ENV', 'production');
     storageDeps.driver = {
-      save: async () => {
-        throw new Error(
-          'HTTP 403: <Error><Code>AccessDenied</Code><Message>Access Denied</Message><BucketName>brewform-uploads</BucketName></Error>',
-        );
-      },
+      save: () =>
+        Promise.reject(
+          new Error(
+            'HTTP 403: <Error><Code>AccessDenied</Code><Message>Access Denied</Message><BucketName>brewform-uploads</BucketName></Error>',
+          ),
+        ),
       delete: async () => {},
     };
 

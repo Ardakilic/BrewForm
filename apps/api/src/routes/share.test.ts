@@ -92,9 +92,7 @@ describe('Share Route', () => {
     });
 
     it('returns 404 with RECIPE_NOT_FOUND_HTML when getRecipeMeta throws RECIPE_NOT_FOUND', async () => {
-      deps.getRecipeMeta = async (_slug: string) => {
-        throw new Error('RECIPE_NOT_FOUND');
-      };
+      deps.getRecipeMeta = (_slug: string) => Promise.reject(new Error('RECIPE_NOT_FOUND'));
 
       const res = await app.request('/share/missing-recipe');
       expect(res.status).toBe(404);
@@ -210,10 +208,10 @@ describe('Share Route', () => {
     });
 
     it('returns the same noindex 404 for an unlisted recipe and for an unknown slug', async () => {
-      deps.getRecipeMeta = async (slug: string) => {
-        if (slug === 'unlisted-u') return meta(slug, 'unlisted');
-        throw new Error('RECIPE_NOT_FOUND');
-      };
+      deps.getRecipeMeta = (slug: string) =>
+        slug === 'unlisted-u'
+          ? Promise.resolve(meta(slug, 'unlisted'))
+          : Promise.reject(new Error('RECIPE_NOT_FOUND'));
       const unlisted = await app.request('/share/unlisted-u');
       const unknown = await app.request('/share/no-such-recipe');
 

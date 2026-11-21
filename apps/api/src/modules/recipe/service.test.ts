@@ -415,7 +415,7 @@ describe('tasteNoteIds AND logic filtering', () => {
   };
 
   // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
-  async function listRecipes_withTasteNoteFilters(filters: any, page: number, perPage: number) {
+  function listRecipes_withTasteNoteFilters(filters: any, page: number, perPage: number) {
     // biome-ignore lint/suspicious/noExplicitAny: test mock array
     const conditions: any[] = [eq(recipes.visibility, 'public')];
 

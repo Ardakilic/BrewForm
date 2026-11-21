@@ -99,13 +99,13 @@ describe('Sitemap Route', () => {
 
     let getPublicRecipesCalled = false;
     let getActiveUsersCalled = false;
-    deps.getPublicRecipes = async () => {
+    deps.getPublicRecipes = () => {
       getPublicRecipesCalled = true;
-      return [];
+      return Promise.resolve([]);
     };
-    deps.getActiveUsers = async () => {
+    deps.getActiveUsers = () => {
       getActiveUsersCalled = true;
-      return [];
+      return Promise.resolve([]);
     };
 
     const res = await app.request('/api/v1/sitemap.xml');
@@ -130,9 +130,9 @@ describe('Sitemap Route', () => {
 
   it('second request returns cached data without querying DB deps', async () => {
     let callCount = 0;
-    deps.getPublicRecipes = async () => {
+    deps.getPublicRecipes = () => {
       callCount++;
-      return [{ slug: 'only-recipe', updatedAt: new Date('2025-01-01') }];
+      return Promise.resolve([{ slug: 'only-recipe', updatedAt: new Date('2025-01-01') }]);
     };
     deps.getActiveUsers = async () => [];
 

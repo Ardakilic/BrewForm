@@ -213,12 +213,13 @@ describe('storage helpers (saveUploadedFile, saveThumbnail, deleteStoredFile)', 
     originalDriver = storageDeps.driver;
     calls = [];
     storageDeps.driver = {
-      save: async (data, key, options) => {
+      save: (data, key, options) => {
         calls.push({ op: 'save', key, contentType: options.contentType, size: data.byteLength });
-        return `driver://${key}`;
+        return Promise.resolve(`driver://${key}`);
       },
-      delete: async (key) => {
+      delete: (key) => {
         calls.push({ op: 'delete', key });
+        return Promise.resolve();
       },
     };
   });
