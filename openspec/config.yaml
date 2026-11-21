@@ -8,7 +8,7 @@ context: |
   Stack:
   - Runtime: Node 26 (native TypeScript type stripping), pnpm 12 workspaces
     (`apps/api`, `apps/web`, `packages/shared`, `packages/db`). Everything runs through Docker
-    via `make <target>`; there is no Deno anywhere.
+    via `make <target>`; no other JavaScript runtime is used.
   - API: Hono (typed `AppEnv` context), `hono-openapi` `describeRoute()` metadata plus
     `@hono/zod-validator` `zValidator` for validation (ADR-012), Zod 4 schemas shared from
     `@brewform/shared/schemas`, pino structured logging.
