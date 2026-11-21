@@ -25,6 +25,11 @@ const log = createLogger('cache');
 /** Cache health reported by `/ready`. */
 export type CacheStatus = 'ok' | 'degraded' | 'memory' | 'disabled';
 
+/**
+ * Key/value cache contract injected into requests (`c.get('cache')`) and services; implemented
+ * by the memory, Redis and {@link NullCacheProvider} backends and built by
+ * {@link createCacheProvider}. Never construct a backend directly — go through this interface.
+ */
 export interface CacheProvider {
   /** Retrieve a cached value by key. Returns null if missing or expired. */
   get<T>(key: string[]): Promise<T | null>;

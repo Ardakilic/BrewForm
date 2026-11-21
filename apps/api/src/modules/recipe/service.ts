@@ -1123,6 +1123,14 @@ export function upsertUserRating(userId: string, recipeId: string, rating: numbe
   return model.upsertUserRating(userId, recipeId, rating);
 }
 
+/**
+ * Resolve one relation id list of a merge from a per-field selection.
+ * @param list1    - Relation rows of the first version (may be absent).
+ * @param list2    - Relation rows of the second version (may be absent).
+ * @param choice   - `v1`, `v2`, `both` (deduplicated union in first-seen order), or `none`/absent.
+ * @param idField  - Key holding the related id on each row (e.g. `tasteNoteId`).
+ * @returns The ids to attach to the merged recipe; empty for `none` or no selection.
+ */
 export function getMergedIds(
   list1: { [key: string]: unknown }[] | undefined,
   list2: { [key: string]: unknown }[] | undefined,
@@ -1142,6 +1150,13 @@ export function getMergedIds(
   return Array.from(ids);
 }
 
+/**
+ * Resolve the additional preparations of a merge from the per-field selection.
+ * @param v1     - First source version.
+ * @param v2     - Second source version.
+ * @param choice - `v1`, `v2`, `both` (v1's preparations followed by v2's), or `none`/absent.
+ * @returns The preparations to copy into the merged recipe; empty for `none` or no selection.
+ */
 export function getMergedPreparations(
   v1: { additionalPreparations?: unknown[] },
   v2: { additionalPreparations?: unknown[] },

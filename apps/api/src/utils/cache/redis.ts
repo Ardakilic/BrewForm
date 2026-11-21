@@ -18,6 +18,11 @@ export interface RedisClient {
   disconnect(): void;
 }
 
+/**
+ * {@link CacheProvider} backed by a Redis-protocol server (`CACHE_DRIVER=redis`): JSON values
+ * under `brewform:`-namespaced keys, millisecond TTLs (`SET PX`), prefix deletes through `SCAN`.
+ * Built by {@link createRedisProvider}; takes a {@link RedisClient} so tests can pass a fake.
+ */
 export class RedisCacheProvider implements CacheProvider {
   private readonly client: RedisClient;
 
