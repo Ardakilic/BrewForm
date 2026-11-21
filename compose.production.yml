@@ -1,54 +1,152 @@
 # ============================================================
-# BrewForm — Production Compose (pre-built GHCR images)
+# BrewForm — Production Compose (self-hosting with the published images)
 # ============================================================
-# Runs the published images — no local build needed:
-#   api: ghcr.io/ardakilic/brewform-api:latest
-#   web: ghcr.io/ardakilic/brewform-web:latest
-# plus postgres + valkey services.
+# The single production definition: postgres, valkey, a one-shot `migrate`, the API, the
+# web edge (Caddy) and a backup sidecar, plus a profile-gated `restore` one-shot.
+# Long-form guide: docs/deployment_compose.md.
 #
-# --- Required: set these four before the first run ---
-#   POSTGRES_PASSWORD — strong password for the Postgres superuser
-#   VALKEY_PASSWORD   — strong password for the Valkey cache (e.g. `openssl rand -hex 32`)
-#   API_DOMAIN        — e.g. api.brewform.example.com
-#   WEB_DOMAIN        — e.g. brewform.example.com
+# --- Required variables (in .env.production) ---
+#   POSTGRES_PASSWORD — Postgres superuser password (URL-encode #, @, :, / or the API's
+#                       DATABASE_URL breaks)
+#   VALKEY_PASSWORD   — Valkey password, URL-safe (`openssl rand -hex 32`): it is
+#                       interpolated raw into the default REDIS_URL
+#   JWT_SECRET        — min 16 chars (`openssl rand -hex 32`)
+#   ADMIN_PASSWORD    — first install only: seeds the admin when the database is empty;
+#                       changing it later does not update the existing admin
+#   WEB_DOMAIN        — public host name, e.g. brewform.example.com
+# API_DOMAIN is no longer used (the API is reached through the web origin).
 #
-#   cp .env.production.example .env.production  # then edit the values
-#   docker compose --env-file .env.production -f compose.production.yml up -d
+# --- Usage ---
+#   cp .env.production.example .env.production   # then fill in the values
+#   make prod-up | prod-down | prod-logs | prod-ps | prod-pull
+#   make prod-backup | prod-backup-export DEST=./backup-export
+#   make prod-restore DUMP=db-<ts>.dump UPLOADS=uploads-<ts>.tar.gz
+#   make prod-fix-uploads-owner | prod-check-identifiers | prod-smoke
+# The targets wrap `docker compose --env-file .env.production -f compose.production.yml`.
+# Always pass --env-file: compose otherwise auto-loads the repo's development .env, and
+# dev values (e.g. POSTGRES_PASSWORD=brewform) would leak into production. The project
+# is `brewform-prod`; an install created before this file had a `name:` keeps its old
+# volumes by setting COMPOSE_PROJECT_NAME to the previous project name.
 #
-# IMPORTANT: always pass --env-file. The repo's .env holds LOCAL DEV defaults
-# and compose auto-loads it — without --env-file, dev values (e.g.
-# POSTGRES_PASSWORD=brewform) would silently leak into production.
-# (Shell `export`s also work: exported vars take precedence over .env.)
+# --- Topology ---
+# - TLS terminates in a proxy in front of this stack (Cloudflare, Coolify/Traefik, your own
+#   Caddy/nginx). Only the web port (WEB_PORT, default 80) is published.
+# - Same-origin edge: the web container serves the SPA and reverse-proxies /api/*,
+#   /uploads/*, /share/* and /health to `api:8000` (API_UPSTREAM), so the browser calls
+#   `/api/v1` on the web origin (no CORS, no second domain). The api publishes no port.
+#   Request bodies are capped at the edge by EDGE_MAX_BODY_SIZE (default 16MB); keep it
+#   above the API's photo cap (UPLOAD_MAX_SIZE_BYTES + 1 MiB + 64 KiB, ~11.06 MiB).
+# - Split-domain option: set VITE_API_URL=https://api.example.com/api/v1 and route that
+#   domain to the api service through your own proxy; the SPA reads it from /config.js.
+# - Single replica: never scale the api service. Migrations run once per deploy in the
+#   `migrate` one-shot before the api starts; schema changes that remove or rename
+#   something the running release uses ship in two releases (expand, then contract).
 #
-# Notes:
-# - JWT_SECRET (min 16 chars, e.g. `openssl rand -hex 32`) is also required.
-# - ADMIN_PASSWORD is first-install only: it seeds the admin account when the
-#   database is empty; changing it later does not update the existing admin
-#   row. Change it afterwards via the app, not via this file.
-# - Upgrading from the old redis service: if your .env.production sets an
-#   explicit REDIS_URL=redis://redis:6379 override, remove it (the default now
-#   targets valkey with auth) or point it at valkey with credentials.
-# - DATABASE_URL embeds POSTGRES_PASSWORD: URL-encode special chars (#, @, :, /)
-#   or the API will fail to connect.
-# - VALKEY_PASSWORD is interpolated raw into the default REDIS_URL (compose has
-#   no URL-encoding step), so it must be URL-safe — use `openssl rand -hex 32`.
-#   Only an explicitly supplied REDIS_URL override can carry encoded credentials.
-# - TLS terminates in front of this file (Cloudflare / Coolify / your proxy).
-#   The web container serves the SPA on :80; the API is reachable only on the
-#   Compose network (exposed as 8000, no host port published).
-# - Images are published by .github/workflows/release.yml (latest + sha + v*).
-#   Pin a release by replacing `:latest` with `:vX.Y.Z` or `:<sha>`.
-# - Rate limiting keys on the client IP, so the API must know how many proxies
-#   sit in front of it (TRUST_PROXY_HOPS). Count the hops that write
-#   X-Forwarded-For between the client and the API: the web Caddy edge replaces
-#   X-Forwarded-For with its own {client_ip}, so the API always sees exactly one
-#   hop and TRUST_PROXY=hops with TRUST_PROXY_HOPS=1 stays correct with or
-#   without an outer proxy (Coolify/Traefik, Cloudflare) in front of Caddy.
-#   Behind Cloudflare, configure Caddy's trusted_proxies for the Cloudflare
-#   ranges so {client_ip} is the real client, or set TRUST_PROXY=cloudflare.
-#   RATE_LIMIT_STORE defaults to redis here (counters shared through Valkey,
-#   per-process fallback while it is down); set it to memory for one replica.
+# --- Client IP (rate limiting) ---
+# The edge replaces X-Forwarded-For/X-Real-IP with the client IP it resolved, so the API
+# always sees exactly one hop: TRUST_PROXY=hops and TRUST_PROXY_HOPS=1 (the defaults
+# below) are right with or without an outer proxy. TRUSTED_PROXIES tells the edge which
+# connecting addresses may supply X-Forwarded-For (Caddy trusted_proxies, right-to-left):
+#   - unset: `private_ranges` (the outer TLS proxy is on a private network or the host);
+#   - empty (TRUSTED_PROXIES=): nothing is in front, trust no proxy;
+#   - Cloudflare connecting directly: the Cloudflare ranges, space separated
+#     (https://www.cloudflare.com/ips/), e.g. `173.245.48.0/20 103.21.244.0/22 …`.
+# RATE_LIMIT_STORE defaults to redis (counters shared through Valkey, per-process
+# fallback while it is down).
+#
+# --- Data locations (one variable each) ---
+#   UPLOADS_SOURCE        default `uploads`       -> api /app/uploads (rw), backup /uploads
+#                                                    (ro), restore /app/uploads (rw)
+#   POSTGRES_DATA_SOURCE  default `postgres_data` -> postgres /var/lib/postgresql
+#   BACKUPS_SOURCE        default `backups`       -> backup /backups, restore /backups (ro)
+# A value starting with `/`, `.` or `~` is a host folder (bind mount; relative paths are
+# resolved against this file's directory, so prefer an absolute or `./` path); any other
+# value is a named volume and must be declared under `volumes:` at the bottom, so a typo
+# fails `docker compose config`. The API runs as uid/gid 1000: an uploads host folder must
+# be owned by 1000:1000 (`sudo install -d -o 1000 -g 1000 -m 0750 ./data/uploads`), or the
+# api exits with a "not writable by uid 1000 gid 1000" log; `make prod-fix-uploads-owner`
+# fixes either source type. Postgres takes ownership of its folder itself; backups are
+# written by root with umask 077. `docker compose down -v` deletes the named volumes but
+# never a host folder. UPLOAD_DIR is fixed at /app/uploads (never interpolated).
+# STORAGE_DRIVER=s3 is recommended for production (then BACKUP_UPLOADS=false); every
+# S3_* variable stays unset unless you set it.
+#
+# --- Health checks ---
+# /health is API liveness (always 200 while serving; uptime monitors use
+# https://<WEB_DOMAIN>/health and /healthz). /ready is readiness (database reachable,
+# not shutting down; 503 otherwise) and is used by the api health check below; it is
+# not proxied by the edge. postgres: pg_isready; valkey: valkey-cli ping (password from
+# VALKEYCLI_AUTH, never in a command line); web: its own /healthz; backup: a dump younger
+# than twice BACKUP_INTERVAL_SECONDS.
+#
+# --- Upgrading an install from before this file (wave 6) ---
+# Photos were written to /app/apps/api/uploads inside the old api container (outside the
+# volume). Copy them out BEFORE pulling or recreating anything:
+# docs/deployment_compose.md → "Upgrading from the pre-wave-6 compose file".
+#
+# Images: published by the CI `publish` job (latest on main, the full commit SHA, v* tags).
+# Pin or roll back with IMAGE_TAG=<full sha>|vX.Y.Z; migrations are not rolled back.
 # ============================================================
+
+name: brewform-prod
+
+# Log rotation for every service (json-file).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: ${DOCKER_LOG_MAX_SIZE:-10m}
+    max-file: ${DOCKER_LOG_MAX_FILE:-5}
+
+# API environment, shared by `migrate` and `api`. A key with no value is passed through
+# from .env.production only when set there (otherwise it stays unset in the container).
+x-api-env: &api-env
+  APP_ENV: production
+  APP_PORT: 8000
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  LOG_FORMAT: json
+  DATABASE_URL: postgresql://${POSTGRES_USER:-brewform}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD before running}@postgres:5432/${POSTGRES_DB:-brewform}
+  DATABASE_PROVIDER: postgresql
+  # Server-side statement timeout per pooled DB connection (ms; unset = 10000, 0 disables).
+  DB_STATEMENT_TIMEOUT_MS:
+  CACHE_ENABLED: ${CACHE_ENABLED:-true}
+  CACHE_DRIVER: ${CACHE_DRIVER:-redis}
+  CACHE_MEMORY_MAX_ENTRIES:
+  REDIS_URL: ${REDIS_URL:-redis://:${VALKEY_PASSWORD:?set VALKEY_PASSWORD before running}@valkey:6379}
+  # Client identity behind the web edge (see "Client IP" in the header).
+  TRUST_PROXY: ${TRUST_PROXY:-hops}
+  TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+  TRUST_PROXY_CIDRS:
+  RATE_LIMIT_ENABLED:
+  RATE_LIMIT_STORE: ${RATE_LIMIT_STORE:-redis}
+  RATE_LIMIT_GLOBAL_MAX:
+  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (min 16 chars, e.g. openssl rand -hex 32)}
+  JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
+  JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-7d}
+  JWT_REMEMBER_ME_EXPIRY: ${JWT_REMEMBER_ME_EXPIRY:-180d}
+  APP_URL: https://${WEB_DOMAIN:?set WEB_DOMAIN before running}
+  PUBLIC_APP_URL: https://${WEB_DOMAIN:?set WEB_DOMAIN before running}
+  CORS_ALLOWED_ORIGINS: https://${WEB_DOMAIN:?set WEB_DOMAIN before running}
+  ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@brewform.local}
+  ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD before running}
+  SMTP_HOST: ${SMTP_HOST:-localhost}
+  SMTP_PORT: ${SMTP_PORT:-1025}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASS: ${SMTP_PASS:-}
+  SMTP_SECURE: ${SMTP_SECURE:-false}
+  EMAIL_FROM: ${EMAIL_FROM:-noreply@${WEB_DOMAIN:?set WEB_DOMAIN before running}}
+  OPENAPI_ENABLED: ${OPENAPI_ENABLED:-false}
+  ENABLE_REGISTRATION: ${ENABLE_REGISTRATION:-true}
+  STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+  # Object storage: unset unless set in .env.production (S3_REGION then defaults to auto).
+  S3_ENDPOINT:
+  S3_REGION:
+  S3_BUCKET:
+  S3_ACCESS_KEY:
+  S3_SECRET_KEY:
+  S3_PUBLIC_URL:
+  # Literal on purpose: the uploads source is mounted exactly here.
+  UPLOAD_DIR: /app/uploads
 
 services:
   postgres:
@@ -58,93 +156,293 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD before running}
       POSTGRES_DB: ${POSTGRES_DB:-brewform}
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - ${POSTGRES_DATA_SOURCE:-postgres_data}:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-brewform}"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEMORY_LIMIT:-1g}
+    logging: *logging
     restart: unless-stopped
 
   valkey:
     image: valkey/valkey:9.1-alpine
-    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD:?set VALKEY_PASSWORD before running}", "--appendonly", "yes"]
+    # The password goes into a generated config file, never into a command line.
+    # maxmemory stays below the container limit; the policy stays noeviction so
+    # rate-limit counters are never evicted early (a full Valkey rejects writes instead).
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD:?set VALKEY_PASSWORD before running}
+      VALKEYCLI_AUTH: ${VALKEY_PASSWORD:?set VALKEY_PASSWORD before running}
+      VALKEY_MAXMEMORY: ${VALKEY_MAXMEMORY:-192mb}
+    entrypoint:
+      - /bin/sh
+      - -euc
+      - |
+        umask 077
+        printf '%s\n' \
+          "requirepass $$VALKEY_PASSWORD" \
+          "maxmemory $$VALKEY_MAXMEMORY" \
+          "maxmemory-policy noeviction" \
+          "appendonly yes" >/tmp/valkey.conf
+        chown valkey:valkey /tmp/valkey.conf 2>/dev/null || true
+        exec docker-entrypoint.sh valkey-server /tmp/valkey.conf
     volumes:
       - valkey_data:/data
     healthcheck:
-      test: ["CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD:?set VALKEY_PASSWORD before running}", "ping"]
-      interval: 5s
+      test: ["CMD-SHELL", "valkey-cli ping | grep -q PONG"]
+      interval: 10s
       timeout: 3s
       retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: ${VALKEY_MEMORY_LIMIT:-256m}
+    logging: *logging
     restart: unless-stopped
 
-  api:
-    image: ghcr.io/ardakilic/brewform-api:latest
+  # One-shot: applies migrations and seeds a fresh database, then exits 0. The api
+  # starts only after it completed successfully.
+  migrate:
+    image: ${API_IMAGE:-ghcr.io/ardakilic/brewform-api}:${IMAGE_TAG:-latest}
+    command: ["migrate"]
     depends_on:
+      postgres:
+        condition: service_healthy
+    environment: *api-env
+    # The image HEALTHCHECK probes the API server, which this container never runs.
+    healthcheck:
+      disable: true
+    deploy:
+      resources:
+        limits:
+          memory: ${MIGRATE_MEMORY_LIMIT:-512m}
+    logging: *logging
+    restart: "no"
+
+  api:
+    image: ${API_IMAGE:-ghcr.io/ardakilic/brewform-api}:${IMAGE_TAG:-latest}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       valkey:
         condition: service_healthy
     environment:
-      APP_ENV: production
-      APP_PORT: 8000
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      LOG_FORMAT: json
-      DATABASE_URL: postgresql://${POSTGRES_USER:-brewform}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD before running}@postgres:5432/${POSTGRES_DB:-brewform}
-      DATABASE_PROVIDER: postgresql
-      # Server-side statement timeout per DB connection (ms; unset = 10000, 0 disables).
-      DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-}
-      CACHE_ENABLED: ${CACHE_ENABLED:-true}
-      CACHE_DRIVER: ${CACHE_DRIVER:-redis}
-      REDIS_URL: ${REDIS_URL:-redis://:${VALKEY_PASSWORD:?set VALKEY_PASSWORD before running}@valkey:6379}
-      RATE_LIMIT_STORE: ${RATE_LIMIT_STORE:-redis}
-      TRUST_PROXY: ${TRUST_PROXY:-hops}
-      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
-      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (min 16 chars, e.g. openssl rand -hex 32)}
-      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
-      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-7d}
-      JWT_REMEMBER_ME_EXPIRY: ${JWT_REMEMBER_ME_EXPIRY:-180d}
-      APP_URL: https://${WEB_DOMAIN:?set WEB_DOMAIN before running}
-      PUBLIC_APP_URL: https://${WEB_DOMAIN:?set WEB_DOMAIN before running}
-      CORS_ALLOWED_ORIGINS: https://${WEB_DOMAIN:?set WEB_DOMAIN before running}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@brewform.local}
-      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD before running}
-      SMTP_HOST: ${SMTP_HOST:-localhost}
-      SMTP_PORT: ${SMTP_PORT:-1025}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
-      EMAIL_FROM: ${EMAIL_FROM:-noreply@${WEB_DOMAIN:?set WEB_DOMAIN before running}}
-      OPENAPI_ENABLED: ${OPENAPI_ENABLED:-false}
-      ENABLE_REGISTRATION: ${ENABLE_REGISTRATION:-true}
-      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
-      S3_ENDPOINT: ${S3_ENDPOINT:-}
-      S3_REGION: ${S3_REGION:-auto}
-      S3_BUCKET: ${S3_BUCKET:-}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
-      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
-      UPLOAD_DIR: ${UPLOAD_DIR:-./uploads}
+      <<: *api-env
+      RUN_MIGRATIONS: "false"
     expose:
       - "8000"
     volumes:
-      - uploads:/app/uploads
+      - ${UPLOADS_SOURCE:-uploads}:/app/uploads
+    healthcheck:
+      test: ["CMD", "node", "/app/healthcheck.mjs", "/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+      start_interval: 2s
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: ${API_MEMORY_LIMIT:-1g}
+    logging: *logging
     restart: unless-stopped
 
   web:
-    image: ghcr.io/ardakilic/brewform-web:latest
+    image: ${WEB_IMAGE:-ghcr.io/ardakilic/brewform-web}:${IMAGE_TAG:-latest}
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
     environment:
-      # Runtime override for the baked-in VITE_API_URL (via /config.js).
-      VITE_API_URL: ${VITE_API_URL:-https://${API_DOMAIN:?set API_DOMAIN before running}/api/v1}
+      # Same-origin by default; an absolute URL selects the split-domain topology.
+      VITE_API_URL: ${VITE_API_URL:-/api/v1}
+      API_UPSTREAM: api:8000
+      PUBLIC_APP_URL: https://${WEB_DOMAIN:?set WEB_DOMAIN before running}
+      # Unset: private_ranges; empty: trust no proxy (see "Client IP" in the header).
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES-private_ranges}
+      EDGE_MAX_BODY_SIZE: ${EDGE_MAX_BODY_SIZE:-16MB}
     ports:
       - "${WEB_PORT:-80}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: ${WEB_MEMORY_LIMIT:-256m}
+    logging: *logging
     restart: unless-stopped
 
+  # Database dump (and uploads archive with local storage) at start-up and then every
+  # BACKUP_INTERVAL_SECONDS; files older than BACKUP_RETENTION_DAYS are pruned.
+  # `make prod-backup` runs one extra backup (BACKUP_ONESHOT=1) and exits.
+  backup:
+    image: postgres:18-trixie
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-brewform}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD before running}
+      PGDATABASE: ${POSTGRES_DB:-brewform}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      BACKUP_UPLOADS: ${BACKUP_UPLOADS:-true}
+      # Set only per run (`docker compose run -e BACKUP_ONESHOT=1 backup`), never here.
+      BACKUP_ONESHOT: "0"
+    volumes:
+      - ${BACKUPS_SOURCE:-backups}:/backups
+      - ${UPLOADS_SOURCE:-uploads}:/uploads:ro
+    entrypoint:
+      - /bin/sh
+      - -euc
+      - |
+        umask 077
+        case "$$BACKUP_INTERVAL_SECONDS" in
+          '' | *[!0-9]* | 0) echo "[backup] BACKUP_INTERVAL_SECONDS must be a positive integer" >&2; exit 2 ;;
+        esac
+        case "$$BACKUP_RETENTION_DAYS" in
+          '' | *[!0-9]*) echo "[backup] BACKUP_RETENTION_DAYS must be a whole number of days" >&2; exit 2 ;;
+        esac
+
+        # One run. Every file is written under a .partial name and renamed only once it
+        # is complete, so an interrupted run never leaves a complete-looking file.
+        run_backup() {
+          stamp=$$(date -u +%Y%m%dT%H%M%SZ)
+          if ! pg_dump -Fc -f "/backups/.db-$$stamp.partial"; then
+            rm -f "/backups/.db-$$stamp.partial"
+            echo "[backup] ERROR: pg_dump failed" >&2
+            return 1
+          fi
+          mv "/backups/.db-$$stamp.partial" "/backups/db-$$stamp.dump"
+          echo "[backup] database dump written: db-$$stamp.dump"
+          if [ "$$STORAGE_DRIVER" = "local" ] && [ "$$BACKUP_UPLOADS" != "false" ]; then
+            if ! tar -czf "/backups/.uploads-$$stamp.partial" -C /uploads .; then
+              rm -f "/backups/.uploads-$$stamp.partial"
+              echo "[backup] ERROR: uploads archive failed" >&2
+              return 1
+            fi
+            mv "/backups/.uploads-$$stamp.partial" "/backups/uploads-$$stamp.tar.gz"
+            echo "[backup] uploads archive written: uploads-$$stamp.tar.gz"
+          else
+            echo "[backup] uploads archive skipped (STORAGE_DRIVER=$$STORAGE_DRIVER, BACKUP_UPLOADS=$$BACKUP_UPLOADS)"
+          fi
+          find /backups -maxdepth 1 \( -name 'db-*.dump' -o -name 'uploads-*.tar.gz' \) \
+            -mtime +"$$BACKUP_RETENTION_DAYS" -print -delete | sed 's|^/backups/|[backup] pruned: |'
+          # Leftovers of killed runs (a running dump's .partial is never a day old).
+          find /backups -maxdepth 1 -name '.*.partial' -mmin +1440 -delete
+        }
+
+        if [ "$$BACKUP_ONESHOT" = "1" ] || [ "$$BACKUP_ONESHOT" = "true" ]; then
+          run_backup
+          exit 0
+        fi
+        trap 'echo "[backup] stopping"; exit 0' TERM INT
+        echo "[backup] every $$BACKUP_INTERVAL_SECONDS s, keeping $$BACKUP_RETENTION_DAYS days"
+        while :; do
+          run_backup || echo "[backup] run failed; retrying in $$BACKUP_INTERVAL_SECONDS s" >&2
+          sleep "$$BACKUP_INTERVAL_SECONDS" &
+          wait $$! || true
+        done
+    healthcheck:
+      test: ["CMD-SHELL", "find /backups -maxdepth 1 -name 'db-*.dump' -mmin -$$(( $$BACKUP_INTERVAL_SECONDS / 30 )) | grep -q ."]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 600s
+    deploy:
+      resources:
+        limits:
+          memory: ${BACKUP_MEMORY_LIMIT:-512m}
+    logging: *logging
+    restart: unless-stopped
+
+  # One-shot restore (`make prod-restore DUMP=… UPLOADS=…`); never started by `up`.
+  # Accepts only backup file names, restores the dump with pg_restore and extracts the
+  # uploads archive into the uploads source, handing it to the API user (1000:1000).
+  # Import backups from elsewhere with `docker compose cp <file> backup:/backups/`.
+  restore:
+    profiles: ["restore"]
+    image: postgres:18-trixie
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-brewform}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD before running}
+      PGDATABASE: ${POSTGRES_DB:-brewform}
+      RESTORE_DB_DUMP: ${RESTORE_DB_DUMP:-}
+      RESTORE_UPLOADS_ARCHIVE: ${RESTORE_UPLOADS_ARCHIVE:-}
+    volumes:
+      - ${UPLOADS_SOURCE:-uploads}:/app/uploads
+      - ${BACKUPS_SOURCE:-backups}:/backups:ro
+    entrypoint:
+      - /bin/sh
+      - -euc
+      - |
+        # Succeed when $$1 is exactly one line matching the extended regex $$2.
+        valid() {
+          [ "$$(printf '%s\n' "$$1" | wc -l)" -eq 1 ] && printf '%s\n' "$$1" | grep -Eq "$$2"
+        }
+        dump=$${RESTORE_DB_DUMP:-}
+        archive=$${RESTORE_UPLOADS_ARCHIVE:-}
+        if [ -z "$$dump" ] && [ -z "$$archive" ]; then
+          echo "[restore] nothing to restore: set RESTORE_DB_DUMP and/or RESTORE_UPLOADS_ARCHIVE" >&2
+          exit 2
+        fi
+        if [ -n "$$dump" ] && ! valid "$$dump" '^db-[0-9]{8}T[0-9]{6}Z\.dump$$'; then
+          echo "[restore] RESTORE_DB_DUMP must be a file name matching ^db-[0-9]{8}T[0-9]{6}Z\.dump$$ (e.g. db-20261118T000000Z.dump)" >&2
+          exit 2
+        fi
+        if [ -n "$$archive" ] && ! valid "$$archive" '^uploads-[0-9]{8}T[0-9]{6}Z\.tar\.gz$$'; then
+          echo "[restore] RESTORE_UPLOADS_ARCHIVE must be a file name matching ^uploads-[0-9]{8}T[0-9]{6}Z\.tar\.gz$$ (e.g. uploads-20261118T000000Z.tar.gz)" >&2
+          exit 2
+        fi
+        for f in $$dump $$archive; do
+          if [ ! -f "/backups/$$f" ]; then
+            echo "[restore] /backups/$$f not found (import it with: docker compose cp <file> backup:/backups/)" >&2
+            exit 2
+          fi
+        done
+        if [ -n "$$dump" ]; then
+          echo "[restore] restoring the database from $$dump"
+          pg_restore --clean --if-exists --no-owner -d "$$PGDATABASE" "/backups/$$dump"
+          echo "[restore] database restored"
+        fi
+        if [ -n "$$archive" ]; then
+          echo "[restore] extracting $$archive into /app/uploads"
+          tar -xzf "/backups/$$archive" -C /app/uploads
+          chown -R 1000:1000 /app/uploads
+          echo "[restore] uploads restored and owned by 1000:1000"
+        fi
+        echo "[restore] done"
+    deploy:
+      resources:
+        limits:
+          memory: ${RESTORE_MEMORY_LIMIT:-512m}
+    logging: *logging
+    restart: "no"
+
+# Named volumes. They are also the only names UPLOADS_SOURCE, POSTGRES_DATA_SOURCE and
+# BACKUPS_SOURCE may take when they are not host folders: a value starting with `/`, `.`
+# or `~` is a host folder (bind mount); any other value must be declared here, so a typo
+# fails `docker compose config` instead of silently creating an unmanaged volume.
 volumes:
   postgres_data:
   valkey_data:
   uploads:
+  backups:

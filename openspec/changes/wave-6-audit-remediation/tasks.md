@@ -1091,24 +1091,24 @@ How to use this task list
 
 ## 21. Deploy: web image edge, build context, data volumes and production compose (t4b, refine D5)
 
-- [ ] 21.1 Restructure `apps/web/Caddyfile`:
+- [x] 21.1 Restructure `apps/web/Caddyfile`:
   - a global block (`admin off`, `import /etc/caddy/global.d/*.caddy`);
   - `:80` with `encode zstd gzip`;
   - `handle /healthz { header Cache-Control "no-store"; respond "ok" 200 }`, a local liveness answer that never touches the upstream;
   - `import /etc/caddy/conf.d/*.caddy`;
   - a fallback `handle` holding the existing root, `/config.js` no-store, `try_files` and `file_server`.
   - Leave the static `handle` as the slot for the security-headers work (out of scope for wave 6).
-- [ ] 21.2 Extend `docker-web-entrypoint.sh` (POSIX sh, `set -eu`): write `/etc/caddy/conf.d/api-proxy.caddy` only when `API_UPSTREAM` matches `^[A-Za-z0-9._-]+(:[0-9]{1,5})?$` (proxy matcher `path /api/* /uploads/* /share/* /health`, where `/health` is an exact path and `/ready` is deliberately not proxied, `request_body max_size {$EDGE_MAX_BODY_SIZE:16MB}`, `header_up X-Forwarded-For {client_ip}`, `header_up X-Real-IP {client_ip}`); write `/etc/caddy/global.d/trusted.caddy` only when `TRUSTED_PROXIES` matches `^[A-Za-z0-9_.:/ ]+$` (`servers { trusted_proxies static … ; trusted_proxies_strict }`); rewrite `index.html` and `robots.txt` from `*.orig` copies when `PUBLIC_APP_URL` passes the origin allowlist (replace `$BREWFORM_BUILD_PUBLIC_APP_URL`, `sed` with a `|` delimiter); log one line per decision (applied, disabled or invalid) without echoing invalid values; keep the existing `VITE_API_URL` logic. Task 22.3 checks that `/health` through the edge returns the API JSON.
-- [ ] 21.3 In `Dockerfile.web` runner:
+- [x] 21.2 Extend `docker-web-entrypoint.sh` (POSIX sh, `set -eu`): write `/etc/caddy/conf.d/api-proxy.caddy` only when `API_UPSTREAM` matches `^[A-Za-z0-9._-]+(:[0-9]{1,5})?$` (proxy matcher `path /api/* /uploads/* /share/* /health`, where `/health` is an exact path and `/ready` is deliberately not proxied, `request_body max_size {$EDGE_MAX_BODY_SIZE:16MB}`, `header_up X-Forwarded-For {client_ip}`, `header_up X-Real-IP {client_ip}`); write `/etc/caddy/global.d/trusted.caddy` only when `TRUSTED_PROXIES` matches `^[A-Za-z0-9_.:/ ]+$` (`servers { trusted_proxies static … ; trusted_proxies_strict }`); rewrite `index.html` and `robots.txt` from `*.orig` copies when `PUBLIC_APP_URL` passes the origin allowlist (replace `$BREWFORM_BUILD_PUBLIC_APP_URL`, `sed` with a `|` delimiter); log one line per decision (applied, disabled or invalid) without echoing invalid values; keep the existing `VITE_API_URL` logic. Task 22.3 checks that `/health` through the edge returns the API JSON.
+- [x] 21.3 In `Dockerfile.web` runner:
   - `RUN mkdir -p /etc/caddy/conf.d /etc/caddy/global.d`.
   - Re-declare `ARG VITE_PUBLIC_APP_URL=http://localhost:8080` and set `ENV BREWFORM_BUILD_PUBLIC_APP_URL=$VITE_PUBLIC_APP_URL`.
   - Add `HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --start-interval=1s --retries=3 CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]` in exec form, using the BusyBox `wget` of the Alpine base. Confirm `docker run --rm --entrypoint sh brewform-web:local -c 'command -v wget'` prints a path.
   - Update the stage comments.
-- [ ] 21.4 Add `scripts/ci/web-entrypoint.test.sh`, a shell test run in CI against the built web image: unset upstream gives `/api/v1/x` → `index.html`; an invalid `API_UPSTREAM` gives a warning and static-only mode; a valid `PUBLIC_APP_URL` rewrites `og:image` and `Sitemap:`; `javascript:` is ignored; a `VITE_API_URL` containing a quote writes the default `config.js`. Run it locally against `brewform-web:local`.
-- [ ] 21.5 Verify Caddy 2.11.9 applies `header_up X-Forwarded-For {client_ip}` over its default `X-Forwarded-For` (echo-upstream check from the smoke script); if not, switch to `header_up -X-Forwarded-For` followed by `header_up X-Forwarded-For {client_ip}` and note it in the Caddyfile snippet comment.
-- [ ] 21.6 Rewrite `.dockerignore` with `**/node_modules`, `**/coverage`, `**/dist`, `**/.turbo`, `.git`, `.github`, `uploads`, `**/uploads`, `backups`, `.claude`, `.kiro`, `.opencode`, `.vscode`, `.idea`, `plans`, `openspec`, `docs`, keep the env-file block, and add a comment that `files/`, `packages/db/drizzle/` and `apps/web/public/` must stay included. Verify with `docker build --no-cache --progress=plain` that the context size drops and both images still build.
-- [ ] 21.7 Add `.env.production` and `backups/` to `.gitignore`; verify with `git check-ignore .env.production backups/x.dump`.
-- [ ] 21.8 Add `scripts/ci/compose-smoke.env` and `scripts/ci/compose-config-check.sh`.
+- [x] 21.4 Add `scripts/ci/web-entrypoint.test.sh`, a shell test run in CI against the built web image: unset upstream gives `/api/v1/x` → `index.html`; an invalid `API_UPSTREAM` gives a warning and static-only mode; a valid `PUBLIC_APP_URL` rewrites `og:image` and `Sitemap:`; `javascript:` is ignored; a `VITE_API_URL` containing a quote writes the default `config.js`. Run it locally against `brewform-web:local`.
+- [x] 21.5 Verify Caddy 2.11.9 applies `header_up X-Forwarded-For {client_ip}` over its default `X-Forwarded-For` (echo-upstream check from the smoke script); if not, switch to `header_up -X-Forwarded-For` followed by `header_up X-Forwarded-For {client_ip}` and note it in the Caddyfile snippet comment.
+- [x] 21.6 Rewrite `.dockerignore` with `**/node_modules`, `**/coverage`, `**/dist`, `**/.turbo`, `.git`, `.github`, `uploads`, `**/uploads`, `backups`, `.claude`, `.kiro`, `.opencode`, `.vscode`, `.idea`, `plans`, `openspec`, `docs`, keep the env-file block, and add a comment that `files/`, `packages/db/drizzle/` and `apps/web/public/` must stay included. Verify with `docker build --no-cache --progress=plain` that the context size drops and both images still build.
+- [x] 21.7 Add `.env.production` and `backups/` to `.gitignore`; verify with `git check-ignore .env.production backups/x.dump`.
+- [x] 21.8 Add `scripts/ci/compose-smoke.env` and `scripts/ci/compose-config-check.sh`.
   - `compose-smoke.env` holds placeholder values: `POSTGRES_PASSWORD=ci-postgres-pw`, `VALKEY_PASSWORD=ci0valkey0pw`, `JWT_SECRET=ci-jwt-secret-0123456789`, `ADMIN_PASSWORD=ci-admin-pw-123`, `WEB_DOMAIN=localhost`, `WEB_PORT=8088`, `API_IMAGE=brewform-api`, `WEB_IMAGE=brewform-web`, `IMAGE_TAG=ci`.
   - `compose-config-check.sh` is POSIX sh with `set -eu`, `docker compose` and `jq`. It runs `docker compose -p brewform-ci --env-file scripts/ci/compose-smoke.env -f compose.production.yml config --format json` and asserts:
     - `postgres`, `valkey`, `api`, `web` and `backup` each have `.healthcheck.test`;
@@ -1122,23 +1122,23 @@ How to use this task list
     - no `healthcheck.test`, `command` or `entrypoint` string contains `ci0valkey0pw` or `ci-postgres-pw`;
     - `restore` appears only with `--profile restore`.
   - Run it now and confirm it fails against the current file.
-- [ ] 21.9 Rewrite `compose.production.yml`:
+- [x] 21.9 Rewrite `compose.production.yml`:
   - `name: brewform-prod` and an `x-logging` anchor.
   - An `x-api-env` anchor: the existing api env plus the literal `UPLOAD_DIR: /app/uploads`, which is never interpolated; `S3_*` without `:-` defaults; t2's `TRUST_PROXY: ${TRUST_PROXY:-hops}`, `TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}` and `RATE_LIMIT_STORE: ${RATE_LIMIT_STORE:-redis}` (from task 6.43); and t7's optional `DB_STATEMENT_TIMEOUT_MS` passthrough (task 10.29).
   - Image refs: `${API_IMAGE:-ghcr.io/ardakilic/brewform-api}:${IMAGE_TAG:-latest}` and the web equivalent.
   - Data mounts: `${POSTGRES_DATA_SOURCE:-postgres_data}:/var/lib/postgresql` on postgres, `${UPLOADS_SOURCE:-uploads}:/app/uploads` on api, `valkey_data:/data` on valkey.
   - Drop the `API_DOMAIN` requirement.
-- [ ] 21.10 Add the `migrate` one-shot service (`command: ["migrate"]`, `restart: "no"`, `depends_on: postgres: condition: service_healthy`, logging anchor, 512m limit).
+- [x] 21.10 Add the `migrate` one-shot service (`command: ["migrate"]`, `restart: "no"`, `depends_on: postgres: condition: service_healthy`, logging anchor, 512m limit).
   - The `api` service depends on `migrate: service_completed_successfully`, `postgres: service_healthy` and `valkey: service_healthy`.
   - The `api` service sets `RUN_MIGRATIONS: "false"` and `stop_grace_period: 30s`.
   - Its healthcheck is `test: ["CMD", "node", "/app/healthcheck.mjs", "/ready"]`, `interval: 15s`, `timeout: 5s`, `retries: 3`, `start_period: 60s`, `start_interval: 2s`.
-- [ ] 21.11 Web service: `VITE_API_URL: ${VITE_API_URL:-/api/v1}`, `API_UPSTREAM: api:8000`, `PUBLIC_APP_URL: https://${WEB_DOMAIN}` and `TRUSTED_PROXIES: ${TRUSTED_PROXIES-private_ranges}` (unset gives the default, empty disables). It also gets `depends_on: api: condition: service_healthy` and a healthcheck: `test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]`, `interval: 30s`, `timeout: 3s`, `retries: 3`, `start_period: 10s`.
-- [ ] 21.12 Valkey and Postgres health:
+- [x] 21.11 Web service: `VITE_API_URL: ${VITE_API_URL:-/api/v1}`, `API_UPSTREAM: api:8000`, `PUBLIC_APP_URL: https://${WEB_DOMAIN}` and `TRUSTED_PROXIES: ${TRUSTED_PROXIES-private_ranges}` (unset gives the default, empty disables). It also gets `depends_on: api: condition: service_healthy` and a healthcheck: `test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]`, `interval: 30s`, `timeout: 3s`, `retries: 3`, `start_period: 10s`.
+- [x] 21.12 Valkey and Postgres health:
   - Valkey: generate the config in `sh -c` from env (`requirepass`, `maxmemory ${VALKEY_MAXMEMORY:-192mb}`, policy left at `noeviction`), written to `/tmp/valkey.conf`, then exec the official entrypoint.
   - The Valkey service `environment` holds `VALKEY_PASSWORD` and `VALKEYCLI_AUTH: ${VALKEY_PASSWORD:?…}`.
   - Valkey healthcheck: `test: ["CMD-SHELL", "valkey-cli ping | grep -q PONG"]`, `interval: 10s`, `timeout: 3s`, `retries: 5`, `start_period: 10s`.
   - Postgres healthcheck: `test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]`, `interval: 10s`, `timeout: 5s`, `retries: 5`, `start_period: 30s`.
-- [ ] 21.13 Add the backup service:
+- [x] 21.13 Add the backup service:
   - An inline `sh -euc` loop on `postgres:18-trixie` with `umask 077`.
   - `PGHOST`, `PGUSER`, `PGPASSWORD` and `PGDATABASE` come from the `POSTGRES_*` values, plus `BACKUP_INTERVAL_SECONDS` (86400), `BACKUP_RETENTION_DAYS` (14), `BACKUP_UPLOADS` (true) and `BACKUP_ONESHOT`.
   - Volumes: `${BACKUPS_SOURCE:-backups}:/backups` and `${UPLOADS_SOURCE:-uploads}:/uploads:ro`.
@@ -1146,7 +1146,7 @@ How to use this task list
   - `depends_on: postgres: service_healthy`.
   - Healthcheck: `test: ["CMD-SHELL", "find /backups -maxdepth 1 -name 'db-*.dump' -mmin -$$(( $$BACKUP_INTERVAL_SECONDS / 30 )) | grep -q ."]`, `interval: 60s`, `timeout: 10s`, `retries: 3`, `start_period: 600s`.
   - No `BACKUP_DIR` variable exists.
-- [ ] 21.14 Add the `restore` one-shot service: `profiles: ["restore"]`, `image: postgres:18-trixie`, `restart: "no"`, the logging anchor, `deploy.resources.limits.memory: 512m`, and `depends_on: postgres: service_healthy`.
+- [x] 21.14 Add the `restore` one-shot service: `profiles: ["restore"]`, `image: postgres:18-trixie`, `restart: "no"`, the logging anchor, `deploy.resources.limits.memory: 512m`, and `depends_on: postgres: service_healthy`.
   - Environment: `PGHOST=postgres`, plus `PGUSER`, `PGPASSWORD` and `PGDATABASE` from the `POSTGRES_*` values, plus `RESTORE_DB_DUMP` and `RESTORE_UPLOADS_ARCHIVE`.
   - Volumes: `${UPLOADS_SOURCE:-uploads}:/app/uploads` and `${BACKUPS_SOURCE:-backups}:/backups:ro`.
   - The inline `sh -euc` script:
@@ -1154,23 +1154,23 @@ How to use this task list
     - runs `pg_restore --clean --if-exists --no-owner -d "$PGDATABASE" "/backups/$RESTORE_DB_DUMP"` when a dump name is set;
     - runs `tar -xzf "/backups/$RESTORE_UPLOADS_ARCHIVE" -C /app/uploads` and then `chown -R 1000:1000 /app/uploads` when an archive name is set;
     - prints one line per step.
-- [ ] 21.15 Add `deploy.resources.limits.memory` with env defaults to every service, `restart: unless-stopped` on long-running services, and the logging anchor everywhere.
-- [ ] 21.16 Declare the top-level `volumes:` `postgres_data`, `valkey_data`, `uploads` and `backups`, with a comment that explains the `*_SOURCE` rule. Run `scripts/ci/compose-config-check.sh` until it passes.
-- [ ] 21.17 Rewrite the file header: required vars, `make prod-*` usage, the single-replica rule, TLS in front, same-origin edge, split-domain option, `TRUSTED_PROXIES` guidance (empty when nothing is in front, Cloudflare ranges when Cloudflare connects directly), upgrade-notes pointer. Also document the data-location variables (`UPLOADS_SOURCE`, `POSTGRES_DATA_SOURCE`, `BACKUPS_SOURCE`; a value starting with `/`, `.` or `~` is a host folder, anything else a declared named volume) and the health checks (`/health` liveness, `/ready` readiness).
-- [ ] 21.18 Verify:
+- [x] 21.15 Add `deploy.resources.limits.memory` with env defaults to every service, `restart: unless-stopped` on long-running services, and the logging anchor everywhere.
+- [x] 21.16 Declare the top-level `volumes:` `postgres_data`, `valkey_data`, `uploads` and `backups`, with a comment that explains the `*_SOURCE` rule. Run `scripts/ci/compose-config-check.sh` until it passes.
+- [x] 21.17 Rewrite the file header: required vars, `make prod-*` usage, the single-replica rule, TLS in front, same-origin edge, split-domain option, `TRUSTED_PROXIES` guidance (empty when nothing is in front, Cloudflare ranges when Cloudflare connects directly), upgrade-notes pointer. Also document the data-location variables (`UPLOADS_SOURCE`, `POSTGRES_DATA_SOURCE`, `BACKUPS_SOURCE`; a value starting with `/`, `.` or `~` is a host folder, anything else a declared named volume) and the health checks (`/health` liveness, `/ready` readiness).
+- [x] 21.18 Verify:
   - `scripts/ci/compose-config-check.sh` passes.
   - `docker compose --env-file .env.production.example -f compose.production.yml config` renders with placeholder values, and an unset `API_DOMAIN` does not error.
   - `make prod-smoke` reaches all-healthy on a clean machine.
   - Manual pass: sign in through `http://localhost` and upload a photo; run `make prod-down && make prod-up` and confirm the photo still loads; set `UPLOADS_SOURCE=./data/uploads` after `sudo install -d -o 1000 -g 1000 ./data/uploads`, recreate, and confirm a new upload lands in `./data/uploads`; delete and re-create the folder as root and confirm that the api exits with the `not writable by uid 1000 gid 1000` log, and that `make prod-fix-uploads-owner && make prod-up` recovers.
   - `docker top` and the healthcheck commands show no Valkey or Postgres password.
   - `make prod-backup` writes `db-*.dump` and `uploads-*.tar.gz` (check with `make prod-backup-export DEST=./backup-export`).
-- [ ] 21.19 Restore drill:
+- [x] 21.19 Restore drill:
   - Copy that dump and archive into a second fresh project (`COMPOSE_PROJECT_NAME=brewform-drill`) with `docker compose cp <file> backup:/backups/`.
   - Run `make prod-restore DUMP=<dump> UPLOADS=<archive>`.
   - Compare recipe and user counts, and load a restored photo.
   - Repeat with `UPLOADS_SOURCE` and `BACKUPS_SOURCE` set to host folders.
   - Paste both results into the PR.
-- [ ] 21.20 Group check: run `sh -n docker-web-entrypoint.sh scripts/ci/*.sh`, `scripts/ci/compose-config-check.sh`, `scripts/ci/web-entrypoint.test.sh` against `brewform-web:local`, `docker compose -f compose.yml config --quiet` and `docker compose --env-file scripts/ci/compose-smoke.env -f compose.production.yml config --quiet`, then `make lint`, `make fmt` and `make fmt-check`. All must exit 0.
+- [x] 21.20 Group check: run `sh -n docker-web-entrypoint.sh scripts/ci/*.sh`, `scripts/ci/compose-config-check.sh`, `scripts/ci/web-entrypoint.test.sh` against `brewform-web:local`, `docker compose -f compose.yml config --quiet` and `docker compose --env-file scripts/ci/compose-smoke.env -f compose.production.yml config --quiet`, then `make lint`, `make fmt` and `make fmt-check`. All must exit 0.
 
 ## 22. Deploy: Makefile, CI workflow, deployment docs and env templates (t4b, refine U4)
 
