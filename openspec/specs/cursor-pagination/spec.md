@@ -1,7 +1,11 @@
 # cursor-pagination Specification
 
 ## Purpose
-TBD - created by archiving change d27-cursor-pagination. Update Purpose after archive.
+
+Defines opaque cursor pagination for recipe lists next to the existing page/offset mode. Cursors are
+direction-agnostic, cursor and page parameters are mutually exclusive, an invalid cursor answers
+400, and authorization and visibility rules apply identically in both modes. The response envelope
+tells the two modes apart, and the list routes document both in OpenAPI.
 ## Requirements
 ### Requirement: Cursor encode and decode
 
@@ -140,7 +144,7 @@ The row-value comparison is a D03 raw-SQL exception — see the lint-style raw-S
 When `cursor` is provided but `sortBy` is `likeCount` or `rating`, the system SHALL
 fall back to offset-based pagination using `page` and `perPage` (defaults: `page=1`, `perPage=20`).
 
-**F11 extension:** When `cursor` is provided but `search` is active (non-empty after sanitization), the system SHALL fall back to offset-based pagination. This is because relevance ranking (applied when `search` is active) reorders results in application code, making a `(createdAt, id)` keyset cursor non-deterministic — a keyset page boundary would skip high-rank items.
+**F11 extension:** When `cursor` is provided but `search` is active (non-empty after sanitization), the system SHALL fall back to offset-based pagination. This is because relevance ranking (applied when `search` is active) orders results by a relevance score that the database computes per request (wave 6, `advanced-search` "Database-side relevance ranking"), so a `(createdAt, id)` keyset cursor does not follow the result order — a keyset page boundary would skip high-rank items. The fallback behaviour is unchanged by wave 6; only the ranking moved from application code into SQL. Keyset paging on the score is a deferred follow-up.
 
 The system SHALL log a debug-level message with non-sensitive metadata only when the search-active fallback occurs: `log.debug({ requestId, hasSearch: true, searchLength: <number> }, 'Search active, falling back to offset pagination for ranking')`. The raw search string SHALL NOT be logged.
 
@@ -407,4 +411,22 @@ The schema SHALL continue to accept `page`, `perPage`, `sortBy`, and `sortOrder`
 
 - **WHEN** `GET /api/v1/recipes?cursor=eyJ...` is called without `includeTotal`
 - **THEN** `includeTotal` defaults to `false` (no count query is executed)
+
+### Requirement: Cursor timestamps round-trip exactly
+`recipe.created_at` SHALL be stored with millisecond precision (`timestamp(3) with time zone`, declared as `timestamp('created_at', { withTimezone: true, precision: 3 })` in `packages/db/src/schema.ts`), so the `createdAt` a cursor carries (a JavaScript `Date`, millisecond resolution) equals the stored value and keyset pages never repeat or skip a row.
+
+With an unconstrained `timestamptz`, `now()` defaults stored microseconds: an ascending page
+restarted at the previous page's last row (with `perPage=1`, the same row forever with
+`hasMore: true`) and a descending page skipped rows that shared the bookmark's millisecond. This
+applies to every `findCursor` caller (`GET /api/v1/recipes` and `GET /api/v1/follow/feed`). The
+precision change is a generated migration that rounds existing values to the millisecond; rounding
+is monotonic, so existing order is kept, and rows inside one millisecond become ties broken by `id`.
+
+#### Scenario: Ascending pages with sub-millisecond input
+- **WHEN** three recipes are written with `created_at` `…00.123400`, `…00.123600` and `…00.125200` and `findCursor` pages them with `perPage=1` and `sortOrder=asc`
+- **THEN** the pages return the three recipes once each in that order and the last page has `hasMore: false`
+
+#### Scenario: Descending pages keep rows inside one millisecond
+- **WHEN** two recipes are written with `created_at` `…00.125100` and `…00.125200` and `findCursor` pages them with `perPage=1` and `sortOrder=desc`
+- **THEN** both recipes are returned, once each
 

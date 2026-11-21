@@ -169,6 +169,12 @@ describe('Footer — Language Switcher', () => {
 });
 
 describe('Footer — i18n section headings and links', () => {
+  it('is site chrome marked print-hidden (print hides only marked elements, V2)', () => {
+    render(<Footer />);
+
+    expect(screen.getByRole('contentinfo')).toHaveClass('print-hidden');
+  });
+
   it('renders section headings using t() — English', () => {
     render(<Footer />);
 

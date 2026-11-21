@@ -1,18 +1,23 @@
 import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions } from '@brewform/db/schema';
 import type { CoffeeVarietyCategory } from '@brewform/shared';
-import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, count, countDistinct, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
+import { visibleIdentity } from '../../utils/public-identity/index.ts';
+import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
+import { listableRecipeCondition, maskUnlistableForkSources } from '../recipe/model.ts';
 
 /** Find a non-deleted coffee variety by ID. */
 export async function findById(id: string) {
-  return db.query.coffeeVarieties.findFirst({
+  return await db.query.coffeeVarieties.findFirst({
     where: and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)),
   });
 }
 
 /**
  * List non-deleted coffee varieties with optional category and search filters
- * (name/species/origin ILIKE), paginated and ordered by name, with total count.
+ * (a case-insensitive literal substring match on name, species or origin through
+ * `ilike(<col>, toContainsPattern(term))`; an empty term applies no filter), paginated
+ * and ordered by name, with total count.
  */
 export async function findMany(params: {
   category?: string;
@@ -25,13 +30,14 @@ export async function findMany(params: {
   if (params.category) {
     conditions.push(eq(coffeeVarieties.category, params.category as CoffeeVarietyCategory));
   }
-  if (params.search) {
-    const searchPattern = `%${params.search}%`;
+  const term = normalizeSearchTerm(params.search);
+  if (term !== '') {
+    const pattern = toContainsPattern(term);
     conditions.push(
       or(
-        ilike(coffeeVarieties.name, searchPattern),
-        ilike(coffeeVarieties.species, searchPattern),
-        ilike(coffeeVarieties.origin, searchPattern),
+        ilike(coffeeVarieties.name, pattern),
+        ilike(coffeeVarieties.species, pattern),
+        ilike(coffeeVarieties.origin, pattern),
       )!,
     );
   }
@@ -82,22 +88,32 @@ export async function softDelete(id: string) {
 /**
  * List public, non-deleted recipes whose current version uses the given
  * variety, paginated with total count and author/photo relations joined.
+ *
+ * The coffee-variety page is a discovery surface (capability
+ * `recipe-visibility`), so both the data and the count branch filter with
+ * `listableRecipeCondition(null)` from the recipe model: `unlisted`, `draft`
+ * and `private` recipes are never listed or counted, for any viewer. The rows
+ * pass through `maskUnlistableForkSources`, so a fork of a non-public source
+ * carries `forkedFromId: null`.
+ * The `author` of a deleted account is `null` (`visibleIdentity`); the recipe stays listed.
  */
 export async function getRecipesUsingVariety(varietyId: string, page: number, perPage: number) {
   const offset = (page - 1) * perPage;
+  const recipeConditions = listableRecipeCondition(null);
 
   const [data, countResult] = await Promise.all([
     db.query.recipes.findMany({
       with: {
-        author: { columns: { username: true, displayName: true, avatarUrl: true } },
+        author: {
+          columns: { username: true, displayName: true, avatarUrl: true, deletedAt: true },
+        },
         versions: {
           with: { versionPhotos: { with: { photo: true } } },
           orderBy: desc(recipeVersions.createdAt),
         },
       },
       where: and(
-        eq(recipes.visibility, 'public'),
-        isNull(recipes.deletedAt),
+        recipeConditions,
         inArray(
           recipes.currentVersionId,
           db
@@ -111,17 +127,12 @@ export async function getRecipesUsingVariety(varietyId: string, page: number, pe
       offset,
     }),
     db
-      .select({ count: sql<number>`count(distinct ${recipes.id})` })
+      .select({ count: countDistinct(recipes.id) })
       .from(recipes)
       .innerJoin(recipeVersions, eq(recipes.currentVersionId, recipeVersions.id))
-      .where(
-        and(
-          eq(recipeVersions.coffeeVarietyId, varietyId),
-          eq(recipes.visibility, 'public'),
-          isNull(recipes.deletedAt),
-        ),
-      ),
+      .where(and(eq(recipeVersions.coffeeVarietyId, varietyId), recipeConditions)),
   ]);
 
-  return { data, total: Number(countResult[0]?.count ?? 0) };
+  const rows = data.map((row) => ({ ...row, author: visibleIdentity(row.author) }));
+  return { data: await maskUnlistableForkSources(rows), total: Number(countResult[0]?.count ?? 0) };
 }

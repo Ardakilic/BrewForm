@@ -5,10 +5,12 @@
  * Property 2: Trigger label reflects selection count
  */
 
+import { t } from '@brewform/shared/i18n';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
 import { describe, expect, it, vi } from 'vitest';
+import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import { type TasteNoteFlat, TasteNotesFilter } from './TasteNotesFilter.tsx';
 
 // ---------------------------------------------------------------------------
@@ -384,6 +386,37 @@ describe('TasteNotesFilter — search', () => {
       expect(screen.getByText('No taste notes found.')).toBeInTheDocument();
       expect(screen.queryAllByRole('option').length).toBe(0);
     });
+  });
+
+  it('shows the Turkish empty state under the tr locale', async () => {
+    localStorage.setItem('brewform_locale', 'tr');
+    const user = userEvent.setup();
+    const allTasteNotes: TasteNoteFlat[] = [
+      { id: 'root-1', name: 'Fruity', depth: 0, parentId: null },
+      { id: 'mid-1', name: 'Berry', depth: 1, parentId: 'root-1' },
+      { id: 'leaf-1', name: 'Raspberry', depth: 2, parentId: 'mid-1' },
+    ];
+
+    try {
+      render(
+        <I18nProvider>
+          <TasteNotesFilter
+            allTasteNotes={allTasteNotes}
+            selectedIds={[]}
+            onChange={vi.fn()}
+            placeholder="placeholder"
+          />
+        </I18nProvider>,
+      );
+
+      await user.click(screen.getByRole('combobox'));
+      const searchInput = screen.getByPlaceholderText(t('taste.searchPlaceholder', 'tr'));
+      fireEvent.change(searchInput, { target: { value: 'zzz' } });
+
+      expect(await screen.findByText(t('taste.notFound', 'tr'))).toBeInTheDocument();
+    } finally {
+      localStorage.clear();
+    }
   });
 
   it('resets search query when popup closes and reopens', async () => {

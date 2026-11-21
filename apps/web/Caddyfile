@@ -1,14 +1,48 @@
+# BrewForm web image Caddyfile (production, :80). The repo-root Caddyfile is the :8080
+# preview config used by `make preview`.
+#
+# docker-web-entrypoint.sh decides at container start which optional snippets exist:
+#   /etc/caddy/global.d/trusted.caddy  `servers { trusted_proxies static … }`, written only
+#                                      when $TRUSTED_PROXIES is valid (unset = trust no proxy)
+#   /etc/caddy/conf.d/api-proxy.caddy  same-origin reverse proxy for /api/*, /uploads/*,
+#                                      /share/* and the exact paths /health and
+#                                      /sitemap.xml (the root-level sitemap index; its
+#                                      query passes through), written only when
+#                                      $API_UPSTREAM is a valid host[:port]
+# An import glob that matches no file is not an error, so without them this file serves
+# the static SPA only (the split-domain topology, e.g. Coolify).
+{
+	admin off
+	import /etc/caddy/global.d/*.caddy
+}
+
 :80 {
-	root * /usr/share/caddy
-	encode gzip
+	encode zstd gzip
 
-	# Never cache the runtime config. A redeployed container regenerates /config.js
-	# (see docker-web-entrypoint.sh) and its new API URL must take effect immediately.
-	# The hashed JS/CSS bundles are still cached normally by the browser.
-	@runtime-config path /config.js
-	header @runtime-config Cache-Control "no-store"
+	# Liveness of the web container itself: answered by Caddy, never by the API upstream,
+	# so it stays 200 while the API is down (the image HEALTHCHECK and the compose web
+	# health check probe it).
+	handle /healthz {
+		header Cache-Control "no-store"
+		respond "ok" 200
+	}
 
-	# SPA fallback: serve index.html for client-side (React Router) routes.
-	try_files {path} /index.html
-	file_server
+	# Optional API reverse proxy (see the header). Its `handle` is more specific than the
+	# static fallback below, so proxied paths never reach the SPA fallback.
+	import /etc/caddy/conf.d/*.caddy
+
+	# Static SPA. This handle is also the slot for future security headers.
+	handle {
+		root * /usr/share/caddy
+
+		# Never cache the runtime config. A redeployed container regenerates /config.js
+		# (see docker-web-entrypoint.sh) and its new API URL must take effect immediately.
+		# The hashed JS/CSS bundles are still cached normally by the browser.
+		@runtime-config path /config.js
+		header @runtime-config Cache-Control "no-store"
+
+		# SPA fallback: serve index.html for client-side (React Router) routes.
+		try_files {path} /index.html
+		file_server
+	}
 }

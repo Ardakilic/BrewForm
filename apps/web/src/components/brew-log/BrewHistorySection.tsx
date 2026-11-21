@@ -1,11 +1,11 @@
-import type { BrewLogListItemOutput } from '@brewform/shared/schemas';
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
-import { brewLogApi } from '../../api/index.ts';
+import { useEffect } from 'react';
+import { Link, useFetcher } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { type recipeBrewLogsLoader, recipeBrewLogsPath } from '../../routes/resources/brew-logs.ts';
+import { createLogger } from '../../utils/logger.ts';
 import { BrewLogCard } from './BrewLogCard.tsx';
 
-const HISTORY_PER_PAGE = 5;
+const log = createLogger('BrewHistorySection');
 
 /** Props for {@link BrewHistorySection}. */
 interface BrewHistorySectionProps {
@@ -16,26 +16,19 @@ interface BrewHistorySectionProps {
 /**
  * Recipe-scoped brew history: the viewer's five most recent brew logs for the
  * recipe, a "Brew Again" link to the create form (prefilled with the current
- * version), and an empty state. Loading and fetch errors render no items.
+ * version), and an empty state. The logs are read with a fetcher from the
+ * `resources/brew-logs/recipe/:recipeId` resource route (a new recipe id cancels
+ * the previous load); while loading, and when the load fails, no items render.
  */
 export function BrewHistorySection({ recipeId, currentVersionId }: BrewHistorySectionProps) {
   const { t } = useTranslation();
-  const [logs, setLogs] = useState<BrewLogListItemOutput[] | null>(null);
+  const { load, data } = useFetcher<typeof recipeBrewLogsLoader>();
+  const logs = data?.ok ? data.logs : null;
 
   useEffect(() => {
-    let cancelled = false;
-    brewLogApi
-      .listForRecipe(recipeId, { page: 1, perPage: HISTORY_PER_PAGE })
-      .then((response) => {
-        if (!cancelled) setLogs(response.data);
-      })
-      .catch(() => {
-        // ponytail: history is supplementary — swallow errors silently
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [recipeId]);
+    log.debug({ recipeId }, 'BrewHistorySection loading history');
+    void load(recipeBrewLogsPath(recipeId));
+  }, [load, recipeId]);
 
   const brewAgainQuery = currentVersionId
     ? `recipeId=${recipeId}&recipeVersionId=${currentVersionId}`
@@ -47,7 +40,10 @@ export function BrewHistorySection({ recipeId, currentVersionId }: BrewHistorySe
         <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
           {t('brewLog.history.title')}
         </h2>
-        <Link to={`/brew-logs/new?${brewAgainQuery}`} className="btn-secondary text-sm">
+        <Link
+          to={`/brew-logs/new?${brewAgainQuery}`}
+          className="btn-secondary text-sm print-hidden"
+        >
           {t('brewLog.history.brewAgain')}
         </Link>
       </div>

@@ -54,7 +54,11 @@ function makeAuthValue(
   } as ReturnType<typeof useAuth>;
 }
 
-function renderWithRouter(authValue: ReturnType<typeof useAuth>, requireAdmin = false) {
+function renderWithRouter(
+  authValue: ReturnType<typeof useAuth>,
+  requireAdmin = false,
+  entry = '/protected',
+) {
   mockUseAuth.mockReturnValue(authValue);
   const router = createMemoryRouter(
     [
@@ -75,9 +79,9 @@ function renderWithRouter(authValue: ReturnType<typeof useAuth>, requireAdmin = 
         element: <div data-testid="home-page">Home</div>,
       },
     ],
-    { initialEntries: ['/protected'] },
+    { initialEntries: ['/start', entry], initialIndex: 1 },
   );
-  return render(<RouterProvider router={router} />);
+  return { ...render(<RouterProvider router={router} />), router };
 }
 
 beforeEach(() => {
@@ -97,6 +101,20 @@ describe('RequireAuth', () => {
     await waitFor(() => {
       expect(screen.getByTestId('login-page')).toBeInTheDocument();
     });
+  });
+
+  it('replaces the entry with /login?next=<encoded path+search> so Back skips the guarded page', async () => {
+    const { router } = renderWithRouter(
+      makeAuthValue({ user: null, isLoading: false, isAuthenticated: false }),
+      false,
+      '/protected?tab=2',
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('login-page')).toBeInTheDocument();
+    });
+    expect(router.state.location.pathname).toBe('/login');
+    expect(router.state.location.search).toBe('?next=%2Fprotected%3Ftab%3D2');
+    expect(router.state.historyAction).toBe('REPLACE');
   });
 
   it('should redirect to / when authenticated non-admin and requireAdmin is true', async () => {

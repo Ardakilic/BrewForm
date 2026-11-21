@@ -128,6 +128,74 @@ describe('BeanSection — conditional rendering unit tests', () => {
     );
     expect(screen.getByText('Colombia')).toBeInTheDocument();
   });
+
+  it('renders the short ages through the en day key', () => {
+    render(
+      withI18n(
+        <BeanSection roastDate="2026-01-01" packageOpenDate="2026-02-01" grindDate="2026-02-02" />,
+      ),
+    );
+    for (const age of ['7d', '3d', '1d']) {
+      expect(screen.getByText(age)).toBeInTheDocument();
+    }
+  });
+
+  it('renders the short ages in Turkish under tr, never a hard-coded "d" unit', () => {
+    localStorage.setItem('brewform_locale', 'tr');
+    try {
+      const { container } = render(
+        withI18n(
+          <BeanSection
+            roastDate="2026-01-01"
+            packageOpenDate="2026-02-01"
+            grindDate="2026-02-02"
+          />,
+        ),
+      );
+      for (const age of ['7 gün', '3 gün', '1 gün']) {
+        expect(screen.getByText(age)).toBeInTheDocument();
+      }
+      expect(container.textContent).not.toMatch(/\d+d\b/);
+    } finally {
+      localStorage.removeItem('brewform_locale');
+    }
+  });
+
+  it('renders the processing subtitle through the en process key', () => {
+    render(withI18n(<BeanSection coffeeBrand="Heart Roasters" coffeeProcessing="washed" />));
+    expect(screen.getByText('Heart Roasters · Washed process')).toBeInTheDocument();
+  });
+
+  it('renders the processing subtitle in Turkish under tr, never a hard-coded "process" word', () => {
+    localStorage.setItem('brewform_locale', 'tr');
+    try {
+      const { container } = render(
+        withI18n(<BeanSection coffeeBrand="Heart Roasters" coffeeProcessing="washed" />),
+      );
+      expect(screen.getByText('Heart Roasters · Washed işlemi')).toBeInTheDocument();
+      expect(container.textContent).not.toMatch(/\bprocess\b/i);
+    } finally {
+      localStorage.removeItem('brewform_locale');
+    }
+  });
+
+  it('stacks the date grid below sm and lets each date and age wrap (320 px, V1)', () => {
+    render(
+      withI18n(
+        <BeanSection roastDate="2026-01-01" packageOpenDate="2026-02-01" grindDate="2026-02-02" />,
+      ),
+    );
+    // jsdom has no layout: assert the responsive classes.
+    const field = screen.getByText('Bag Opened').parentElement as HTMLElement;
+    const grid = field.parentElement as HTMLElement;
+    expect(grid).toHaveClass('grid', 'grid-cols-1', 'sm:grid-cols-2');
+    expect(grid.className.split(/\s+/)).not.toContain('grid-cols-2');
+
+    for (const label of ['Roasted', 'Bag Opened', 'Ground']) {
+      const dateLine = screen.getByText(label).nextElementSibling as HTMLElement;
+      expect(dateLine).toHaveClass('flex-wrap');
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

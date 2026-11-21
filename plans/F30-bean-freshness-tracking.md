@@ -1,5 +1,7 @@
 # F30 — Bean Roast-Date Freshness Tracking
 
+> **Refresh (2026-11-21, wave 6):** the stack is Node 26 + pnpm (#135). The phase-2 email nudge now schedules with `node-cron` (`cron.schedule(expr, fn, { name })` in `apps/api/src/utils/jobs/cron.ts`) and carries the per-replica caveat below; tests use Vitest. Phase 1 is unchanged.
+>
 > **Validation status (2026-07-13): ✅ Valid**
 >
 > - Verified. `recipeVersions.roastDate` / `packageOpenDate` / `grindDate` / `brewDate` present (`schema.ts:176-239`, cited 175-238); `brewDate` is notNull default now. The `beans` table still has NO roast date (`schema.ts:386-414`) — the plan correctly flags any `beans.roastDate` assumption as wrong.
@@ -101,7 +103,8 @@ Pure function, no I/O, fully unit-testable in the shared package; the API can re
 ## Phase 2 (optional, explicitly out of scope for this PRD)
 
 - Add nullable `roastDate` to the `beans` table so a bean in the user's library carries its own freshness independent of recipes; migration via `make db-generate`.
-- Opt-in "your bean is approaching past peak" email through `utils/notify` + a `Deno.cron` entry (pattern: `apps/api/src/utils/jobs/cron.ts`), gated by a new `userPreferences` flag — coordinate with F29's preference-group UI.
+- Opt-in "your bean is approaching past peak" email through `utils/notify` + a node-cron entry in `apps/api/src/utils/jobs/cron.ts` (`cron.schedule('0 9 * * *', fn, { name: 'bean-freshness-nudge', timezone: 'Etc/UTC', noOverlap: true })`, same pattern as `evaluate-badges`), gated by a new `userPreferences` flag — coordinate with F29's preference-group UI. Any new MJML template is compiled with `pnpm run email-build` (`make email-build`).
+- Per-replica caveat: node-cron fires in every API replica. When `CACHE_DRIVER=redis`, wrap the job in F29's `runExclusive()` helper (`apps/api/src/utils/jobs/lock.ts`: `SET job-lock:<name>:<slot> <token> NX PX <ttl>` in Valkey) so one replica sends; with the memory driver, run a single API replica. A per-user "last nudged" timestamp keeps a re-run from sending twice.
 - If freshness is ever persisted/filterable server-side, the enum comes from `FRESHNESS_STATUS_VALUES` (already single-sourced above).
 
 ## i18n & logging
@@ -111,7 +114,7 @@ Pure function, no I/O, fully unit-testable in the shared package; the API can re
 
 ## Test plan
 
-- `packages/shared/src/utils/freshness.test.ts` (`@std/testing/bdd` + `@std/expect`):
+- `packages/shared/src/utils/freshness.test.ts` (Vitest: `describe`/`it`/`expect` from `vitest`; `make test-shared`):
   - Boundary days for each status per window (day 0, 4, 21, 35, 60 ± 1) for default, espresso, cold-brew windows.
   - Unknown/undefined brew method falls back to `DEFAULT_WINDOW`.
   - Future roast date (roast after reference) → `null`; string and `Date` inputs equivalent; timezone-safe day math (UTC-based, whole-day floor).
@@ -126,7 +129,7 @@ Pure function, no I/O, fully unit-testable in the shared package; the API can re
 - [ ] Non-blocking "past peak" nudge in the recipe form
 - [ ] Shared util is pure and covered at status boundaries
 - [ ] en + tr i18n keys present
-- [ ] `make check && make lint && make test` pass
+- [ ] `make check && make lint && make test-shared && make test-web` pass
 
 ## Effort
 

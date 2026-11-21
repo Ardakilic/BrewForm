@@ -1,8 +1,32 @@
 # F03 — Public Profile Brew Stats Dashboard
 
-> **Validation status (2026-07-13): ❌ Blocked by F02 — plus corrections below**
+> **Refresh (2026-11-21): unblocked by F02 (shipped 2026-08-13) — the corrections below still apply**
 >
-> - Still blocked: every stat derives from `brewLogs`, which does not exist until F02 lands.
+> - The data source exists. The `brewLogs` table (`brew_log`, `packages/db/src/schema.ts:1166`:
+>   `userId`, `recipeId`, nullable `recipeVersionId`, `brewedAt`, `yieldActual`, `doseActual`,
+>   `notes`, `personalRating` 1–10, soft-deleted via `deletedAt`, indexed on `(userId, brewedAt)`)
+>   and the `apps/api/src/modules/brew-log/` module are live under `/api/v1/brew-logs`
+>   (`apps/api/src/routes/index.ts:60`).
+> - Reuse what exists before adding queries: `service.getUserBrewStats(userId)`
+>   (`brew-log/service.ts:177`, model at `brew-log/model.ts:184`) already returns `totalBrews`,
+>   `last30Days`, `distinctRecipeCount`, `firstBrewedAt` and `lastBrewedAt`, but only for the
+>   caller (`GET /api/v1/brew-logs/stats/user`, auth required). `GET /api/v1/brew-logs/stats/recipe/:recipeId`
+>   (public, `brew-log/index.ts:130-132`) returns `brewCount` and `avgBrewRating` per recipe.
+>   The name `getUserBrewStats` is therefore TAKEN — name the public profile aggregation
+>   differently (e.g. `getPublicProfileBrewStats(username)` in the user module, calling new
+>   `brew-log/model.ts` aggregations), and extend the existing model rather than duplicating it.
+> - Brew logs are private journal records (only their owner lists them). A public stats tab
+>   exposes aggregates of them, so decide in the spec whether it is opt-in, and count only brew
+>   logs of recipes that are listable to everyone (`listableRecipeCondition(null)` from
+>   `recipe/model.ts`, wave 6), so unlisted, private and draft recipes never leak through
+>   per-method or per-equipment counts.
+> - The web side already has `brewLogApi.getUserStats`/`getRecipeStats` (`apps/web/src/api/index.ts`),
+>   `components/brew-log/RecipeBrewStats.tsx` and the `routes/resources/brew-logs.ts` resource
+>   route. New stats must load through a route loader or resource-route fetcher (web data-loading
+>   rule; pages and components never import `api/index.ts`), and charts use the shared
+>   `apps/web/src/utils/chart/` helpers.
+> - The month-bucket query below uses raw `sql` (`TO_CHAR`, `NOW() - INTERVAL`); replace it with
+>   Drizzle builders or document a D03 exception, per the AGENTS.md database rules.
 > - Tab type has DRIFTED since 07-04: F01 added a `collections` tab. `type Tab` is now `'recipes' | 'badges' | 'followers' | 'following' | 'collections'` (apps/web/src/pages/users/UserProfilePage.tsx:19); `ALLOWED_TABS` (:93–99) and the `tabs` array (:124–130) both include `collections`. The plan's proposed `Tab`/`tabs` (which omit `collections`) would regress F01 — ADD `stats` to the existing five, don't replace them.
 > - Page now uses a react-router LOADER (`loader` at UserProfilePage.tsx:39, `useLoaderData` at :91) that pre-fetches per-tab data (followers/following/collections). Load stats in the loader (or via a child fetch) — the old "tab renders a child that fetches on mount" shape no longer matches the page.
 > - NEW — D42: `api.get(\`/users/${username}/stats\`)` untyped is stale (`api/types.ts` deleted). Add a `UserStatsOutputSchema` in `packages/shared/src/schemas/responses/user.ts`, export it, and a typed `userApi.getStats(username)` returning its `z.infer`.
@@ -38,7 +62,7 @@ Add a public stats dashboard to user profiles showing: most-used brew methods, a
 ### Database Schema
 
 **No new tables.** All data is derived from:
-- `brewLogs` (from F02) — brew method, equipment, ratings, dates
+- `brewLogs` (shipped with F02, `packages/db/src/schema.ts:1166`) — brew method, equipment, ratings, dates
 - `userRecipeLikes` — liked recipes
 - `userRecipeRatings` — user's ratings on recipes
 - `recipeVersions` — brew method, equipment used
@@ -319,7 +343,7 @@ Add translation keys:
 ## Implementation Steps
 
 1. Add aggregation model functions to `apps/api/src/modules/user/model.ts`
-2. Add `getUserBrewStats` service function to `apps/api/src/modules/user/service.ts`
+2. Add a public profile aggregation service function (not `getUserBrewStats`, which the brew-log module already exports) to `apps/api/src/modules/user/service.ts`
 3. Add `GET /:username/stats` route to `apps/api/src/modules/user/index.ts`
 4. Create frontend components: `StatsTab.tsx`, `BrewMethodChart.tsx`, `RatingDistribution.tsx`, `FavouriteEquipmentList.tsx`, `BrewFrequencyChart.tsx`
 5. Modify `UserProfilePage.tsx` to add "Stats" tab and render `StatsTab`
@@ -329,7 +353,7 @@ Add translation keys:
 
 ## Dependencies
 
-- `brewLogs` table (from F02 — Brew Journal)
+- `brewLogs` table (shipped with F02 — Brew Journal, 2026-08-13) and the `brew-log` module (`/api/v1/brew-logs`)
 - `userRecipeRatings` table (existing)
 - `recipeVersions` table (existing)
 - `recipeEquipment` table (existing)

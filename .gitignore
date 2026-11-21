@@ -17,6 +17,8 @@ coverage/
 .env
 .env.local
 .env.*.local
+# Production secrets for compose.production.yml (template: .env.production.example)
+.env.production
 
 # IDE
 .vscode/
@@ -44,6 +46,14 @@ packages/db/src/generated/
 
 # Uploads
 uploads/
+
+# Database / uploads backups (BACKUPS_SOURCE=./backups host folder, backup exports)
+backups/
+backup-export/
+# Production data in the documented host-folder examples (UPLOADS_SOURCE=./data/uploads,
+# the pre-wave-6 upgrade rescue copy)
+/data/
+uploads-rescue/
 
 # Arda
 pr_description.md

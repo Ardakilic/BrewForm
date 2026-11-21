@@ -1,6 +1,7 @@
 import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import {
+  coffeeVarieties,
   equipment,
   photos,
   recipeAdditionalPreparations,
@@ -12,8 +13,8 @@ import {
   tasteNotes,
   users,
 } from '@brewform/db/schema';
-import { eq, inArray } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { count, eq, inArray } from 'drizzle-orm';
+import { afterEach, assert, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 describe('createRecipeWithRelations', () => {
@@ -23,6 +24,7 @@ describe('createRecipeWithRelations', () => {
   const createdRecipeIds: string[] = [];
   const throwawayRecipeIds: string[] = [];
   const throwawayPhotoIds: string[] = [];
+  const createdVarietyIds: string[] = [];
 
   beforeEach(async () => {
     const userId = crypto.randomUUID();
@@ -90,8 +92,12 @@ describe('createRecipeWithRelations', () => {
 
     await db.delete(tasteNotes).where(eq(tasteNotes.id, tasteNote.id));
     await db.delete(equipment).where(eq(equipment.id, equipmentRow.id));
+    if (createdVarietyIds.length) {
+      await db.delete(coffeeVarieties).where(inArray(coffeeVarieties.id, createdVarietyIds));
+    }
     await db.delete(users).where(eq(users.id, user.id));
 
+    createdVarietyIds.length = 0;
     createdRecipeIds.length = 0;
     throwawayRecipeIds.length = 0;
     throwawayPhotoIds.length = 0;
@@ -102,7 +108,7 @@ describe('createRecipeWithRelations', () => {
   ): model.CreateRecipeWithRelationsInput {
     return {
       authorId: user.id,
-      slug: `test-recipe-${crypto.randomUUID().slice(0, 8)}`,
+      slugCandidates: [`test-recipe-${crypto.randomUUID().slice(0, 8)}`],
       title: 'Test Recipe',
       visibility: 'draft',
       roastDate: null,
@@ -120,6 +126,20 @@ describe('createRecipeWithRelations', () => {
       beanId: null,
       brewRatio: null,
       flowRate: null,
+      productName: null,
+      coffeeBrand: null,
+      coffeeProcessing: null,
+      vendorId: null,
+      grindSize: null,
+      groundWeightGrams: null,
+      extractionTimeSeconds: null,
+      extractionVolumeMl: null,
+      temperatureCelsius: null,
+      tds: null,
+      coffeeVarietyId: null,
+      coffeeVarietyName: null,
+      rating: null,
+      emojiTag: null,
       ...overrides,
     };
   }
@@ -131,7 +151,7 @@ describe('createRecipeWithRelations', () => {
 
     const [recipeRow] = await db.select().from(recipes).where(eq(recipes.id, result!.id));
     expect(recipeRow).toBeDefined();
-    expect(recipeRow.slug).toBe(input.slug);
+    expect(recipeRow.slug).toBe(input.slugCandidates[0]);
     expect(recipeRow.title).toBe(input.title);
     expect(recipeRow.authorId).toBe(input.authorId);
     expect(recipeRow.visibility).toBe(input.visibility);
@@ -184,6 +204,30 @@ describe('createRecipeWithRelations', () => {
     expect(versionRow.emojiTag).toBe('fire');
     expect(versionRow.preInfusionTimeSeconds).toBe(10);
     expect(versionRow.beanId).toBeNull();
+  });
+
+  it('inserts tds, coffeeVarietyId and coffeeVarietyName (round-trip)', async () => {
+    const varietyId = crypto.randomUUID();
+    await db
+      .insert(coffeeVarieties)
+      .values({ id: varietyId, name: `Gesha ${varietyId.slice(0, 8)}`, category: 'variety' });
+    createdVarietyIds.push(varietyId);
+
+    const result = await model.createRecipeWithRelations(
+      buildInput({ tds: '1.35', coffeeVarietyId: varietyId, coffeeVarietyName: 'Gesha' }),
+    );
+    createdRecipeIds.push(result!.id);
+
+    expect(result!.versions[0].tds).toBe('1.35');
+    expect(result!.versions[0].coffeeVarietyId).toBe(varietyId);
+    expect(result!.versions[0].coffeeVarietyName).toBe('Gesha');
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    expect(versionRow.tds).toBe('1.35');
+    expect(versionRow.coffeeVarietyId).toBe(varietyId);
+    expect(versionRow.coffeeVarietyName).toBe('Gesha');
   });
 
   it('inserts taste notes with correct intensity', async () => {
@@ -447,18 +491,18 @@ describe('createRecipeWithRelations', () => {
       equipmentIds: [equipmentRow.id],
     });
     const result = await model.createRecipeWithRelations(input);
-    createdRecipeIds.push(result!.id);
+    assert.exists(result);
+    createdRecipeIds.push(result.id);
 
-    expect(result).toBeDefined();
-    expect(result!.author).toBeDefined();
-    expect(result!.author.id).toBe(user.id);
-    expect(result!.author.username).toBeDefined();
-    expect(result!.author.displayName).toBeDefined();
-    expect(result!.author.avatarUrl).toBeDefined();
-    expect(Array.isArray(result!.versions)).toBe(true);
-    expect(result!.versions.length).toBe(1);
+    assert.exists(result.author);
+    expect(result.author.id).toBe(user.id);
+    expect(result.author.username).toBeDefined();
+    expect(result.author.displayName).toBeDefined();
+    expect(result.author.avatarUrl).toBeDefined();
+    expect(Array.isArray(result.versions)).toBe(true);
+    expect(result.versions.length).toBe(1);
 
-    const firstVersion = result!.versions[0];
+    const firstVersion = result.versions[0];
     expect(firstVersion.tasteNotes).toBeDefined();
     expect(firstVersion.tasteNotes.length).toBe(1);
     expect(firstVersion.tasteNotes[0].tasteNote).toBeDefined();
@@ -477,10 +521,178 @@ describe('createRecipeWithRelations', () => {
 
     expect(firstVersion.bean).toBeDefined();
 
-    expect(result!.photos).toBeDefined();
-    expect(Array.isArray(result!.photos)).toBe(true);
+    expect(result.photos).toBeDefined();
+    expect(Array.isArray(result.photos)).toBe(true);
 
-    expect(result!.forkedFrom).toBeNull();
-    expect(result!.currentVersionId).toBe(firstVersion.id);
+    expect(result.forkedFrom).toBeNull();
+    expect(result.currentVersionId).toBe(firstVersion.id);
+  });
+});
+
+describe('slug claim (createRecipeWithRelations / forkRecipe)', () => {
+  let user: { id: string };
+  /** Recipes to delete after each test, children (forks) before their sources. */
+  const recipeIds: string[] = [];
+
+  beforeEach(async () => {
+    const userId = crypto.randomUUID();
+    await db.insert(users).values({
+      id: userId,
+      email: `slugclaim-${userId}@example.com`,
+      username: `slugclaim-${userId.slice(0, 8)}`,
+      passwordHash: 'hash',
+    });
+    user = { id: userId };
+  });
+
+  afterEach(async () => {
+    for (const recipeId of recipeIds) {
+      await db.update(recipes).set({ currentVersionId: null }).where(eq(recipes.id, recipeId));
+      await db.delete(recipeVersions).where(eq(recipeVersions.recipeId, recipeId));
+      await db.delete(recipes).where(eq(recipes.id, recipeId));
+    }
+    recipeIds.length = 0;
+    await db.delete(users).where(eq(users.id, user.id));
+  });
+
+  /** A unique slug for this test run. */
+  function freshSlug(label: string): string {
+    return `claim-${label}-${crypto.randomUUID().slice(0, 8)}`;
+  }
+
+  /** Insert a bare recipe row holding `slug` (optionally soft-deleted) and track it. */
+  async function holdSlug(slug: string, deleted = false): Promise<string> {
+    const [row] = await db
+      .insert(recipes)
+      .values({
+        slug,
+        title: `Holder ${slug}`,
+        authorId: user.id,
+        visibility: 'public',
+        deletedAt: deleted ? new Date() : null,
+      })
+      .returning({ id: recipes.id });
+    recipeIds.push(row.id);
+    return row.id;
+  }
+
+  /** Count the author's recipe rows (soft-deleted included) and their version rows. */
+  async function authorRowCounts(): Promise<{ recipes: number; versions: number }> {
+    const [recipeCount] = await db
+      .select({ n: count() })
+      .from(recipes)
+      .where(eq(recipes.authorId, user.id));
+    const [versionCount] = await db
+      .select({ n: count() })
+      .from(recipeVersions)
+      .innerJoin(recipes, eq(recipes.id, recipeVersions.recipeId))
+      .where(eq(recipes.authorId, user.id));
+    return { recipes: recipeCount.n, versions: versionCount.n };
+  }
+
+  function buildInput(slugCandidates: string[]): model.CreateRecipeWithRelationsInput {
+    return {
+      authorId: user.id,
+      slugCandidates,
+      title: 'Slug Claim Recipe',
+      visibility: 'public',
+      roastDate: null,
+      packageOpenDate: null,
+      grindDate: null,
+      brewDate: new Date(),
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      brewerDetails: null,
+      grinder: null,
+      personalNotes: '',
+      preparationNotes: 'Bloom 45s',
+      isFavourite: false,
+      preInfusionTimeSeconds: null,
+      beanId: null,
+      brewRatio: null,
+      flowRate: null,
+      productName: null,
+      coffeeBrand: null,
+      coffeeProcessing: null,
+      vendorId: null,
+      grindSize: null,
+      groundWeightGrams: null,
+      extractionTimeSeconds: null,
+      extractionVolumeMl: null,
+      temperatureCelsius: null,
+      tds: null,
+      coffeeVarietyId: null,
+      coffeeVarietyName: null,
+      rating: null,
+      emojiTag: null,
+    };
+  }
+
+  it('falls through a slug held by a soft-deleted recipe to the next candidate', async () => {
+    const taken = freshSlug('taken');
+    const free = freshSlug('free');
+    await holdSlug(taken, true);
+
+    const result = await model.createRecipeWithRelations(buildInput([taken, free]));
+    expect(result).not.toBeNull();
+    recipeIds.unshift(result!.id);
+    expect(result!.slug).toBe(free);
+
+    const versions = await db
+      .select({ id: recipeVersions.id })
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    expect(versions).toHaveLength(1);
+  });
+
+  it('returns null and writes nothing when every candidate is taken', async () => {
+    const a = freshSlug('a');
+    const b = freshSlug('b');
+    await holdSlug(a);
+    await holdSlug(b, true);
+    const before = await authorRowCounts();
+
+    const result = await model.createRecipeWithRelations(buildInput([a, b]));
+    expect(result).toBeNull();
+    expect(await authorRowCounts()).toEqual(before);
+  });
+
+  it('forkRecipe claims the next free candidate and bumps the source forkCount once', async () => {
+    const source = await model.createRecipeWithRelations(buildInput([freshSlug('source')]));
+    recipeIds.push(source!.id);
+    const taken = freshSlug('fork-taken');
+    const free = freshSlug('fork-free');
+    await holdSlug(taken);
+
+    const fork = await model.forkRecipe(source!.id, user.id, 'Fork of X', [taken, free]);
+    expect(fork).not.toBeNull();
+    recipeIds.unshift(fork!.id);
+    expect(fork!.slug).toBe(free);
+
+    const [sourceRow] = await db
+      .select({ forkCount: recipes.forkCount })
+      .from(recipes)
+      .where(eq(recipes.id, source!.id));
+    expect(sourceRow.forkCount).toBe(1);
+  });
+
+  it('forkRecipe returns null and leaves forkCount unchanged when every candidate is taken', async () => {
+    const source = await model.createRecipeWithRelations(buildInput([freshSlug('source')]));
+    recipeIds.push(source!.id);
+    const a = freshSlug('fork-a');
+    const b = freshSlug('fork-b');
+    await holdSlug(a);
+    await holdSlug(b, true);
+    const before = await authorRowCounts();
+
+    const fork = await model.forkRecipe(source!.id, user.id, 'Fork of X', [a, b]);
+    expect(fork).toBeNull();
+
+    const [sourceRow] = await db
+      .select({ forkCount: recipes.forkCount })
+      .from(recipes)
+      .where(eq(recipes.id, source!.id));
+    expect(sourceRow.forkCount).toBe(0);
+    expect(await authorRowCounts()).toEqual(before);
   });
 });

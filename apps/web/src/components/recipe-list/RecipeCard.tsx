@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { formatDecimal } from '../../utils/format.ts';
 import { AuthorButton } from '../ui/AuthorButton.tsx';
 
 /**
@@ -30,7 +31,8 @@ export interface RecipeCardVersion {
  * subset of `RecipeListItemOutput` / `RecipeWithAuthorOutput` /
  * `RecipeWithVersionsOutput` so one card serves every recipe-list surface.
  * `forkCount` is optional (the public-profile projection omits it) and
- * `author` is optional (hidden entirely with `hideAuthor`).
+ * `author` is optional (hidden entirely with `hideAuthor`); `null` means the
+ * account was deleted and renders as "Deleted user" without a link.
  */
 export interface RecipeCardRecipe {
   id: string;
@@ -66,7 +68,7 @@ interface RecipeCardProps {
  * passed explicitly (e.g. `r.versions[0]` from the coffee-variety endpoint).
  */
 export function RecipeCard({ recipe, hideAuthor, version }: RecipeCardProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { author } = recipe;
   return (
     <Link to={`/recipes/${recipe.slug}`} className="card hover:shadow-lg transition-shadow">
@@ -75,7 +77,8 @@ export function RecipeCard({ recipe, hideAuthor, version }: RecipeCardProps) {
       </h3>
       {!hideAuthor && (
         <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          {t('recipe.card.by')} {author ? <AuthorButton author={author} /> : 'unknown'}
+          {t('recipe.card.by')}{' '}
+          {author ? <AuthorButton author={author} /> : <span>{t('common.deletedUser')}</span>}
         </p>
       )}
       {version && (
@@ -86,7 +89,10 @@ export function RecipeCard({ recipe, hideAuthor, version }: RecipeCardProps) {
           <span>{version.brewMethod.replace(/_/g, ' ')}</span>
           <span>•</span>
           <span>{version.drinkType.replace(/_/g, ' ')}</span>
-          {version.rating && <span>• ★ {version.rating}</span>}
+          {/* Stored 1–10 rating shown on the five-star scale next to the star glyph */}
+          {version.rating != null && version.rating > 0 && (
+            <span>• ★ {formatDecimal(version.rating / 2, locale, 1)}</span>
+          )}
         </div>
       )}
       <div

@@ -1,9 +1,17 @@
 import type { CollectionListItemOutput } from '@brewform/shared/schemas';
-import { useEffect, useState } from 'react';
-import { ApiError, collectionApi } from '../../api/index.ts';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFetcher } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
+import {
+  MY_COLLECTIONS_PATH,
+  type myCollectionsAction,
+  type myCollectionsLoader,
+  myCollectionsPath,
+} from '../../routes/resources/collections.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { Modal } from '../ui/Modal.tsx';
+import { useToast } from '../ui/Toast.tsx';
 import { CollectionVisibilityBadge } from './CollectionVisibilityBadge.tsx';
 
 const log = createLogger('AddToCollectionModal');
@@ -12,120 +20,287 @@ const log = createLogger('AddToCollectionModal');
 interface AddToCollectionModalProps {
   recipeId: string;
   open: boolean;
-  onClose: () => void;
+  /**
+   * Called when the modal closes (× button, Escape or backdrop) with `changed`: whether at least
+   * one membership change was confirmed since it opened (an `ok` toggle, a 409 "already in the
+   * collection" or a successful create), so the page can refresh its "In collections" card once.
+   */
+  onClose: (changed: boolean) => void;
+  /**
+   * The current recipe's visibility. When it is `draft`, `private` or `unlisted`, the modal
+   * explains that only the author sees the recipe in their collections until it is public.
+   */
+  recipeVisibility?: string;
+}
+
+/** Recipe visibilities that collections hide from everyone but the recipe's author. */
+const HIDDEN_IN_COLLECTIONS: ReadonlySet<string> = new Set(['draft', 'private', 'unlisted']);
+
+/** Maximum collection-name length, matching the shared `CollectionCreateSchema`. */
+const MAX_COLLECTION_NAME_LENGTH = 255;
+
+/** Load state of the collections list: in flight, shown, or failed. */
+type LoadPhase = 'loading' | 'ready' | 'failed';
+
+/**
+ * Returns `collections` with the membership of `collectionId` set to `contains`, adjusting its
+ * `recipeCount` by one when the membership actually changes.
+ */
+function withMembership(
+  collections: CollectionListItemOutput[],
+  collectionId: string,
+  contains: boolean,
+): CollectionListItemOutput[] {
+  return collections.map((c) =>
+    c.id === collectionId && (c.containsRecipe === true) !== contains
+      ? {
+          ...c,
+          containsRecipe: contains,
+          recipeCount: Math.max(0, c.recipeCount + (contains ? 1 : -1)),
+        }
+      : c,
+  );
+}
+
+/** Props for {@link CollectionToggleRow}. */
+interface CollectionToggleRowProps {
+  collection: CollectionListItemOutput;
+  recipeId: string;
+  /** Sets the row's membership in the modal's list (optimistic flip, rollback or 409 keep). */
+  onMembershipChange: (collectionId: string, contains: boolean) => void;
+  /** Called when the server confirmed a membership change (an `ok` result or a 409 kept add). */
+  onConfirmed: () => void;
 }
 
 /**
- * Modal for adding a recipe to collections. Lists the user's collections with
- * a checkmark for those already containing the recipe (via the `containsRecipe`
- * flag returned when listing with a `recipeId` context), toggles membership on
- * click (add vs. remove based on `containsRecipe`, with a 409→remove fallback
- * for stale state), and supports inline creation of a new collection.
+ * One collection in {@link AddToCollectionModal}: a button showing the name, visibility badge,
+ * recipe count and a checkmark when the collection already contains the recipe. Clicking it
+ * flips the membership optimistically and submits an `add` or `remove` intent through the
+ * row's own fetcher to the `resources/collections/mine` action (`defaultShouldRevalidate:
+ * false`), so rows toggle independently and each row is disabled only while its own submission
+ * is pending. A `{ ok: false }` result rolls the checkmark back and toasts
+ * `collection.error.add` / `collection.error.remove`, except that a 409 `CONFLICT` on `add`
+ * (the recipe is already in the collection) keeps the checkmark without a toast. A success and
+ * the kept 409 call `onConfirmed`.
  */
-export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectionModalProps) {
+function CollectionToggleRow({
+  collection,
+  recipeId,
+  onMembershipChange,
+  onConfirmed,
+}: CollectionToggleRowProps) {
   const { t } = useTranslation();
+  const toast = useToast();
+  const fetcher = useFetcher<typeof myCollectionsAction>();
+  const busy = fetcher.state !== 'idle';
+  const contains = collection.containsRecipe === true;
+
+  useActionFeedback(fetcher, {
+    onSuccess: (result) => {
+      log.debug(
+        { collectionId: collection.id, recipeId, intent: result.intent },
+        'AddToCollectionModal membership saved',
+      );
+      onConfirmed();
+    },
+    onError: (result) => {
+      if (result.ok) return;
+      if (result.intent === 'add' && result.code === 'CONFLICT') {
+        log.debug(
+          { collectionId: collection.id, recipeId },
+          'AddToCollectionModal recipe already in collection; membership kept',
+        );
+        onMembershipChange(collection.id, true);
+        onConfirmed();
+        return;
+      }
+      log.debug(
+        { collectionId: collection.id, recipeId, intent: result.intent, code: result.code },
+        'AddToCollectionModal membership change failed; rolled back',
+      );
+      onMembershipChange(collection.id, result.intent === 'remove');
+      toast.error(result.intent === 'remove' ? 'collection.error.remove' : 'collection.error.add');
+    },
+  });
+
+  /** Flips the membership optimistically and submits the matching intent. */
+  function toggle() {
+    if (busy) return;
+    const intent = contains ? 'remove' : 'add';
+    log.debug({ collectionId: collection.id, recipeId, intent }, 'AddToCollectionModal toggle');
+    onMembershipChange(collection.id, !contains);
+    fetcher.submit(
+      { intent, collectionId: collection.id, recipeId },
+      { method: 'post', action: MY_COLLECTIONS_PATH, defaultShouldRevalidate: false },
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={busy}
+      className="w-full flex items-center justify-between p-3 rounded border text-left hover:bg-black/5 disabled:opacity-50"
+      style={{ borderColor: 'var(--border-primary)' }}
+    >
+      <div>
+        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+          {collection.name}
+        </span>
+        <CollectionVisibilityBadge
+          visibility={collection.visibility}
+          className="ml-2 text-xs"
+          style={{ color: 'var(--text-tertiary)' }}
+        />
+      </div>
+      <span className="flex items-center gap-2">
+        {contains && (
+          <span
+            role="img"
+            aria-label={t('collection.modal.alreadyIn')}
+            title={t('collection.modal.alreadyIn')}
+            style={{ color: 'var(--text-primary)' }}
+          >
+            ✓
+          </span>
+        )}
+        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+          {collection.recipeCount}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Modal for adding a recipe to the signed-in user's collections.
+ *
+ * Each time it opens it loads the collections with `useFetcher().load()` from the
+ * `resources/collections/mine?recipeId=…` resource route (which forwards the recipe context, so
+ * each row carries `containsRecipe` for the checkmark). A failed load shows
+ * `collection.error.load` with a Retry button instead of an empty list. Rows toggle membership
+ * through {@link CollectionToggleRow} (optimistic, rolled back with an error toast on failure;
+ * a 409 on add keeps the membership). The inline "create new collection" form submits a
+ * `create` intent (name + visibility, default `private`) that creates the collection and adds
+ * the recipe; on success it clears the name and reloads the list, on failure it toasts
+ * `collection.error.save` (or `collection.error.add` when only the add failed, reloading the
+ * list so the new collection still shows) and keeps the typed name. No submission revalidates
+ * the page's loaders, and the modal never imports the API client. Instead it records confirmed
+ * membership changes (an `ok` toggle, a 409 kept add, a successful create) in a ref and closes
+ * with `onClose(changed)`, so the page can revalidate once.
+ *
+ * When `recipeVisibility` is `draft`, `private` or `unlisted`, a note under the collection list
+ * (`collection.modal.hiddenRecipeNote`) explains that the recipe stays hidden from other viewers
+ * of the collection until it is made public: collection items follow the recipe listing rule
+ * (`canListRecipe` on the API).
+ */
+export function AddToCollectionModal({
+  recipeId,
+  open,
+  onClose,
+  recipeVisibility,
+}: AddToCollectionModalProps) {
+  const { t } = useTranslation();
+  const listFetcher = useFetcher<typeof myCollectionsLoader>();
+  const createFetcher = useFetcher<typeof myCollectionsAction>();
+  const { load } = listFetcher;
   const [collections, setCollections] = useState<CollectionListItemOutput[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [toggleLoading, setToggleLoading] = useState<string | null>(null);
+  const [phase, setPhase] = useState<LoadPhase>('loading');
   const [newName, setNewName] = useState('');
   const [newVisibility, setNewVisibility] = useState('private');
-  const [creating, setCreating] = useState(false);
+  const creating = createFetcher.state !== 'idle';
+  /** Whether a membership change was confirmed since the modal last closed. */
+  const changedRef = useRef(false);
+  // The latest `onClose`, so `handleClose` stays stable (`Modal` re-runs its focus effect when
+  // its `onClose` changes, which would move focus out of the name input on every keystroke).
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
+  useEffect(() => {
+    log.debug({ recipeId }, 'AddToCollectionModal mounted');
+    return () => {
+      log.debug({ recipeId }, 'AddToCollectionModal unmounted');
+    };
+  }, [recipeId]);
+
+  // (Re)load the list each time the modal opens, or when it opens for another recipe.
   useEffect(() => {
     if (!open) return;
     log.debug({ recipeId }, 'AddToCollectionModal opened');
-    setLoading(true);
-    collectionApi
-      .list({ recipeId })
-      .then((res) => setCollections(res.data))
-      .catch((err) => log.error({ err }, 'Failed to load collections'))
-      .finally(() => setLoading(false));
-  }, [open, recipeId]);
+    setPhase('loading');
+    void load(myCollectionsPath(recipeId));
+  }, [open, recipeId, load]);
 
-  /** Flip membership state locally for one collection (avoids a refetch). */
-  const applyMembership = (collectionId: string, contains: boolean) => {
-    setCollections((prev) =>
-      prev.map((c) =>
-        c.id === collectionId
-          ? {
-              ...c,
-              containsRecipe: contains,
-              recipeCount: Math.max(0, c.recipeCount + (contains ? 1 : -1)),
-            }
-          : c,
-      ),
-    );
-  };
-
-  const handleToggle = async (collection: CollectionListItemOutput) => {
-    setToggleLoading(collection.id);
-    try {
-      if (collection.containsRecipe) {
-        await collectionApi.removeRecipe(collection.id, recipeId);
-        log.debug({ collectionId: collection.id, recipeId }, 'Recipe removed from collection');
-        applyMembership(collection.id, false);
-        return;
-      }
-      await collectionApi.addRecipe(collection.id, recipeId);
-      log.debug({ collectionId: collection.id, recipeId }, 'Recipe added to collection');
-      applyMembership(collection.id, true);
-    } catch (err) {
-      if (
-        !collection.containsRecipe &&
-        err instanceof ApiError &&
-        (err.code === 'CONFLICT' || err.status === 409)
-      ) {
-        // Fallback for stale state: the server says the recipe is already in
-        // the collection, so interpret the toggle as a removal instead.
-        try {
-          await collectionApi.removeRecipe(collection.id, recipeId);
-          log.debug({ collectionId: collection.id, recipeId }, 'Recipe removed from collection');
-          applyMembership(collection.id, false);
-        } catch (removeErr) {
-          log.error({ err: removeErr }, 'Failed to toggle recipe in collection');
-        }
-      } else {
-        log.error({ err }, 'Failed to toggle recipe in collection');
-      }
-    } finally {
-      setToggleLoading(null);
+  // Apply a finished load. Keyed on the fetcher only: reopening must not re-apply the previous
+  // result while the new load runs. The resource loader already logs failures.
+  useEffect(() => {
+    if (listFetcher.state !== 'idle' || !listFetcher.data) return;
+    const result = listFetcher.data;
+    if (!result.ok) {
+      log.debug({ code: result.code }, 'AddToCollectionModal load failed');
+      setPhase('failed');
+      return;
     }
-  };
+    setCollections(result.collections);
+    setPhase('ready');
+  }, [listFetcher.state, listFetcher.data]);
 
-  const handleCreate = async () => {
-    if (!newName.trim()) return;
-    setCreating(true);
-    let createdId: string | null = null;
-    try {
-      const created = await collectionApi.create({
-        name: newName.trim(),
-        visibility: newVisibility as 'private' | 'unlisted' | 'public' | 'draft',
-      });
-      createdId = created.id;
-      await collectionApi.addRecipe(created.id, recipeId);
-      const res = await collectionApi.list({ recipeId });
-      setCollections(res.data);
+  useActionFeedback(createFetcher, {
+    errorKey: (result) =>
+      !result.ok && result.collectionId ? 'collection.error.add' : 'collection.error.save',
+    onSuccess: (result) => {
+      log.debug({ collectionId: result.collectionId, recipeId }, 'AddToCollectionModal created');
+      changedRef.current = true;
       setNewName('');
-      log.debug({ collectionId: created.id }, 'New collection created with recipe');
-    } catch (err) {
-      if (createdId) {
-        // Create succeeded but addRecipe failed — collection exists without the recipe
-        log.error(
-          { err, collectionId: createdId, recipeId },
-          'Collection created but recipe add failed',
-        );
-      } else {
-        log.error({ err }, 'Failed to create collection');
-      }
-    } finally {
-      setCreating(false);
-    }
-  };
+      void load(myCollectionsPath(recipeId));
+    },
+    onError: (result) => {
+      if (result.ok || !result.collectionId) return;
+      // The collection exists without the recipe: reload so it is listed and can be toggled.
+      void load(myCollectionsPath(recipeId));
+    },
+  });
+
+  /** Records a confirmed membership change (used by the rows). */
+  function markChanged() {
+    changedRef.current = true;
+  }
+
+  /** Closes the modal, reporting (and resetting) whether a membership change was confirmed. */
+  const handleClose = useCallback(() => {
+    const changed = changedRef.current;
+    changedRef.current = false;
+    log.debug({ recipeId, changed }, 'AddToCollectionModal closed');
+    onCloseRef.current(changed);
+  }, [recipeId]);
+
+  /** Sets one collection's membership in the list (used by the rows). */
+  function setMembership(collectionId: string, contains: boolean) {
+    setCollections((current) => withMembership(current, collectionId, contains));
+  }
+
+  /** Submits the `create` intent for the typed name and chosen visibility. */
+  function handleCreate() {
+    const name = newName.trim();
+    if (!name || creating) return;
+    log.debug({ recipeId }, 'AddToCollectionModal create submitted');
+    createFetcher.submit(
+      { intent: 'create', recipeId, name, visibility: newVisibility },
+      { method: 'post', action: MY_COLLECTIONS_PATH, defaultShouldRevalidate: false },
+    );
+  }
+
+  /** Re-requests the list after a failed load. */
+  function retryLoad() {
+    log.debug({ recipeId }, 'AddToCollectionModal retrying load');
+    setPhase('loading');
+    void load(myCollectionsPath(recipeId));
+  }
 
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       ariaLabel={t('collection.modal.title')}
       panelClassName="max-w-md p-6 max-h-[80vh] overflow-y-auto"
     >
@@ -133,14 +308,30 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
         <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('collection.modal.title')}
         </h2>
-        <button type="button" onClick={onClose} className="text-xl" aria-label={t('common.close')}>
+        <button
+          type="button"
+          onClick={handleClose}
+          className="text-xl"
+          aria-label={t('common.close')}
+        >
           ×
         </button>
       </div>
 
-      {loading ? (
+      {phase === 'loading' && (
         <p style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</p>
-      ) : (
+      )}
+      {phase === 'failed' && (
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <p role="alert" className="text-sm" style={{ color: 'var(--error)' }}>
+            {t('collection.error.load')}
+          </p>
+          <button type="button" onClick={retryLoad} className="btn-secondary text-sm min-h-11 px-4">
+            {t('common.retry')}
+          </button>
+        </div>
+      )}
+      {phase === 'ready' && (
         <div className="space-y-2 mb-4">
           {collections.length === 0 ? (
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -148,43 +339,22 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
             </p>
           ) : (
             collections.map((col) => (
-              <button
+              <CollectionToggleRow
                 key={col.id}
-                type="button"
-                onClick={() => handleToggle(col)}
-                disabled={toggleLoading === col.id}
-                className="w-full flex items-center justify-between p-3 rounded border text-left hover:bg-black/5 disabled:opacity-50"
-                style={{ borderColor: 'var(--border-primary)' }}
-              >
-                <div>
-                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {col.name}
-                  </span>
-                  <CollectionVisibilityBadge
-                    visibility={col.visibility}
-                    className="ml-2 text-xs"
-                    style={{ color: 'var(--text-tertiary)' }}
-                  />
-                </div>
-                <span className="flex items-center gap-2">
-                  {col.containsRecipe === true && (
-                    <span
-                      role="img"
-                      aria-label={t('collection.modal.alreadyIn')}
-                      title={t('collection.modal.alreadyIn')}
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      ✓
-                    </span>
-                  )}
-                  <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                    {col.recipeCount}
-                  </span>
-                </span>
-              </button>
+                collection={col}
+                recipeId={recipeId}
+                onMembershipChange={setMembership}
+                onConfirmed={markChanged}
+              />
             ))
           )}
         </div>
+      )}
+
+      {recipeVisibility && HIDDEN_IN_COLLECTIONS.has(recipeVisibility) && (
+        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+          {t('collection.modal.hiddenRecipeNote')}
+        </p>
       )}
 
       <div className="border-t pt-4" style={{ borderColor: 'var(--border-primary)' }}>
@@ -196,6 +366,7 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder={t('collection.create.name')}
+          maxLength={MAX_COLLECTION_NAME_LENGTH}
           className="input text-sm w-full mb-2"
         />
         <select

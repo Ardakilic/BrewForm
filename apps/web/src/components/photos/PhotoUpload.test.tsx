@@ -1,5 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { uploadPhotoAction } from '../../routes/resources/photos.ts';
+import { installNodeFormDataGlobals } from '../../test-utils/node-form-data.ts';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 import { PhotoUpload } from './PhotoUpload.tsx';
 
 vi.mock('../../api/client.ts', () => ({
@@ -17,21 +20,24 @@ vi.mock('@/utils/logger.ts', () => ({
   }),
 }));
 
-vi.mock('../../contexts/I18nContext.tsx', async () => {
-  const { t: translate } = await import('@brewform/shared/i18n');
-  return {
-    useTranslation: () => ({
-      t: (key: string) => translate(key, 'en'),
-      locale: 'en',
-      setLocale: () => {},
-      availableLocales: ['en', 'tr'],
-    }),
-  };
-});
-
 import { api } from '../../api/client.ts';
+import { ApiError } from '../../api/errors.ts';
 
 const mockApi = vi.mocked(api);
+
+/**
+ * Renders the uploader with the real `resources/photos` resource action registered, inside the
+ * app providers (English), and returns the render result.
+ */
+function render(ui: React.ReactElement) {
+  return renderWithAppProviders(
+    [
+      { path: '/', element: ui },
+      { path: '/resources/photos', action: uploadPhotoAction },
+    ],
+    { auth: 'user', locale: 'en' },
+  );
+}
 
 function makeFile(name = 'photo.jpg', type = 'image/jpeg', size = 1024): File {
   const blob = new Blob(['x'.repeat(size)], { type });
@@ -112,7 +118,51 @@ function stubImageAndObjectUrls() {
   };
 }
 
-beforeEach(() => {
+/**
+ * jsdom has no 2D canvas, so `createThumbnail` would give up (no thumbnail).
+ * Stub `getContext` and `toBlob` so a JPEG thumbnail blob is produced.
+ */
+function stubCanvas() {
+  const proto = HTMLCanvasElement.prototype;
+  const originalGetContext = proto.getContext;
+  const originalToBlob = proto.toBlob;
+  Object.defineProperty(proto, 'getContext', {
+    value: () => ({ drawImage: () => undefined }),
+    configurable: true,
+    writable: true,
+  });
+  Object.defineProperty(proto, 'toBlob', {
+    value(callback: BlobCallback) {
+      callback(new Blob(['thumb'], { type: 'image/jpeg' }));
+    },
+    configurable: true,
+    writable: true,
+  });
+  return () => {
+    Object.defineProperty(proto, 'getContext', {
+      value: originalGetContext,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(proto, 'toBlob', {
+      value: originalToBlob,
+      configurable: true,
+      writable: true,
+    });
+  };
+}
+
+/** A rejection from the API client: an `ApiError` carrying the server error `code`. */
+function apiError(code: string): Error {
+  return new ApiError(code, code, undefined, 400);
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+beforeEach(async () => {
+  await installNodeFormDataGlobals();
   vi.clearAllMocks();
   mockApi.upload.mockResolvedValue({ id: 'p1', url: '/uploads/p1.jpg' } as unknown as Awaited<
     ReturnType<typeof api.upload<Record<string, unknown>>>
@@ -122,7 +172,8 @@ beforeEach(() => {
 /**
  * PhotoUpload — drag-and-drop / file-picker photo uploader. Validates
  * file type (JPEG/PNG/WebP) and size (≤10MB), generates a client-side
- * thumbnail, and POSTs each file to `/photos` via `api.upload`.
+ * thumbnail, and submits each file to the `resources/photos` action, which POSTs it to
+ * `/photos` via `api.upload`.
  */
 describe('PhotoUpload', () => {
   it('renders the drop zone with file input and instructions', () => {
@@ -161,9 +212,55 @@ describe('PhotoUpload', () => {
       );
       selectFile(container, makeFile('photo.jpg', 'image/jpeg', 2048));
       await waitFor(() => {
-        expect(mockApi.upload).toHaveBeenCalledWith('/photos', expect.any(FormData));
+        expect(mockApi.upload).toHaveBeenCalledWith('/photos', expect.any(FormData), {
+          signal: expect.any(AbortSignal),
+        });
       });
-      expect(onUploadComplete).toHaveBeenCalledWith([{ id: 'p1', url: '/uploads/p1.jpg' }]);
+      await waitFor(() => {
+        expect(onUploadComplete).toHaveBeenCalledWith([{ id: 'p1', url: '/uploads/p1.jpg' }]);
+      });
+    } finally {
+      restore();
+    }
+  });
+
+  it('sends fixed multipart filenames instead of the local filenames', async () => {
+    const restoreImage = stubImageAndObjectUrls();
+    const restoreCanvas = stubCanvas();
+    try {
+      const { container } = render(<PhotoUpload recipeId="r1" />);
+      selectFile(container, makeFile('my holiday at home.png', 'image/png', 2048));
+      await waitFor(() => {
+        expect(mockApi.upload).toHaveBeenCalledTimes(1);
+      });
+      const form = mockApi.upload.mock.calls[0][1] as FormData;
+      expect(form.get('recipeId')).toBe('r1');
+      expect((form.get('file') as File).name).toBe('photo.png');
+      expect((form.get('thumbnail') as File).name).toBe('thumbnail.jpg');
+      for (const [, value] of form.entries()) {
+        if (value instanceof File) expect(value.name).not.toContain('holiday');
+      }
+    } finally {
+      restoreCanvas();
+      restoreImage();
+    }
+  });
+
+  it.each([
+    ['FILE_TOO_LARGE', /photo\.jpg: File too large/i],
+    ['PAYLOAD_TOO_LARGE', /photo\.jpg: File too large/i],
+    ['UNSUPPORTED_MEDIA_TYPE', /photo\.jpg: Unsupported file type/i],
+    ['INVALID_IMAGE', /photo\.jpg: Unsupported file type/i],
+    ['INTERNAL_ERROR', /Failed to upload photo\.jpg/i],
+  ])('maps a server %s rejection to its message', async (code, message) => {
+    mockApi.upload.mockRejectedValueOnce(apiError(code));
+    const restore = stubImageAndObjectUrls();
+    try {
+      const { container } = render(<PhotoUpload recipeId="r1" />);
+      selectFile(container, makeFile('photo.jpg', 'image/jpeg', 1024));
+      await waitFor(() => {
+        expect(screen.getByText(message)).toBeInTheDocument();
+      });
     } finally {
       restore();
     }

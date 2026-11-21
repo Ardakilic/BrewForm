@@ -13,10 +13,10 @@ import {
   users,
 } from '@brewform/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import { evaluateBadges } from '../badge/service.ts';
 import * as model from './model.ts';
-import { getMergedIds, getMergedPreparations, mergeRecipes } from './service.ts';
+import { getMergedIds, getMergedPreparations, logger, mergeRecipes } from './service.ts';
 
 describe('getMergedIds', () => {
   const list1 = [{ tasteNoteId: 'a' }, { tasteNoteId: 'b' }];
@@ -301,6 +301,46 @@ describe('mergeRecipes', () => {
     expect(version!.equipment!.length).toBe(2);
   });
 
+  it('drops a soft-deleted taste note', async () => {
+    // v1 links deleted tn1 and live tn2, v2 links tn2 and tn3.
+    await db.update(tasteNotes).set({ deletedAt: new Date() }).where(eq(tasteNotes.id, tn1));
+    const debugSpy = vi.spyOn(logger, 'debug');
+    try {
+      const result = await mergeRecipes(userId, {
+        recipeVersionId1: versionId1,
+        recipeVersionId2: versionId2,
+        title: 'Merged Without Deleted Note',
+        selections: { tasteNotes: 'both' },
+      });
+      assert.exists(result);
+      createdRecipeIds.push(result.id);
+      const version = result.versions?.[0];
+      expect(version?.tasteNotes?.map((tn) => tn.tasteNoteId).sort()).toEqual([tn2, tn3].sort());
+      expect(debugSpy).toHaveBeenCalledWith(
+        { authorId: userId, droppedTasteNotes: 1, droppedEquipment: 0 },
+        'mergeRecipes dropped deleted references',
+      );
+    } finally {
+      debugSpy.mockRestore();
+    }
+  });
+
+  it('drops a soft-deleted equipment item', async () => {
+    // v1 links deleted eq1 and live eq2.
+    await db.insert(recipeEquipment).values({ recipeVersionId: versionId1, equipmentId: eq2 });
+    await db.update(equipment).set({ deletedAt: new Date() }).where(eq(equipment.id, eq1));
+    const result = await mergeRecipes(userId, {
+      recipeVersionId1: versionId1,
+      recipeVersionId2: versionId2,
+      title: 'Merged Without Deleted Equipment',
+      selections: { equipment: 'v1' },
+    });
+    assert.exists(result);
+    createdRecipeIds.push(result.id);
+    const version = result.versions?.[0];
+    expect(version?.equipment?.map((e) => e.equipmentId)).toEqual([eq2]);
+  });
+
   it('returns empty arrays for none', async () => {
     const result = await mergeRecipes(userId, {
       recipeVersionId1: versionId1,
@@ -381,6 +421,129 @@ describe('mergeRecipes', () => {
       await db.delete(recipes).where(eq(recipes.id, otherRecipeId));
       await db.delete(users).where(eq(users.id, otherUserId));
     }
+  });
+
+  it('throws RECIPE_NOT_FOUND when a source recipe is soft-deleted, even for its author', async () => {
+    await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, recipeId2));
+
+    await expect(
+      mergeRecipes(userId, {
+        recipeVersionId1: versionId1,
+        recipeVersionId2: versionId2,
+        title: 'Deleted Source',
+        selections: {},
+      }),
+    ).rejects.toThrow('RECIPE_NOT_FOUND');
+  });
+
+  describe("another user's source recipe", () => {
+    let otherUserId: string;
+    let otherRecipeId: string;
+    let otherVersionId: string;
+
+    /**
+     * Inserts another user's recipe with one version under the given visibility.
+     *
+     * @param visibility - The source recipe's visibility.
+     * @param deletedAt - Optional soft-delete timestamp for the source recipe.
+     */
+    async function insertOtherSource(
+      visibility: 'public' | 'unlisted' | 'private' | 'draft',
+      deletedAt: Date | null = null,
+    ): Promise<void> {
+      await db.insert(recipes).values({
+        id: otherRecipeId,
+        slug: `merge-other-${otherRecipeId.slice(0, 8)}`,
+        title: `Other ${visibility}`,
+        authorId: otherUserId,
+        visibility,
+        deletedAt,
+      });
+      await db.insert(recipeVersions).values({
+        id: otherVersionId,
+        recipeId: otherRecipeId,
+        versionNumber: 1,
+        brewMethod: 'v60',
+        drinkType: 'pour_over',
+        brewDate: new Date(),
+        preparationNotes: 'other notes',
+        isFavourite: false,
+      });
+    }
+
+    /** Counts the merge caller's recipes (proves a rejected merge created nothing). */
+    async function countCallerRecipes(): Promise<number> {
+      const rows = await db
+        .select({ id: recipes.id })
+        .from(recipes)
+        .where(eq(recipes.authorId, userId));
+      return rows.length;
+    }
+
+    beforeEach(async () => {
+      otherUserId = crypto.randomUUID();
+      otherRecipeId = crypto.randomUUID();
+      otherVersionId = crypto.randomUUID();
+      await db.insert(users).values({
+        id: otherUserId,
+        email: `merge-other-${otherUserId}@example.com`,
+        username: `mo-${otherUserId.slice(0, 8)}`,
+        passwordHash: 'hash',
+      });
+    });
+
+    afterEach(async () => {
+      await db.delete(recipeVersions).where(eq(recipeVersions.id, otherVersionId));
+      await db.delete(recipes).where(eq(recipes.id, otherRecipeId));
+      await db.delete(users).where(eq(users.id, otherUserId));
+    });
+
+    it('merges an unlisted source (viewable by direct link)', async () => {
+      await insertOtherSource('unlisted');
+
+      const result = await mergeRecipes(userId, {
+        recipeVersionId1: versionId1,
+        recipeVersionId2: otherVersionId,
+        title: 'Merged With Unlisted',
+        selections: { preparationNotes: 'v2' },
+      });
+      createdRecipeIds.push(result!.id);
+
+      expect(result!.visibility).toBe('draft');
+      expect(result!.authorId).toBe(userId);
+      expect(result!.versions?.[0]?.preparationNotes).toBe('other notes');
+    });
+
+    it.each(['private', 'draft'] as const)(
+      'throws FORBIDDEN for a %s source',
+      async (visibility) => {
+        await insertOtherSource(visibility);
+        const before = await countCallerRecipes();
+
+        await expect(
+          mergeRecipes(userId, {
+            recipeVersionId1: versionId1,
+            recipeVersionId2: otherVersionId,
+            title: `Forbidden ${visibility}`,
+            selections: {},
+          }),
+        ).rejects.toThrow('FORBIDDEN');
+        expect(await countCallerRecipes()).toBe(before);
+      },
+    );
+
+    it('throws RECIPE_NOT_FOUND for a soft-deleted public source', async () => {
+      await insertOtherSource('public', new Date());
+
+      await expect(
+        mergeRecipes(userId, {
+          recipeVersionId1: otherVersionId,
+          recipeVersionId2: versionId2,
+          title: 'Deleted Public Source',
+          selections: {},
+        }),
+      ).rejects.toThrow('RECIPE_NOT_FOUND');
+    });
   });
 });
 

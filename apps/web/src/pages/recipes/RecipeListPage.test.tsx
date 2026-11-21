@@ -47,14 +47,14 @@ vi.mock('../../api/static-cache.ts', () => ({
   getTasteNotesCached: vi.fn(),
 }));
 
-vi.mock('../../utils/recipe-filters.ts', () => ({
+vi.mock('../../utils/recipe-filters.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../utils/recipe-filters.ts')>()),
   extractListParams: vi.fn().mockReturnValue({}),
 }));
 
 vi.mock('../../api/index.ts', () => ({
   recipeApi: { list: vi.fn() },
-  coffeeVarietyApi: { search: vi.fn() },
-  api: { get: vi.fn() },
+  coffeeVarietyApi: { search: vi.fn(), get: vi.fn() },
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
@@ -110,7 +110,7 @@ import type {
 } from '@brewform/shared/schemas';
 import fc from 'fast-check';
 import { useSearchParams } from 'react-router';
-import { api, coffeeVarietyApi, recipeApi } from '../../api/index.ts';
+import { coffeeVarietyApi, recipeApi } from '../../api/index.ts';
 import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
 import {
   EQUIPMENT_FILTER_TYPES,
@@ -118,7 +118,9 @@ import {
 } from '../../components/recipe-list/constants.ts';
 import { AuthProvider, useAuth } from '../../contexts/AuthContext.tsx';
 import { I18nProvider, useTranslation } from '../../contexts/I18nContext.tsx';
-import { loader, RecipeListPage } from './RecipeListPage.tsx';
+import { coffeeVarietySearchLoader } from '../../routes/resources/coffee-varieties.ts';
+import { loader } from './RecipeListPage.data.ts';
+import { RecipeListPage } from './RecipeListPage.tsx';
 
 /** Builds an empty `PaginatedResponse<RecipeListItemOutput>` for list mocks. */
 function makeEmptyListResponse(): PaginatedResponse<RecipeListItemOutput> {
@@ -151,7 +153,6 @@ const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
 const mockCoffeeVarietyApi = vi.mocked(coffeeVarietyApi);
-const mockApi = vi.mocked(api);
 const mockRecipeApiList = vi.mocked(recipeApi.list);
 const mockGetEquipmentCached = vi.mocked(getEquipmentCached);
 const mockGetTasteNotesCached = vi.mocked(getTasteNotesCached);
@@ -160,9 +161,13 @@ const mockGetTasteNotesCached = vi.mocked(getTasteNotesCached);
 
 const HydrateFallback = () => null;
 
+/** Renders `/recipes` through its real loader, with the coffee-variety search resource route. */
 function renderRecipeListPage(initialEntries = ['/recipes']) {
   const router = createMemoryRouter(
-    [{ path: '/recipes', element: <RecipeListPage />, loader, HydrateFallback }],
+    [
+      { path: '/recipes', element: <RecipeListPage />, loader, HydrateFallback },
+      { path: '/resources/coffee-varieties/search', loader: coffeeVarietySearchLoader },
+    ],
     { initialEntries },
   );
   const renderResult = render(
@@ -285,7 +290,7 @@ beforeEach(() => {
   mockUseAuth.mockReturnValue(defaultAuth as ReturnType<typeof useAuth>);
   mockUseSearchParams.mockReturnValue(makeSearchParams());
   mockCoffeeVarietyApi.search.mockResolvedValue([]);
-  mockApi.get.mockResolvedValue({});
+  mockCoffeeVarietyApi.get.mockRejectedValue(new Error('not stubbed'));
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -402,7 +407,7 @@ describe('RecipeListPage — i18n', () => {
     });
   });
 
-  it('does not show Visibility filter for non-admin users', async () => {
+  it('does not show Visibility filter for non-admin users', () => {
     renderRecipeListPage();
 
     expect(screen.queryByText('Visibility (Admins only)')).not.toBeInTheDocument();
@@ -548,7 +553,7 @@ describe('RecipeListPage — taste note filter', () => {
     await waitFor(() => expect(screen.getByText('Taste Notes')).toBeInTheDocument());
   });
 
-  it('does NOT render taste note dropdown when no taste notes are loaded', async () => {
+  it('does NOT render taste note dropdown when no taste notes are loaded', () => {
     renderRecipeListPage();
 
     expect(screen.queryByText('Taste Notes')).not.toBeInTheDocument();
@@ -659,7 +664,7 @@ describe('RecipeListPage — property-based tests', () => {
     mockUseAuth.mockReturnValue(defaultAuth as ReturnType<typeof useAuth>);
     mockUseSearchParams.mockReturnValue(makeSearchParams());
     mockCoffeeVarietyApi.search.mockResolvedValue([]);
-    mockApi.get.mockResolvedValue({});
+    mockCoffeeVarietyApi.get.mockRejectedValue(new Error('not stubbed'));
   }
 
   it('Property 5: equipment grouping correctness — exactly one dropdown per distinct type present', async () => {
@@ -768,20 +773,28 @@ describe('RecipeListPage — coffee variety filter', () => {
     });
   });
 
-  it('passes coffeeVarietyId via URL params — handled by loader', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ coffeeVarietyId: VARIETY_UUID }));
-    mockApi.get.mockResolvedValue({ id: VARIETY_UUID, name: 'Bourbon', category: 'variety' });
+  const VARIETY_ENTRY = `/recipes?coffeeVarietyId=${VARIETY_UUID}`;
+  const BOURBON = { id: VARIETY_UUID, name: 'Bourbon', category: 'variety' } as Awaited<
+    ReturnType<typeof coffeeVarietyApi.get>
+  >;
 
-    renderRecipeListPage();
+  it('passes coffeeVarietyId via URL params — the loader resolves its name', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ coffeeVarietyId: VARIETY_UUID }));
+    mockCoffeeVarietyApi.get.mockResolvedValue(BOURBON);
+
+    renderRecipeListPage([VARIETY_ENTRY]);
 
     await waitFor(() => expect(screen.getAllByText('Bourbon').length).toBeGreaterThanOrEqual(1));
+    expect(mockCoffeeVarietyApi.get).toHaveBeenCalledWith(VARIETY_UUID, {
+      signal: expect.any(AbortSignal),
+    });
   });
 
   it('shows active coffee variety filter badge when coffeeVarietyId is in URL', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ coffeeVarietyId: VARIETY_UUID }));
-    mockApi.get.mockResolvedValue({ id: VARIETY_UUID, name: 'Bourbon', category: 'variety' });
+    mockCoffeeVarietyApi.get.mockResolvedValue(BOURBON);
 
-    renderRecipeListPage();
+    renderRecipeListPage([VARIETY_ENTRY]);
 
     await waitFor(() =>
       expect(screen.getByLabelText('Remove Coffee Variety filter')).toBeInTheDocument(),
@@ -791,9 +804,9 @@ describe('RecipeListPage — coffee variety filter', () => {
 
   it('shows fallback text in badge when variety name is not resolved', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ coffeeVarietyId: VARIETY_UUID }));
-    mockApi.get.mockRejectedValue(new Error('not found'));
+    mockCoffeeVarietyApi.get.mockRejectedValue(new Error('not found'));
 
-    renderRecipeListPage();
+    renderRecipeListPage([VARIETY_ENTRY]);
 
     await waitFor(() =>
       expect(screen.getByText('Coffee variety filter active')).toBeInTheDocument(),
@@ -806,9 +819,9 @@ describe('RecipeListPage — coffee variety filter', () => {
       new URLSearchParams({ coffeeVarietyId: VARIETY_UUID }),
       setSearchParamsMock,
     ] as ReturnType<typeof useSearchParams>);
-    mockApi.get.mockResolvedValue({ id: VARIETY_UUID, name: 'Bourbon', category: 'variety' });
+    mockCoffeeVarietyApi.get.mockResolvedValue(BOURBON);
 
-    renderRecipeListPage();
+    renderRecipeListPage([VARIETY_ENTRY]);
 
     await waitFor(() =>
       expect(screen.getByLabelText('Remove Coffee Variety filter')).toBeInTheDocument(),
@@ -820,5 +833,118 @@ describe('RecipeListPage — coffee variety filter', () => {
     expect(setSearchParamsMock).toHaveBeenCalled();
     const calledParams = setSearchParamsMock.mock.calls[0][0] as URLSearchParams;
     expect(calledParams.get('coffeeVarietyId')).toBeNull();
+  });
+});
+
+describe('RecipeListPage — coffee variety typeahead (fetcher)', () => {
+  const GESHA = { id: 'v-gesha', name: 'Gesha', category: 'variety' };
+  const GEISHA_OLD = { id: 'v-ge', name: 'Geisha Old', category: 'variety' };
+
+  it('searches through the resource route and lists the results', async () => {
+    mockCoffeeVarietyApi.search.mockResolvedValue([GESHA]);
+
+    renderRecipeListPage();
+    const input = await screen.findByPlaceholderText('Search varieties...');
+    await userEvent.type(input, 'gesha');
+
+    expect(await screen.findByRole('button', { name: /Gesha/ })).toBeInTheDocument();
+    expect(mockCoffeeVarietyApi.search).toHaveBeenCalledWith('gesha', {
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it('selecting a variety builds on the router URL, not the render-time params', async () => {
+    mockCoffeeVarietyApi.search.mockResolvedValue([GESHA]);
+    const setSearchParamsMock = vi.fn();
+    // The render-time params are empty; the router URL carries a filter and a page.
+    mockUseSearchParams.mockReturnValue([new URLSearchParams(), setSearchParamsMock] as ReturnType<
+      typeof useSearchParams
+    >);
+
+    renderRecipeListPage(['/recipes?brewMethod=v60&page=3']);
+    const input = await screen.findByPlaceholderText('Search varieties...');
+    await userEvent.type(input, 'gesha');
+    await userEvent.click(await screen.findByRole('button', { name: /Gesha/ }));
+
+    expect(setSearchParamsMock).toHaveBeenCalledTimes(1);
+    const params = setSearchParamsMock.mock.calls[0][0] as URLSearchParams;
+    expect(params.get('brewMethod')).toBe('v60');
+    expect(params.get('coffeeVarietyId')).toBe('v-gesha');
+    expect(params.get('page')).toBeNull();
+  });
+
+  it('shows only the latest query results when an earlier response arrives late', async () => {
+    let resolveGe: (value: (typeof GEISHA_OLD)[]) => void = () => undefined;
+    mockCoffeeVarietyApi.search.mockImplementation((query: string) =>
+      query === 'ge'
+        ? new Promise((resolve) => {
+            resolveGe = resolve;
+          })
+        : Promise.resolve([GESHA]),
+    );
+
+    renderRecipeListPage();
+    const input = await screen.findByPlaceholderText('Search varieties...');
+    await userEvent.type(input, 'ge');
+    await waitFor(() =>
+      expect(mockCoffeeVarietyApi.search).toHaveBeenCalledWith('ge', expect.anything()),
+    );
+    const geSignal = mockCoffeeVarietyApi.search.mock.calls[0][1]?.signal;
+    await userEvent.type(input, 'sha');
+
+    expect(await screen.findByRole('button', { name: /Gesha/ })).toBeInTheDocument();
+    expect(geSignal?.aborted).toBe(true);
+    resolveGe([GEISHA_OLD]);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByRole('button', { name: /Geisha Old/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('RecipeListPage loader', () => {
+  it('forwards request.signal to the list, both cached lookups and the variety lookup', async () => {
+    mockCoffeeVarietyApi.get.mockResolvedValue({
+      id: '33333333-3333-3333-3333-333333333333',
+      name: 'Bourbon',
+    } as Awaited<ReturnType<typeof coffeeVarietyApi.get>>);
+    const controller = new AbortController();
+
+    const data = await loader({
+      request: new Request(
+        'http://localhost/recipes?coffeeVarietyId=33333333-3333-3333-3333-333333333333',
+        { signal: controller.signal },
+      ),
+    });
+
+    const signalOpts = { signal: expect.any(AbortSignal) };
+    expect(mockRecipeApiList).toHaveBeenCalledWith(expect.any(Object), signalOpts);
+    expect(mockGetEquipmentCached).toHaveBeenCalledWith(signalOpts);
+    expect(mockGetTasteNotesCached).toHaveBeenCalledWith(signalOpts);
+    expect(mockCoffeeVarietyApi.get).toHaveBeenCalledWith(
+      '33333333-3333-3333-3333-333333333333',
+      signalOpts,
+    );
+    expect(data.coffeeVarietyName).toBe('Bourbon');
+  });
+
+  it('skips the variety lookup without a valid coffeeVarietyId', async () => {
+    const data = await loader({
+      request: new Request('http://localhost/recipes?coffeeVarietyId=x'),
+    });
+
+    expect(mockCoffeeVarietyApi.get).not.toHaveBeenCalled();
+    expect(data.coffeeVarietyName).toBeNull();
+  });
+
+  it('keeps the list when the variety lookup fails', async () => {
+    mockCoffeeVarietyApi.get.mockRejectedValue(new Error('down'));
+
+    const data = await loader({
+      request: new Request(
+        'http://localhost/recipes?coffeeVarietyId=33333333-3333-3333-3333-333333333333',
+      ),
+    });
+
+    expect(data.coffeeVarietyName).toBeNull();
+    expect(data.recipesResponse.data).toEqual([]);
   });
 });

@@ -16,7 +16,7 @@ The following files SHALL exist in `apps/web/src/components/recipe-list/` with V
 
 - `PaginationControls.test.tsx` — covers: Previous button hidden on page 1; Next button hidden on last page (`page === totalPages`); clicking Previous calls `onPageChange(page - 1)`; clicking Next calls `onPageChange(page + 1)`; `pageLabel` placeholder substitution (`{page}` → page, `{total}` → total); `previousLabel` / `nextLabel` rendered verbatim. No router needed.
 
-- `useRecipeFilters.test.tsx` — covers: default values when no search params (`page = 1`, `sortBy = 'createdAt'`, scalars `''`, `tasteNoteIds = []`); parsing each scalar filter from the URL query string; `tasteNoteIds` parsed as comma-separated and filtered through the UUID regex (non-UUID values dropped); `updateFilter(key, scalarValue)` sets the param (or deletes if empty); `updateFilter(key, arrayValue)` joins with `,`; `updateFilter` always clears `page` (resets to page 1 on filter change); `clearAllFilters()` empties all params. Tested via a `TestConsumer` component that calls `useRecipeFilters()` and renders the return fields to `data-testid` spans. Render via `createMemoryRouter` with `initialEntries` carrying the query string (pattern from `AuthContext.test.tsx`).
+- `useRecipeFilters.test.tsx` — covers: default values when no search params (`page = 1`, `sortBy = 'createdAt'`, scalars `''`, `tasteNoteIds = []`); parsing each scalar filter from the URL query string; `tasteNoteIds` parsed as comma-separated and filtered through the UUID regex (non-UUID values dropped); `updateFilter(key, scalarValue)` sets the param (or deletes if empty); `updateFilter(key, arrayValue)` joins with `,`; `updateFilter(key, value)` for any filter key clears `page` (back to page 1 on a filter change), while `updateFilter('page', n)` and `setPage(n)` keep `page=n` and every filter, and `setPage(1)` omits `page` (wave 6 replaced the old test that asserted `page` is always cleared; see `recipe-list` "Recipe list pagination navigates to the selected page"); `clearAllFilters()` empties all params. Tested via a `TestConsumer` component that calls `useRecipeFilters()` and renders the return fields to `data-testid` spans. Render via `createMemoryRouter` with `initialEntries` carrying the query string (pattern from `AuthContext.test.tsx`).
 
 - `RecipeListView.test.tsx` — covers: renders `RecipeCard`s for each recipe in `recipesResponse.data`; loading state shows skeleton (`source: 'all'`) vs text (`source: 'starred'`) based on `useNavigation().state`; empty state when `data` is empty; `hasActiveFilters` shows the Clear button; admin visibility filter only renders when `showAdminVisibilityFilter = true`; pagination hidden when `total <= PER_PAGE` (12); `ActiveFilterBadge`s render for active equipment/mainBrewer/tasteNotes/coffeeVariety filters. Uses `createMemoryRouter` + `RouterProvider`, mocks `useTranslation` (or wraps in `I18nProvider`).
 
@@ -26,13 +26,13 @@ Tests SHALL follow the existing Vitest convention: imports from `vitest` (`{ bef
 
 #### Scenario: RecipeCard test passes
 
-- **WHEN** `make test-web` is executed (or `deno task --cwd apps/web test src/components/recipe-list/RecipeCard.test.tsx`)
+- **WHEN** `make test-web` is executed (or `pnpm --filter @brewform/web exec vitest run src/components/recipe-list/RecipeCard.test.tsx`)
 - **THEN** the `RecipeCard.test.tsx` suite passes, covering title render, author button stopPropagation, and currentVersion optional rendering
 
 #### Scenario: useRecipeFilters test covers param parsing and updateFilter
 
 - **WHEN** `make test-web` is executed
-- **THEN** the `useRecipeFilters.test.tsx` suite passes, covering default values, scalar parsing, `tasteNoteIds` UUID filtering, `updateFilter` set/delete/array-join/page-reset, and `clearAllFilters`
+- **THEN** the `useRecipeFilters.test.tsx` suite passes, covering default values, scalar parsing, `tasteNoteIds` UUID filtering, `updateFilter` set/delete/array-join, page reset on filter change, page preservation on `setPage`, and `clearAllFilters`
 
 #### Scenario: RecipeListView test covers loading and empty states
 
@@ -82,13 +82,13 @@ Tests SHALL mock `useAuth` by wrapping `RequireAuth` in a test `AuthContext.Prov
 All new test files (API and web) SHALL follow the existing project test conventions:
 
 **API tests (`apps/api/src/modules/equipment/model.test.ts`, `apps/api/src/modules/vendor/model.test.ts`):**
-- No file-level lint directives. Where a typed fix is impractical, a line-level `// deno-lint-ignore <rule>` with a one-line justification comment on the preceding line.
+- No file-level or range lint suppressions. Where a typed fix is impractical, a line-level `// biome-ignore lint/<group>/<rule>: <justification>` comment.
 - `import '../../test-setup.ts';` as the first import (sets `DATABASE_URL`/`JWT_SECRET`/`LOG_LEVEL` if missing).
-- `{ afterEach, beforeEach, describe, it }` from `jsr:@std/testing/bdd`, `expect` from `jsr:@std/expect`.
+- `{ afterEach, beforeEach, describe, expect, it }` (plus `vi` where spies or mocks are needed) from `vitest`.
 - Real `db` from `@brewform/db`, schema tables from `@brewform/db/schema`, `* as model from './model.ts'`.
 - Inline `crypto.randomUUID()` fixtures; `db.insert(users).values({ id, email: \`test-${userId}@example.com\`, username: \`testuser-${userId}\`, passwordHash: 'hash' })`.
 - `afterEach` hard-deletes test rows (child tables first, then parent).
-- Every `describe` gets `{ sanitizeOps: false, sanitizeResources: false }` as the second argument (required for DB I/O tests — the real connection pool leaks across the test boundary).
+- DB-backed test files rely on `apps/api/vitest.config.ts` running files serially (`fileParallelism: false`), because they assert global table counts; `describe` calls take no test-options object.
 - `'should ...'` `it` naming (matches `admin/model.test.ts`).
 
 **Web tests (`recipe-list/*.test.tsx`, `RequireAuth.test.tsx`):**
@@ -98,17 +98,17 @@ All new test files (API and web) SHALL follow the existing project test conventi
 - Components using router hooks (`useNavigate`, `useSearchParams`, `useNavigation`, `useLocation`) render via `createMemoryRouter` + `RouterProvider` with `initialEntries`.
 - Hook tests (`useRecipeFilters`) use a `TestConsumer` component that renders hook return fields to `data-testid` spans (pattern from `AuthContext.test.tsx`).
 
-**Reason:** Following existing conventions keeps the test suite consistent and avoids introducing new patterns that would need separate documentation. The existing patterns are proven by `admin/model.test.ts` (API) and `AuthContext.test.tsx` / `LikeButton.test.tsx` (web). Wave 5 reconciles this with the `lint-style` delta: the three rules are re-enabled and the ~40 no-op file-level test directives are deleted, so new API test files carry no `// deno-lint-ignore-file` header — only justified line-level ignores where a typed fix is impractical.
+**Reason:** Following existing conventions keeps the test suite consistent and avoids introducing new patterns that would need separate documentation. The existing patterns are proven by `admin/model.test.ts` (API) and `AuthContext.test.tsx` / `LikeButton.test.tsx` (web). Wave 5 reconciles this with the `lint-style` delta: the three rules are re-enabled and the ~40 no-op file-level test directives are deleted, so new API test files carry no file-level suppression header — only justified line-level `biome-ignore` comments where a typed fix is impractical.
 
 #### Scenario: API test files import test-setup first and carry no file-level directive
 
 - **WHEN** the new API test files are inspected
-- **THEN** the first import is `import '../../test-setup.ts';` and no `// deno-lint-ignore-file` line exists
+- **THEN** the first import is `import '../../test-setup.ts';` and no file-level or range suppression comment exists
 
-#### Scenario: API test describe blocks have sanitizer options
+#### Scenario: API DB test files run serially
 
-- **WHEN** the new API test files are inspected at each `describe` call
-- **THEN** the second argument is `{ sanitizeOps: false, sanitizeResources: false }`
+- **WHEN** `apps/api/vitest.config.ts` and the new API test files are inspected
+- **THEN** the config sets `fileParallelism: false` and no `describe` call passes a test-options object
 
 #### Scenario: Web test files use vi.hoisted logger mock
 
@@ -127,28 +127,24 @@ The new test files SHALL inline their own fixtures (per-test `crypto.randomUUID(
 - **THEN** no `*helper*`, `*fixture*`, or `*test-utils*` files appear in `apps/api/src/` or `apps/web/src/` — all fixtures are inline in the test files
 
 ### Requirement: Tier 2 API model tests follow the established model-test pattern
-
 The following 9 API modules SHALL have a `model.test.ts` file at
 `apps/api/src/modules/<module>/model.test.ts`:
 
 `badge`, `bean`, `comment`, `follow`, `photo`, `preference`, `qrcode`, `report`, `setup`.
 
-Each new model test file SHALL follow the pattern established by
+Each model test file SHALL follow the pattern established by
 `apps/api/src/modules/equipment/model.test.ts` (the Tier 1 reference) and
 `apps/api/src/modules/admin/model.test.ts` (the original reference):
 
-- **No file-level lint directive:** with the three rules re-enabled (per the wave-5 `lint-style`
-  delta), test files carry no `// deno-lint-ignore-file` header — where a typed fix is impractical,
-  use a line-level `// deno-lint-ignore <rule>` with a one-line justification comment on the
-  preceding line.
-- **Line 1 (or first import):** `import '../../test-setup.ts'` as the FIRST import — sets
-  `DATABASE_URL` / `JWT_SECRET` / `LOG_LEVEL` env vars if missing so tests run in any environment.
-- **Imports:** `{ afterEach, beforeEach, describe, it }` from `jsr:@std/testing/bdd`; `expect` from
-  `jsr:@std/expect`; `db` from `@brewform/db`; schema tables from `@brewform/db/schema`;
-  `* as model from './model.ts'`.
-- **Structure:** One `describe()` block per model function.
-- **`describe` signature:** `describe('functionName', { sanitizeOps: false, sanitizeResources:
-  false }, () => { ... })` — the sanitizer options are MANDATORY for DB I/O tests.
+- **No file-level or range lint suppression:** where a typed fix is impractical, use a line-level
+  `// biome-ignore lint/<group>/<rule>: <justification>` comment.
+- **First import:** `import '../../test-setup.ts'` — sets `DATABASE_URL` / `JWT_SECRET` /
+  `LOG_LEVEL` env vars if missing so tests run in any environment.
+- **Imports:** `{ afterEach, beforeEach, describe, expect, it }` from `vitest`; `db` from
+  `@brewform/db`; schema tables from `@brewform/db/schema`; `* as model from './model.ts'`.
+- **Structure:** One `describe('functionName', () => { ... })` block per model function. DB I/O
+  isolation comes from the API Vitest config running files serially (`fileParallelism: false`),
+  not from per-`describe` options.
 - **Fixtures:** Inline per describe block. `beforeEach` creates rows with `crypto.randomUUID()`
   IDs. `afterEach` hard-deletes test rows (child tables first, then parent) via
   `db.delete(table).where(eq(table.id, id))`.
@@ -162,28 +158,25 @@ Each model test SHALL cover (at minimum, where the function exists): `findMany` 
 `search`, `create` / `update`, `softDelete` (double-delete idempotency per D19's model), and any
 ownership/visibility paths specific to the module. Prioritise soft-delete and ownership paths.
 
-**Reason:** These 9 modules have `service.test.ts` but no `model.test.ts` — the model layer (which
-holds the actual DB queries and historically held the D01/D03 bugs) is untested. Bug history
-correlates directly with the untested model surface. Wave 5 removes the file-level
-`deno-lint-ignore-file` header from the pattern, reconciling with the `lint-style` delta that
-re-enables the rules and deletes the ~40 vestigial no-op test directives.
+**Reason:** These 9 modules had `service.test.ts` but no `model.test.ts` — the model layer (which
+holds the actual DB queries and historically held the D01/D03 bugs) was untested. Wave 5 removed the
+file-level suppression header from the pattern; the Node/pnpm migration moved the suites to Vitest.
 
-#### Scenario: 9 new model test files exist
+#### Scenario: 9 model test files exist
 
 - **WHEN** `ls apps/api/src/modules/{badge,bean,comment,follow,photo,preference,qrcode,report,setup}/model.test.ts` is run
 - **THEN** all 9 files exist
 
 #### Scenario: Model tests follow the established pattern
 
-- **WHEN** each new model test file is inspected
-- **THEN** it carries no file-level lint directive, has the `test-setup.ts` first import, `{ sanitizeOps: false,
-  sanitizeResources: false }` on DB describes, inline `crypto.randomUUID()` fixtures, and
-  `afterEach` hard-delete
+- **WHEN** each model test file is inspected
+- **THEN** it carries no file-level suppression, has the `test-setup.ts` first import, imports its
+  test API from `vitest`, uses inline `crypto.randomUUID()` fixtures and an `afterEach` hard-delete
 
 #### Scenario: Model tests pass
 
 - **WHEN** `make test-api` is run
-- **THEN** all 9 new model test files pass with zero failures
+- **THEN** all 9 model test files pass with zero failures
 
 ### Requirement: Tier 2 API route tests follow the established route-test pattern
 
@@ -192,8 +185,8 @@ The following 9 API modules SHALL have an `index.test.ts` file at
 
 `preference`, `bean`, `setup`, `photo`, `taste`, `user`, `badge`, `qrcode`, `vendor`.
 
-(`report` already has `index.test.ts`; `follow` has `index_test.ts` which Deno discovers — both are
-excluded from this requirement.)
+(`report` and `follow` already had route tests — `follow`'s was renamed from `index_test.ts` to
+`index.test.ts` by D99.18 — so both are excluded from this requirement.)
 
 Each new route test file SHALL follow the pattern established by existing route tests (e.g.
 `apps/api/src/modules/report/index.test.ts`, `apps/api/src/modules/comment/index.test.ts`):
@@ -222,7 +215,7 @@ The following 4 API utils SHALL have a co-located test file:
 |---|---|---|
 | `apps/api/src/utils/jobs/cron.ts` | `apps/api/src/utils/jobs/cron.test.ts` | New — assert schedule registration, job execution |
 | `apps/api/src/utils/openapi/index.ts` | `apps/api/src/utils/openapi/index.test.ts` | New — schema conversion smoke (z.toJSONSchema produces valid output) |
-| `apps/api/src/utils/upload/index.ts` | `apps/api/src/utils/upload/index.test.ts` | `bodyLimit.test.ts:156-165` (which already exercises `validateImageUpload`) — extend to cover `generateFilename`, `generateThumbnailFilename`, `getPublicUrl`, `saveUploadedFile`, `saveThumbnail`, `getThumbnailSizes` |
+| `apps/api/src/utils/upload/index.ts` | `apps/api/src/utils/upload/index.test.ts` | `bodyLimit.test.ts` (which exercises the photo body cap) — cover `validateImagePart`, `generateStorageKey`, `thumbnailKey`, `saveUploadedFile`, `deleteStoredFile` (wave 6 replaced `validateImageUpload`, `generateFilename` and `generateThumbnailFilename`, and the wave-6 review removed `getPublicUrl`, `saveThumbnail` and `getThumbnailSizes`; see `photo-upload-security` and `api-env-config`) |
 | `apps/api/src/middleware/requestId.ts` | `apps/api/src/middleware/requestId.test.ts` | `bodyLimit.test.ts` pattern (stub Hono app + `app.request()`) — assert header is read/generated and attached to context |
 
 **Path correction:** The D39 plan says `apps/api/src/jobs/cron.ts` but the actual path is
@@ -406,31 +399,25 @@ re-test already-covered surfaces.
 - **WHEN** `git diff` is inspected for `apps/web/src/components/ErrorBoundary.test.tsx`
 - **THEN** no new file is created — the existing Wave 3 test is preserved unchanged
 
-#### Scenario: follow route test not re-created (already exists as index_test.ts)
+#### Scenario: follow route test not re-created (already exists as index.test.ts)
 
 - **WHEN** `ls apps/api/src/modules/follow/index.test.ts` is run
-- **THEN** the file does NOT need to be created (follow has `index_test.ts` which Deno discovers)
+- **THEN** the file exists (renamed from `index_test.ts` by D99.18) and is not re-created
 
 ### Requirement: Suite entry points type-check and run
+`pnpm run test:db` (the `@brewform/db` `vitest run` suite) SHALL pass against a provisioned `brewform_test` database, and the `@brewform/db` `check` script (`tsc --noEmit`) SHALL type-check its test files, including `packages/db/src/schema-indexes.test.ts`, whose former TS2352 (`col as IndexedColumn`) is fixed with a correct type rather than a suppression. Because the root `test` and `ci` scripts in `package.json` (and `make test` / `make ci`) compose `test:db`, both SHALL complete without a type or runner failure before the tests execute.
 
-`deno task test:db` SHALL type-check and pass: the TS2352 at
-`packages/db/src/schema-indexes.test.ts:84` (the `col as IndexedColumn` cast; the task has no
-`--no-check`, `packages/db/deno.json:16`) SHALL be fixed with a correct type, not by adding
-`--no-check` to the task. Because the root `test` task (`deno.json:32`) and `ci` task
-(`deno.json:49`) compose `test:db`, both SHALL complete without a pre-test type failure.
+**Reason:** The advertised full-suite entry points previously failed before running a single test; every "run make test" instruction in the docs depends on them being green.
 
-**Reason:** The advertised full-suite entry points fail before running a single test — every
-"run make test" instruction in the repo docs is currently broken at the first composed task.
+#### Scenario: test:db passes and its files type-check
 
-#### Scenario: test:db passes with type-checking on
-
-- **WHEN** `deno task test:db` runs against a provisioned `brewform_test` database
-- **THEN** it type-checks (no `--no-check` in the task definition) and all db tests pass
+- **WHEN** `pnpm run check:db` and then `pnpm run test:db` run against a provisioned `brewform_test` database
+- **THEN** the type-check reports zero errors and all db tests pass
 
 #### Scenario: Root entry points are green
 
-- **WHEN** `deno task test` and `deno task ci` run
-- **THEN** neither aborts on the TS2352 — the composed `test:db` step type-checks and executes
+- **WHEN** `pnpm run test` and `pnpm run ci` (or `make test` and `make ci`) run
+- **THEN** neither aborts before executing tests — the composed `test:db` step type-checks and runs
 
 ### Requirement: Test files exercise the production module they name
 
@@ -450,6 +437,17 @@ The old files' scenario lists SHALL be kept as a rewrite checklist so no behavio
 lost, but no mirrored code survives. Real admin-module bugs surfaced by the rewrite are fixed in
 separate commits within the track so the test diff stays reviewable.
 
+The wave-6 review remediation removes the remaining mirrors the same way; each behaviour a mirror
+asserted gets a test of the real function before the copy is deleted:
+
+| File | Rewrite |
+|---|---|
+| `apps/api/src/modules/comment/service.test.ts` | the inline `createComment`/`deleteComment` copies are deleted; the properties run against the real functions through `deps` |
+| `apps/api/src/modules/recipe/model.test.ts` | the mock Drizzle surface and the `buildRecipeFilters`/`recipeCoffeeVarietyCondition` copies are deleted; every filter branch is tested against `brewform_test` through the real `buildListRecipesWhere` (`model.cursor.test.ts`, "Recipe model — list filters (DB)"), search and dates in `model.search.test.ts` |
+| `apps/api/src/modules/recipe/service.test.ts` | the inline `listRecipes_withTasteNoteFilters` copy and the inline visibility and fork-title expressions are deleted (covered by the list-filter cases, the real `canViewRecipe` tests and `service.slug.test.ts`) |
+| `apps/api/src/modules/recipe/service.preservation.test.ts` | deleted: it copied a removed `listRecipes`; the real non-admin and admin visibility cases are in `model.cursor.test.ts` |
+| `apps/api/src/modules/user/service.preservation.test.ts`, `user/service.exploration.test.ts` | deleted: they copied a removed `getPublicProfile`; `user/service.test.ts` tests `isFollowing` and the profile counts against the database |
+
 **Reason:** These four files pass regardless of what the production module does — the admin module
 alone carries 1,349 uncovered production lines behind green tests. Mirrors are worse than no tests:
 they manufacture false confidence and still cost maintenance (design.md Decision 8).
@@ -462,9 +460,19 @@ they manufacture false confidence and still cost maintenance (design.md Decision
 
 #### Scenario: Admin coverage becomes real
 
-- **WHEN** `deno task test-coverage` runs after the rewrite
+- **WHEN** `pnpm run test-coverage` (`make test-coverage`) runs after the rewrite
 - **THEN** `apps/api/src/modules/admin/` line coverage reflects actual execution of the production
   module (up from 1,349 uncovered lines), and `make test-api` passes
+
+#### Scenario: Every recipe filter branch runs against the database
+
+- **WHEN** the recipe model tests run
+- **THEN** the `brewMethod`, `drinkType`, `search`, `mainBrewer`, `author`, `dateFrom`/`dateTo`, `minRating`/`maxRating`, `coffeeVarietyId`, `equipmentId`, `tasteNoteIds` and `tasteNoteId` branches of the real `buildRecipeFilters` are each asserted by the recipes a query returns from `brewform_test`
+
+#### Scenario: No mirror of a service or model function remains
+
+- **WHEN** `grep -rniE "faithful (inline )?copy|inline copy|mirror any change" apps/api/src --include='*.test.ts'` runs
+- **THEN** it prints nothing
 
 ### Requirement: Per-workspace coverage is CI-gated by Vitest thresholds
 
@@ -475,9 +483,9 @@ during `pnpm run test-coverage`, exiting non-zero when a workspace falls below a
 command is wired into `make ci` and the `test` job in `ci.yml`. Thresholds are set from the measured
 number, rounded down, and are ratcheted upward only.
 
-**Reason:** The previous `scripts/coverage-gate.ts` parsed `deno coverage` output; it is gone with
-the Deno → Node migration. Vitest has native `coverage.thresholds`, so a custom gate script would
-only duplicate the runner's own check.
+**Reason:** The previous custom `scripts/coverage-gate.ts` parsed the former runtime's coverage
+output and was removed in the Node/pnpm migration (#135). Vitest has native `coverage.thresholds`,
+so a custom gate script would only duplicate the runner's own check.
 
 #### Scenario: Gate fails below threshold
 
@@ -555,10 +563,7 @@ ratchet gets there monotonically without ever being red on day one (design.md De
 
 ### Requirement: A local task provisions the test database
 
-A make target SHALL provision the `brewform_test` database locally, mirroring the CI provisioning
-steps at `.github/workflows/pr.yml:63-113` (create `brewform_test` in the compose Postgres, run
-migrations, seed). After the target runs, the 129 DB-dependent API tests and `deno task test:db`
-SHALL pass locally without hand-provisioning.
+A make target, `make test-db-provision`, SHALL provision the `brewform_test` database locally, idempotently mirroring the database provisioning steps of the `test` job in `.github/workflows/ci.yml` (create `brewform_test` in the compose Postgres, run migrations, seed). After the target runs, the DB-dependent API tests and `pnpm run test:db` SHALL pass locally without hand-provisioning.
 
 **Reason:** 129 API tests currently require a `brewform_test` DB that no local task creates — the
 suite is green in CI and unrunnable on a fresh clone, which is how the mock-mirror and pollution
@@ -566,30 +571,30 @@ problems stayed invisible.
 
 #### Scenario: Fresh-clone test run works
 
-- **WHEN** a developer runs the new provisioning target followed by `make test-api` on a machine
+- **WHEN** a developer runs `make test-db-provision` followed by `make test-api` on a machine
   with the compose Postgres up
 - **THEN** the DB-dependent tests connect to `brewform_test` and pass without manual `psql` steps
 
 #### Scenario: Provisioning matches CI
 
-- **WHEN** the make target's steps are compared to `.github/workflows/pr.yml:63-113`
+- **WHEN** the make target's steps are compared to the `test` job in `.github/workflows/ci.yml`
 - **THEN** database name, migration, and seed steps match, so local green predicts CI green
 
 ### Requirement: Test suites pass in composed order without cross-suite pollution
 
 The composed suite order SHALL be pollution-free: running the db tests AFTER the API suite on the
 same database currently fails `seed.idempotent.test.ts` ("full seed twice… leaves expected
-counts") because API tests mutate seeded rows — and the root `test` task order (`test:api` before
-`test:db`, `deno.json:32`) triggers exactly this. The fix SHALL either isolate the API tests from
-seeded rows or re-seed between suites, such that `deno task test` passes end-to-end in its
-declared order.
+counts") because API tests mutate seeded rows — and the root `test` script order in `package.json`
+(`test:api` before `test:db`) triggers exactly this. The fix SHALL either isolate the API tests from
+seeded rows or re-seed between suites, such that `pnpm run test` (`make test`) passes end-to-end in
+its declared order.
 
 **Reason:** An entry point that fails only when run in its own advertised order trains developers
 to run suites individually and ignore red — the exact habit that let the mock-mirrors survive.
 
 #### Scenario: Composed order is green
 
-- **WHEN** `deno task test` runs (api suite then db suite) against a provisioned test DB
+- **WHEN** `pnpm run test` runs (api suite then db suite) against a provisioned test DB
 - **THEN** `seed.idempotent.test.ts` passes — no failure caused by API-suite mutations
 
 #### Scenario: Order independence

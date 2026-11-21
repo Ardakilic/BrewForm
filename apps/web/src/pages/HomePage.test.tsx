@@ -1,10 +1,10 @@
 import type { RecipeListItemOutput } from '@brewform/shared/schemas';
-import { render, screen, waitFor } from '@testing-library/react';
-import { createMemoryRouter } from 'react-router';
-import { RouterProvider } from 'react-router/dom';
+import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { I18nProvider } from '../contexts/I18nContext.tsx';
-import { HomePage, loader } from './HomePage.tsx';
+import { RouteErrorState } from '../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../test-utils/render.tsx';
+import { loader } from './HomePage.data.ts';
+import { HomePage } from './HomePage.tsx';
 
 vi.mock('../api/index.ts', () => ({
   recipeApi: {
@@ -45,14 +45,11 @@ function makeRecipe(overrides: Partial<RecipeListItemOutput> = {}): RecipeListIt
   };
 }
 
+/** Renders `/` through the real home loader inside the app providers. */
 function renderHomePage() {
-  const router = createMemoryRouter([{ path: '/', element: <HomePage />, loader }], {
-    initialEntries: ['/'],
-  });
-  return render(
-    <I18nProvider>
-      <RouterProvider router={router} />
-    </I18nProvider>,
+  return renderWithAppProviders(
+    [{ path: '/', element: <HomePage />, loader, errorElement: <RouteErrorState /> }],
+    { initialEntries: ['/'] },
   );
 }
 
@@ -138,10 +135,7 @@ describe('HomePage — i18n', () => {
     expect(authorButtons).toHaveLength(2);
   });
 
-  it('renders "unknown" author when author is null', async () => {
-    // `author: null` tests RecipeCard's defensive fallback; the shared
-    // schema types `author` as non-nullable (recipes.authorId is NOT NULL
-    // and users are soft-deleted), so cast to satisfy the type-checker.
+  it('renders "Deleted user" when author is null (the account was deleted)', async () => {
     mockRecipeApi.list.mockResolvedValue({
       success: true,
       data: [
@@ -152,7 +146,7 @@ describe('HomePage — i18n', () => {
           title: 'Anonymous Recipe',
           likeCount: 3,
           author: null,
-        } as unknown as RecipeListItemOutput,
+        },
       ],
       meta: { requestId: 'test', pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
     });
@@ -161,8 +155,8 @@ describe('HomePage — i18n', () => {
 
     const titles = await screen.findAllByText('Anonymous Recipe');
     expect(titles).toHaveLength(2);
-    const unknowns = screen.getAllByText('unknown', { exact: false });
-    expect(unknowns).toHaveLength(2);
+    expect(screen.getAllByText('Deleted user')).toHaveLength(2);
+    expect(screen.queryByText('unknown', { exact: false })).not.toBeInTheDocument();
   });
 
   it('extracts data from the response envelope for both latest and popular sections', async () => {
@@ -232,5 +226,35 @@ describe('HomePage — i18n', () => {
     const recipes = await screen.findAllByText('Loaded Recipe');
     expect(recipes).toHaveLength(2);
     expect(document.querySelectorAll('.animate-pulse').length).toBe(0);
+  });
+});
+
+describe('HomePage loader', () => {
+  it('forwards request.signal to both recipe list requests', async () => {
+    const controller = new AbortController();
+    await loader({
+      request: new Request('http://localhost/', { signal: controller.signal }),
+      params: {},
+      context: undefined,
+    } as never);
+
+    expect(mockRecipeApi.list).toHaveBeenCalledTimes(2);
+    expect(mockRecipeApi.list).toHaveBeenCalledWith(
+      { perPage: '6', sortBy: 'createdAt' },
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(mockRecipeApi.list).toHaveBeenCalledWith(
+      { perPage: '6', sortBy: 'likeCount' },
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it('renders the route error state instead of empty grids when the load fails', async () => {
+    mockRecipeApi.list.mockRejectedValue(new Error('down'));
+
+    renderHomePage();
+
+    expect(await screen.findByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(screen.queryByText('Latest Recipes')).not.toBeInTheDocument();
   });
 });

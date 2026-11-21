@@ -45,6 +45,7 @@ function TestConsumer({
       <span data-testid="mainBrewer">{f.mainBrewer}</span>
       <span data-testid="coffeeVarietyId">{f.coffeeVarietyId}</span>
       <span data-testid="tasteNoteIds">{f.tasteNoteIds.join(',')}</span>
+      <span data-testid="query">{f.searchParams.toString()}</span>
       <button
         type="button"
         data-testid="setBrewMethod"
@@ -68,6 +69,12 @@ function TestConsumer({
       </button>
       <button type="button" data-testid="setPage" onClick={() => f.updateFilter('page', '3')}>
         setPage
+      </button>
+      <button type="button" data-testid="setPage3" onClick={() => f.setPage(3)}>
+        setPage3
+      </button>
+      <button type="button" data-testid="setPage1" onClick={() => f.setPage(1)}>
+        setPage1
       </button>
       <button type="button" data-testid="clearAll" onClick={() => f.clearAllFilters()}>
         clearAll
@@ -145,15 +152,50 @@ describe('useRecipeFilters', () => {
     });
   });
 
-  it('should always clear the page param when updateFilter is called (reset to page 1)', async () => {
-    renderWithRouter(['/?page=3&brewMethod=v60']);
+  it('clears the page param when a filter changes (back to page 1)', async () => {
+    renderWithRouter(['/?page=3&sortBy=rating']);
     expect(screen.getByTestId('page').textContent).toBe('3');
     const user = userEvent.setup();
     await user.click(screen.getByTestId('setBrewMethod'));
-    // brewMethod stays v60 (already set), but page should reset
     await waitFor(() => {
       expect(screen.getByTestId('page').textContent).toBe('1');
+      expect(screen.getByTestId('query').textContent).toBe('sortBy=rating&brewMethod=v60');
     });
+  });
+
+  it("keeps page=3 and every filter when updateFilter('page', '3') is called", async () => {
+    renderWithRouter(['/?brewMethod=v60&sortBy=rating']);
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('setPage'));
+    await waitFor(() => {
+      expect(screen.getByTestId('page').textContent).toBe('3');
+      expect(screen.getByTestId('query').textContent).toBe('brewMethod=v60&sortBy=rating&page=3');
+    });
+  });
+
+  it('keeps page=3 and every filter when setPage(3) is called', async () => {
+    renderWithRouter(['/?brewMethod=v60&sortBy=rating']);
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('setPage3'));
+    await waitFor(() => {
+      expect(screen.getByTestId('page').textContent).toBe('3');
+      expect(screen.getByTestId('query').textContent).toBe('brewMethod=v60&sortBy=rating&page=3');
+    });
+  });
+
+  it('removes the page param when setPage(1) is called (default omitted)', async () => {
+    renderWithRouter(['/?brewMethod=v60&page=4']);
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('setPage1'));
+    await waitFor(() => {
+      expect(screen.getByTestId('page').textContent).toBe('1');
+      expect(screen.getByTestId('query').textContent).toBe('brewMethod=v60');
+    });
+  });
+
+  it('parses an invalid page as 1 (extractListParams rules)', () => {
+    renderWithRouter(['/?page=-3']);
+    expect(screen.getByTestId('page').textContent).toBe('1');
   });
 
   it('should clear all params when clearAllFilters is called', async () => {

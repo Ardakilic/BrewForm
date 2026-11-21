@@ -9,7 +9,8 @@ import {
   users,
 } from '@brewform/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, assert, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { VisibilityFixtures, type VisibilityScenario } from '../recipe/test-helpers.ts';
 import * as model from './model.ts';
 
 describe('findById', () => {
@@ -209,7 +210,42 @@ describe('findManyWithFilters', () => {
     const ids = result.items.map((i) => i.id);
     expect(ids).not.toContain(equipmentIds[2]);
   });
+
+  it('should match the search ignoring letter case', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertEquipment(equipmentIds, userId, {
+      name: 'V60 Dripper',
+      brand: `Hario${tag}`,
+    });
+    const result = await model.findManyWithFilters({ search: `hario${tag}`, page: 1, perPage: 10 });
+    expect(result.items.map((i) => i.id)).toEqual([id]);
+  });
+
+  it('should match an underscore in the search literally', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertEquipment(equipmentIds, userId, { name: `a_c${tag}` });
+    await insertEquipment(equipmentIds, userId, { name: `abc${tag}` });
+    const result = await model.findManyWithFilters({ search: `a_c${tag}`, page: 1, perPage: 10 });
+    expect(result.items.map((i) => i.id)).toEqual([id]);
+  });
 });
+
+/**
+ * Insert a grinder owned by `userId` with the given name, brand and model, and register its id
+ * in `ids` for the caller's cleanup.
+ */
+async function insertEquipment(
+  ids: string[],
+  userId: string,
+  values: { name: string; brand?: string; model?: string },
+): Promise<string> {
+  const id = crypto.randomUUID();
+  ids.push(id);
+  await db
+    .insert(equipment)
+    .values({ id, ...values, type: 'grinder', isSystem: false, createdBy: userId });
+  return id;
+}
 
 describe('search', () => {
   let userId: string;
@@ -308,6 +344,28 @@ describe('search', () => {
     }
     const results = await model.search('BatchGrinder');
     expect(results.length).toBeLessThanOrEqual(10);
+  });
+
+  it('should match the brand ignoring letter case', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertEquipment(equipmentIds, userId, {
+      name: 'V60 Dripper',
+      brand: `Hario${tag}`,
+    });
+    const results = await model.search(`hario${tag}`);
+    expect(results.map((r) => r.id)).toEqual([id]);
+  });
+
+  it('should match an underscore literally', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertEquipment(equipmentIds, userId, { name: `a_c${tag}` });
+    await insertEquipment(equipmentIds, userId, { name: `abc${tag}` });
+    const results = await model.search(`a_c${tag}`);
+    expect(results.map((r) => r.id)).toEqual([id]);
+  });
+
+  it('should return no rows for a whitespace-only query', async () => {
+    expect(await model.search('   ')).toEqual([]);
   });
 });
 
@@ -581,6 +639,22 @@ describe('getRecipesUsingEquipment', () => {
     expect(result.total).toBe(1);
   });
 
+  it('lists the recipe of a soft-deleted author with author: null (E11)', async () => {
+    const { recipeId } = await insertRecipe('public', true);
+    const live = await model.getRecipesUsingEquipment(equipmentId, 1, 10);
+    expect(live.data.find((r) => r.id === recipeId)?.author).toEqual({
+      username: `testuser-${userId}`,
+      displayName: null,
+      avatarUrl: null,
+    });
+    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
+    const result = await model.getRecipesUsingEquipment(equipmentId, 1, 10);
+    expect(result.total).toBe(1);
+    const listed = result.data.find((r) => r.id === recipeId);
+    assert.exists(listed);
+    expect(listed.author).toBeNull();
+  });
+
   it('should exclude soft-deleted recipes', async () => {
     await insertRecipe('public', true);
     const { recipeId } = await insertRecipe('public', true, true);
@@ -616,8 +690,7 @@ describe('getRecipesUsingEquipment', () => {
     const result = await model.getRecipesUsingEquipment(equipmentId, 1, 10);
     expect(result.data.length).toBe(1);
     const recipe = result.data[0];
-    expect(recipe.author).toBeDefined();
-    expect(recipe.author.username).toBe(`testuser-${userId}`);
+    expect(recipe.author?.username).toBe(`testuser-${userId}`);
   });
 
   it('should return matching total count in the count branch', async () => {
@@ -634,5 +707,29 @@ describe('getRecipesUsingEquipment', () => {
     const result = await model.getRecipesUsingEquipment(equipmentId, 1, 10);
     expect(result.data).toEqual([]);
     expect(result.total).toBe(0);
+  });
+});
+
+/**
+ * Regression lock for capability `recipe-visibility` (task 11.1): the equipment detail recipe
+ * list is a discovery surface, so an unlisted recipe whose current version uses the equipment
+ * is neither listed nor counted.
+ */
+describe('getRecipesUsingEquipment — unlisted recipes (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let scenario: VisibilityScenario;
+
+  beforeAll(async () => {
+    scenario = await fixtures.scenario('vis-equip');
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  it('excludes the unlisted recipe from data and total', async () => {
+    const result = await model.getRecipesUsingEquipment(scenario.equipmentId, 1, 10);
+    expect(result.data.map((r) => r.id)).toEqual([scenario.publicP.id]);
+    expect(result.total).toBe(1);
   });
 });

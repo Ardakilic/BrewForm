@@ -1,6 +1,20 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithAppProviders } from '../test-utils/render.tsx';
+import { action } from './ContactPage.data.ts';
 import { ContactPage } from './ContactPage.tsx';
+
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
+}));
 
 vi.mock('../api/client.ts', () => ({
   api: {
@@ -9,10 +23,12 @@ vi.mock('../api/client.ts', () => ({
 }));
 
 vi.mock('../contexts/I18nContext.tsx', () => ({
+  I18nProvider: ({ children }: { children: ReactNode }) => children,
   useTranslation: vi.fn(),
 }));
 
 import { api } from '../api/client.ts';
+import { ApiError } from '../api/errors.ts';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -31,6 +47,7 @@ const enT = (key: string) => {
     'contact.success.title': 'Message Sent',
     'contact.success.message': "We'll get back to you soon.",
     'error.500': 'Something went wrong',
+    'error.rateLimited': 'Too many attempts. Please try again in {seconds} seconds.',
   };
   return map[key] ?? key;
 };
@@ -47,9 +64,16 @@ beforeEach(() => {
   mockUseTranslation.mockReturnValue(defaultTranslation);
 });
 
+/** Renders `/contact` with its real route action inside the app providers. */
+function renderContact() {
+  return renderWithAppProviders([{ path: '/contact', element: <ContactPage />, action }], {
+    initialEntries: ['/contact'],
+  });
+}
+
 describe('ContactPage', () => {
   it('renders all form fields', () => {
-    const { container } = render(<ContactPage />);
+    const { container } = renderContact();
 
     expect(screen.getByText('Contact Us')).toBeInTheDocument();
     expect(screen.getByText('Send us a message')).toBeInTheDocument();
@@ -64,7 +88,7 @@ describe('ContactPage', () => {
   it('submits form and shows success message', async () => {
     mockApiPost.mockResolvedValueOnce({ message: 'ok' });
 
-    const { container } = render(<ContactPage />);
+    const { container } = renderContact();
 
     fireEvent.change(container.querySelector('input[name="name"]')!, {
       target: { value: 'Alice' },
@@ -82,12 +106,16 @@ describe('ContactPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     await waitFor(() => {
-      expect(mockApiPost).toHaveBeenCalledWith('/contact', {
-        name: 'Alice',
-        email: 'alice@example.com',
-        subject: 'Test Subject',
-        message: 'This is a test message.',
-      });
+      expect(mockApiPost).toHaveBeenCalledWith(
+        '/contact',
+        {
+          name: 'Alice',
+          email: 'alice@example.com',
+          subject: 'Test Subject',
+          message: 'This is a test message.',
+        },
+        { signal: expect.any(AbortSignal) },
+      );
     });
 
     await waitFor(() => {
@@ -99,7 +127,7 @@ describe('ContactPage', () => {
   it('shows error message on API failure', async () => {
     mockApiPost.mockRejectedValueOnce(new Error('Network error'));
 
-    const { container } = render(<ContactPage />);
+    const { container } = renderContact();
 
     fireEvent.change(container.querySelector('input[name="name"]')!, {
       target: { value: 'Bob' },
@@ -121,5 +149,35 @@ describe('ContactPage', () => {
     });
 
     expect(screen.queryByText('Message Sent')).not.toBeInTheDocument();
+  });
+
+  it('shows the localised rate-limit message with the Retry-After seconds on a 429', async () => {
+    mockApiPost.mockRejectedValueOnce(
+      new ApiError('RATE_LIMITED', 'Too many contact messages', undefined, 429, 120),
+    );
+
+    const { container } = renderContact();
+
+    fireEvent.change(container.querySelector('input[name="name"]')!, {
+      target: { value: 'Carol' },
+    });
+    fireEvent.change(container.querySelector('input[name="email"]')!, {
+      target: { value: 'carol@example.com' },
+    });
+    fireEvent.change(container.querySelector('input[name="subject"]')!, {
+      target: { value: 'Rate limit' },
+    });
+    fireEvent.change(container.querySelector('textarea[name="message"]')!, {
+      target: { value: 'This one is throttled.' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Too many attempts. Please try again in 120 seconds.'),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Too many contact messages')).not.toBeInTheDocument();
   });
 });

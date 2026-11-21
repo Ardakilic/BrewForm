@@ -2,9 +2,9 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
-# Shared version pins (Deno `catalog:` equivalent).
-# Consumers reference these as `"dep": "catalog:"` in their package.json.
-# Exact pins resolved from deno.lock at time of writing.
+# pnpm catalog: one exact version per shared dependency.
+# Every workspace member references these as `"dep": "catalog:"` in its
+# package.json, so a bump here moves all members together.
 catalog:
   drizzle-orm: 0.45.4
   bcryptjs: 3.0.3

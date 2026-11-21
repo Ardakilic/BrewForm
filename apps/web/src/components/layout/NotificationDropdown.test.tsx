@@ -1,9 +1,5 @@
 // ── Module-level mocks (hoisted by Vitest — MUST come before imports) ──
 
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: vi.fn(),
-}));
-
 vi.mock('../../api/index.ts', () => ({
   notificationApi: {
     list: vi.fn(),
@@ -12,47 +8,48 @@ vi.mock('../../api/index.ts', () => ({
 }));
 
 vi.mock('@/utils/logger.ts', () => ({
-  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
-}));
-
-vi.mock('../../utils/notification-events.ts', () => ({
-  NOTIFICATIONS_CHANGED_EVENT: 'brewform:notifications-changed',
-  notifyNotificationsChanged: vi.fn(),
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
 }));
 
 // Stub the item so dropdown tests stay focused on list/state/mark-all-read logic.
 vi.mock('./NotificationItem.tsx', () => ({
-  NotificationItem: ({ notification }: { notification: { id: string } }) => (
-    <div data-testid={`item-${notification.id}`}>{notification.id}</div>
+  NotificationItem: ({ notification }: { notification: { id: string; readAt: string | null } }) => (
+    <div data-testid={`item-${notification.id}`}>
+      {notification.id}
+      {notification.readAt ? ' read' : ' unread'}
+    </div>
   ),
 }));
 
 // ── Imports (after all vi.mock calls) ──
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { t } from '@brewform/shared/i18n';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { notificationApi } from '../../api/index.ts';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { notifyNotificationsChanged } from '../../utils/notification-events.ts';
+import {
+  markAllReadAction,
+  notificationsPageLoader,
+  shouldRevalidateNotifications,
+} from '../../routes/resources/notifications.ts';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { NOTIFICATIONS_CHANGED_EVENT } from '../../utils/notification-events.ts';
 import { NotificationDropdown } from './NotificationDropdown.tsx';
 
-const mockUseTranslation = vi.mocked(useTranslation);
 const mockList = vi.mocked(notificationApi.list);
 const mockMarkAllRead = vi.mocked(notificationApi.markAllRead);
-const mockNotifyChanged = vi.mocked(notifyNotificationsChanged);
 
-const templates: Record<string, string> = {
-  'notifications.title': 'Notifications',
-  'notifications.markAllRead': 'Mark all read',
-  'notifications.loadError': 'Could not load notifications',
-  'notifications.empty': 'No notifications',
-  'notifications.viewAll': 'View all',
-  'common.loading': 'Loading…',
-};
+const MARK_ALL = t('notifications.markAllRead');
 
-/** Build a paginated list response whose `data` is `count` unread notifications. */
+/** Build a paginated list response whose `data` is `count` notifications. */
 function page(count: number, read = false) {
   return {
     data: Array.from({ length: count }, (_, i) => ({
@@ -63,37 +60,37 @@ function page(count: number, read = false) {
   } as never;
 }
 
+/** Renders the dropdown with the real notification resource routes. */
 function renderDropdown() {
-  return render(
-    <MemoryRouter>
-      <NotificationDropdown />
-    </MemoryRouter>,
+  return renderWithAppProviders(
+    [
+      { path: '/', element: <NotificationDropdown /> },
+      {
+        path: '/resources/notifications',
+        loader: notificationsPageLoader,
+        shouldRevalidate: shouldRevalidateNotifications,
+      },
+      { path: '/resources/notifications/read-all', action: markAllReadAction },
+      { path: '/notifications', element: null },
+    ],
+    { initialEntries: ['/'], auth: 'user' },
   );
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockUseTranslation.mockReturnValue({
-    locale: 'en',
-    setLocale: vi.fn(),
-    t: (key: string) => templates[key] ?? key,
-    availableLocales: ['en', 'tr'],
-  });
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
+  localStorage.clear();
 });
 
 describe('NotificationDropdown', () => {
-  it('shows the loading state, then renders the fetched items', async () => {
+  it('shows the loading state, then renders the items loaded through the fetcher', async () => {
     mockList.mockResolvedValue(page(2));
     renderDropdown();
 
-    expect(screen.getByText('Loading…')).toBeInTheDocument();
+    expect(screen.getByText(t('common.loading'))).toBeInTheDocument();
     expect(await screen.findByTestId('item-n1')).toBeInTheDocument();
     expect(screen.getByTestId('item-n2')).toBeInTheDocument();
-    expect(mockList).toHaveBeenCalledWith(1);
+    expect(mockList).toHaveBeenCalledWith(1, undefined, { signal: expect.any(AbortSignal) });
   });
 
   it('caps the rendered items at the recent limit of 10', async () => {
@@ -109,30 +106,48 @@ describe('NotificationDropdown', () => {
     mockList.mockResolvedValue(page(0));
     renderDropdown();
 
-    expect(await screen.findByText('No notifications')).toBeInTheDocument();
+    expect(await screen.findByText(t('notifications.empty'))).toBeInTheDocument();
   });
 
-  it('shows the error message when the fetch rejects', async () => {
+  it('shows the error message when the resource loader reports a failure', async () => {
     mockList.mockRejectedValue(new Error('down'));
     renderDropdown();
 
-    expect(await screen.findByText('Could not load notifications')).toBeInTheDocument();
+    expect(await screen.findByText(t('notifications.loadError'))).toBeInTheDocument();
   });
 
-  it('offers mark-all-read when unread items exist and clears them on click', async () => {
+  it('marks all read through the action, broadcasts the change and clears the unread items', async () => {
     mockList.mockResolvedValue(page(2));
-    mockMarkAllRead.mockResolvedValue({ message: 'ok' } as never);
+    mockMarkAllRead.mockResolvedValue({ message: 'ok' });
+    const changed = vi.fn();
+    globalThis.addEventListener(NOTIFICATIONS_CHANGED_EVENT, changed);
     const user = userEvent.setup();
     renderDropdown();
 
-    const button = await screen.findByRole('button', { name: 'Mark all read' });
-    await user.click(button);
+    await user.click(await screen.findByRole('button', { name: MARK_ALL }));
 
-    expect(mockMarkAllRead).toHaveBeenCalledTimes(1);
-    expect(mockNotifyChanged).toHaveBeenCalledTimes(1);
     await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'Mark all read' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('button', { name: MARK_ALL })).not.toBeInTheDocument(),
     );
+    expect(mockMarkAllRead).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('item-n1')).toHaveTextContent('read');
+    // No revalidation: the page is not loaded a second time.
+    expect(mockList).toHaveBeenCalledTimes(1);
+    globalThis.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, changed);
+  });
+
+  it('shows an error toast and keeps the unread items when mark-all-read fails', async () => {
+    mockList.mockResolvedValue(page(2));
+    mockMarkAllRead.mockRejectedValue(new Error('down'));
+    const user = userEvent.setup();
+    renderDropdown();
+
+    await user.click(await screen.findByRole('button', { name: MARK_ALL }));
+
+    expect(await screen.findByText(t('notifications.markAllReadError'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: MARK_ALL })).toBeInTheDocument();
+    expect(screen.getByTestId('item-n1')).toHaveTextContent('unread');
   });
 
   it('hides mark-all-read when every notification is already read', async () => {
@@ -140,14 +155,14 @@ describe('NotificationDropdown', () => {
     renderDropdown();
 
     await screen.findByTestId('item-n1');
-    expect(screen.queryByRole('button', { name: 'Mark all read' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: MARK_ALL })).not.toBeInTheDocument();
   });
 
   it('links to the full notifications page', async () => {
     mockList.mockResolvedValue(page(1));
     renderDropdown();
 
-    const link = await screen.findByRole('link', { name: 'View all' });
+    const link = await screen.findByRole('link', { name: t('notifications.viewAll') });
     expect(link).toHaveAttribute('href', '/notifications');
   });
 });

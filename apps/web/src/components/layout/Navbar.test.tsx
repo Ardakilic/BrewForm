@@ -1,17 +1,29 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Navbar } from './Navbar.tsx';
 
 // Use vi.hoisted so the mockActivePath variable is available inside the vi.mock factory
 // (vi.mock calls are hoisted to the top of the file by Vitest, before any imports/variables).
 const { mockNavState } = vi.hoisted(() => {
-  const mockNavState = { activePath: '/' };
+  const mockNavState: {
+    activePath: string;
+    rootData: { registrationEnabled: boolean } | undefined;
+    navigate: (to: string, opts?: unknown) => Promise<void>;
+  } = {
+    activePath: '/',
+    rootData: { registrationEnabled: true },
+    navigate: () => Promise.resolve(),
+  };
   return { mockNavState };
 });
 
 vi.mock('react-router', () => ({
+  // The root route loader's data (`{ registrationEnabled }`), controlled per test.
+  useRouteLoaderData: () => mockNavState.rootData,
+  // Sign-out navigates to `/` (useSignOut); the test records the call.
+  useNavigate: () => mockNavState.navigate,
   Link: ({
     to,
     children,
@@ -81,10 +93,6 @@ vi.mock('../../api/index.ts', () => ({
     code = '';
     status = 500;
   },
-  authApi: {
-    registrationStatus: vi.fn().mockResolvedValue({ enabled: true }),
-    logout: vi.fn().mockResolvedValue({}),
-  },
   notificationApi: {
     unreadCount: vi.fn().mockResolvedValue({ count: 0 }),
     list: vi.fn().mockResolvedValue({
@@ -97,7 +105,12 @@ vi.mock('../../api/index.ts', () => ({
   },
 }));
 
-import { authApi } from '../../api/index.ts';
+// The bell loads its badge through a fetcher (a data-router hook this file's react-router mock
+// does not provide); its behaviour is covered by NotificationBell.test.tsx.
+vi.mock('./NotificationBell.tsx', () => ({
+  NotificationBell: () => <span data-testid="notification-bell" />,
+}));
+
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
@@ -113,10 +126,10 @@ Object.defineProperty(globalThis, 'matchMedia', {
     matches: true,
     media: query,
     onchange: null,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
     dispatchEvent: () => false,
   }),
   configurable: true,
@@ -198,6 +211,11 @@ beforeEach(() => {
 });
 
 describe('Navbar — i18n', () => {
+  it('is site chrome marked print-hidden (print hides only marked elements, V2)', () => {
+    render(<Navbar />);
+    expect(screen.getByRole('banner')).toHaveClass('print-hidden');
+  });
+
   it('renders nav links using t() — English', () => {
     render(<Navbar />);
     expect(screen.getByText('Recipes')).toBeInTheDocument();
@@ -311,19 +329,46 @@ describe('Navbar — authenticated state', () => {
     expect(screen.getByText('Çıkış Yap')).toBeInTheDocument();
   });
 
-  it('calls logout when Log Out button is clicked', async () => {
-    const logout = vi.fn();
+  /** A fixed-auth `logout` that runs `leave` like the real one (server logout, leave, clear). */
+  function signedInWithLeavingLogout() {
+    const navigate = vi.fn(() => Promise.resolve());
+    mockNavState.navigate = navigate;
+    const logout = vi.fn(async (leave?: () => Promise<void> | void) => {
+      await leave?.();
+    });
     mockUseAuth.mockReturnValue({
       ...defaultAuth,
       user: authenticatedUser,
       isAuthenticated: true,
       logout,
     } as ReturnType<typeof useAuth>);
+    return { navigate, logout };
+  }
+
+  it('the desktop Log Out button signs out and lands on /', async () => {
+    const { navigate, logout } = signedInWithLeavingLogout();
 
     render(<Navbar />);
 
     await userEvent.click(screen.getByText('Log Out'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/', { replace: true }));
     expect(logout).toHaveBeenCalledOnce();
+    expect(logout).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('the mobile-menu Log Out button signs out and lands on /', async () => {
+    const { navigate, logout } = signedInWithLeavingLogout();
+
+    render(<Navbar />);
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: enTranslations['nav.menuToggle'] }));
+    });
+    const dialog = screen.getByRole('dialog');
+    await userEvent.click(within(dialog).getByText('Log Out'));
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/', { replace: true }));
+    expect(logout).toHaveBeenCalledOnce();
+    expect(logout).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it('shows unauthenticated links when logged out', () => {
@@ -1005,16 +1050,20 @@ describe('Navbar — active route indicator', () => {
 });
 
 describe('Navbar — registration toggle', () => {
+  afterEach(() => {
+    mockNavState.rootData = { registrationEnabled: true };
+  });
+
   it('should show register link when registration is enabled', async () => {
-    vi.mocked(authApi.registrationStatus).mockResolvedValue({ enabled: true });
+    mockNavState.rootData = { registrationEnabled: true };
     render(<Navbar />);
     await waitFor(() => {
-      expect(screen.getByText('Sign Up')).toBeInTheDocument();
+      expect(screen.getAllByText('Sign Up').length).toBeGreaterThan(0);
     });
   });
 
   it('should hide register link when registration is disabled', async () => {
-    vi.mocked(authApi.registrationStatus).mockResolvedValue({ enabled: false });
+    mockNavState.rootData = { registrationEnabled: false };
     render(<Navbar />);
     await waitFor(() => {
       expect(screen.queryByText('Sign Up')).not.toBeInTheDocument();
@@ -1022,31 +1071,18 @@ describe('Navbar — registration toggle', () => {
   });
 
   it('should still show login link when registration is disabled', async () => {
-    vi.mocked(authApi.registrationStatus).mockResolvedValue({ enabled: false });
+    mockNavState.rootData = { registrationEnabled: false };
     render(<Navbar />);
     await waitFor(() => {
-      expect(screen.getByText('Log In')).toBeInTheDocument();
+      expect(screen.getAllByText('Log In').length).toBeGreaterThan(0);
     });
   });
 
-  it('should not fetch registration status for authenticated users', async () => {
-    mockUseAuth.mockReturnValue({
-      ...defaultAuth,
-      user: {
-        id: 'user-1',
-        email: 'alice@example.com',
-        emailVerifiedAt: null,
-        username: 'alice',
-        displayName: 'Alice',
-        avatarUrl: null,
-        isAdmin: false,
-        onboardingCompleted: true,
-      },
-      isAuthenticated: true,
-    } as ReturnType<typeof useAuth>);
+  it('defaults to showing the register link outside the root route (no loader data)', async () => {
+    mockNavState.rootData = undefined;
     render(<Navbar />);
     await waitFor(() => {
-      expect(authApi.registrationStatus).not.toHaveBeenCalled();
+      expect(screen.getAllByText('Sign Up').length).toBeGreaterThan(0);
     });
   });
 });

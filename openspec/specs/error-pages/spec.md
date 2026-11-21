@@ -1,7 +1,12 @@
 # error-pages Specification
 
 ## Purpose
-TBD - created by archiving change wave-3-frontend-structure. Update Purpose after archive.
+
+Makes `ErrorPage.tsx` the single error-page module of the web app: the old `NotFoundPage` is gone,
+every error page renders `SEOHead` with `noIndex`, and the route `ErrorBoundary` shows the
+server-error page for 5xx route errors. All error copy uses the existing `error.*` i18n keys, and
+both components have Vitest coverage.
+
 ## Requirements
 ### Requirement: ErrorPage.tsx is the canonical error-page module
 
@@ -209,7 +214,7 @@ Logger mock via `vi.hoisted`.
 
 #### Scenario: ErrorBoundary test passes
 
-- **WHEN** `make test-web` is executed (or `deno task --cwd apps/web test src/components/ErrorBoundary.test.tsx`)
+- **WHEN** `make test-web` is executed (or `pnpm --filter @brewform/web exec vitest run src/components/ErrorBoundary.test.tsx`)
 - **THEN** the `ErrorBoundary.test.tsx` suite passes, covering 404 → NotFoundPage and 500 →
   ServerErrorPage rendering via the boundary
 

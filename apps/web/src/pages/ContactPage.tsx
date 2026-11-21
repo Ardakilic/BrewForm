@@ -1,50 +1,24 @@
-import { type FormEvent, useState } from 'react';
-import { api } from '../api/client.ts';
+import { useFetcher } from 'react-router';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { ErrorState } from '../components/ui/ErrorState.tsx';
 import { useTranslation } from '../contexts/I18nContext.tsx';
-
-interface ContactFormData {
-  name: string;
-  email: string;
-  subject: string;
-  message: string;
-}
+import { failureToError } from '../routes/action-result.ts';
+import { getApiErrorMessage } from '../utils/apiErrorMessage.ts';
+import type { action } from './ContactPage.data.ts';
 
 /**
- * Contact form (name/email/subject/message) posting to `/contact`;
- * swaps to a success message once sent.
+ * Contact form (name/email/subject/message) submitted to the `/contact` route action
+ * (`ContactPage.data.ts`) through a fetcher; swaps to a success message once sent and shows the
+ * localised error (a rate limit gets the "try again in N seconds" message) otherwise.
  */
 export function ContactPage() {
   const { t } = useTranslation();
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError('');
-
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    const data: ContactFormData = {
-      name: formData.get('name') as string,
-      email: formData.get('email') as string,
-      subject: formData.get('subject') as string,
-      message: formData.get('message') as string,
-    };
-
-    setLoading(true);
-    try {
-      await api.post<{ message: string }>('/contact', data);
-      setSent(true);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t('error.500');
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const fetcher = useFetcher<typeof action>();
+  const loading = fetcher.state !== 'idle';
+  const result = fetcher.state === 'idle' ? fetcher.data : undefined;
+  const sent = result?.ok === true;
+  const error =
+    result && !result.ok ? getApiErrorMessage(failureToError(result), t, 'error.500') : '';
 
   if (sent) {
     return (
@@ -66,7 +40,7 @@ export function ContactPage() {
 
       {error && <ErrorState message={error} className="mt-4" />}
 
-      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+      <fetcher.Form method="post" className="mt-6 flex flex-col gap-4">
         <div>
           <label
             htmlFor="contact-name"
@@ -136,7 +110,7 @@ export function ContactPage() {
         <button type="submit" className="btn-primary" disabled={loading}>
           {loading ? t('contact.form.sending') : t('contact.form.submit')}
         </button>
-      </form>
+      </fetcher.Form>
     </div>
   );
 }

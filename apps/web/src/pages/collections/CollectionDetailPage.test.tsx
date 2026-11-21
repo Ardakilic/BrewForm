@@ -55,7 +55,9 @@ import type { CollectionDetailOutput } from '@brewform/shared/schemas';
 import { collectionApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { CollectionDetailPage, loader } from './CollectionDetailPage.tsx';
+import { TEST_USER } from '../../test-utils/render.tsx';
+import { loader } from './CollectionDetailPage.data.ts';
+import { CollectionDetailPage } from './CollectionDetailPage.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
@@ -67,6 +69,7 @@ const enT = (key: string) => {
   const map: Record<string, string> = {
     'collection.detail.recipes': 'recipes',
     'collection.detail.noRecipes': 'This collection has no recipes yet.',
+    'common.deletedUser': 'Deleted user',
   };
   return map[key] ?? key;
 };
@@ -118,6 +121,8 @@ const mockCollection = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  document.head.querySelector('meta[name="robots"]')?.remove();
+  document.title = '';
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockUseAuth.mockReturnValue(defaultAuth as ReturnType<typeof useAuth>);
   mockCollectionGet.mockResolvedValue(mockCollection);
@@ -140,6 +145,15 @@ describe('CollectionDetailPage', () => {
     expect(authorLink!.getAttribute('href')).not.toBe('/users/alice');
   });
 
+  it('renders "Deleted user" without a profile link when the owner account was deleted', async () => {
+    mockCollectionGet.mockResolvedValue({ ...mockCollection, author: null });
+    renderDetailPage();
+
+    expect(await screen.findByText('Deleted user')).toBeInTheDocument();
+    expect(screen.getByText('Deleted user').closest('a')).toBeNull();
+    expect(document.querySelector('a[href^="/u/"]')).toBeNull();
+  });
+
   it('renders the collection name and recipe count', async () => {
     renderDetailPage();
 
@@ -158,5 +172,41 @@ describe('CollectionDetailPage', () => {
 
     // "Edit" is the i18n key 'collection.detail.edit' — non-owner should not see it
     expect(screen.queryByText('Edit')).not.toBeInTheDocument();
+  });
+});
+
+describe('CollectionDetailPage — head rules', () => {
+  /** The current robots meta content, or null when the page is indexable. */
+  const robots = () =>
+    document.head.querySelector('meta[name="robots"]')?.getAttribute('content') ?? null;
+
+  it('an unlisted collection is noindex and titled "<name> | BrewForm"', async () => {
+    mockCollectionGet.mockResolvedValue({ ...mockCollection, visibility: 'unlisted' });
+    renderDetailPage();
+
+    await screen.findByRole('heading', { name: 'My Collection' });
+    await waitFor(() => expect(robots()).toBe('noindex, nofollow'));
+    expect(document.title).toBe('My Collection | BrewForm');
+  });
+
+  it('a private collection rendered for its owner is noindex', async () => {
+    mockCollectionGet.mockResolvedValue({ ...mockCollection, visibility: 'private' });
+    mockUseAuth.mockReturnValue({
+      ...defaultAuth,
+      user: { ...TEST_USER, id: 'u-owner' },
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+    renderDetailPage();
+
+    await screen.findByRole('heading', { name: 'My Collection' });
+    await waitFor(() => expect(robots()).toBe('noindex, nofollow'));
+  });
+
+  it('a public collection has no robots meta', async () => {
+    renderDetailPage();
+
+    await screen.findByRole('heading', { name: 'My Collection' });
+    await waitFor(() => expect(document.title).toBe('My Collection | BrewForm'));
+    expect(robots()).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import { ConfirmProvider, Modal, useConfirm } from './Modal.tsx';
 
@@ -15,7 +15,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 describe('Modal', () => {
   it('renders nothing when open is false', () => {
     const { container } = render(
-      <Modal open={false} onClose={() => {}}>
+      <Modal open={false} onClose={() => undefined}>
         <p>content</p>
       </Modal>,
     );
@@ -24,7 +24,7 @@ describe('Modal', () => {
 
   it('renders children when open is true', () => {
     render(
-      <Modal open onClose={() => {}}>
+      <Modal open onClose={() => undefined}>
         <p>modal-content</p>
       </Modal>,
     );
@@ -82,7 +82,7 @@ describe('Modal', () => {
 
   it('traps focus: Tab from last element wraps to first', () => {
     render(
-      <Modal open onClose={() => {}}>
+      <Modal open onClose={() => undefined}>
         <button type="button">first</button>
         <button type="button">last</button>
       </Modal>,
@@ -95,7 +95,7 @@ describe('Modal', () => {
 
   it('traps focus: Shift+Tab from first element wraps to last', () => {
     render(
-      <Modal open onClose={() => {}}>
+      <Modal open onClose={() => undefined}>
         <button type="button">first</button>
         <button type="button">last</button>
       </Modal>,
@@ -127,6 +127,22 @@ function ConfirmTrigger({ onResult }: { onResult: (v: boolean) => void }) {
 }
 
 describe('useConfirm', () => {
+  it('throws when no ConfirmProvider is mounted (no native confirm fallback)', () => {
+    const nativeConfirm = vi.fn(() => true);
+    vi.stubGlobal('confirm', nativeConfirm);
+    // React logs the render error to console.error before it rethrows; silence that noise.
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(() => render(<ConfirmTrigger onResult={() => undefined} />)).toThrow(
+        'useConfirm must be used within ConfirmProvider',
+      );
+      expect(nativeConfirm).not.toHaveBeenCalled();
+    } finally {
+      consoleSpy.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('resolves true when confirm button is clicked', async () => {
     let result: boolean | null = null;
     render(
@@ -176,7 +192,7 @@ describe('useConfirm', () => {
   });
 
   it('applies danger styling to confirm button', async () => {
-    render(<ConfirmTrigger onResult={() => {}} />, { wrapper: Wrapper });
+    render(<ConfirmTrigger onResult={() => undefined} />, { wrapper: Wrapper });
     fireEvent.click(screen.getByText('trigger'));
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
     const confirmBtn = screen.getByText('Delete');

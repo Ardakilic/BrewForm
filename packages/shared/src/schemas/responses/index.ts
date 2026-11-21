@@ -41,10 +41,12 @@ export {
   FollowingListItemOutputSchema,
   FollowOutputSchema,
 } from './follow.ts';
+export { HealthOutputSchema, ReadinessOutputSchema } from './health.ts';
 export { NotificationOutputSchema, UnreadCountOutputSchema } from './notification.ts';
 export { PhotoOutputSchema } from './photo.ts';
 export { UserPreferencesOutputSchema } from './preference.ts';
 export {
+  AdminRecipeListItemOutputSchema,
   DiffFieldSchema,
   DiffStatusSchema,
   FeedRecipeOutputSchema,
@@ -60,6 +62,7 @@ export {
   VersionDiffOutputSchema,
   VersionMetaSchema,
 } from './recipe.ts';
+export { RecipeUserNoteOutputSchema } from './recipe-note.ts';
 export { ReportOutputSchema } from './report.ts';
 export { SetupOutputSchema } from './setup.ts';
 export { TasteNoteNodeOutputSchema, TasteNoteOutputSchema } from './taste.ts';

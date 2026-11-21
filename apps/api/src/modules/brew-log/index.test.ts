@@ -203,6 +203,52 @@ describe('POST /api/v1/brew-logs — create', () => {
   });
 });
 
+/**
+ * recipe-visibility: a signed-in holder of an unlisted recipe's link can log a brew of it
+ * ("Brew again"), and the log is visible only in the logger's own journal.
+ */
+describe('POST /api/v1/brew-logs — unlisted recipe of another author (recipe-visibility)', () => {
+  let authorA: typeof users.$inferSelect;
+  let userB: typeof users.$inferSelect;
+  let unlistedU: typeof recipes.$inferSelect;
+
+  beforeAll(async () => {
+    authorA = await createUser('bl-unlisted-a');
+    userB = await createUser('bl-unlisted-b');
+    unlistedU = await createRecipe(authorA.id, 'unlisted');
+  });
+
+  afterAll(async () => {
+    deps.authMiddleware = originalAuthMiddleware;
+    deps.optionalAuthMiddleware = originalOptionalAuthMiddleware;
+    await cleanupUsers([userB.id, authorA.id]);
+  });
+
+  it("returns 201 for B, and the log is absent from A's journal", async () => {
+    const res = await createTestApp(userB.id).request('/api/v1/brew-logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeId: unlistedU.id, notes: 'link holder brew' }),
+    });
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    const body = (await res.json()) as any;
+    expect(res.status).toBe(201);
+    expect(body.data.userId).toBe(userB.id);
+    expect(body.data.recipeId).toBe(unlistedU.id);
+
+    const mine = await createTestApp(userB.id).request('/api/v1/brew-logs');
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    const mineBody = (await mine.json()) as any;
+    expect(mineBody.data.map((log: { id: string }) => log.id)).toContain(body.data.id);
+
+    const authors = await createTestApp(authorA.id).request('/api/v1/brew-logs');
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    const authorsBody = (await authors.json()) as any;
+    expect(authors.status).toBe(200);
+    expect(authorsBody.data.map((log: { id: string }) => log.id)).not.toContain(body.data.id);
+  });
+});
+
 describe('GET /api/v1/brew-logs — list my brew logs', () => {
   let user: typeof users.$inferSelect;
   let recipe: typeof recipes.$inferSelect;

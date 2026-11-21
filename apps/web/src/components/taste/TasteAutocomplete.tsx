@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '../../api/index.ts';
+import { useFetcher } from 'react-router';
+import { TASTE_NOTES_PATH, type tasteNotesLoader } from '../../routes/resources/taste-notes.ts';
 import { createLogger } from '../../utils/logger.ts';
+import { scaaCategoryLabelKey } from '../../utils/radar-chart-data.ts';
 import { useSafeT } from '../../utils/safe-translation.ts';
 import { IntensityDots } from '../recipe/IntensityDots.tsx';
 
@@ -21,33 +23,53 @@ interface Props {
   /** Per-note intensity (1–3). Defaults to 2 for newly added notes. */
   intensities?: Record<string, number>;
   onIntensitiesChange?: (intensities: Record<string, number>) => void;
+  /**
+   * Notes already linked to the recipe being edited. A linked note the catalog lacks (it was
+   * soft-deleted since) still gets a selected, removable chip; it is never offered in the
+   * dropdown, so once removed it cannot be re-added.
+   */
+  linkedNotes?: TasteNote[];
 }
 
-/** Searchable autocomplete for SCAA taste notes with hierarchical grouping, intensity controls, and keyboard navigation. */
+/** No taste notes yet: the fetcher has not loaded, or its load failed. */
+const NO_NOTES: TasteNote[] = [];
+
+/**
+ * Searchable autocomplete for SCAA taste notes with hierarchical grouping, intensity controls,
+ * and keyboard navigation. The flat note list is read once on mount with a fetcher from the
+ * `resources/taste-notes` resource route (served by the single-flight static cache, which
+ * logs a failure); a failed load leaves the list in its loading state. Selected chips come from
+ * the catalog plus any `linkedNotes` it lacks (soft-deleted notes stay visible and removable);
+ * the dropdown lists the catalog only. Every visible string (loading, empty, hint, the
+ * flavour-wheel link and the intensity button `title`) goes through `t()`; a group heading's
+ * SCAA category uses the radar's `taste.category.*` label (note names are catalog data). The
+ * chip intensity and remove buttons are at least 24 × 24 CSS px (WCAG 2.2 target size).
+ */
 export function TasteAutocomplete({
   selectedIds,
   onSelectionChange,
   intensities = {},
   onIntensitiesChange,
+  linkedNotes,
 }: Props) {
   const t = useSafeT();
+  /** Translated heading for an SCAA category root name (the radar's label), or the raw name. */
+  const categoryHeading = (name: string): string => {
+    const key = scaaCategoryLabelKey(name);
+    return key ? t(key) : name;
+  };
   const [query, setQuery] = useState('');
-  const [allNotes, setAllNotes] = useState<TasteNote[]>([]);
+  const { load, data } = useFetcher<typeof tasteNotesLoader>();
+  const allNotes: TasteNote[] = data?.ok ? data.notes : NO_NOTES;
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Map<string, HTMLLIElement>>(new Map());
 
   useEffect(() => {
-    api
-      .get<TasteNote[]>('/taste-notes/flat')
-      .then((data) => {
-        setAllNotes(data as TasteNote[]);
-      })
-      .catch((err) => {
-        log.error({ err }, 'Failed to fetch taste notes list');
-      });
-  }, []);
+    log.debug({}, 'TasteAutocomplete loading taste notes');
+    void load(TASTE_NOTES_PATH);
+  }, [load]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -230,7 +252,12 @@ export function TasteAutocomplete({
     }
   }
 
-  const selectedNotes = allNotes.filter((n) => selectedIds.includes(n.id));
+  // Chips: the catalog plus linked notes it lacks (soft-deleted since), in selection-filter order.
+  const selectedNotes = useMemo(() => {
+    const known = new Set(allNotes.map((n) => n.id));
+    const missing = (linkedNotes ?? []).filter((n) => !known.has(n.id));
+    return [...allNotes, ...missing].filter((n) => selectedIds.includes(n.id));
+  }, [allNotes, linkedNotes, selectedIds]);
 
   return (
     <div ref={wrapperRef} className="relative">
@@ -242,7 +269,7 @@ export function TasteAutocomplete({
             return (
               <div
                 key={note.id}
-                className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"
+                className="inline-flex items-center gap-1 rounded-full py-0.5 pl-3 pr-1 text-xs font-medium"
                 style={{
                   backgroundColor: 'var(--bg-tertiary)',
                   border: '1px solid var(--border-primary)',
@@ -254,14 +281,8 @@ export function TasteAutocomplete({
                 <button
                   type="button"
                   onClick={() => cycleIntensity(note.id)}
-                  title={`Intensity ${intensity}/3 — click to change`}
-                  style={{
-                    lineHeight: 0,
-                    cursor: 'pointer',
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                  }}
+                  title={t('a11y.taste.intensityTitle').replace('{level}', String(intensity))}
+                  className="inline-flex min-h-6 min-w-6 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0"
                   aria-label={t('a11y.taste.setIntensity').replace('{name}', note.name)}
                 >
                   <IntensityDots intensity={intensity} />
@@ -270,15 +291,7 @@ export function TasteAutocomplete({
                 <button
                   type="button"
                   onClick={() => toggleNote(note.id)}
-                  style={{
-                    lineHeight: 0,
-                    cursor: 'pointer',
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    color: 'var(--text-tertiary)',
-                    fontSize: '0.75rem',
-                  }}
+                  className="inline-flex min-h-6 min-w-6 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-xs text-[color:var(--text-secondary)]"
                   aria-label={t('a11y.taste.removeNote').replace('{name}', note.name)}
                 >
                   ×
@@ -309,7 +322,7 @@ export function TasteAutocomplete({
         >
           {allNotes.length === 0 ? (
             <li className="px-3 py-4 text-sm text-center" style={{ color: 'var(--text-tertiary)' }}>
-              Loading taste notes...
+              {t('taste.autocomplete.loading')}
             </li>
           ) : groupedResults.length > 0 ? (
             groupedResults.map((group) => (
@@ -319,7 +332,7 @@ export function TasteAutocomplete({
                   style={{ color: 'var(--text-tertiary)' }}
                   aria-hidden="true"
                 >
-                  {group.root.name}
+                  {categoryHeading(group.root.name)}
                 </li>
                 {group.subGroups.map((sg) => (
                   <Fragment key={sg.parent.id}>
@@ -331,7 +344,7 @@ export function TasteAutocomplete({
                       }}
                       aria-hidden="true"
                     >
-                      {group.root.name} &gt; {sg.parent.name}
+                      {categoryHeading(group.root.name)} &gt; {sg.parent.name}
                     </li>
                     {sg.children.map((item) => (
                       <li
@@ -399,21 +412,21 @@ export function TasteAutocomplete({
             ))
           ) : (
             <li className="px-3 py-4 text-sm text-center" style={{ color: 'var(--text-tertiary)' }}>
-              No taste notes found.
+              {t('taste.notFound')}
             </li>
           )}
         </ul>
       )}
 
       <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-        Click intensity dots on selected notes to adjust (1–3).{' '}
+        {t('taste.autocomplete.intensityHint')}{' '}
         <a
           href="https://notbadcoffee.com/flavor-wheel-en/"
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: 'var(--accent-primary)' }}
         >
-          SCAA Flavor Wheel Reference
+          {t('taste.reference')}
         </a>
       </p>
     </div>

@@ -1,4 +1,9 @@
+import { parsePageParam } from './list-params.ts';
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A calendar day in `YYYY-MM-DD` form, the only value the API accepts for `dateFrom`/`dateTo`. */
+const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Raw recipe-list filter parameters parsed from the URL query string. */
 export interface ListFilterParams {
@@ -23,19 +28,13 @@ export interface ListFilterParams {
 /**
  * Extracts sanitised recipe-list query params from the URL: clamps
  * `page` to a positive integer, defaults `perPage`/`sortBy`, drops
- * empty filters, and rejects non-UUID equipment/variety ids.
+ * empty filters, rejects non-UUID equipment/variety ids, and drops
+ * `dateFrom`/`dateTo` values that are not `YYYY-MM-DD` (a hand-edited URL
+ * never fails the list loader with a 400).
  */
 export function extractListParams(sp: URLSearchParams): Record<string, string> {
-  const rawPage = sp.get('page');
-  let page = '1';
-  if (rawPage !== null) {
-    const parsed = Number.parseInt(rawPage, 10);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      page = String(parsed);
-    }
-  }
   const params: Record<string, string> = {
-    page,
+    page: String(parsePageParam(sp.get('page'))),
     perPage: '12',
     sortBy: sp.get('sortBy') ?? 'createdAt',
   };
@@ -57,6 +56,7 @@ export function extractListParams(sp: URLSearchParams): Record<string, string> {
   for (const [k, v] of Object.entries(map)) {
     if (v && v.length > 0) {
       if ((k === 'equipmentId' || k === 'coffeeVarietyId') && !UUID_RE.test(v)) continue;
+      if ((k === 'dateFrom' || k === 'dateTo') && !ISO_DAY_RE.test(v)) continue;
       params[k] = v;
     }
   }

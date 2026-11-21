@@ -19,15 +19,14 @@ import {
   computeExtractionYield,
   computeFlowRate,
   encodeCursor,
-  ensureUniqueSlug,
   generateSlug,
 } from '@brewform/shared/utils';
 import { and, eq, inArray } from 'drizzle-orm';
-import fc from 'fast-check';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 import * as service from './service.ts';
 import { canViewRecipe } from './service.ts';
+import { VisibilityFixtures, type VisibilityScenario } from './test-helpers.ts';
 
 describe('Recipe Service Logic', () => {
   describe('Slug generation', () => {
@@ -41,18 +40,6 @@ describe('Recipe Service Logic', () => {
       const title = 'Coffee & Tea #1!';
       const slug = generateSlug(title);
       expect(slug).toMatch(/^[a-z0-9-]+$/);
-    });
-  });
-
-  describe('Unique slug generation', () => {
-    it('should find unique slug when none exist', () => {
-      const slug = ensureUniqueSlug('my-recipe', []);
-      expect(slug).toBe('my-recipe');
-    });
-
-    it('should append counter for duplicate slugs', () => {
-      const slug = ensureUniqueSlug('my-recipe', ['my-recipe']);
-      expect(slug).toBe('my-recipe-1');
     });
   });
 
@@ -75,53 +62,6 @@ describe('Recipe Service Logic', () => {
     it('should return null when extraction volume is zero', () => {
       const ratio = computeBrewRatio(18, null as unknown as number);
       expect(ratio).toBeNull();
-    });
-  });
-
-  describe('Recipe visibility checks', () => {
-    it('should prevent forking of private recipes by non-authors', () => {
-      const recipe = { visibility: 'private', authorId: 'user-1' };
-      const currentUserId = 'user-2';
-      const canFork =
-        recipe.visibility === 'public' ||
-        recipe.visibility === 'unlisted' ||
-        recipe.authorId === currentUserId;
-      expect(canFork).toBe(false);
-    });
-
-    it('should allow forking of public recipes by anyone', () => {
-      const recipe = { visibility: 'public', authorId: 'user-1' };
-      const currentUserId = 'user-2';
-      const canFork =
-        recipe.visibility === 'public' ||
-        recipe.visibility === 'unlisted' ||
-        recipe.authorId === currentUserId;
-      expect(canFork).toBe(true);
-    });
-
-    it('should allow author to fork their own private recipe', () => {
-      const recipe = { visibility: 'private', authorId: 'user-1' };
-      const currentUserId = 'user-1';
-      const canFork =
-        recipe.visibility === 'public' ||
-        recipe.visibility === 'unlisted' ||
-        recipe.authorId === currentUserId;
-      expect(canFork).toBe(true);
-    });
-  });
-
-  describe('Recipe fork title generation', () => {
-    it('should use custom title when provided', () => {
-      const customTitle = 'My Version';
-      const sourceTitle = 'Original Recipe';
-      const forkTitle = customTitle || `Fork of ${sourceTitle}`;
-      expect(forkTitle).toBe('My Version');
-    });
-
-    it('should generate fork title when custom title not provided', () => {
-      const sourceTitle = 'Original Recipe';
-      const forkTitle = `Fork of ${sourceTitle}`;
-      expect(forkTitle).toBe('Fork of Original Recipe');
     });
   });
 
@@ -367,121 +307,6 @@ describe('Recipe schema — new fields (recipe-detail-redesign)', () => {
   });
 });
 
-describe('tasteNoteIds AND logic filtering', () => {
-  // ---------------------------------------------------------------------------
-  // Minimal Drizzle-ORM-like condition builders (no real DB needed)
-  // ---------------------------------------------------------------------------
-  type Condition = { type: string; column: string; value: unknown };
-
-  function eq(column: string, value: unknown): Condition {
-    return { type: 'eq', column, value };
-  }
-
-  function inArray(column: string, _subquery: unknown): Condition {
-    return { type: 'inArray', column, value: _subquery };
-  }
-
-  function and(...conditions: Condition[]): { type: 'and'; conditions: Condition[] } {
-    return { type: 'and', conditions };
-  }
-
-  let capturedConditions: Condition[] = [];
-
-  const mockModel = {
-    findMany: (
-      where: unknown,
-      _page: number,
-      _perPage: number,
-      _sortBy: string,
-      _sortOrder: string,
-    ) => {
-      if ((where as { type: string }).type === 'and') {
-        capturedConditions = (where as { type: string; conditions: Condition[] }).conditions;
-      } else if (Array.isArray(where)) {
-        capturedConditions = where as Condition[];
-      } else {
-        capturedConditions = [where as Condition];
-      }
-      return Promise.resolve({ data: [], meta: { page: 1, perPage: 20, total: 0, totalPages: 0 } });
-    },
-  };
-
-  const recipes = {
-    visibility: 'recipes.visibility',
-    currentVersionId: 'recipes.currentVersionId',
-  };
-
-  const recipeTasteNotes = {
-    recipeVersionId: 'recipeTasteNotes.recipeVersionId',
-    tasteNoteId: 'recipeTasteNotes.tasteNoteId',
-  };
-
-  // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
-  const db: any = {
-    select: () => ({
-      // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
-      from: (_table: any) => ({
-        where: (cond: unknown) => cond,
-      }),
-    }),
-  };
-
-  // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
-  async function listRecipes_withTasteNoteFilters(filters: any, page: number, perPage: number) {
-    // biome-ignore lint/suspicious/noExplicitAny: test mock array
-    const conditions: any[] = [eq(recipes.visibility, 'public')];
-
-    if (filters.tasteNoteIds) {
-      const ids = filters.tasteNoteIds.split(',').map((id: string) => id.trim());
-      // AND logic: recipe's current version must have ALL specified taste notes
-      for (const noteId of ids) {
-        conditions.push(
-          inArray(
-            recipes.currentVersionId,
-            db
-              .select({ id: recipeTasteNotes.recipeVersionId })
-              .from(recipeTasteNotes)
-              .where(eq(recipeTasteNotes.tasteNoteId, noteId)),
-          ),
-        );
-      }
-    }
-
-    const where = conditions.length > 1 ? and(...conditions) : conditions[0];
-    return mockModel.findMany(where, page, perPage, 'createdAt', 'desc');
-  }
-
-  it('PBT: for any subset of 1–10 taste note IDs, parsing splits correctly and generates the right number of conditions', async () => {
-    await fc.assert(
-      fc.asyncProperty(fc.array(fc.uuid(), { minLength: 1, maxLength: 10 }), async (ids) => {
-        capturedConditions = [];
-        const tasteNoteIds = ids.join(',');
-        await listRecipes_withTasteNoteFilters({ tasteNoteIds }, 1, 20);
-
-        // First condition is visibility eq
-        expect(capturedConditions.length).toBe(1 + ids.length);
-
-        const tasteNoteConditions = capturedConditions.filter(
-          (c) => c.type === 'inArray' && c.column === 'recipes.currentVersionId',
-        );
-        expect(tasteNoteConditions.length).toBe(ids.length);
-
-        // Verify each ID appears in exactly one condition
-        ids.forEach((noteId) => {
-          const matching = tasteNoteConditions.filter(
-            (c) =>
-              (c.value as Condition).type === 'eq' &&
-              (c.value as Condition).column === 'recipeTasteNotes.tasteNoteId' &&
-              (c.value as Condition).value === noteId,
-          );
-          expect(matching.length).toBe(1);
-        });
-      }),
-      { numRuns: 100 },
-    );
-  });
-});
-
 describe('Recipe Create/Update input types', () => {
   it('RecipeCreateObjectSchema should accept a valid payload and produce typed output', () => {
     const payload = {
@@ -555,7 +380,7 @@ describe('canViewRecipe', () => {
  *
  * Exercises the real service functions against the PostgreSQL test database:
  * lookup (slug vs id), authorization errors (FORBIDDEN / RECIPE_NOT_FOUND),
- * the like/favourite/feature toggles, notes, metadata, forking, and updates.
+ * the like/favourite/feature toggles, metadata, forking, and updates.
  */
 describe('Recipe Service — DB integration', () => {
   let author: typeof users.$inferSelect;
@@ -607,23 +432,6 @@ describe('Recipe Service — DB integration', () => {
       })
       .returning();
     await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipe.id));
-    return recipe;
-  }
-
-  /** Insert a recipe with no version (currentVersionId stays null). */
-  async function makeBareRecipe(authorId: string, title: string) {
-    const recipeId = crypto.randomUUID();
-    const [recipe] = await db
-      .insert(recipes)
-      .values({
-        id: recipeId,
-        slug: `slug-${recipeId.slice(0, 8)}`,
-        title,
-        authorId,
-        visibility: 'public',
-      })
-      .returning();
-    createdRecipes.push(recipe.id);
     return recipe;
   }
 
@@ -845,24 +653,6 @@ describe('Recipe Service — DB integration', () => {
     });
   });
 
-  describe('saveNotes', () => {
-    it('should save notes on the current version', async () => {
-      const recipe = await makeRecipe(author.id, 'Notes OK');
-      await service.saveNotes(recipe.id, 'My personal notes');
-      const reloaded = await model.findById(recipe.id);
-      expect(reloaded?.versions?.[0]?.personalNotes).toBe('My personal notes');
-    });
-
-    it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
-      await expect(service.saveNotes(crypto.randomUUID(), 'x')).rejects.toThrow('RECIPE_NOT_FOUND');
-    });
-
-    it('should throw RECIPE_NOT_FOUND when there is no current version', async () => {
-      const recipe = await makeBareRecipe(author.id, 'Notes No Version');
-      await expect(service.saveNotes(recipe.id, 'x')).rejects.toThrow('RECIPE_NOT_FOUND');
-    });
-  });
-
   describe('getRecipeMeta', () => {
     it('should return lightweight metadata for a slug', async () => {
       const recipe = await makeRecipe(author.id, 'Meta Recipe');
@@ -936,19 +726,33 @@ describe('Recipe Service — DB integration', () => {
   });
 
   describe('updateRecipe', () => {
-    it('should update top-level fields without bumping the version', async () => {
+    it('should amend the current version in place without bumping the version', async () => {
       const recipe = await makeRecipe(author.id, 'Update Title');
       const updated = await service.updateRecipe(recipe.id, author.id, {
         bumpVersion: false,
         title: 'Updated Title',
         visibility: 'unlisted',
+        productName: 'Amended Bean',
+        grindSize: 'medium',
       });
       expect(updated?.title).toBe('Updated Title');
       expect(updated?.visibility).toBe('unlisted');
       expect(updated?.versions?.length).toBe(1);
+      expect(updated?.versions?.[0]?.productName).toBe('Amended Bean');
+      expect(updated?.versions?.[0]?.grindSize).toBe('medium');
+      expect(updated?.currentVersionId).toBe(updated?.versions?.[0]?.id);
     });
 
-    it('should create a new version when bumpVersion is set', async () => {
+    it('should keep the stored visibility when the payload omits it', async () => {
+      const recipe = await makeRecipe(author.id, 'Update Keep Visibility', 'public');
+      const updated = await service.updateRecipe(recipe.id, author.id, {
+        bumpVersion: false,
+        title: 'Renamed',
+      });
+      expect(updated?.visibility).toBe('public');
+    });
+
+    it('should create a new version carrying the payload when bumpVersion is set', async () => {
       const recipe = await makeRecipe(author.id, 'Update Bump');
       const updated = await service.updateRecipe(recipe.id, author.id, {
         bumpVersion: true,
@@ -956,6 +760,9 @@ describe('Recipe Service — DB integration', () => {
       });
       expect(updated?.versions?.length).toBe(2);
       expect(updated?.versions?.[0]?.versionNumber).toBe(2);
+      expect(updated?.versions?.[0]?.productName).toBe('New Bean');
+      expect(updated?.versions?.[1]?.productName).toBeNull();
+      expect(updated?.currentVersionId).toBe(updated?.versions?.[0]?.id);
     });
 
     it('should throw FORBIDDEN for a non-author', async () => {
@@ -1121,5 +928,164 @@ describe('Recipe Service — DB integration', () => {
       // Title match (score 3) should be first despite being oldest by createdAt
       expect(recipesList[0].title).toBe('Espresso Title Match');
     });
+  });
+});
+
+/**
+ * Regression locks for the discovery rule of capability `recipe-visibility` (task 11.1):
+ * `GET /recipes` search, author filter, cursor path and the admin filter. Written before the
+ * shared-condition refactor and kept unchanged after it.
+ */
+describe('listRecipes — unlisted recipes are never listed (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let scenario: VisibilityScenario;
+  let admin: typeof users.$inferSelect;
+
+  beforeAll(async () => {
+    scenario = await fixtures.scenario('vis-list');
+    admin = await fixtures.user('vis-list-admin');
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  /** The three discovery viewers: anonymous, the author and a follower. */
+  const viewers = (): Array<{ label: string; id: string | null }> => [
+    { label: 'anonymous', id: null },
+    { label: 'the author', id: scenario.authorA.id },
+    { label: 'a follower', id: scenario.userB.id },
+  ];
+
+  /** The ids of a list result's rows. */
+  function ids(result: { recipes: unknown[] }): string[] {
+    return (result.recipes as Array<{ id: string }>).map((r) => r.id);
+  }
+
+  it("search for U's exact title never returns U, and total excludes it", async () => {
+    for (const viewer of viewers()) {
+      const filters = RecipeFilterSchema.parse({ search: scenario.unlistedU.title });
+      const result = (await service.listRecipes(filters, 1, 20, viewer.id, false)) as {
+        recipes: unknown[];
+        total: number;
+      };
+      expect(ids(result), viewer.label).not.toContain(scenario.unlistedU.id);
+      expect(result.total, viewer.label).toBe(0);
+    }
+  });
+
+  it("authorId=A returns only A's public recipe", async () => {
+    for (const viewer of viewers()) {
+      const filters = RecipeFilterSchema.parse({ authorId: scenario.authorA.id });
+      const result = (await service.listRecipes(filters, 1, 20, viewer.id, false)) as {
+        recipes: unknown[];
+        total: number;
+      };
+      expect(ids(result), viewer.label).toEqual([scenario.publicP.id]);
+      expect(result.total, viewer.label).toBe(1);
+    }
+  });
+
+  it('the cursor path excludes U', async () => {
+    const cursor = encodeCursor({
+      createdAt: new Date(Date.now() + 60_000).toISOString(),
+      id: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    });
+    for (const viewer of viewers()) {
+      const filters = RecipeFilterSchema.parse({
+        cursor,
+        sortBy: 'createdAt',
+        authorId: scenario.authorA.id,
+        includeTotal: 'true',
+      });
+      const result = (await service.listRecipes(filters, 1, 20, viewer.id, false)) as {
+        recipes: unknown[];
+        total?: number;
+        nextCursor?: string | null;
+      };
+      expect(result.nextCursor, viewer.label).toBeNull();
+      expect(ids(result), viewer.label).toEqual([scenario.publicP.id]);
+      expect(result.total, viewer.label).toBe(1);
+    }
+  });
+
+  it('an admin visibility=unlisted filter returns U (admin exemption)', async () => {
+    const filters = RecipeFilterSchema.parse({ visibility: 'unlisted' });
+    const result = (await service.listRecipes(filters, 1, 20, admin.id, true)) as {
+      recipes: unknown[];
+    };
+    expect(ids(result)).toContain(scenario.unlistedU.id);
+    expect(ids(result)).not.toContain(scenario.publicP.id);
+  });
+});
+
+/**
+ * Starred is a viewer-only record (capability `recipe-visibility`, "Viewer-only records may
+ * include unlisted recipes the viewer can open", task 11.2): it lists the caller's favourites
+ * that the caller can open (`viewableRecipeCondition(userId)`), so a favourited unlisted recipe
+ * appears and another author's recipe that became private drops out.
+ */
+describe('listStarredRecipes — viewer-only visibility (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let scenario: VisibilityScenario;
+  let becamePrivateX: typeof recipes.$inferSelect;
+  let draftOfA: typeof recipes.$inferSelect;
+
+  beforeAll(async () => {
+    scenario = await fixtures.scenario('vis-starred');
+    const { authorA, userB, publicP, unlistedU } = scenario;
+    becamePrivateX = await fixtures.recipe(authorA.id, 'public');
+    for (const recipe of [unlistedU, publicP, becamePrivateX]) {
+      await fixtures.favourite(userB.id, recipe.id);
+    }
+    await db
+      .update(recipes)
+      .set({ visibility: 'private' })
+      .where(eq(recipes.id, becamePrivateX.id));
+    draftOfA = await fixtures.recipe(authorA.id, 'draft');
+    await fixtures.favourite(authorA.id, draftOfA.id);
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  /** The sorted ids of a list result's rows. */
+  function sortedIds(result: { recipes: unknown[] }): string[] {
+    return (result.recipes as Array<{ id: string }>).map((r) => r.id).sort();
+  }
+
+  it("returns B's favourited public and unlisted recipes but not the one that became private", async () => {
+    const result = await service.listStarredRecipes(
+      RecipeFilterSchema.parse({}),
+      1,
+      20,
+      scenario.userB.id,
+    );
+    expect(sortedIds(result)).toEqual([scenario.publicP.id, scenario.unlistedU.id].sort());
+    expect(sortedIds(result)).not.toContain(becamePrivateX.id);
+    expect(result.total).toBe(2);
+  });
+
+  it("returns the author's own favourited draft to the author", async () => {
+    const result = await service.listStarredRecipes(
+      RecipeFilterSchema.parse({}),
+      1,
+      20,
+      scenario.authorA.id,
+    );
+    expect(sortedIds(result)).toEqual([draftOfA.id]);
+    expect(result.total).toBe(1);
+  });
+
+  it("finds the unlisted recipe by its title in B's starred search", async () => {
+    const result = await service.listStarredRecipes(
+      RecipeFilterSchema.parse({ search: scenario.unlistedU.title }),
+      1,
+      20,
+      scenario.userB.id,
+    );
+    expect(sortedIds(result)).toEqual([scenario.unlistedU.id]);
+    expect(result.total).toBe(1);
   });
 });

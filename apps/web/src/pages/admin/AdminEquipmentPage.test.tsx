@@ -1,237 +1,190 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { t } from '@brewform/shared/i18n';
+import type { EquipmentOutput, PaginatedResponse } from '@brewform/shared/schemas';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AdminEquipmentPage } from './AdminEquipmentPage.tsx';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// ── Module mocks (hoisted) ─────────────────────────────────────────────────
-
-vi.mock('../../api/static-cache.ts', () => ({
-  getEquipmentCached: vi.fn(),
-  getTasteNotesCached: vi.fn(),
-  invalidateStaticCache: vi.fn(),
-}));
-
-vi.mock('../../api/client.ts', () => ({
-  api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
-}));
-
-vi.mock('../../utils/logger.ts', () => ({
-  createLogger: () => ({
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
-  }),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  },
+}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
+
+vi.mock('../../api/static-cache.ts', () => ({
+  invalidateStaticCache: vi.fn(),
 }));
 
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: () => ({
-    t: (k: string) => {
-      const map: Record<string, string> = {
-        'admin.equipment.management': 'Equipment Management',
-        'admin.equipment.add': '+ Add Equipment',
-        'admin.equipment.editTitle': 'Edit Equipment',
-        'admin.equipment.addTitle': 'Add Equipment',
-        'admin.equipment.deleteConfirm': 'Delete this equipment?',
-        'common.cancel': 'Cancel',
-        'common.save': 'Save',
-        'common.saving': 'Saving...',
-        'common.cancelEdit': 'Cancel Edit',
-        'common.edit': 'Edit',
-        'common.delete': 'Delete',
-        'common.loading': 'Loading...',
-        'common.actions': 'Actions',
-        'common.type': 'Type',
-        'equipment.name': 'Name',
-        'equipment.brand': 'Brand',
-        'equipment.model': 'Model',
-      };
-      return map[k] ?? k;
-    },
-    locale: 'en',
-    setLocale: vi.fn(),
-    availableLocales: ['en', 'tr'],
-  }),
+vi.mock('../../api/index.ts', () => ({
+  adminApi: {
+    getEquipment: vi.fn(),
+    createEquipment: vi.fn(),
+    updateEquipment: vi.fn(),
+    deleteEquipment: vi.fn(),
+  },
 }));
 
-// ── Imports after mocks ────────────────────────────────────────────────────
-
-import { api } from '../../api/index.ts';
+import { adminApi } from '../../api/index.ts';
 import { invalidateStaticCache } from '../../api/static-cache.ts';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { action, loader } from './AdminEquipmentPage.data.ts';
+import { AdminEquipmentPage } from './AdminEquipmentPage.tsx';
 
-const mockApi = vi.mocked(api);
+const mockApi = vi.mocked(adminApi);
 const mockInvalidateStaticCache = vi.mocked(invalidateStaticCache);
 
-// ── Setup ──────────────────────────────────────────────────────────────────
+const LUNAR = {
+  id: 'eq-1',
+  name: 'Acaia Lunar',
+  type: 'scale_accessory',
+  brand: 'Acaia',
+  model: null,
+} as EquipmentOutput;
+
+/** Builds the paginated envelope `GET /admin/equipment` returns. */
+function equipmentPage(items: EquipmentOutput[]): PaginatedResponse<EquipmentOutput> {
+  return {
+    success: true,
+    data: items,
+    meta: {
+      requestId: 't',
+      pagination: { page: 1, perPage: 100, total: items.length, totalPages: 1 },
+    },
+  };
+}
+
+/** Renders `/admin/equipment` through its real loader and action. */
+function renderPage() {
+  return renderWithAppProviders(
+    [
+      {
+        path: '/admin/equipment',
+        loader,
+        action,
+        Component: AdminEquipmentPage,
+        errorElement: <RouteErrorState />,
+      },
+    ],
+    { initialEntries: ['/admin/equipment'], auth: 'admin', locale: 'en' },
+  );
+}
+
+/** Opens the add form and fills the required fields. */
+async function fillCreateForm() {
+  await userEvent.click(screen.getByRole('button', { name: t('admin.equipment.add') }));
+  await userEvent.type(screen.getByLabelText(/Name \*/), 'Fellow Stagg');
+  await userEvent.type(screen.getByLabelText(/Type \*/), 'kettle');
+}
+
+/** Clicks Delete and confirms in the shared dialog. */
+async function confirmDelete() {
+  await userEvent.click(screen.getByRole('button', { name: t('common.delete') }));
+  const dialog = await screen.findByRole('dialog');
+  await userEvent.click(within(dialog).getByRole('button', { name: t('common.delete') }));
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
+  mockApi.getEquipment.mockResolvedValue(equipmentPage([LUNAR]));
 });
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-// ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('AdminEquipmentPage', () => {
-  it('renders the equipment table after initial fetch', async () => {
-    mockApi.get.mockResolvedValue([
-      { id: 'eq-1', name: 'Acaia Lunar', type: 'scale_accessory', brand: 'Acaia', model: null },
-    ]);
+  it('renders the equipment table from the loader', async () => {
+    renderPage();
 
-    render(<AdminEquipmentPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Acaia Lunar')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Acaia Lunar')).toBeInTheDocument();
+    expect(mockApi.getEquipment).toHaveBeenCalledWith(
+      { perPage: '100' },
+      { signal: expect.any(AbortSignal) },
+    );
   });
 
-  it('create flow: post + invalidateStaticCache called once', async () => {
-    mockApi.get.mockResolvedValue([]);
+  it('create flow: action creates, invalidates the static cache once, and the list revalidates', async () => {
     const created = {
+      ...LUNAR,
       id: 'eq-2',
       name: 'Fellow Stagg',
       type: 'kettle',
-      brand: 'Fellow',
-      model: null,
-    };
-    mockApi.post.mockResolvedValue(created);
+    } as EquipmentOutput;
+    mockApi.createEquipment.mockResolvedValue(created);
+    renderPage();
+    await screen.findByText('Acaia Lunar');
 
-    render(<AdminEquipmentPage />);
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await fillCreateForm();
+    mockApi.getEquipment.mockResolvedValue(equipmentPage([LUNAR, created]));
+    await userEvent.click(screen.getByRole('button', { name: t('common.save') }));
 
-    await userEvent.click(screen.getByRole('button', { name: /Add Equipment/i }));
-
-    const nameInput = screen.getByLabelText(/Name \*/i);
-    const typeInput = screen.getByLabelText(/Type \*/i);
-    await userEvent.type(nameInput, 'Fellow Stagg');
-    await userEvent.type(typeInput, 'kettle');
-
-    await userEvent.click(screen.getByRole('button', { name: /Save/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Fellow Stagg')).toBeInTheDocument();
-    });
-
-    expect(mockApi.post).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Fellow Stagg')).toBeInTheDocument();
+    expect(mockApi.createEquipment).toHaveBeenCalledTimes(1);
     expect(mockInvalidateStaticCache).toHaveBeenCalledTimes(1);
   });
 
-  it('edit flow: click Edit, modify form, submit, patch + invalidateStaticCache called once', async () => {
-    mockApi.get.mockResolvedValue([
-      { id: 'eq-1', name: 'Acaia Lunar', type: 'scale_accessory', brand: 'Acaia', model: null },
-    ]);
-    const updated = {
-      id: 'eq-1',
-      name: 'Acaia Lunar Pro',
-      type: 'scale_accessory',
-      brand: 'Acaia',
-      model: null,
-    };
-    mockApi.patch.mockResolvedValue(updated);
+  it('edit flow: action updates and invalidates the static cache once', async () => {
+    mockApi.updateEquipment.mockResolvedValue({ ...LUNAR, name: 'Acaia Lunar Pro' });
+    renderPage();
+    await screen.findByText('Acaia Lunar');
 
-    render(<AdminEquipmentPage />);
-    await waitFor(() => expect(screen.getByText('Acaia Lunar')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: t('common.edit') }));
+    const name = screen.getByLabelText(/Name \*/);
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Acaia Lunar Pro');
+    await userEvent.click(screen.getByRole('button', { name: t('common.save') }));
 
-    await userEvent.click(screen.getByRole('button', { name: /Edit/i }));
-
-    const nameInput = screen.getByLabelText(/Name \*/i);
-    await userEvent.clear(nameInput);
-    await userEvent.type(nameInput, 'Acaia Lunar Pro');
-
-    await userEvent.click(screen.getByRole('button', { name: /Save/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Acaia Lunar Pro')).toBeInTheDocument();
-    });
-
-    expect(mockApi.patch).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mockApi.updateEquipment).toHaveBeenCalledTimes(1));
+    expect(mockApi.updateEquipment).toHaveBeenCalledWith(
+      'eq-1',
+      { name: 'Acaia Lunar Pro', type: 'scale_accessory', brand: 'Acaia', model: undefined },
+      { signal: expect.any(AbortSignal) },
+    );
     expect(mockInvalidateStaticCache).toHaveBeenCalledTimes(1);
   });
 
-  it('delete flow: confirm, api.delete + invalidateStaticCache called once', async () => {
-    mockApi.get.mockResolvedValue([
-      { id: 'eq-1', name: 'Acaia Lunar', type: 'scale_accessory', brand: 'Acaia', model: null },
-    ]);
-    mockApi.delete.mockResolvedValue({});
-    vi.stubGlobal('confirm', () => true);
+  it('delete flow: confirm, action deletes and invalidates the static cache once', async () => {
+    mockApi.deleteEquipment.mockResolvedValue({ message: 'ok' });
+    renderPage();
+    await screen.findByText('Acaia Lunar');
 
-    render(<AdminEquipmentPage />);
-    await waitFor(() => expect(screen.getByText('Acaia Lunar')).toBeInTheDocument());
+    await confirmDelete();
 
-    await userEvent.click(screen.getByRole('button', { name: /Delete/i }));
-
-    await waitFor(() => {
-      expect(mockApi.delete).toHaveBeenCalledTimes(1);
-    });
-
+    await waitFor(() => expect(mockApi.deleteEquipment).toHaveBeenCalledTimes(1));
     expect(mockInvalidateStaticCache).toHaveBeenCalledTimes(1);
   });
 
-  it('failed create does NOT call invalidateStaticCache', async () => {
-    mockApi.get.mockResolvedValue([]);
-    mockApi.post.mockRejectedValue(new Error('Network error'));
+  it('a failed create toasts and does NOT invalidate the static cache', async () => {
+    mockApi.createEquipment.mockRejectedValue(new Error('Network error'));
+    renderPage();
+    await screen.findByText('Acaia Lunar');
 
-    render(<AdminEquipmentPage />);
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await fillCreateForm();
+    await userEvent.click(screen.getByRole('button', { name: t('common.save') }));
 
-    await userEvent.click(screen.getByRole('button', { name: /Add Equipment/i }));
+    expect(await screen.findByText(t('admin.equipment.saveError'))).toBeInTheDocument();
+    expect(mockInvalidateStaticCache).not.toHaveBeenCalled();
+    expect(mockLogger.error).toHaveBeenCalled();
+  });
 
-    const nameInput = screen.getByLabelText(/Name \*/i);
-    const typeInput = screen.getByLabelText(/Type \*/i);
-    await userEvent.type(nameInput, 'Fellow Stagg');
-    await userEvent.type(typeInput, 'kettle');
+  it('a failed delete toasts and does NOT invalidate the static cache', async () => {
+    mockApi.deleteEquipment.mockRejectedValue(new Error('Network error'));
+    renderPage();
+    await screen.findByText('Acaia Lunar');
 
-    await userEvent.click(screen.getByRole('button', { name: /Save/i }));
+    await confirmDelete();
 
-    await waitFor(() => {
-      expect(mockApi.post).toHaveBeenCalledTimes(1);
-    });
-
+    expect(await screen.findByText(t('admin.equipment.deleteFailed'))).toBeInTheDocument();
     expect(mockInvalidateStaticCache).not.toHaveBeenCalled();
   });
 
-  it('failed edit does NOT call invalidateStaticCache', async () => {
-    mockApi.get.mockResolvedValue([
-      { id: 'eq-1', name: 'Acaia Lunar', type: 'scale_accessory', brand: 'Acaia', model: null },
-    ]);
-    mockApi.patch.mockRejectedValue(new Error('Network error'));
+  it('renders the route error state when the loader fails', async () => {
+    mockApi.getEquipment.mockRejectedValue(new Error('boom'));
+    renderPage();
 
-    render(<AdminEquipmentPage />);
-    await waitFor(() => expect(screen.getByText('Acaia Lunar')).toBeInTheDocument());
-
-    await userEvent.click(screen.getByRole('button', { name: /Edit/i }));
-
-    const nameInput = screen.getByLabelText(/Name \*/i);
-    await userEvent.clear(nameInput);
-    await userEvent.type(nameInput, 'Acaia Lunar Pro');
-
-    await userEvent.click(screen.getByRole('button', { name: /Save/i }));
-
-    await waitFor(() => {
-      expect(mockApi.patch).toHaveBeenCalledTimes(1);
-    });
-
-    expect(mockInvalidateStaticCache).not.toHaveBeenCalled();
-  });
-
-  it('failed delete does NOT call invalidateStaticCache', async () => {
-    mockApi.get.mockResolvedValue([
-      { id: 'eq-1', name: 'Acaia Lunar', type: 'scale_accessory', brand: 'Acaia', model: null },
-    ]);
-    mockApi.delete.mockRejectedValue(new Error('Network error'));
-    vi.stubGlobal('confirm', () => true);
-
-    render(<AdminEquipmentPage />);
-    await waitFor(() => expect(screen.getByText('Acaia Lunar')).toBeInTheDocument());
-
-    await userEvent.click(screen.getByRole('button', { name: /Delete/i }));
-
-    await waitFor(() => {
-      expect(mockApi.delete).toHaveBeenCalledTimes(1);
-    });
-
-    expect(mockInvalidateStaticCache).not.toHaveBeenCalled();
+    expect(await screen.findByText(t('error.route.loadFailed'))).toBeInTheDocument();
   });
 });

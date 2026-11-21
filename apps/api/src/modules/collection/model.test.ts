@@ -10,7 +10,7 @@ import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { collectionItems, collections, recipes, recipeVersions, users } from '@brewform/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, assert, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 async function createUser(prefix: string) {
@@ -62,6 +62,13 @@ async function createCollectionRow(
     })
     .returning();
   return col;
+}
+
+/** Loads a live collection's items through `findById`, failing the test when it is missing. */
+async function itemsOf(collectionId: string) {
+  const found = await model.findById(collectionId);
+  assert.exists(found);
+  return found.items;
 }
 
 async function cleanupCollections(collectionIds: string[]) {
@@ -121,13 +128,12 @@ describe('collection model — findById', () => {
 
   it('returns the collection with user and items relations', async () => {
     const found = await model.findById(col.id);
-    expect(found).toBeDefined();
-    expect(found!.id).toBe(col.id);
-    expect(found!.name).toBe('My Col');
-    expect(found!.user).toBeDefined();
-    expect(found!.user.username).toBe(user.username);
-    expect(Array.isArray(found!.items)).toBe(true);
-    expect(found!.items.length).toBe(0);
+    assert.exists(found);
+    expect(found.id).toBe(col.id);
+    expect(found.name).toBe('My Col');
+    expect(found.user?.username).toBe(user.username);
+    expect(Array.isArray(found.items)).toBe(true);
+    expect(found.items.length).toBe(0);
   });
 
   it('returns undefined when the collection does not exist', async () => {
@@ -139,6 +145,68 @@ describe('collection model — findById', () => {
     await db.update(collections).set({ deletedAt: new Date() }).where(eq(collections.id, col.id));
     const found = await model.findById(col.id);
     expect(found).toBeUndefined();
+  });
+});
+
+/**
+ * E11: a soft-deleted owner or recipe author keeps the collection and the item, but the
+ * projection is `null` on findById (owner `user`, item `recipe.author`) and findAllPublic.
+ */
+describe('collection model — deleted accounts (E11)', () => {
+  const userIds: string[] = [];
+  const colIds: string[] = [];
+
+  afterEach(async () => {
+    await cleanupCollections(colIds);
+    colIds.length = 0;
+    await cleanupUsers(userIds);
+    userIds.length = 0;
+  });
+
+  it('masks the deleted owner and the deleted recipe author', async () => {
+    const owner = await createUser('col-gone-owner');
+    const recipeAuthor = await createUser('col-gone-author');
+    userIds.push(owner.id, recipeAuthor.id);
+    const recipe = await createRecipe(recipeAuthor.id);
+    const col = await createCollectionRow(owner.id, 'Gone owner', 'public');
+    colIds.push(col.id);
+    await db
+      .insert(collectionItems)
+      .values({ collectionId: col.id, recipeId: recipe.id, sortOrder: 0 });
+    await db
+      .update(users)
+      .set({ deletedAt: new Date() })
+      .where(inArray(users.id, [owner.id, recipeAuthor.id]));
+
+    const found = await model.findById(col.id);
+    assert.exists(found);
+    expect(found.id).toBe(col.id);
+    expect(found.user).toBeNull();
+    expect(found.items).toHaveLength(1);
+    expect(found.items[0].recipe.id).toBe(recipe.id);
+    expect(found.items[0].recipe.author).toBeNull();
+
+    const publicList = await model.findAllPublic(1, 100);
+    const listed = publicList.collections.find((c) => c.id === col.id);
+    assert.exists(listed);
+    expect(listed.user).toBeNull();
+  });
+
+  it('still joins a live owner on findAllPublic', async () => {
+    const owner = await createUser('col-live-owner');
+    userIds.push(owner.id);
+    const col = await createCollectionRow(owner.id, 'Live owner', 'public');
+    colIds.push(col.id);
+
+    const publicList = await model.findAllPublic(1, 100);
+    const listed = publicList.collections.find((c) => c.id === col.id);
+    assert.exists(listed);
+    expect(listed.user).toEqual({
+      id: owner.id,
+      username: owner.username,
+      displayName: null,
+      avatarUrl: null,
+    });
   });
 });
 
@@ -495,7 +563,7 @@ describe('collection model — removeItem', () => {
     expect(deleted).toBeDefined();
     expect(deleted!.recipeId).toBe(r1.id);
     // verify gone
-    const items = await model.getItems(col.id);
+    const items = await itemsOf(col.id);
     expect(items.length).toBe(0);
   });
 
@@ -541,7 +609,7 @@ describe('collection model — reorderItems', () => {
     // reverse the order
     const reordered = [itemIds[2], itemIds[1], itemIds[0]];
     await model.reorderItems(col.id, reordered);
-    const items = await model.getItems(col.id);
+    const items = await itemsOf(col.id);
     expect(items.length).toBe(3);
     expect(items[0].id).toBe(itemIds[2]);
     expect(items[0].sortOrder).toBe(0);
@@ -550,64 +618,15 @@ describe('collection model — reorderItems', () => {
     expect(items[2].id).toBe(itemIds[0]);
     expect(items[2].sortOrder).toBe(2);
   });
-});
 
-describe('collection model — getItems', () => {
-  let user: typeof users.$inferSelect;
-  let col: typeof collections.$inferSelect;
-  let r1: typeof recipes.$inferSelect;
-  let r2: typeof recipes.$inferSelect;
-  const colIds: string[] = [];
-  const recipeIds: string[] = [];
-
-  beforeEach(async () => {
-    user = await createUser('col-getItems');
-    col = await createCollectionRow(user.id, 'GetItems Col');
-    colIds.push(col.id);
-    r1 = await createRecipe(user.id);
-    r2 = await createRecipe(user.id);
-    recipeIds.push(r1.id, r2.id);
-    // Insert in reverse to verify ordering by sortOrder
-    await db.insert(collectionItems).values({
-      collectionId: col.id,
-      recipeId: r2.id,
-      sortOrder: 1,
-    });
-    await db.insert(collectionItems).values({
-      collectionId: col.id,
-      recipeId: r1.id,
-      sortOrder: 0,
-    });
-  });
-
-  afterEach(async () => {
-    await cleanupCollections(colIds);
-    await cleanupRecipes(recipeIds);
-    colIds.length = 0;
-    recipeIds.length = 0;
-    await db.delete(users).where(eq(users.id, user.id));
-  });
-
-  it('returns items ordered by sortOrder', async () => {
-    const items = await model.getItems(col.id);
-    expect(items.length).toBe(2);
-    expect(items[0].recipeId).toBe(r1.id);
-    expect(items[1].recipeId).toBe(r2.id);
-  });
-
-  it('includes the nested recipe with author relation', async () => {
-    const items = await model.getItems(col.id);
-    expect(items[0].recipe).toBeDefined();
-    expect(items[0].recipe!.id).toBe(r1.id);
-    expect(items[0].recipe!.author).toBeDefined();
-    expect(items[0].recipe!.author.id).toBe(user.id);
-  });
-
-  it('excludes soft-deleted recipes', async () => {
-    await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, r1.id));
-    const items = await model.getItems(col.id);
-    expect(items.length).toBe(1);
-    expect(items[0].recipeId).toBe(r2.id);
+  it('gives trailing ids the sortOrder values after the ordered ids, keeping their order', async () => {
+    await model.reorderItems(col.id, [itemIds[2]], [itemIds[0], itemIds[1]]);
+    const items = await itemsOf(col.id);
+    expect(items.map((i) => [i.id, i.sortOrder])).toEqual([
+      [itemIds[2], 0],
+      [itemIds[0], 1],
+      [itemIds[1], 2],
+    ]);
   });
 });
 
@@ -677,5 +696,103 @@ describe('collection model — getCollectionsForRecipe', () => {
     expect(ownerRows.map((r) => r.id)).not.toContain(publicCol.id);
     // Restore so later test runs on a re-seeded DB stay order-independent.
     await db.update(collections).set({ deletedAt: null }).where(eq(collections.id, publicCol.id));
+  });
+});
+
+describe('collection model — getRecipeVisibilityStates', () => {
+  let user: typeof users.$inferSelect;
+  const recipeIds: string[] = [];
+
+  beforeAll(async () => {
+    user = await createUser('col-visStates');
+  });
+
+  afterAll(async () => {
+    await cleanupRecipes(recipeIds);
+    await cleanupUsers([user.id]);
+  });
+
+  it('returns the state of each recipe, soft-deleted rows included', async () => {
+    const pub = await createRecipe(user.id, 'public');
+    const deleted = await createRecipe(user.id, 'unlisted');
+    recipeIds.push(pub.id, deleted.id);
+    await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, deleted.id));
+
+    const states = await model.getRecipeVisibilityStates([pub.id, deleted.id, crypto.randomUUID()]);
+    const byId = new Map(states.map((s) => [s.id, s]));
+    expect(states).toHaveLength(2);
+    expect(byId.get(pub.id)).toEqual({
+      id: pub.id,
+      visibility: 'public',
+      authorId: user.id,
+      deletedAt: null,
+    });
+    expect(byId.get(deleted.id)?.visibility).toBe('unlisted');
+    expect(byId.get(deleted.id)?.deletedAt).toBeInstanceOf(Date);
+  });
+
+  it('returns one row per recipe when an id repeats', async () => {
+    const r = await createRecipe(user.id, 'private');
+    recipeIds.push(r.id);
+    const states = await model.getRecipeVisibilityStates([r.id, r.id]);
+    expect(states).toHaveLength(1);
+  });
+
+  it('returns [] for an empty input', async () => {
+    expect(await model.getRecipeVisibilityStates([])).toEqual([]);
+  });
+});
+
+describe('collection model — list recipeCount by audience', () => {
+  let owner: typeof users.$inferSelect;
+  let other: typeof users.$inferSelect;
+  let col: typeof collections.$inferSelect;
+
+  beforeAll(async () => {
+    owner = await createUser('col-countAud-owner');
+    other = await createUser('col-countAud-other');
+    col = await createCollectionRow(owner.id, 'Audience counts', 'public');
+    const items = [
+      await createRecipe(other.id, 'public'),
+      await createRecipe(owner.id, 'draft'),
+      await createRecipe(owner.id, 'unlisted'),
+      await createRecipe(other.id, 'unlisted'),
+      await createRecipe(other.id, 'private'),
+      await createRecipe(owner.id, 'public'),
+    ];
+    // The last one is soft-deleted (the owner's own public recipe).
+    await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, items[5].id));
+    await db
+      .insert(collectionItems)
+      .values(items.map((r, i) => ({ collectionId: col.id, recipeId: r.id, sortOrder: i })));
+  });
+
+  afterAll(async () => {
+    await cleanupCollections([col.id]);
+    await cleanupUsers([owner.id, other.id]);
+  });
+
+  /** Find the fixture collection's row in a list result. */
+  function countOf(result: { collections: Record<string, unknown>[] }) {
+    return result.collections.find((c) => c.id === col.id)?.recipeCount;
+  }
+
+  it("counts the owner's own non-public recipes on the owner's list (findByUserId)", async () => {
+    expect(countOf(await model.findByUserId(owner.id, 1, 20))).toBe(3);
+  });
+
+  it('counts only public recipes on the public user list (findPublicByUserId)', async () => {
+    expect(countOf(await model.findPublicByUserId(owner.id, 1, 20))).toBe(1);
+  });
+
+  it('counts only public recipes on the global public list (findAllPublic)', async () => {
+    const result = await model.findAllPublic(1, 100);
+    expect(result.collections.find((c) => c.id === col.id)?.recipeCount).toBe(1);
+  });
+
+  it('counts as anonymous when findByUserId is asked to', async () => {
+    expect(
+      countOf(await model.findByUserId(owner.id, 1, 20, undefined, undefined, 'anonymous')),
+    ).toBe(1);
   });
 });

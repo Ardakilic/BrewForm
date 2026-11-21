@@ -392,7 +392,7 @@ GET /api/v1/recipes/trending?period=week&limit=20
 
 ## References
 
-- [Drizzle ORM docs](/drizzle-team/drizzle-orm-docs) — aggregate queries, left joins
+- [Drizzle ORM docs](https://orm.drizzle.team/docs) (Context7 `/drizzle-team/drizzle-orm-docs`) — aggregate queries, left joins
 - Existing: `apps/api/src/modules/recipe/service.ts:469` — `listRecipes()` for filtering pattern
 - Existing: `apps/api/src/modules/admin/model.ts:491` — `getUserGrowth()` for time-series pattern
 - Existing: `packages/db/src/schema.ts:33` — `brewMethodEnum` values

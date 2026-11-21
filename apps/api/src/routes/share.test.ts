@@ -1,6 +1,6 @@
 import '../test-setup.ts';
 import { Hono } from 'hono';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import share, { deps, OG_TEMPLATE, RECIPE_NOT_FOUND_HTML } from '../routes/share.ts';
 
 describe('Share Route', () => {
@@ -92,9 +92,7 @@ describe('Share Route', () => {
     });
 
     it('returns 404 with RECIPE_NOT_FOUND_HTML when getRecipeMeta throws RECIPE_NOT_FOUND', async () => {
-      deps.getRecipeMeta = async (_slug: string) => {
-        throw new Error('RECIPE_NOT_FOUND');
-      };
+      deps.getRecipeMeta = (_slug: string) => Promise.reject(new Error('RECIPE_NOT_FOUND'));
 
       const res = await app.request('/share/missing-recipe');
       expect(res.status).toBe(404);
@@ -176,6 +174,59 @@ describe('Share Route', () => {
       expect(text).toContain('Coffee recipe by BrewForm user');
 
       deps.getRecipeMeta = originalGetRecipeMeta;
+    });
+  });
+
+  /**
+   * recipe-visibility: every share 404 is marked `noindex, nofollow`, and an unlisted recipe
+   * is indistinguishable from a missing one (same status, body and header).
+   */
+  describe('X-Robots-Tag (recipe-visibility)', () => {
+    const app = new Hono();
+    app.route('/share', share);
+    const originalGetRecipeMeta = deps.getRecipeMeta;
+
+    /** Recipe meta as `getRecipeMeta` returns it, with the given slug and visibility. */
+    function meta(slug: string, visibility: 'public' | 'unlisted') {
+      return {
+        id: '1',
+        title: 'Shared Recipe',
+        slug,
+        author: { id: 'user-1', username: 'chef', displayName: 'Chef', avatarUrl: null },
+        visibility,
+        likeCount: 0,
+        commentCount: 0,
+        createdAt: new Date(),
+        productName: null,
+        brewMethod: 'v60' as const,
+        photoUrl: null,
+      };
+    }
+
+    afterEach(() => {
+      deps.getRecipeMeta = originalGetRecipeMeta;
+    });
+
+    it('returns the same noindex 404 for an unlisted recipe and for an unknown slug', async () => {
+      deps.getRecipeMeta = (slug: string) =>
+        slug === 'unlisted-u'
+          ? Promise.resolve(meta(slug, 'unlisted'))
+          : Promise.reject(new Error('RECIPE_NOT_FOUND'));
+      const unlisted = await app.request('/share/unlisted-u');
+      const unknown = await app.request('/share/no-such-recipe');
+
+      for (const res of [unlisted, unknown]) {
+        expect(res.status).toBe(404);
+        expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+        expect(await res.text()).toBe(RECIPE_NOT_FOUND_HTML);
+      }
+    });
+
+    it('serves a public recipe with 200 and no X-Robots-Tag', async () => {
+      deps.getRecipeMeta = async (slug: string) => meta(slug, 'public');
+      const res = await app.request('/share/public-p');
+      expect(res.status).toBe(200);
+      expect(res.headers.get('X-Robots-Tag')).toBeNull();
     });
   });
 });

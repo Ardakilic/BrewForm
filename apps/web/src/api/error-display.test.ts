@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ApiError } from './client.ts';
+import { ApiError } from './errors.ts';
 
 function formatApiError(err: unknown): string {
   if (err instanceof ApiError && err.details) {

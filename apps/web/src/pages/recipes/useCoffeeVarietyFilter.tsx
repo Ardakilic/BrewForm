@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
-import { api, type CoffeeVarietySearchResult, coffeeVarietyApi } from '../../api/index.ts';
+import { useFetcher, useSearchParams } from 'react-router';
+import type { CoffeeVarietySearchResult } from '../../api/types.ts';
 import { Field } from '../../components/form/Field.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useDebounce } from '../../hooks/useDebounce.ts';
+import { useLatestSearchParams } from '../../hooks/useListUrlState.ts';
+import {
+  coffeeVarietySearchHref,
+  type coffeeVarietySearchLoader,
+  MIN_COFFEE_VARIETY_QUERY_LENGTH,
+} from '../../routes/resources/coffee-varieties.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('useCoffeeVarietyFilter');
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Result returned by {@link useCoffeeVarietyFilter}. */
 export interface CoffeeVarietyFilterState {
@@ -20,47 +25,42 @@ export interface CoffeeVarietyFilterState {
 }
 
 /**
- * Hook that owns the `/recipes` coffee-variety search UI: debounced
- * search, dropdown positioning, click-outside handling, lazy
- * variety-name resolution, and URL-param synchronisation. Returns the
- * sidebar slot JSX plus the badge value and clear callback that
- * `RecipeListPage` forwards to `RecipeListView`.
+ * Hook that owns the `/recipes` coffee-variety search UI: debounced typeahead, dropdown,
+ * click-outside handling and URL-param synchronisation. The typeahead reads the
+ * `resources/coffee-varieties/search` resource route with `useFetcher().load()`, so a newer
+ * query cancels the previous request and a late response for an old query is discarded. The
+ * selected variety's name is resolved by the `/recipes` loader (`selectedName`, from
+ * `RecipeListPage.data.ts`) rather than fetched here. Selecting and clearing build on the latest
+ * URL (`useLatestSearchParams`), so a filter chosen while a load runs is kept. Returns the sidebar
+ * slot JSX plus the badge value and clear callback that `RecipeListPage` forwards to
+ * `RecipeListView`.
+ *
+ * @param selectedName - The loader-resolved name of `?coffeeVarietyId`, or `null`.
  */
-export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
+export function useCoffeeVarietyFilter(selectedName: string | null): CoffeeVarietyFilterState {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const latest = useLatestSearchParams();
   const [varietySearch, setVarietySearch] = useState('');
-  const [varietyResults, setVarietyResults] = useState<CoffeeVarietySearchResult[]>([]);
   const [varietyDropdownOpen, setVarietyDropdownOpen] = useState(false);
-  const [selectedVarietyName, setSelectedVarietyName] = useState<string | null>(null);
   const varietyRef = useRef<HTMLDivElement>(null);
-  const debouncedVarietySearch = useDebounce(varietySearch, 300);
+  const debouncedVarietySearch = useDebounce(varietySearch, 300).trim();
   const coffeeVarietyId = searchParams.get('coffeeVarietyId') ?? '';
+  const searchFetcher = useFetcher<typeof coffeeVarietySearchLoader>();
+  const { load } = searchFetcher;
+  const searchable = debouncedVarietySearch.length >= MIN_COFFEE_VARIETY_QUERY_LENGTH;
+  const searchData = searchFetcher.data;
+  const varietyResults: CoffeeVarietySearchResult[] =
+    searchable && searchData?.ok && varietySearch.trim() !== '' ? searchData.results : [];
 
+  // Triggers the fetcher load for each debounced query (a non-fetch effect: the request runs
+  // in the resource-route loader, and a newer load cancels the previous one).
   useEffect(() => {
-    if (debouncedVarietySearch.length >= 2) {
-      let cancelled = false;
-      coffeeVarietyApi
-        .search(debouncedVarietySearch)
-        .then((data) => {
-          if (cancelled) return;
-          setVarietyResults(data);
-          setVarietyDropdownOpen(true);
-        })
-        .catch((err) => {
-          if (cancelled) return;
-          log.error({ err, query: debouncedVarietySearch }, 'coffeeVarietyApi.search failed');
-          setVarietyResults([]);
-          setVarietyDropdownOpen(false);
-        });
-      return () => {
-        cancelled = true;
-      };
-    } else {
-      setVarietyResults([]);
-      setVarietyDropdownOpen(false);
-    }
-  }, [debouncedVarietySearch]);
+    if (!searchable) return;
+    log.debug({ queryLength: debouncedVarietySearch.length }, 'coffee variety search requested');
+    setVarietyDropdownOpen(true);
+    load(coffeeVarietySearchHref(debouncedVarietySearch));
+  }, [debouncedVarietySearch, searchable, load]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -72,42 +72,26 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchedVarietyIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (
-      coffeeVarietyId &&
-      UUID_RE.test(coffeeVarietyId) &&
-      !selectedVarietyName &&
-      fetchedVarietyIdRef.current !== coffeeVarietyId
-    ) {
-      fetchedVarietyIdRef.current = coffeeVarietyId;
-      api
-        .get<CoffeeVarietySearchResult>(`/coffee-varieties/${coffeeVarietyId}`)
-        .then((v) => {
-          setSelectedVarietyName(v.name);
-        })
-        .catch((err) => {
-          log.error({ err, coffeeVarietyId }, 'fetchVarietyById failed');
-        });
-    }
-  }, [coffeeVarietyId, selectedVarietyName]);
-
+  /**
+   * Removes `?coffeeVarietyId` (and `page`) from the latest URL and resets the search input.
+   */
   function clear(): void {
-    setSelectedVarietyName(null);
     setVarietySearch('');
-    setVarietyResults([]);
-    const params = new URLSearchParams(searchParams);
+    setVarietyDropdownOpen(false);
+    const params = latest().params;
     params.delete('coffeeVarietyId');
     params.delete('page');
     setSearchParams(params);
   }
 
+  /**
+   * Applies variety `v` as the `?coffeeVarietyId` filter on the latest URL (the loader resolves
+   * its name).
+   */
   function select(v: CoffeeVarietySearchResult): void {
-    setSelectedVarietyName(v.name);
     setVarietySearch('');
-    setVarietyResults([]);
     setVarietyDropdownOpen(false);
-    const params = new URLSearchParams(searchParams);
+    const params = latest().params;
     params.set('coffeeVarietyId', v.id);
     params.delete('page');
     setSearchParams(params);
@@ -121,10 +105,7 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
           value={varietySearch}
           onChange={(e) => {
             setVarietySearch(e.target.value);
-            if (!e.target.value) {
-              setVarietyResults([]);
-              setVarietyDropdownOpen(false);
-            }
+            if (!e.target.value) setVarietyDropdownOpen(false);
           }}
           onFocus={() => {
             if (varietyResults.length > 0) setVarietyDropdownOpen(true);
@@ -180,5 +161,5 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
     </Field>
   );
 
-  return { slot, selectedName: selectedVarietyName, clear };
+  return { slot, selectedName, clear };
 }

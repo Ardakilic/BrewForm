@@ -180,3 +180,25 @@ describe('AdminBanUserSchema', () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe('admin account email and username normalization', () => {
+  it('AdminCreateUserSchema lower-cases and trims the email and trims the username', () => {
+    const parsed = AdminCreateUserSchema.parse({
+      email: '  New.User@Example.COM ',
+      username: ' Arda ',
+      password: 'password123',
+    });
+    expect(parsed.email).toBe('new.user@example.com');
+    expect(parsed.username).toBe('Arda');
+  });
+
+  it('AdminUpdateUserSchema lower-cases and trims the email and trims the username', () => {
+    const parsed = AdminUpdateUserSchema.parse({ email: ' Edit@Example.COM ', username: ' Bob ' });
+    expect(parsed.email).toBe('edit@example.com');
+    expect(parsed.username).toBe('Bob');
+  });
+
+  it('AdminUpdateUserSchema keeps email optional', () => {
+    expect(AdminUpdateUserSchema.parse({ displayName: 'X' }).email).toBeUndefined();
+  });
+});

@@ -64,7 +64,7 @@ If you add or update dependencies in any `package.json` or the `pnpm-workspace.y
 |--------------|---------|--------------------------------------------------|-------|
 | `app`        | `dev`   | Hono API with hot reload (`tsx --watch`)      | 8000  |
 | `web-dev`    | `dev`   | Vite dev server with HMR                         | 5173  |
-| `app-preview`| `preview` | Production-like API (built image, no reload)     | 8000  |
+| `app-preview`| `preview` | Production-like API (hardened `runner` image, no reload) | 8000  |
 | `web`        | `preview` | Caddy static file server (built SPA)             | 8080  |
 | `postgres`   | —       | PostgreSQL database                                | 5432  |
 | `mailpit`    | —       | SMTP capture + web UI                              | 1025  |
@@ -76,6 +76,33 @@ Profiles are used to prevent accidental service startup:
 - `make up` — starts only infrastructure (`postgres`, `mailpit`, `pgadmin`, `garage`)
 - `make dev` — starts infrastructure + `app` + `web-dev`
 - `make preview` — starts infrastructure + `app-preview` + `web`
+
+### Preview uses the hardened runner image
+
+`app-preview` builds the `runner` stage of `Dockerfile`, the same image that is published: it runs
+as the non-root `node` user (UID 1000) under `tini`, contains no pnpm, tsx or drizzle-kit, and its
+entrypoint applies migrations and seeds an empty database before `exec node src/main.ts`. Photos go
+to `UPLOAD_DIR=/app/uploads` (the image default) inside the container; preview mounts no volume
+there, so they are discarded when the container is recreated. The image's own health check probes
+`/ready` with `node /app/healthcheck.mjs /ready`.
+
+## Production
+
+`compose.yml` defines no production services. Self-hosting uses `compose.production.yml` with the
+published images and `.env.production`, through the `make prod-*` targets (`prod-up`,
+`prod-down`, `prod-logs`, `prod-ps`, `prod-pull`, `prod-backup`, `prod-backup-export`,
+`prod-restore`, `prod-check-identifiers`, `prod-fix-uploads-owner`); see
+[`docs/deployment_compose.md`](deployment_compose.md). `make prod-restore` stops api, web and
+backup, takes a safety backup, restores the dump into a scratch database that replaces the live
+one only when the whole dump restored, and starts the stack again (`migrate` applies newer
+migrations); `make prod-backup` writes one backup and never prunes. For Coolify see
+[`docs/deployment_coolify.md`](deployment_coolify.md).
+
+To test images built from your working tree: `make images` builds `brewform-api:local` and
+`brewform-web:local`, and `make prod-smoke` runs the CI compose smoke test (the full production
+stack under the throwaway project `brewform-ci`, including a backup while the uploads change and
+two `make prod-restore` round-trips) against them. Images are published only by the
+`publish` job of `.github/workflows/ci.yml`, never from a developer machine.
 
 ## Troubleshooting
 
@@ -120,7 +147,7 @@ make dev
 
 ## Database Seeding
 
-The seed script (`packages/db/src/seed.ts`) is idempotent: it can be run multiple times against the same database without raising unique-constraint errors. This is important because Docker Compose named volumes (especially the Postgres volume) can outlive a `docker compose down` or container recreation, leaving previous seed data behind.
+The seed script (`packages/db/src/seed.ts`) creates the admin account and the reference catalogs, plus, unless `APP_ENV` is `production`, the demo users (`alice`, `bob`, `charlie`, `diana`, `evan`) and their sample content; the development containers set `APP_ENV=development`, a production install gets no demo accounts. It is idempotent: it can be run multiple times against the same database without raising unique-constraint errors. This is important because Docker Compose named volumes (especially the Postgres volume) can outlive a `docker compose down` or container recreation, leaving previous seed data behind.
 
 When re-running the full setup:
 

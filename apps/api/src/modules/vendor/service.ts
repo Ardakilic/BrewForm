@@ -25,7 +25,7 @@ export async function listVendors(page: number, perPage: number) {
   return result;
 }
 
-/** Search non-deleted vendors by name (LIKE match), limited to 10 results. */
+/** Search non-deleted vendors by name (case-insensitive literal substring match), limited to 10 results. */
 export async function searchVendors(query: string) {
   log.debug({ query }, 'searchVendors started');
   const result = await model.search(query);

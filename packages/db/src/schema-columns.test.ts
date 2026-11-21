@@ -12,11 +12,14 @@
  *  - `recipeVersionPhotos` (`recipe_version_photo`) has `createdAt` notNull + default
  *  - `notifications` (`notification`) columns added by F04 (@mention notifications)
  *  - `userPreferences` gains `mentionedInComment` (F04) notNull + default
+ *  - `userRecipeNotes` (`user_recipe_note`, wave-6 private notes) columns, and
+ *    its generated migration never touches `recipe_version.personal_notes`
  *
  * The pattern mirrors `userRecipeLikes.createdAt` (the established house style
  * for join-table audit columns added by D23).
  */
 
+import { readFileSync } from 'node:fs';
 import type { PgTableWithColumns } from 'drizzle-orm/pg-core';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
@@ -28,6 +31,7 @@ import {
   recipeTasteNotes,
   recipeVersionPhotos,
   userPreferences,
+  userRecipeNotes,
 } from './schema.ts';
 
 /**
@@ -257,5 +261,97 @@ describe('userPreferences notifyMentionedInComment column (F04)', () => {
     const column = getColumnConfig(userPreferences, 'notify_mentioned_in_comment');
     expect(column).toBeDefined();
     expect(column!.default).toBeDefined();
+  });
+});
+
+describe('userRecipeNotes table columns (wave-6 private notes)', () => {
+  it('is the user_recipe_note table', () => {
+    expect(getTableConfig(userRecipeNotes).name).toBe('user_recipe_note');
+  });
+
+  it('has a varchar(36) id primary key with a UUID default function', () => {
+    const column = getColumnConfig(userRecipeNotes, 'id');
+    expect(column).toBeDefined();
+    expect(column?.primary).toBe(true);
+    expect(column?.getSQLType()).toBe('varchar(36)');
+    expect(column?.defaultFn).toBeDefined();
+  });
+
+  it('has notNull varchar(36) userId and recipeId foreign-key columns', () => {
+    for (const name of ['user_id', 'recipe_id']) {
+      const column = getColumnConfig(userRecipeNotes, name);
+      expect(column).toBeDefined();
+      expect(column?.notNull).toBe(true);
+      expect(column?.getSQLType()).toBe('varchar(36)');
+    }
+    const fkTargets = getTableConfig(userRecipeNotes).foreignKeys.map((fk) => {
+      const ref = fk.reference();
+      return `${ref.columns[0].name}->${getTableConfig(ref.foreignTable).name}.${ref.foreignColumns[0].name}`;
+    });
+    expect(fkTargets.sort()).toEqual(['recipe_id->recipe.id', 'user_id->user.id']);
+  });
+
+  it('has a notNull text notes column', () => {
+    const column = getColumnConfig(userRecipeNotes, 'notes');
+    expect(column).toBeDefined();
+    expect(column?.notNull).toBe(true);
+    expect(column?.getSQLType()).toBe('text');
+  });
+
+  it('has notNull createdAt and updatedAt columns with a default expression (now())', () => {
+    for (const name of ['created_at', 'updated_at']) {
+      const column = getColumnConfig(userRecipeNotes, name);
+      expect(column).toBeDefined();
+      expect(column?.notNull).toBe(true);
+      expect(column?.default).toBeDefined();
+    }
+  });
+
+  it('has a nullable deletedAt (soft-delete) column', () => {
+    const column = getColumnConfig(userRecipeNotes, 'deleted_at');
+    expect(column).toBeDefined();
+    expect(column?.notNull).toBe(false);
+  });
+
+  it('declares exactly the seven expected columns', () => {
+    const names = getTableConfig(userRecipeNotes).columns.map((col) => col.name);
+    expect(names.sort()).toEqual(
+      ['created_at', 'deleted_at', 'id', 'notes', 'recipe_id', 'updated_at', 'user_id'].sort(),
+    );
+  });
+});
+
+/**
+ * Read the SQL of the generated migration that creates `user_recipe_note`,
+ * located through the Drizzle journal so a renamed tag still resolves.
+ *
+ * @returns The migration's tag and SQL text.
+ */
+function readUserRecipeNoteMigration(): { tag: string; sql: string } {
+  const drizzleDir = new URL('../drizzle/', import.meta.url);
+  const journal = JSON.parse(readFileSync(new URL('meta/_journal.json', drizzleDir), 'utf8')) as {
+    entries: Array<{ tag: string }>;
+  };
+  const matches = journal.entries
+    .map(({ tag }) => ({ tag, sql: readFileSync(new URL(`${tag}.sql`, drizzleDir), 'utf8') }))
+    .filter(({ sql }) => sql.includes('CREATE TABLE "user_recipe_note"'));
+  expect(matches).toHaveLength(1);
+  return matches[0];
+}
+
+describe('user_recipe_note migration preserves existing brewer notes', () => {
+  it('contains no statement on recipe_version or its personal_notes column', () => {
+    const { tag, sql } = readUserRecipeNoteMigration();
+    expect(tag).toMatch(/^\d{4}_/);
+    const statements = sql
+      .split('--> statement-breakpoint')
+      .map((statement) => statement.trim())
+      .filter(Boolean);
+    expect(statements.length).toBeGreaterThan(0);
+    for (const statement of statements) {
+      expect(statement).not.toMatch(/personal_notes/i);
+      expect(statement).not.toMatch(/"recipe_version"/);
+      expect(statement).toMatch(/"user_recipe_note"/);
+    }
   });
 });

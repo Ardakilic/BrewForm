@@ -367,7 +367,7 @@ Add to `apps/web/src/pages/recipes/RecipeDetailPage.tsx`:
 
 ## References
 
-- [Drizzle ORM docs](/drizzle-team/drizzle-orm-docs) — query building, relations
+- [Drizzle ORM docs](https://orm.drizzle.team/docs) (Context7 `/drizzle-team/drizzle-orm-docs`) — query building, relations
 - Existing: `apps/api/src/modules/recipe/model.ts` — current recipe model
 - Existing: `apps/api/src/modules/recipe/service.ts:469` — `listRecipes()` pattern
 - Existing: `apps/web/src/pages/recipes/RecipeDetailPage.tsx` — detail page to extend

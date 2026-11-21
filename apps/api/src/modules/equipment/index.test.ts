@@ -1,9 +1,13 @@
 import '../../test-setup.ts';
+import { db } from '@brewform/db';
+import { equipment } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
 import type { Context, Next } from 'hono';
 import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
 import equipmentRouter, { deps } from './index.ts';
+import * as realService from './service.ts';
 
 deps.authMiddleware = async (_c: Context, next: Next) => {
   await next();
@@ -183,6 +187,27 @@ describe('Equipment Routes — Integration', () => {
       const app = createTestApp();
       const res = await app.request('/equipment/search');
       expect(res.status).toBe(400);
+    });
+
+    it('should find a brand ignoring letter case through the real service (DB)', async () => {
+      const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+      const id = crypto.randomUUID();
+      await db
+        .insert(equipment)
+        .values({ id, name: 'V60 Dripper', brand: `Hario${tag}`, type: 'grinder', isSystem: true });
+      const mocked = deps.service.searchEquipment;
+      deps.service.searchEquipment = realService.searchEquipment;
+      try {
+        const app = createTestApp();
+        const res = await app.request(`/equipment/search?q=hario${tag}`);
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.data.map((item: { id: string }) => item.id)).toEqual([id]);
+        expect(body.data[0].brand).toBe(`Hario${tag}`);
+      } finally {
+        deps.service.searchEquipment = mocked;
+        await db.delete(equipment).where(eq(equipment.id, id));
+      }
     });
   });
 

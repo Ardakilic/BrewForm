@@ -57,14 +57,24 @@ describe('CommentWithRepliesOutputSchema', () => {
       deletedAt: null,
       author: { id: 'user-2', username: 'bob', displayName: null, avatarUrl: null },
     };
-    const payload = { ...rawComment, author, replies: [reply] };
+    const payload = { ...rawComment, author, replies: [reply], hasMoreReplies: false };
     const result = CommentWithRepliesOutputSchema.safeParse(wire(payload));
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual(wire(payload));
   });
 
   it('accepts an empty replies array', () => {
-    const payload = { ...rawComment, author, replies: [] };
+    const payload = { ...rawComment, author, replies: [], hasMoreReplies: false };
     expect(CommentWithRepliesOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+
+  it('accepts hasMoreReplies true on a capped thread', () => {
+    const payload = { ...rawComment, author, replies: [], hasMoreReplies: true };
+    expect(CommentWithRepliesOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+
+  it('rejects a list item without hasMoreReplies', () => {
+    const payload = { ...rawComment, author, replies: [] };
+    expect(CommentWithRepliesOutputSchema.safeParse(wire(payload)).success).toBe(false);
   });
 });

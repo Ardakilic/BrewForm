@@ -15,7 +15,7 @@
 > - `ConfirmationDialog` is already covered: reuse `useConfirm()`/`ConfirmProvider` (apps/web/src/components/ui/Modal.tsx:105, :161 — i18n-key based with a `danger` flag), already used by AdminRecipesPage.tsx:25. There is NO `Button` component in apps/web — the plan's `<Button variant="danger">` won't compile; existing dialogs use `btn-primary`/`btn-secondary` classes. D36's BanDialog + useBanUser (apps/web/src/components/admin/BanDialog.tsx, apps/web/src/hooks/useBanUser.ts:41) are single-user only — keep them for per-row actions.
 > - i18n: every new UI string needs a `t()` key added to packages/shared/src/i18n/en.json AND tr.json (D40 shipped full i18n); the plan's hardcoded English strings violate this.
 > - D41 shipped (admin user mutation guards): model mutations carry `isNull(deletedAt)` guards (admin/model.ts:98-121 ban/unban/setRole, :216 softDeleteUser, :257 softDeleteRecipe, :315 deleteEquipment) and `service.softDeleteUser` throws SELF_DELETE_FORBIDDEN (service.ts:167). Bulk loops therefore inherit soft-delete safety; keep the per-item try/catch so one failure doesn't abort the batch, and map thrown codes (USER_NOT_FOUND, SELF_DELETE_FORBIDDEN, RECIPE_NOT_FOUND) into the `failed[]` entries.
-> - Target pages exist at AdminUsersPage (apps/web/src/router.tsx:347), AdminRecipesPage (:375), AdminEquipmentPage (:382). Tests go in apps/api/src/modules/admin/index.test.ts + service.test.ts using `*.test.ts` naming (jsr:@std/testing/bdd); new service functions need entry/exit debug logs via the module `logger` (see existing functions in admin/service.ts).
+> - Target pages exist at AdminUsersPage (apps/web/src/router.tsx:347), AdminRecipesPage (:375), AdminEquipmentPage (:382). Tests go in apps/api/src/modules/admin/index.test.ts + service.test.ts using `*.test.ts` naming (Vitest: `describe`/`it`/`expect` from `vitest`); new service functions need entry/exit debug logs via the module `logger` (see existing functions in admin/service.ts).
 
 ## Overview
 
@@ -605,8 +605,8 @@ export interface BulkOperationResult {
 
 ## References
 
-- [Drizzle ORM docs](/drizzle-team/drizzle-orm-docs) — batch updates
-- [React docs](/reactjs/react.dev) — hooks, state management
+- [Drizzle ORM docs](https://orm.drizzle.team/docs) (Context7 `/drizzle-team/drizzle-orm-docs`) — batch updates
+- [React docs](https://react.dev) (Context7 `/reactjs/react.dev`) — hooks, state management
 - Existing: `apps/api/src/modules/admin/service.ts` — existing admin service functions
 - Existing: `apps/api/src/modules/admin/index.ts` — existing admin routes pattern
 - Existing: `apps/web/src/pages/admin/AdminUsersPage.tsx` — current admin users page

@@ -43,6 +43,7 @@ import {
   RecipeWithAuthorOutputSchema,
   RecipeWithVersionsOutputSchema,
 } from './recipe.ts';
+import { RecipeUserNoteOutputSchema } from './recipe-note.ts';
 import { ReportOutputSchema } from './report.ts';
 import { SetupOutputSchema } from './setup.ts';
 import { TasteNoteNodeOutputSchema, TasteNoteOutputSchema } from './taste.ts';
@@ -398,7 +399,9 @@ const commentWithAuthorArb = fc.record({
 });
 
 const commentWithRepliesArb = commentWithAuthorArb.chain((base) =>
-  fc.array(commentWithAuthorArb).map((replies) => ({ ...base, replies })),
+  fc
+    .tuple(fc.array(commentWithAuthorArb), fc.boolean())
+    .map(([replies, hasMoreReplies]) => ({ ...base, replies, hasMoreReplies })),
 );
 
 const tasteNoteArb = fc.record({
@@ -599,6 +602,11 @@ const publicUserArb = fc.record({
 });
 
 const messageArb = fc.record({ message: str });
+// A live note carries text and a timestamp; an absent note is `{ notes: null, updatedAt: null }`.
+const recipeUserNoteArb = fc.oneof(
+  fc.record({ recipeId: str, notes: str, updatedAt: ts }),
+  fc.record({ recipeId: str, notes: fc.constant(null), updatedAt: fc.constant(null) }),
+);
 const authorRefCaseArb = authorRefArb;
 const recipeAuthorMiniArb = miniAuthorArb;
 
@@ -655,6 +663,11 @@ const cases: Array<{ name: string; schema: z.ZodType<any>; arb: fc.Arbitrary<unk
   },
   { name: 'FeedRecipeOutputSchema', schema: FeedRecipeOutputSchema, arb: feedRecipeArb },
   { name: 'RecipeDetailOutputSchema', schema: RecipeDetailOutputSchema, arb: recipeDetailArb },
+  {
+    name: 'RecipeUserNoteOutputSchema',
+    schema: RecipeUserNoteOutputSchema,
+    arb: recipeUserNoteArb,
+  },
   {
     name: 'EquipmentRecipesResponseSchema',
     schema: EquipmentRecipesResponseSchema,

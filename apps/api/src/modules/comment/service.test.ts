@@ -1,20 +1,28 @@
-// Feature: language-switcher-and-comment-replies, Property 1: createComment authorization matrix
 /**
- * Property 1 — createComment Authorization Matrix
+ * Comment service tests.
  *
- * For any combination of (isAdmin: boolean, isRecipeOwner: boolean, hasParent: boolean),
- * createComment SHALL produce the outcome defined in the authorization matrix:
- *   - hasParent === false → always succeeds regardless of role
- *   - hasParent === true AND (isAdmin || isRecipeOwner) → succeeds
- *   - hasParent === true AND neither → throws FORBIDDEN
+ * Every block runs the REAL `createComment`, `deleteComment`, `listComments` and
+ * `runCommentNotificationSideEffects` exported by `service.ts`. Unit blocks replace
+ * the data access and side effects through the service's `deps` proxy (see
+ * {@link withDeps}); the DB-backed blocks at the end use the test database.
  *
+ * Property 1 — createComment authorization matrix: for any combination of
+ * (isAdmin, isRecipeOwner, hasParent), a top-level comment always succeeds, a reply
+ * succeeds for an admin or the recipe owner and throws FORBIDDEN otherwise.
  * **Validates: Requirements 2.1, 2.2, 6.6**
  */
 
 import '../../test-setup.ts';
+import { db } from '@brewform/db';
+import { comments, notifications, recipes, users } from '@brewform/db/schema';
+import { and, eq, inArray } from 'drizzle-orm';
 import fc from 'fast-check';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { reloadConfig } from '../../config/env.ts';
+import { sanitizeText } from '../../utils/sanitize.ts';
+import { NoteFixtures } from '../recipe-note/test-helpers.ts';
 import {
+  deleteComment,
   deps,
   listComments,
   createComment as realCreateComment,
@@ -53,98 +61,82 @@ interface MockCreatedComment {
   deletedAt: Date | null;
 }
 
+type CreateData = {
+  recipeId: string;
+  authorId: string;
+  content: string;
+  parentCommentId: string | null;
+};
+
+/** The comment-model surface the service reads; stubs replace these on `deps.model`. */
 interface MockModel {
   findById: (id: string) => Promise<MockComment | null>;
-  getRecipeAuthorId: (recipeId: string) => Promise<string | null>;
-  create: (data: {
-    recipeId: string;
-    authorId: string;
-    content: string;
-    parentCommentId: string | null;
-  }) => Promise<MockCreatedComment>;
+  getRecipeForAccessCheck: (
+    recipeId: string,
+  ) => Promise<{ authorId: string; visibility: string } | null>;
+  getRecipeForNotification: (recipeId: string) => Promise<null>;
+  create: (data: CreateData) => Promise<MockCreatedComment>;
   softDelete: (id: string) => Promise<MockCreatedComment | null>;
+  softDeleteReplies: (parentId: string, recipeId: string) => Promise<string[]>;
 }
 
+/** The recipe-model surface the service writes; stubs replace these on `deps.recipeModel`. */
 interface MockRecipeModel {
   incrementComments: (id: string) => Promise<void>;
+  decrementComments: (id: string, by?: number) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
-// Inline implementation of createComment — faithful copy of service.ts logic
-// with injectable model dependencies (no DB, no env vars required)
+// deps stubbing — run the real service functions without a database
 // ---------------------------------------------------------------------------
 
-async function createComment(
-  userId: string,
-  recipeId: string,
-  content: string,
-  isAdmin: boolean,
-  parentCommentId: string | undefined,
-  model: MockModel,
-  recipeModel: MockRecipeModel,
-): Promise<MockCreatedComment> {
-  let effectiveParentCommentId: string | null = parentCommentId || null;
-  let effectiveContent = content;
+const realDeps = { ...deps };
 
-  if (parentCommentId) {
-    const targetComment = await model.findById(parentCommentId);
-    if (!targetComment) throw new Error('COMMENT_NOT_FOUND');
-
-    const recipeAuthorId = await model.getRecipeAuthorId(recipeId);
-    if (!isAdmin && recipeAuthorId !== userId) {
-      throw new Error('FORBIDDEN');
-    }
-
-    // Thread-flattening: if target is itself a Reply, traverse up to find the Top_Level_Comment
-    if (targetComment.parentCommentId !== null) {
-      const directTarget = targetComment;
-      let current = targetComment;
-      let hops = 0;
-
-      while (current.parentCommentId !== null) {
-        hops++;
-        if (hops > 100) throw new Error('COMMENT_DEPTH_EXCEEDED');
-        const parent = await model.findById(current.parentCommentId);
-        if (!parent) throw new Error('COMMENT_NOT_FOUND');
-        current = parent;
-      }
-
-      // current is now the Top_Level_Comment
-      effectiveParentCommentId = current.id;
-
-      // Prepend @username mention if author username is available
-      if (directTarget.author?.username) {
-        effectiveContent = `@${directTarget.author.username} ${content}`;
-      }
-    }
-  }
-
-  const comment = await model.create({
-    recipeId,
-    authorId: userId,
-    content: effectiveContent,
-    parentCommentId: effectiveParentCommentId,
-  });
-
-  await recipeModel.incrementComments(recipeId);
-
-  return comment;
+/**
+ * Point the service's `deps` at stubs layered over the real modules: `deps.model`
+ * becomes `{ ...realModel, ...model }`, `deps.recipeModel` likewise, and the badge
+ * and mention side effects resolve without doing anything. {@link restoreDeps}
+ * undoes it (every block that calls this restores in `afterEach`).
+ */
+function withDeps(model: Partial<MockModel>, recipeModel: Partial<MockRecipeModel> = {}): void {
+  // Test stubs cover only the surface the service reads, so they are widened to the module type.
+  deps.model = { ...realDeps.model, ...model } as unknown as typeof deps.model;
+  deps.recipeModel = {
+    ...realDeps.recipeModel,
+    ...recipeModel,
+  } as unknown as typeof deps.recipeModel;
+  deps.evaluateBadges = () => Promise.resolve();
+  deps.createMentionNotifications = () => Promise.resolve();
 }
 
-// ---------------------------------------------------------------------------
-// Inline implementation of deleteComment — faithful copy of service.ts logic
-// ---------------------------------------------------------------------------
+/** Put every `deps` entry back to the real implementation. */
+function restoreDeps(): void {
+  Object.assign(deps, realDeps);
+}
 
-async function deleteComment(
-  userId: string,
-  id: string,
-  isAdmin: boolean,
-  model: MockModel,
-): Promise<void> {
-  const comment = await model.findById(id);
-  if (!comment) throw new Error('COMMENT_NOT_FOUND');
-  if (!isAdmin && comment.authorId !== userId) throw new Error('FORBIDDEN');
-  await model.softDelete(id);
+/** `getRecipeForAccessCheck` stub: a public recipe owned by `authorId`. */
+function publicRecipe(authorId: string): MockModel['getRecipeForAccessCheck'] {
+  return () => Promise.resolve({ authorId, visibility: 'public' });
+}
+
+/** `getRecipeForNotification` stub: `null` makes the fire-and-forget notification chain return early. */
+const noNotificationRecipe: MockModel['getRecipeForNotification'] = () => Promise.resolve(null);
+
+/** Recipe-model stub that records every counter call. */
+function recordingRecipeModel() {
+  const increments: string[] = [];
+  const decrements: unknown[][] = [];
+  const recipeModel: MockRecipeModel = {
+    incrementComments: (id) => {
+      increments.push(id);
+      return Promise.resolve();
+    },
+    decrementComments: (...args: unknown[]) => {
+      decrements.push(args);
+      return Promise.resolve();
+    },
+  };
+  return { recipeModel, increments, decrements };
 }
 
 // ---------------------------------------------------------------------------
@@ -183,6 +175,8 @@ function makeCreatedComment(id: string): MockCreatedComment {
 // ---------------------------------------------------------------------------
 
 describe('Comment Service — Property 1: createComment authorization matrix', () => {
+  afterEach(restoreDeps);
+
   it('PBT: for all (isAdmin, isRecipeOwner, hasParent) combinations, createComment produces the correct outcome', async () => {
     await fc.assert(
       fc.asyncProperty(
@@ -199,68 +193,52 @@ describe('Comment Service — Property 1: createComment authorization matrix', (
 
           // Track calls to model.create
           let createCallCount = 0;
-          let createCallArgs: Parameters<MockModel['create']>[0] | null = null;
+          let createCallArgs: CreateData | null = null;
 
-          const model: MockModel = {
-            findById: (_id: string) => Promise.resolve(makeTopLevelComment('parent-comment-1')),
-            getRecipeAuthorId: (_recipeId: string) => Promise.resolve(recipeAuthorId),
-            create: (data) => {
-              createCallCount++;
-              createCallArgs = data;
-              return Promise.resolve(makeCreatedComment('new-comment-1'));
+          const { recipeModel } = recordingRecipeModel();
+          withDeps(
+            {
+              findById: (_id: string) => Promise.resolve(makeTopLevelComment('parent-comment-1')),
+              getRecipeForAccessCheck: publicRecipe(recipeAuthorId),
+              getRecipeForNotification: noNotificationRecipe,
+              create: (data) => {
+                createCallCount++;
+                createCallArgs = data;
+                return Promise.resolve(makeCreatedComment('new-comment-1'));
+              },
+              softDelete: (_id: string) => Promise.resolve(null),
             },
-            softDelete: (_id: string) => Promise.resolve(null),
-          };
-
-          const recipeModel: MockRecipeModel = {
-            incrementComments: (_id: string) => Promise.resolve(),
-          };
+            recipeModel,
+          );
 
           if (!hasParent) {
             // Top-level comment: always succeeds regardless of role
-            const result = await createComment(
+            const result = await realCreateComment(
               userId,
               recipeId,
               'some content',
               isAdmin,
               undefined,
-              model,
-              recipeModel,
             );
             expect(result).toBeDefined();
             expect(createCallCount).toBe(1);
             expect(createCallArgs!.parentCommentId).toBeNull();
           } else if (isAdmin || isRecipeOwner) {
             // Reply with permission: succeeds
-            const result = await createComment(
+            const result = await realCreateComment(
               userId,
               recipeId,
               'some content',
               isAdmin,
               parentCommentId,
-              model,
-              recipeModel,
             );
             expect(result).toBeDefined();
             expect(createCallCount).toBe(1);
           } else {
             // Reply without permission: throws FORBIDDEN
-            let threw = false;
-            try {
-              await createComment(
-                userId,
-                recipeId,
-                'some content',
-                isAdmin,
-                parentCommentId,
-                model,
-                recipeModel,
-              );
-            } catch (err) {
-              threw = true;
-              expect((err as Error).message).toBe('FORBIDDEN');
-            }
-            expect(threw).toBe(true);
+            await expect(
+              realCreateComment(userId, recipeId, 'some content', isAdmin, parentCommentId),
+            ).rejects.toThrow('FORBIDDEN');
             // model.create must NOT have been called
             expect(createCallCount).toBe(0);
           }
@@ -294,6 +272,8 @@ describe('Comment Service — Property 1: createComment authorization matrix', (
 // ---------------------------------------------------------------------------
 
 describe('Comment Service — Property 2: thread flattening invariant', () => {
+  afterEach(restoreDeps);
+
   it('PBT: persisted parentCommentId always references a Top_Level_Comment for any chain depth 1-99', async () => {
     await fc.assert(
       fc.asyncProperty(fc.integer({ min: 1, max: 99 }), async (depth) => {
@@ -329,41 +309,40 @@ describe('Comment Service — Property 2: thread flattening invariant', () => {
         const commentMap = new Map<string, MockComment>(chain.map((c) => [c.id, c]));
 
         // Capture the args passed to model.create
-        let capturedCreateArgs: Parameters<MockModel['create']>[0] | null = null;
+        let capturedCreateArgs: CreateData | null = null;
 
-        const mockModel: MockModel = {
-          // findById traverses the chain via the lookup map
-          findById: (id: string) => Promise.resolve(commentMap.get(id) ?? null),
-          // getRecipeAuthorId returns the caller's userId so isRecipeOwner=true
-          getRecipeAuthorId: () => Promise.resolve('caller-user'),
-          create: (data) => {
-            capturedCreateArgs = data;
-            return Promise.resolve({
-              id: 'new-comment',
-              recipeId: 'recipe-1',
-              authorId: 'caller-user',
-              content: data.content,
-              parentCommentId: data.parentCommentId,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              deletedAt: null,
-            });
+        const { recipeModel } = recordingRecipeModel();
+        withDeps(
+          {
+            // findById traverses the chain via the lookup map
+            findById: (id: string) => Promise.resolve(commentMap.get(id) ?? null),
+            // the caller owns the recipe (isRecipeOwner=true)
+            getRecipeForAccessCheck: publicRecipe('caller-user'),
+            getRecipeForNotification: noNotificationRecipe,
+            create: (data) => {
+              capturedCreateArgs = data;
+              return Promise.resolve({
+                id: 'new-comment',
+                recipeId: 'recipe-1',
+                authorId: 'caller-user',
+                content: data.content,
+                parentCommentId: data.parentCommentId,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                deletedAt: null,
+              });
+            },
+            softDelete: (_id: string) => Promise.resolve(null),
           },
-          softDelete: (_id: string) => Promise.resolve(null),
-        };
+          recipeModel,
+        );
 
-        const mockRecipeModel: MockRecipeModel = {
-          incrementComments: (_id: string) => Promise.resolve(),
-        };
-
-        await createComment(
+        await realCreateComment(
           'caller-user',
           'recipe-1',
           'reply content',
           true, // isAdmin=true to bypass auth checks
           deepestReply.id,
-          mockModel,
-          mockRecipeModel,
         );
 
         // Assert model.create was called with parentCommentId === topLevelComment.id
@@ -386,11 +365,13 @@ describe('Comment Service — Property 2: thread flattening invariant', () => {
  *
  * For any reply that triggers thread flattening (i.e., the directly targeted comment is itself a
  * Reply), the content passed to model.create SHALL equal
- * "@" + directTarget.author.username + " " + originalContent.
+ * "@" + directTarget.author.username + " " + sanitizeText(originalContent).
  *
  * **Validates: Requirements 2.4, 6.4**
  */
 describe('Comment Service — Property 3: mention prefix transformation', () => {
+  afterEach(restoreDeps);
+
   it('PBT: content passed to model.create is "@username content" when directTarget is a Reply', async () => {
     await fc.assert(
       fc.asyncProperty(fc.string({ minLength: 1 }), fc.string(), async (username, content) => {
@@ -438,51 +419,42 @@ describe('Comment Service — Property 3: mention prefix transformation', () => 
 
         // findById: first call (directTargetId) → directTarget; second call (topLevelId) → topLevel
         let findByIdCallCount = 0;
-        let capturedCreateData: Parameters<MockModel['create']>[0] | null = null;
+        let capturedCreateData: CreateData | null = null;
 
-        const mockModel: MockModel = {
-          findById: (_id: string) => {
-            findByIdCallCount++;
-            if (findByIdCallCount === 1) return Promise.resolve(directTargetComment);
-            return Promise.resolve(topLevelComment);
+        const { recipeModel } = recordingRecipeModel();
+        withDeps(
+          {
+            findById: (_id: string) => {
+              findByIdCallCount++;
+              if (findByIdCallCount === 1) return Promise.resolve(directTargetComment);
+              return Promise.resolve(topLevelComment);
+            },
+            getRecipeForAccessCheck: publicRecipe('other-author-id'),
+            getRecipeForNotification: noNotificationRecipe,
+            create: (data) => {
+              capturedCreateData = data;
+              return Promise.resolve({
+                id: 'new-comment-id',
+                recipeId,
+                authorId: userId,
+                content: data.content,
+                parentCommentId: data.parentCommentId,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                deletedAt: null,
+              });
+            },
+            softDelete: (_id: string) => Promise.resolve(null),
           },
-          getRecipeAuthorId: () => Promise.resolve('other-author-id'),
-          create: (data) => {
-            capturedCreateData = data;
-            return Promise.resolve({
-              id: 'new-comment-id',
-              recipeId,
-              authorId: userId,
-              content: data.content,
-              parentCommentId: data.parentCommentId,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              deletedAt: null,
-            });
-          },
-          softDelete: (_id: string) => Promise.resolve(null),
-        };
-
-        const mockRecipeModel: MockRecipeModel = {
-          incrementComments: (_id: string) => Promise.resolve(),
-        };
+          recipeModel,
+        );
 
         // isAdmin=true bypasses auth; caller provides directTarget.id as parentCommentId
-        await createComment(
-          userId,
-          recipeId,
-          content,
-          true,
-          directTargetId,
-          mockModel,
-          mockRecipeModel,
-        );
+        await realCreateComment(userId, recipeId, content, true, directTargetId);
 
-        // Assert: content passed to model.create is "@username content"
+        // Assert: content passed to model.create is "@username <sanitized content>"
         expect(capturedCreateData).not.toBeNull();
-        expect((capturedCreateData! as { content: string }).content).toBe(
-          `@${username} ${content}`,
-        );
+        expect(capturedCreateData!.content).toBe(`@${username} ${sanitizeText(content)}`);
       }),
       { numRuns: 100 },
     );
@@ -516,31 +488,23 @@ function makeComment(
 }
 
 describe('createComment — edge cases', () => {
-  it('throws COMMENT_NOT_FOUND when parentCommentId references a non-existent comment', async () => {
-    const mockModel: MockModel = {
-      findById: (_id: string) => Promise.resolve(null),
-      getRecipeAuthorId: () => Promise.resolve('recipe-author'),
-      create: () => Promise.resolve(makeCreatedComment('new')),
-      softDelete: () => Promise.resolve(null),
-    };
-    const mockRecipeModel: MockRecipeModel = { incrementComments: () => Promise.resolve() };
+  afterEach(restoreDeps);
 
-    let threw = false;
-    try {
-      await createComment(
-        'user-1',
-        'recipe-1',
-        'content',
-        true,
-        'nonexistent-id',
-        mockModel,
-        mockRecipeModel,
-      );
-    } catch (err) {
-      threw = true;
-      expect((err as Error).message).toBe('COMMENT_NOT_FOUND');
-    }
-    expect(threw).toBe(true);
+  it('throws COMMENT_NOT_FOUND when parentCommentId references a non-existent comment', async () => {
+    withDeps(
+      {
+        findById: (_id: string) => Promise.resolve(null),
+        getRecipeForAccessCheck: publicRecipe('recipe-author'),
+        getRecipeForNotification: noNotificationRecipe,
+        create: () => Promise.resolve(makeCreatedComment('new')),
+        softDelete: () => Promise.resolve(null),
+      },
+      recordingRecipeModel().recipeModel,
+    );
+
+    await expect(
+      realCreateComment('user-1', 'recipe-1', 'content', true, 'nonexistent-id'),
+    ).rejects.toThrow('COMMENT_NOT_FOUND');
   });
 
   it('throws COMMENT_DEPTH_EXCEEDED when parentCommentId chain is 100 hops deep', async () => {
@@ -551,96 +515,250 @@ describe('createComment — edge cases', () => {
     }
     const commentMap = new Map<string, MockComment>(chain.map((c) => [c.id, c]));
 
-    const mockModel: MockModel = {
-      findById: (id: string) => Promise.resolve(commentMap.get(id) ?? null),
-      getRecipeAuthorId: () => Promise.resolve('other-author'),
-      create: () => Promise.resolve(makeCreatedComment('new')),
-      softDelete: () => Promise.resolve(null),
-    };
-    const mockRecipeModel: MockRecipeModel = { incrementComments: () => Promise.resolve() };
+    withDeps(
+      {
+        findById: (id: string) => Promise.resolve(commentMap.get(id) ?? null),
+        getRecipeForAccessCheck: publicRecipe('other-author'),
+        getRecipeForNotification: noNotificationRecipe,
+        create: () => Promise.resolve(makeCreatedComment('new')),
+        softDelete: () => Promise.resolve(null),
+      },
+      recordingRecipeModel().recipeModel,
+    );
 
-    let threw = false;
-    try {
-      // Provide the deepest comment (c-101) as parentCommentId
-      await createComment(
-        'user-1',
-        'recipe-1',
-        'content',
-        true,
-        'c-101',
-        mockModel,
-        mockRecipeModel,
-      );
-    } catch (err) {
-      threw = true;
-      expect((err as Error).message).toBe('COMMENT_DEPTH_EXCEEDED');
-    }
-    expect(threw).toBe(true);
+    // Provide the deepest comment (c-101) as parentCommentId
+    await expect(realCreateComment('user-1', 'recipe-1', 'content', true, 'c-101')).rejects.toThrow(
+      'COMMENT_DEPTH_EXCEEDED',
+    );
   });
 
   it('top-level comment (no parentCommentId) always succeeds without auth check', async () => {
     let createCalled = false;
-    const mockModel: MockModel = {
-      findById: (_id: string) => Promise.resolve(null),
-      getRecipeAuthorId: () => Promise.resolve('other-author'),
-      create: () => {
-        createCalled = true;
-        return Promise.resolve(makeCreatedComment('new'));
+    withDeps(
+      {
+        findById: (_id: string) => Promise.resolve(null),
+        getRecipeForAccessCheck: publicRecipe('other-author'),
+        getRecipeForNotification: noNotificationRecipe,
+        create: () => {
+          createCalled = true;
+          return Promise.resolve(makeCreatedComment('new'));
+        },
+        softDelete: () => Promise.resolve(null),
       },
-      softDelete: () => Promise.resolve(null),
-    };
-    const mockRecipeModel: MockRecipeModel = { incrementComments: () => Promise.resolve() };
+      recordingRecipeModel().recipeModel,
+    );
 
     // isAdmin=false, not recipe owner — but no parentCommentId, so no auth check
-    const result = await createComment(
-      'user-1',
-      'recipe-1',
-      'content',
-      false,
-      undefined,
-      mockModel,
-      mockRecipeModel,
-    );
+    const result = await realCreateComment('user-1', 'recipe-1', 'content', false, undefined);
     expect(result).toBeDefined();
     expect(createCalled).toBe(true);
   });
 });
 
 describe('deleteComment — edge cases', () => {
-  it('throws COMMENT_NOT_FOUND when comment does not exist (non-admin caller)', async () => {
-    const mockModel: MockModel = {
-      findById: (_id: string) => Promise.resolve(null),
-      getRecipeAuthorId: () => Promise.resolve(null),
-      create: () => Promise.resolve(makeCreatedComment('new')),
-      softDelete: () => Promise.resolve(null),
-    };
+  afterEach(restoreDeps);
 
-    let threw = false;
-    try {
-      await deleteComment('user-1', 'nonexistent-id', false, mockModel);
-    } catch (err) {
-      threw = true;
-      expect((err as Error).message).toBe('COMMENT_NOT_FOUND');
-    }
-    expect(threw).toBe(true);
+  it('throws COMMENT_NOT_FOUND when comment does not exist (non-admin caller)', async () => {
+    const { recipeModel, decrements } = recordingRecipeModel();
+    withDeps(
+      {
+        findById: (_id: string) => Promise.resolve(null),
+        softDelete: () => Promise.resolve(null),
+      },
+      recipeModel,
+    );
+
+    await expect(deleteComment('user-1', 'nonexistent-id', false)).rejects.toThrow(
+      'COMMENT_NOT_FOUND',
+    );
+    expect(decrements).toEqual([]);
   });
 
   it('throws COMMENT_NOT_FOUND when comment does not exist (admin caller)', async () => {
-    const mockModel: MockModel = {
-      findById: (_id: string) => Promise.resolve(null),
-      getRecipeAuthorId: () => Promise.resolve(null),
-      create: () => Promise.resolve(makeCreatedComment('new')),
-      softDelete: () => Promise.resolve(null),
-    };
+    const { recipeModel, decrements } = recordingRecipeModel();
+    withDeps(
+      {
+        findById: (_id: string) => Promise.resolve(null),
+        softDelete: () => Promise.resolve(null),
+      },
+      recipeModel,
+    );
 
-    let threw = false;
-    try {
-      await deleteComment('admin-user', 'nonexistent-id', true, mockModel);
-    } catch (err) {
-      threw = true;
-      expect((err as Error).message).toBe('COMMENT_NOT_FOUND');
-    }
-    expect(threw).toBe(true);
+    await expect(deleteComment('admin-user', 'nonexistent-id', true)).rejects.toThrow(
+      'COMMENT_NOT_FOUND',
+    );
+    expect(decrements).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #14 — a comment delete decrements only when its own soft delete changed the row
+// ---------------------------------------------------------------------------
+
+describe('deleteComment — delete once (#14)', () => {
+  afterEach(restoreDeps);
+
+  it('rejects COMMENT_NOT_FOUND and leaves the counter alone when softDelete loses the race', async () => {
+    const { recipeModel, decrements } = recordingRecipeModel();
+    const cascades: unknown[][] = [];
+    withDeps(
+      {
+        findById: () => Promise.resolve(makeComment('c-1', null, 'user', 'author-1')),
+        softDelete: () => Promise.resolve(null),
+        softDeleteReplies: (...args) => {
+          cascades.push(args);
+          return Promise.resolve([]);
+        },
+      },
+      recipeModel,
+    );
+
+    await expect(deleteComment('author-1', 'c-1', false)).rejects.toThrow('COMMENT_NOT_FOUND');
+    expect(decrements).toEqual([]);
+    expect(cascades).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// E1 — deleting a top-level comment removes its thread; the count drops by the rows removed
+// ---------------------------------------------------------------------------
+
+describe('deleteComment — thread delete and exact counts (E1)', () => {
+  afterEach(restoreDeps);
+
+  /** Stub deps for deleting `target`; `softDeleteReplies` resolves `replyIds`. */
+  function stubDelete(target: MockComment, replyIds: string[]) {
+    const { recipeModel, decrements } = recordingRecipeModel();
+    const cascades: unknown[][] = [];
+    withDeps(
+      {
+        findById: () => Promise.resolve(target),
+        softDelete: () =>
+          Promise.resolve({ ...makeCreatedComment(target.id), deletedAt: new Date() }),
+        softDeleteReplies: (...args) => {
+          cascades.push(args);
+          return Promise.resolve(replyIds);
+        },
+      },
+      recipeModel,
+    );
+    return { decrements, cascades };
+  }
+
+  it('a top-level delete cascades to its replies and decrements by 1 + replies', async () => {
+    const { decrements, cascades } = stubDelete(makeComment('p', null, 'user', 'author-1'), [
+      'r1',
+      'r2',
+    ]);
+
+    await deleteComment('author-1', 'p', false);
+
+    expect(cascades).toEqual([['p', 'recipe-1']]);
+    expect(decrements).toEqual([['recipe-1', 3]]);
+  });
+
+  it('a reply delete never cascades and decrements by 1', async () => {
+    const { decrements, cascades } = stubDelete(makeComment('r', 'p', 'user', 'author-1'), [
+      'never',
+    ]);
+
+    await deleteComment('author-1', 'r', false);
+
+    expect(cascades).toEqual([]);
+    expect(decrements).toEqual([['recipe-1', 1]]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #5 — replies stay inside their recipe's thread (deps-stubbed real createComment)
+// ---------------------------------------------------------------------------
+
+describe('createComment — replies stay inside their recipe thread (#5)', () => {
+  const CALLER = 'caller-1';
+  const RECIPE_ID = 'recipe-1';
+
+  let createCalls: CreateData[];
+  let mentionCalls: unknown[];
+  let increments: string[];
+
+  /** Stub deps over `comments` (looked up by id) on a public recipe the caller owns. */
+  function stubThread(commentsById: Record<string, MockComment>) {
+    const recorder = recordingRecipeModel();
+    increments = recorder.increments;
+    withDeps(
+      {
+        findById: (id: string) => Promise.resolve(commentsById[id] ?? null),
+        getRecipeForAccessCheck: publicRecipe(CALLER),
+        getRecipeForNotification: noNotificationRecipe,
+        create: (data) => {
+          createCalls.push(data);
+          return Promise.resolve(makeCreatedComment('new'));
+        },
+        softDelete: () => Promise.resolve(null),
+      },
+      recorder.recipeModel,
+    );
+    deps.createMentionNotifications = (params) => {
+      mentionCalls.push(params);
+      return Promise.resolve();
+    };
+  }
+
+  beforeEach(() => {
+    createCalls = [];
+    mentionCalls = [];
+    increments = [];
+  });
+
+  afterEach(restoreDeps);
+
+  it('rejects a parent on another recipe with COMMENT_NOT_FOUND and no writes or side effects', async () => {
+    stubThread({ p: { ...makeComment('p'), recipeId: 'other-recipe' } });
+
+    await expect(
+      realCreateComment(CALLER, RECIPE_ID, '@someone hello', false, 'p'),
+    ).rejects.toThrow('COMMENT_NOT_FOUND');
+    expect(createCalls).toEqual([]);
+    expect(increments).toEqual([]);
+    expect(mentionCalls).toEqual([]);
+  });
+
+  it('rejects a same-recipe direct target whose resolved top-level comment is on another recipe', async () => {
+    stubThread({
+      top: { ...makeComment('top'), recipeId: 'other-recipe' },
+      direct: makeComment('direct', 'top', 'replier'),
+    });
+
+    await expect(realCreateComment(CALLER, RECIPE_ID, 'hello', false, 'direct')).rejects.toThrow(
+      'COMMENT_NOT_FOUND',
+    );
+    expect(createCalls).toEqual([]);
+    expect(increments).toEqual([]);
+    expect(mentionCalls).toEqual([]);
+  });
+
+  it('stores no @ prefix when the direct target reply has no visible author (deleted account)', async () => {
+    stubThread({
+      top: makeComment('top'),
+      direct: { ...makeComment('direct', 'top', 'gone'), author: null },
+    });
+
+    await realCreateComment(CALLER, RECIPE_ID, 'hello there', false, 'direct');
+    expect(createCalls).toHaveLength(1);
+    expect(createCalls[0].content).toBe('hello there');
+    expect(createCalls[0].parentCommentId).toBe('top');
+  });
+
+  it('still accepts a reply whose whole chain is on the request recipe', async () => {
+    stubThread({
+      top: makeComment('top'),
+      direct: makeComment('direct', 'top', 'replier'),
+    });
+
+    await realCreateComment(CALLER, RECIPE_ID, 'hello', false, 'direct');
+    expect(createCalls).toHaveLength(1);
+    expect(createCalls[0].parentCommentId).toBe('top');
+    expect(increments).toEqual([RECIPE_ID]);
   });
 });
 
@@ -1088,5 +1206,163 @@ describe('D99.9 — comment visibility gate', () => {
     stubGateDeps(null);
     await expect(listComments(RECIPE_ID, 1, 20, STRANGER)).rejects.toThrow('RECIPE_NOT_FOUND');
     expect(findByRecipeCalls.length).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// unique-identifiers: mentions resolve usernames case-insensitively (DB-backed)
+// ---------------------------------------------------------------------------
+describe('mention notifications resolve usernames case-insensitively (DB-backed)', () => {
+  const fixtures = new NoteFixtures();
+  const commentIds: string[] = [];
+  let originalAppEnv: string | undefined;
+
+  beforeAll(() => {
+    // APP_ENV=test suppresses the mention email.
+    originalAppEnv = process.env.APP_ENV;
+    process.env.APP_ENV = 'test';
+    reloadConfig();
+  });
+
+  afterAll(async () => {
+    for (const id of commentIds) {
+      await db.delete(notifications).where(eq(notifications.referenceId, id));
+      await db.delete(comments).where(eq(comments.id, id));
+    }
+    await fixtures.cleanup();
+    if (originalAppEnv === undefined) {
+      delete process.env.APP_ENV;
+    } else {
+      process.env.APP_ENV = originalAppEnv;
+    }
+    reloadConfig();
+  });
+
+  it('creates exactly one mention notification for Arda<m> from "@arda<m>"', async () => {
+    const m = crypto.randomUUID().replaceAll('-', '').slice(0, 8);
+    const target = await fixtures.user('mention-target');
+    await db
+      .update(users)
+      .set({ username: `Arda${m}` })
+      .where(eq(users.id, target.id));
+    // The commenter is the recipe author, so only the mention flow writes a notification.
+    const author = await fixtures.user('mention-author');
+    const { recipe } = await fixtures.recipe(author.id);
+    const content = `@arda${m} try this, @ARDA${m}!`;
+    const [comment] = await db
+      .insert(comments)
+      .values({ recipeId: recipe.id, authorId: author.id, content })
+      .returning({ id: comments.id });
+    commentIds.push(comment.id);
+
+    await runCommentNotificationSideEffects({
+      userId: author.id,
+      recipeId: recipe.id,
+      commentId: comment.id,
+      effectiveContent: content,
+    });
+
+    const rows = await db
+      .select({ id: notifications.id })
+      .from(notifications)
+      .where(and(eq(notifications.userId, target.id), eq(notifications.type, 'mention')));
+    expect(rows).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Comment counts — real createComment/deleteComment against the test database
+// ---------------------------------------------------------------------------
+describe('deleteComment — comment counts (DB-backed)', () => {
+  const fixtures = new NoteFixtures();
+
+  /** Read a recipe's stored `commentCount`. */
+  async function storedCount(recipeId: string): Promise<number> {
+    const [row] = await db
+      .select({ commentCount: recipes.commentCount })
+      .from(recipes)
+      .where(eq(recipes.id, recipeId));
+    return row.commentCount;
+  }
+
+  beforeAll(() => {
+    // Badge evaluation and mention fan-out are fire-and-forget; keep them out of the cleanup race.
+    deps.evaluateBadges = () => Promise.resolve();
+    deps.createMentionNotifications = () => Promise.resolve();
+  });
+
+  afterAll(async () => {
+    restoreDeps();
+    if (fixtures.recipeIds.length > 0) {
+      await db.delete(comments).where(inArray(comments.recipeId, fixtures.recipeIds));
+    }
+    await fixtures.cleanup();
+  });
+
+  it('two concurrent deletes of one comment: one succeeds, one is COMMENT_NOT_FOUND, count drops by 1', async () => {
+    const author = await fixtures.user('double-delete');
+    const { recipe } = await fixtures.recipe(author.id);
+    const created = await realCreateComment(author.id, recipe.id, 'delete me twice', false);
+    const before = await storedCount(recipe.id);
+
+    const results = await Promise.allSettled([
+      deleteComment(author.id, created.id, false),
+      deleteComment(author.id, created.id, false),
+    ]);
+
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    const rejected = results.filter((r) => r.status === 'rejected');
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(Error);
+    expect(((rejected[0] as PromiseRejectedResult).reason as Error).message).toBe(
+      'COMMENT_NOT_FOUND',
+    );
+    expect(await storedCount(recipe.id)).toBe(before - 1);
+  });
+
+  /** A recipe whose author posted one top-level comment and two replies (count 3). */
+  async function threadOfThree(prefix: string) {
+    const author = await fixtures.user(prefix);
+    const { recipe } = await fixtures.recipe(author.id);
+    const parent = await realCreateComment(author.id, recipe.id, 'parent', false);
+    const r1 = await realCreateComment(author.id, recipe.id, 'reply one', false, parent.id);
+    const r2 = await realCreateComment(author.id, recipe.id, 'reply two', false, parent.id);
+    expect(await storedCount(recipe.id)).toBe(3);
+    return { author, recipe, parent, replyIds: [r1.id, r2.id] };
+  }
+
+  /** Assert the thread is gone from the list, every reply is soft-deleted and the count is 0. */
+  async function expectThreadGone(recipeId: string, replyIds: string[]) {
+    expect(await storedCount(recipeId)).toBe(0);
+    const listed = await realDeps.model.findByRecipe(recipeId, 1, 20);
+    expect(listed.comments).toEqual([]);
+    expect(listed.total).toBe(0);
+    const rows = await db
+      .select({ id: comments.id, deletedAt: comments.deletedAt })
+      .from(comments)
+      .where(inArray(comments.id, replyIds));
+    expect(rows).toHaveLength(replyIds.length);
+    for (const row of rows) expect(row.deletedAt).not.toBeNull();
+  }
+
+  it('the author deletes a comment with two replies: count 3 -> 0, the thread is gone', async () => {
+    const { author, recipe, parent, replyIds } = await threadOfThree('e1-author');
+    await deleteComment(author.id, parent.id, false);
+    await expectThreadGone(recipe.id, replyIds);
+  });
+
+  it('a reply deleted first (count 2), then the parent: count 0, never -1', async () => {
+    const { author, recipe, parent, replyIds } = await threadOfThree('e1-reply-first');
+    await deleteComment(author.id, replyIds[0], false);
+    expect(await storedCount(recipe.id)).toBe(2);
+    await deleteComment(author.id, parent.id, false);
+    await expectThreadGone(recipe.id, replyIds);
+  });
+
+  it('an admin who is not the author deletes the parent: same result', async () => {
+    const { recipe, parent, replyIds } = await threadOfThree('e1-admin');
+    const admin = await fixtures.user('e1-admin-mod', { isAdmin: true });
+    await deleteComment(admin.id, parent.id, true);
+    await expectThreadGone(recipe.id, replyIds);
   });
 });

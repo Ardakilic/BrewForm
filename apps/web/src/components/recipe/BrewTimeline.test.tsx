@@ -2,31 +2,78 @@
  * Tests for BrewTimeline component
  *
  * Property 4: Timeline segment proportional widths
- * Validates: Requirements 6.1, 6.2
+ * Validates: Requirements 6.1, 6.2 — the phase boxes' inline widths are
+ * proportional to the phase durations and sum to 100%.
  *
- * For any extractionTimeSeconds > 0 and preInfusionTimeSeconds where
- * 0 < preInfusionTimeSeconds < extractionTimeSeconds:
- * - Pre-infusion segment width% = (preInfusionTimeSeconds / extractionTimeSeconds) * 100
- * - Extraction segment width% = ((extractionTimeSeconds - preInfusionTimeSeconds) / extractionTimeSeconds) * 100
- * - Both percentages sum to 100
+ * Wave-6 chart-rendering (t6): the axis comes from `durationTicks` (≤ 8 ticks,
+ * always 0 and the total, ascending), the stretched SVG holds shapes only,
+ * phase labels are HTML confined to their phase (hidden durations move to a
+ * caption row), every inline percentage is finite and in [0, 100], and an
+ * inconsistent pre-infusion renders a single phase plus one warn log.
  *
- * Property 5: Timeline axis markers at adaptive intervals
- * Validates: Requirements 6.4
- *
- * For any extractionTimeSeconds > 0, the timeline SHALL produce markers at
- * adaptive intervals (5s for ≤60s, 15s for 61–120s, 30s for >120s),
- * plus a final marker at extractionTimeSeconds if it's not aligned to the step.
+ * wave-6-review-remediation (#19): phase titles use `--text-primary` and the
+ * gradient stops use `TIMELINE_GRADIENT_OPACITY`, the values the contrast test
+ * checks the labels against.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import fc from 'fast-check';
 import type { ReactNode } from 'react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { TIMELINE_GRADIENT_OPACITY } from '../../utils/brew-timeline.ts';
 import { BrewTimeline } from './BrewTimeline.tsx';
+
+const { mockWarn } = vi.hoisted(() => ({ mockWarn: vi.fn() }));
+
+vi.mock('../../utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: mockWarn,
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
+}));
 
 function withI18n(ui: ReactNode) {
   return <I18nProvider>{ui}</I18nProvider>;
+}
+
+/** Renders inside an I18nProvider with a stored locale. */
+function renderInLocale(ui: ReactNode, locale: 'en' | 'tr') {
+  localStorage.setItem('brewform_locale', locale);
+  return render(withI18n(ui));
+}
+
+beforeEach(() => {
+  mockWarn.mockClear();
+});
+
+afterEach(() => {
+  localStorage.clear();
+});
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Width percentages of the rendered phase boxes, in order. */
+function getPhaseWidths(container: HTMLElement): number[] {
+  return Array.from(container.querySelectorAll<HTMLElement>('[data-phase]')).map((el) =>
+    parseFloat(el.style.width),
+  );
+}
+
+/** Tick label texts and left percentages, in DOM order. */
+function getTicks(container: HTMLElement): { label: string; left: number }[] {
+  const axis = container.querySelector('[data-testid="brew-timeline-axis"]');
+  if (!axis) throw new Error('Axis not found');
+  return Array.from(axis.children as HTMLCollectionOf<HTMLElement>).map((el) => ({
+    label: el.textContent ?? '',
+    left: parseFloat(el.style.left),
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -44,6 +91,12 @@ describe('BrewTimeline — rendering unit tests', () => {
     await waitFor(() => expect(container.firstChild).toBeNull());
   });
 
+  it.each([0, -5, Number.NaN])('returns null (no NaN%% styles) for a total of %s', (total) => {
+    const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={total} />));
+    expect(container.firstChild).toBeNull();
+    expect(container.innerHTML).not.toContain('NaN');
+  });
+
   it('renders when extractionTimeSeconds is present', async () => {
     const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={30} />));
     await waitFor(() => expect(container.firstChild).not.toBeNull());
@@ -54,151 +107,257 @@ describe('BrewTimeline — rendering unit tests', () => {
     expect(screen.getByText('2.5 ml/s')).toBeInTheDocument();
   });
 
+  it('rounds the flow rate to one decimal with the locale separator', () => {
+    const { unmount } = renderInLocale(
+      <BrewTimeline extractionTimeSeconds={30} flowRate={1.2857143} />,
+      'en',
+    );
+    expect(screen.getByText('1.3 ml/s')).toBeInTheDocument();
+    unmount();
+    renderInLocale(<BrewTimeline extractionTimeSeconds={30} flowRate={1.2857143} />, 'tr');
+    expect(screen.getByText('1,3 ml/s')).toBeInTheDocument();
+  });
+
+  it('never shows a slow positive flow rate as 0 ml/s (500 ml over 12 h, V4)', () => {
+    const { unmount } = renderInLocale(
+      <BrewTimeline extractionTimeSeconds={43_200} flowRate={500 / 43_200} />,
+      'en',
+    );
+    expect(screen.getByText('0.012 ml/s')).toBeInTheDocument();
+    expect(screen.queryByText('0 ml/s')).toBeNull();
+    unmount();
+    renderInLocale(<BrewTimeline extractionTimeSeconds={43_200} flowRate={500 / 43_200} />, 'tr');
+    expect(screen.getByText('0,012 ml/s')).toBeInTheDocument();
+  });
+
   it('does not show flow rate when null', () => {
     render(withI18n(<BrewTimeline extractionTimeSeconds={30} flowRate={null} />));
     expect(screen.queryByText(/ml\/s/)).toBeNull();
   });
 
-  it('shows pre-infusion segment when preInfusionTimeSeconds is present', () => {
-    render(withI18n(<BrewTimeline extractionTimeSeconds={30} preInfusionTimeSeconds={10} />));
-    expect(screen.getByText('Pre-Infusion')).toBeInTheDocument();
+  it('wraps the header as whole items', () => {
+    const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={30} />));
+    const header = container.querySelector('.card > div') as HTMLElement;
+    expect(header).toHaveClass('flex', 'flex-wrap', 'gap-x-3');
   });
 
-  it('does not show pre-infusion segment when preInfusionTimeSeconds is null', () => {
-    render(withI18n(<BrewTimeline extractionTimeSeconds={30} preInfusionTimeSeconds={null} />));
+  it('renders a pre-infusion phase when preInfusionTimeSeconds is present', () => {
+    const { container } = render(
+      withI18n(<BrewTimeline extractionTimeSeconds={30} preInfusionTimeSeconds={10} />),
+    );
+    expect(container.querySelector('[data-phase="preInfusion"]')).not.toBeNull();
+    expect(screen.getByRole('img')).toHaveAccessibleName(
+      'Brew timeline: 10s pre-infusion, 20s extraction',
+    );
+  });
+
+  it('does not render a pre-infusion phase when preInfusionTimeSeconds is null', () => {
+    const { container } = render(
+      withI18n(<BrewTimeline extractionTimeSeconds={30} preInfusionTimeSeconds={null} />),
+    );
+    expect(container.querySelector('[data-phase="preInfusion"]')).toBeNull();
     expect(screen.queryByText('Pre-Infusion')).toBeNull();
   });
+
+  it('exposes exactly one role="img" named with formatted durations (43200s → 12h)', () => {
+    render(withI18n(<BrewTimeline extractionTimeSeconds={43200} />));
+    const images = screen.getAllByRole('img');
+    expect(images).toHaveLength(1);
+    expect(images[0]).toHaveAccessibleName('Brew timeline: 12h extraction');
+    expect(images[0].getAttribute('aria-label')).not.toContain('43200');
+  });
+
+  it('uses Turkish formatted durations in the accessible name', () => {
+    renderInLocale(<BrewTimeline extractionTimeSeconds={28} preInfusionTimeSeconds={5} />, 'tr');
+    expect(screen.getByRole('img')).toHaveAccessibleName(
+      'Demleme çizelgesi: 5 sn ön ıslatma, 23 sn ekstraksiyon',
+    );
+  });
+
+  it('moves a narrow pre-infusion duration to the caption (28s / 3s at the 200px fallback)', () => {
+    const { container } = render(
+      withI18n(<BrewTimeline extractionTimeSeconds={28} preInfusionTimeSeconds={3} />),
+    );
+    const pre = container.querySelector('[data-phase="preInfusion"]') as HTMLElement;
+    expect(pre.textContent).toBe('');
+    const caption = screen.getByTestId('brew-timeline-caption');
+    expect(within(caption).getByText('Pre-Infusion')).toBeInTheDocument();
+    expect(within(caption).getByText('3s')).toBeInTheDocument();
+    const extraction = container.querySelector('[data-phase="extraction"]') as HTMLElement;
+    expect(within(extraction).getByText('Extraction')).toBeInTheDocument();
+    expect(within(extraction).getByText('25s')).toBeInTheDocument();
+  });
+
+  it('renders no caption when every duration fits', () => {
+    render(withI18n(<BrewTimeline extractionTimeSeconds={30} />));
+    expect(screen.queryByTestId('brew-timeline-caption')).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
-// Helpers for reading inline styles from rendered segments
+// Stretched SVG holds shapes only
 // ---------------------------------------------------------------------------
 
-/**
- * Renders BrewTimeline with the given props and returns the width percentages
- * of the pre-infusion and extraction segments as numbers.
- *
- * The timeline bar is the flex container with role="img". Its direct children
- * are the segment divs whose inline `width` style holds the percentage.
- */
-function getSegmentWidths(
-  extractionTimeSeconds: number,
-  preInfusionTimeSeconds: number,
-): { preInfusionPct: number; extractionPct: number } {
-  const { container } = render(
-    withI18n(
-      <BrewTimeline
-        extractionTimeSeconds={extractionTimeSeconds}
-        preInfusionTimeSeconds={preInfusionTimeSeconds}
-      />,
-    ),
-  );
-
-  const timelineBar = container.querySelector('[role="img"]');
-  if (!timelineBar) throw new Error('Timeline bar not found');
-
-  const segments = Array.from(timelineBar.children) as HTMLElement[];
-  if (segments.length < 2) throw new Error(`Expected 2 segments, got ${segments.length}`);
-
-  const parseWidth = (el: HTMLElement): number => {
-    const w = el.style.width;
-    return parseFloat(w.replace('%', ''));
-  };
-  // NOTE: widths round-trip through jsdom's CSS serializer (4 decimals), so
-  // assertions below use toBeCloseTo precision 3, not exact equality.
-
-  return {
-    preInfusionPct: parseWidth(segments[0]),
-    extractionPct: parseWidth(segments[1]),
-  };
-}
-
-/**
- * Renders BrewTimeline and returns the numeric second values shown in the
- * time axis markers (e.g. "0s" → 0, "5s" → 5, "30s" → 30).
- *
- * The axis container is the last child of the card div — a relative-positioned
- * div with height 20px. Each marker is an absolute-positioned child div
- * containing a span with text like "0s", "5s", "30s".
- */
-function getAxisMarkerValues(extractionTimeSeconds: number): number[] {
-  const { container } = render(
-    withI18n(<BrewTimeline extractionTimeSeconds={extractionTimeSeconds} />),
-  );
-
-  // The axis container is the div with style height: 20px (relative positioning)
-  // It's the last child of the card root div.
-  const card = container.firstElementChild;
-  if (!card) throw new Error('Card root not found');
-
-  // The axis div is the last child of the card
-  const axisDiv = card.lastElementChild as HTMLElement;
-  if (!axisDiv) throw new Error('Axis div not found');
-
-  // Each direct child of axisDiv is a marker div containing a span
-  const markerDivs = Array.from(axisDiv.children) as HTMLElement[];
-
-  return markerDivs.map((div) => {
-    const span = div.querySelector('span');
-    const text = span?.textContent?.trim() ?? '';
-    return parseInt(text.replace('s', ''), 10);
+describe('BrewTimeline — stretched SVG', () => {
+  it('has no <text> or <tspan> inside the preserveAspectRatio="none" SVG', () => {
+    const { container } = render(
+      withI18n(<BrewTimeline extractionTimeSeconds={28} preInfusionTimeSeconds={5} />),
+    );
+    const svg = container.querySelector('svg[preserveAspectRatio="none"]') as SVGSVGElement;
+    expect(svg).not.toBeNull();
+    expect(svg.querySelectorAll('text, tspan')).toHaveLength(0);
   });
-}
+
+  it('gives every stroked path and line vector-effect="non-scaling-stroke"', () => {
+    const { container } = render(
+      withI18n(<BrewTimeline extractionTimeSeconds={28} preInfusionTimeSeconds={5} />),
+    );
+    const svg = container.querySelector('svg[preserveAspectRatio="none"]') as SVGSVGElement;
+    const stroked = Array.from(svg.querySelectorAll('path[stroke], line'));
+    expect(stroked.length).toBeGreaterThanOrEqual(2);
+    for (const el of stroked) {
+      expect(el.getAttribute('vector-effect')).toBe('non-scaling-stroke');
+    }
+  });
+});
 
 // ---------------------------------------------------------------------------
-// Unit tests — segment widths (specific examples)
+// Phase label colours and the gradient they are contrast-tested against
 // ---------------------------------------------------------------------------
 
-describe('BrewTimeline — segment width unit tests', () => {
+describe('BrewTimeline — phase label contrast', () => {
+  it.each([
+    [30, undefined],
+    [28, 3],
+  ])('colours the phase titles with --text-primary (%ss, pre-infusion %s)', (total, pre) => {
+    const { container } = render(
+      withI18n(<BrewTimeline extractionTimeSeconds={total} preInfusionTimeSeconds={pre} />),
+    );
+    const extraction = container.querySelector('[data-phase="extraction"]') as HTMLElement;
+    const title = within(extraction).getByText('Extraction');
+    expect(title.className).toContain('text-[color:var(--text-primary)]');
+    for (const span of Array.from(
+      container.querySelectorAll<HTMLElement>('[data-phase] span:first-child'),
+    )) {
+      expect(span.className).toContain('text-[color:var(--text-primary)]');
+    }
+  });
+
+  it('uses TIMELINE_GRADIENT_OPACITY for the gradient stops', () => {
+    const { container } = render(
+      withI18n(<BrewTimeline extractionTimeSeconds={28} preInfusionTimeSeconds={5} />),
+    );
+    const stops = Array.from(container.querySelectorAll('linearGradient stop'));
+    expect(stops.map((stop) => stop.getAttribute('stop-opacity'))).toEqual([
+      String(TIMELINE_GRADIENT_OPACITY.top),
+      String(TIMELINE_GRADIENT_OPACITY.bottom),
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Unit tests — phase widths (specific examples)
+// ---------------------------------------------------------------------------
+
+describe('BrewTimeline — phase width unit tests', () => {
   it('pre-infusion 10s out of 30s total → 33.33% pre-infusion, 66.67% extraction', () => {
-    const { preInfusionPct, extractionPct } = getSegmentWidths(30, 10);
-    expect(preInfusionPct).toBeCloseTo((10 / 30) * 100, 3);
-    expect(extractionPct).toBeCloseTo((20 / 30) * 100, 3);
-    expect(preInfusionPct + extractionPct).toBeCloseTo(100, 3);
+    const { container } = render(
+      withI18n(<BrewTimeline extractionTimeSeconds={30} preInfusionTimeSeconds={10} />),
+    );
+    const [pre, extraction] = getPhaseWidths(container);
+    expect(pre).toBeCloseTo((10 / 30) * 100, 3);
+    expect(extraction).toBeCloseTo((20 / 30) * 100, 3);
   });
 
-  it('pre-infusion 5s out of 25s total → 20% pre-infusion, 80% extraction', () => {
-    const { preInfusionPct, extractionPct } = getSegmentWidths(25, 5);
-    expect(preInfusionPct).toBeCloseTo(20, 3);
-    expect(extractionPct).toBeCloseTo(80, 3);
-    expect(preInfusionPct + extractionPct).toBeCloseTo(100, 3);
+  it('pre-infusion 5s out of 25s total → 20% / 80%', () => {
+    const { container } = render(
+      withI18n(<BrewTimeline extractionTimeSeconds={25} preInfusionTimeSeconds={5} />),
+    );
+    expect(getPhaseWidths(container)).toEqual([20, 80]);
   });
 
-  it('pre-infusion 1s out of 2s total → 50% each', () => {
-    const { preInfusionPct, extractionPct } = getSegmentWidths(2, 1);
-    expect(preInfusionPct).toBeCloseTo(50, 3);
-    expect(extractionPct).toBeCloseTo(50, 3);
+  it('pre ≥ total → one extraction phase at 100%, no minus sign, one warn log', () => {
+    const { container, rerender } = render(
+      withI18n(<BrewTimeline extractionTimeSeconds={28} preInfusionTimeSeconds={30} />),
+    );
+    expect(getPhaseWidths(container)).toEqual([100]);
+    expect(container.querySelector('[data-phase="extraction"]')?.textContent).toContain('28s');
+    expect(container.textContent).not.toMatch(/[-−]\d/);
+    expect(screen.getByRole('img').getAttribute('aria-label')).not.toMatch(/[-−]/);
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledWith(
+      { extractionTimeSeconds: 28, preInfusionTimeSeconds: 30 },
+      'inconsistent pre-infusion ignored',
+    );
+    rerender(withI18n(<BrewTimeline extractionTimeSeconds={28} preInfusionTimeSeconds={30} />));
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not warn for a consistent pre-infusion', () => {
+    render(withI18n(<BrewTimeline extractionTimeSeconds={28} preInfusionTimeSeconds={5} />));
+    expect(mockWarn).not.toHaveBeenCalled();
   });
 });
 
 // ---------------------------------------------------------------------------
-// Unit tests — axis markers (specific examples)
+// Unit tests — axis ticks
 // ---------------------------------------------------------------------------
 
-describe('BrewTimeline — axis marker unit tests', () => {
-  it('30s total → markers at 0, 5, 10, 15, 20, 25, 30', () => {
-    const markers = getAxisMarkerValues(30);
-    expect(markers).toEqual([0, 5, 10, 15, 20, 25, 30]);
+describe('BrewTimeline — axis ticks', () => {
+  it('43200s → 0 2h 4h 6h 8h 12h (en)', () => {
+    const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={43200} />));
+    expect(getTicks(container).map((t) => t.label)).toEqual(['0', '2h', '4h', '6h', '8h', '12h']);
   });
 
-  it('25s total → markers at 0, 5, 10, 15, 20, 25', () => {
-    const markers = getAxisMarkerValues(25);
-    expect(markers).toEqual([0, 5, 10, 15, 20, 25]);
+  it('43200s → 0 2 sa … 12 sa (tr)', () => {
+    const { container } = renderInLocale(<BrewTimeline extractionTimeSeconds={43200} />, 'tr');
+    expect(getTicks(container).map((t) => t.label)).toEqual([
+      '0',
+      '2 sa',
+      '4 sa',
+      '6 sa',
+      '8 sa',
+      '12 sa',
+    ]);
   });
 
-  it('7s total → markers at 0, 5, 7 (7 is not a multiple of 5)', () => {
-    const markers = getAxisMarkerValues(7);
-    expect(markers).toEqual([0, 5, 7]);
+  it('2,147,483,647s renders ≤ 8 ticks quickly', () => {
+    const start = performance.now();
+    const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={2147483647} />));
+    const elapsed = performance.now() - start;
+    const ticks = getTicks(container);
+    expect(ticks.length).toBeGreaterThanOrEqual(2);
+    expect(ticks.length).toBeLessThanOrEqual(8);
+    expect(ticks.at(-1)?.label).toBe('596,523h 14m');
+    expect(elapsed).toBeLessThan(1000);
   });
 
-  it('5s total → markers at 0, 5 (no extra marker since 5 is a multiple of 5)', () => {
-    const markers = getAxisMarkerValues(5);
-    expect(markers).toEqual([0, 5]);
+  it('colours tick labels with --text-secondary', () => {
+    const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={30} />));
+    const axis = container.querySelector('[data-testid="brew-timeline-axis"]') as HTMLElement;
+    for (const tick of Array.from(axis.children)) {
+      expect(tick.className).toContain('text-[color:var(--text-secondary)]');
+    }
   });
 
-  it('3s total → markers at 0, 3 (3 is not a multiple of 5)', () => {
-    const markers = getAxisMarkerValues(3);
-    expect(markers).toEqual([0, 3]);
+  it('PBT: ≤ 8 ticks, starting at 0 (left 0%), ending at the total (left 100%), ascending', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 200_000 }), (total) => {
+        const { container, unmount } = render(
+          withI18n(<BrewTimeline extractionTimeSeconds={total} />),
+        );
+        const ticks = getTicks(container);
+        expect(ticks.length).toBeGreaterThanOrEqual(2);
+        expect(ticks.length).toBeLessThanOrEqual(8);
+        expect(ticks[0]).toEqual({ label: '0', left: 0 });
+        expect(ticks.at(-1)?.left).toBe(100);
+        for (let i = 1; i < ticks.length; i++) {
+          expect(ticks[i].left).toBeGreaterThan(ticks[i - 1].left);
+        }
+        unmount();
+      }),
+      { numRuns: 100 },
+    );
   });
 });
 
@@ -211,31 +370,29 @@ describe('BrewTimeline — axis marker unit tests', () => {
  * Validates: Requirements 6.1, 6.2
  */
 describe('BrewTimeline — Property 4: Timeline segment proportional widths', () => {
-  it('for any valid (preInfusion, extraction) pair, the widths sum to 100%', () => {
+  it('for any valid (preInfusion, extraction) pair, the phase widths are proportional and sum to 100%', () => {
     fc.assert(
       fc.property(
-        // extraction: integer 2..300 (needs room for at least 1s pre-infusion)
         fc.integer({ min: 2, max: 300 }),
-        // preInfusion: integer 1..(extraction-1)
-        fc.integer({ min: 1, max: 299 }).filter((pre) => pre < 300),
+        fc.integer({ min: 1, max: 299 }),
         (extraction, preInfusionRaw) => {
-          // Ensure preInfusion < extraction
           const preInfusion = (preInfusionRaw % (extraction - 1)) + 1;
-
-          const { preInfusionPct, extractionPct } = getSegmentWidths(extraction, preInfusion);
-
-          // Both widths must be positive
-          expect(preInfusionPct).toBeGreaterThan(0);
+          const { container, unmount } = render(
+            withI18n(
+              <BrewTimeline
+                extractionTimeSeconds={extraction}
+                preInfusionTimeSeconds={preInfusion}
+              />,
+            ),
+          );
+          const [prePct, extractionPct] = getPhaseWidths(container);
+          // Widths round-trip through jsdom's CSS serializer (4 decimals).
+          expect(prePct).toBeGreaterThan(0);
           expect(extractionPct).toBeGreaterThan(0);
-
-          // Pre-infusion width must equal (preInfusion / extraction) * 100
-          expect(preInfusionPct).toBeCloseTo((preInfusion / extraction) * 100, 3);
-
-          // Extraction width must equal ((extraction - preInfusion) / extraction) * 100
+          expect(prePct).toBeCloseTo((preInfusion / extraction) * 100, 3);
           expect(extractionPct).toBeCloseTo(((extraction - preInfusion) / extraction) * 100, 3);
-
-          // They must sum to 100
-          expect(preInfusionPct + extractionPct).toBeCloseTo(100, 3);
+          expect(prePct + extractionPct).toBeCloseTo(100, 3);
+          unmount();
         },
       ),
       { numRuns: 200 },
@@ -243,130 +400,31 @@ describe('BrewTimeline — Property 4: Timeline segment proportional widths', ()
   });
 });
 
-/**
- * Property 5: Timeline axis markers at 5-second intervals
- * Validates: Requirements 6.4
- */
-describe('BrewTimeline — Property 5: Timeline axis markers at adaptive intervals', () => {
-  it('for any extractionTimeSeconds, markers include 0 and the total', () => {
-    fc.assert(
-      fc.property(fc.integer({ min: 1, max: 300 }), (total) => {
-        const markers = getAxisMarkerValues(total);
-        expect(markers).toContain(0);
-        expect(markers).toContain(total);
-      }),
-      { numRuns: 200 },
+describe('BrewTimeline — inline percentages never leave range', () => {
+  it('PBT: every inline width/left % is finite and in [0, 100] for inputs in [-10, 100000] plus NaN', () => {
+    const input = fc.oneof(
+      { arbitrary: fc.integer({ min: -10, max: 100_000 }), weight: 10 },
+      { arbitrary: fc.constant(Number.NaN), weight: 1 },
     );
-  });
-
-  it('for any extractionTimeSeconds, all markers except possibly the last are aligned to the step', () => {
     fc.assert(
-      fc.property(fc.integer({ min: 1, max: 300 }), (total) => {
-        const markers = getAxisMarkerValues(total);
-        const step = total > 120 ? 30 : total > 60 ? 15 : 5;
-
-        // All markers except the last must be multiples of the step
-        const allButLast = markers.slice(0, -1);
-        for (const m of allButLast) {
-          expect(m % step).toBe(0);
-        }
-
-        // The last marker is either aligned (when total is) or total itself
-        const last = markers[markers.length - 1];
-        if (total % step === 0) {
-          expect(last % step).toBe(0);
-        } else {
-          expect(last).toBe(total);
-        }
-      }),
-      { numRuns: 200 },
-    );
-  });
-
-  it('uses 30s intervals for extractionTimeSeconds > 120', () => {
-    fc.assert(
-      fc.property(fc.integer({ min: 121, max: 300 }), (total) => {
-        const markers = getAxisMarkerValues(total);
-        const allButLast = markers.slice(0, -1);
-        for (const m of allButLast) {
-          expect(m % 30).toBe(0);
-        }
-        expect(markers.length).toBeLessThanOrEqual(12); // 0,30,60,...,300 + possibly total
-      }),
-      { numRuns: 100 },
-    );
-  });
-
-  it('uses 15s intervals for 61s ≤ extractionTimeSeconds ≤ 120s', () => {
-    fc.assert(
-      fc.property(fc.integer({ min: 61, max: 120 }), (total) => {
-        const markers = getAxisMarkerValues(total);
-        const allButLast = markers.slice(0, -1);
-        for (const m of allButLast) {
-          expect(m % 15).toBe(0);
-        }
-        expect(markers.length).toBeLessThanOrEqual(10); // 0,15,30,...,120 + possibly total
-      }),
-      { numRuns: 100 },
-    );
-  });
-
-  it('uses 5s intervals for extractionTimeSeconds ≤ 60', () => {
-    fc.assert(
-      fc.property(fc.integer({ min: 1, max: 60 }), (total) => {
-        const markers = getAxisMarkerValues(total);
-        const allButLast = markers.slice(0, -1);
-        for (const m of allButLast) {
-          expect(m % 5).toBe(0);
-        }
-      }),
-      { numRuns: 100 },
-    );
-  });
-
-  it('for any extractionTimeSeconds, markers are in strictly ascending order', () => {
-    fc.assert(
-      fc.property(fc.integer({ min: 1, max: 300 }), (total) => {
-        const markers = getAxisMarkerValues(total);
-        for (let i = 1; i < markers.length; i++) {
-          expect(markers[i]).toBeGreaterThan(markers[i - 1]);
-        }
-      }),
-      { numRuns: 200 },
-    );
-  });
-
-  it('for any extractionTimeSeconds that aligns to its step, the last marker equals the total', () => {
-    fc.assert(
-      fc.property(
-        fc.integer({ min: 1, max: 60 }).map((n) => n * 5),
-        (total) => {
-          const markers = getAxisMarkerValues(total);
-          const last = markers[markers.length - 1];
-          expect(last).toBe(total);
-        },
-      ),
-      { numRuns: 100 },
-    );
-  });
-
-  it('for any extractionTimeSeconds not aligned to its step, the second-to-last marker is the largest aligned value ≤ total', () => {
-    fc.assert(
-      fc.property(
-        fc.integer({ min: 1, max: 300 }).filter((n) => n % 5 !== 0),
-        (total) => {
-          const markers = getAxisMarkerValues(total);
-          const step = total > 120 ? 30 : total > 60 ? 15 : 5;
-          // Last marker must be total
-          expect(markers[markers.length - 1]).toBe(total);
-          // Second-to-last must be the largest multiple of step ≤ total
-          const expectedSecondToLast = Math.floor(total / step) * step;
-          if (expectedSecondToLast > 0) {
-            expect(markers[markers.length - 2]).toBe(expectedSecondToLast);
+      fc.property(input, input, (total, pre) => {
+        const { container, unmount } = render(
+          withI18n(<BrewTimeline extractionTimeSeconds={total} preInfusionTimeSeconds={pre} />),
+        );
+        expect(container.innerHTML).not.toContain('NaN');
+        for (const el of Array.from(container.querySelectorAll<HTMLElement>('[style]'))) {
+          for (const prop of ['width', 'left'] as const) {
+            const raw = el.style[prop];
+            if (!raw.endsWith('%')) continue;
+            const value = parseFloat(raw);
+            expect(Number.isFinite(value), `${prop}: ${raw}`).toBe(true);
+            expect(value).toBeGreaterThanOrEqual(0);
+            expect(value).toBeLessThanOrEqual(100);
           }
-        },
-      ),
-      { numRuns: 200 },
+        }
+        unmount();
+      }),
+      { numRuns: 150 },
     );
   });
 });

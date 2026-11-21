@@ -20,6 +20,7 @@ import {
   coffeeVarieties,
   equipment,
   equipmentDeleteRequests,
+  lower,
   userPreferences,
   users,
 } from '@brewform/db/schema';
@@ -196,6 +197,36 @@ describe('Admin router — auth surface', () => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/v1/admin/stats — the web dashboard (`AdminDashboardStats`) reads these exact keys.
+// ---------------------------------------------------------------------------
+describe('GET /api/v1/admin/stats', () => {
+  afterEach(() => {
+    restoreDeps();
+  });
+
+  it('answers exactly the seven dashboard counters, each a non-negative integer', async () => {
+    const app = createTestApp({ id: crypto.randomUUID(), isAdmin: true });
+    const res = await app.request('/api/v1/admin/stats');
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(Object.keys(body.data).sort()).toEqual([
+      'newRecipesToday',
+      'newUsersToday',
+      'pendingReports',
+      'totalComments',
+      'totalRecipes',
+      'totalReports',
+      'totalUsers',
+    ]);
+    for (const value of Object.values(body.data)) {
+      expect(Number.isInteger(value) && (value as number) >= 0).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // POST /api/v1/admin/users
 // ---------------------------------------------------------------------------
 describe('POST /api/v1/admin/users', () => {
@@ -281,6 +312,25 @@ describe('POST /api/v1/admin/users', () => {
     expect(body.data.isAdmin).toBe(true);
     createdUserIds.push(body.data.id);
   });
+
+  it('should create a user with the reserved username brewform (201)', async () => {
+    // Reserved usernames are refused at self-registration only; admins are exempt.
+    await db.delete(users).where(eq(lower(users.username), 'brewform'));
+    let createdId: string | undefined;
+    try {
+      const res = await postUser({
+        email: `brewform-${crypto.randomUUID()}@example.com`,
+        username: 'brewform',
+        password: 'password123',
+      });
+      const body = await res.json();
+      createdId = body.data?.id;
+      expect(res.status).toBe(201);
+      expect(body.data.username).toBe('brewform');
+    } finally {
+      if (createdId) await db.delete(users).where(eq(users.id, createdId));
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -354,6 +404,23 @@ describe('PATCH /api/v1/admin/users/:id', () => {
     expect(body.data.email).toBe(`route-upd-${id}@example.com`);
     expect(body.data.username).toBe(`rupd-${id.slice(0, 8)}`);
     expect(body.data.displayName).toBe('Updated');
+  });
+
+  it('should refuse renaming to a case variant of another username (409)', async () => {
+    const m = crypto.randomUUID().replaceAll('-', '').slice(0, 8);
+    const holder = await insertUser('adm-holder');
+    try {
+      await db
+        .update(users)
+        .set({ username: `Arda${m}` })
+        .where(eq(users.id, holder.id));
+      const res = await patchUser(targetUser.id, { username: `ARDA${m}` });
+      const body = await res.json();
+      expect(res.status).toBe(409);
+      expect(body.error.message).toBe('Username is already taken by another user.');
+    } finally {
+      await cleanupUsers([holder.id]);
+    }
   });
 
   it('should return 404 NOT_FOUND for a non-existent target user', async () => {

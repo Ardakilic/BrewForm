@@ -14,7 +14,7 @@ import {
   UNIT_SYSTEM_VALUES,
   VISIBILITY_VALUES,
 } from '@brewform/shared/constants';
-import { relations, sql } from 'drizzle-orm';
+import { relations, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
   boolean,
@@ -29,8 +29,27 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   varchar,
 } from 'drizzle-orm/pg-core';
+
+/**
+ * `lower(<value>)` as a Drizzle SQL expression, for the case-insensitive unique indexes on
+ * `user.email` / `user.username` and the matching lookups, which lower both sides in SQL
+ * (`eq(lower(users.email), lower(email))`,
+ * `inArray(lower(users.username), usernames.map((u) => lower(u)))`). The database then applies
+ * the same case rules to the column, the value and the expression indexes on any locale
+ * (JavaScript `toLowerCase()` disagrees with PostgreSQL `lower('I')` under `tr_TR`), and the
+ * indexes serve the lookup. Models import it from `@brewform/db/schema`; services never do.
+ *
+ * @param value - A column or SQL expression, embedded as it is, or a string, sent as a bound
+ *   parameter.
+ * @returns The `lower(<value>)` SQL fragment.
+ */
+export function lower(value: AnyPgColumn | SQLWrapper | string): SQL<string> {
+  // D03 raw-SQL exception: Drizzle has no lower() builder; used by the case-insensitive unique indexes and the matching lookups.
+  return sql<string>`lower(${value})`;
+}
 
 /**
  * Enums — values imported from @brewform/shared/constants
@@ -70,7 +89,16 @@ export const reportStatusEnum = pgEnum('report_status', [...REPORT_STATUS_VALUES
 
 /** Tables — Drizzle pgTable definitions for all BrewForm entities. */
 
-/** User accounts; unique on `email` and `username`, soft-deleted via `deletedAt`. */
+/**
+ * User accounts, soft-deleted via `deletedAt`.
+ *
+ * `email` and `username` are unique twice over: the exact `user_email_unique` /
+ * `user_username_unique` constraints (the original constraints, kept alongside) and the
+ * case-insensitive expression indexes `user_email_lower_unique` / `user_username_lower_unique`
+ * on `lower(<col>)`. Both cover soft-deleted rows, so identifiers of deleted accounts stay
+ * reserved. Emails are stored lower-cased by the shared `EmailSchema`; usernames keep the display
+ * case the user chose.
+ */
 export const users = pgTable(
   'user',
   {
@@ -96,6 +124,8 @@ export const users = pgTable(
     index('user_username_idx').on(table.username),
     index('user_created_at_idx').on(table.createdAt),
     index('user_deleted_at_idx').on(table.deletedAt),
+    uniqueIndex('user_email_lower_unique').on(lower(table.email)),
+    uniqueIndex('user_username_lower_unique').on(lower(table.username)),
   ],
 );
 
@@ -129,7 +159,14 @@ export const userPreferences = pgTable('user_preferences', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Recipes; unique `slug`, soft-deleted via `deletedAt`, denormalized like/comment/fork counts. */
+/**
+ * Recipes; unique `slug`, soft-deleted via `deletedAt`, denormalized like/comment/fork counts.
+ *
+ * `createdAt` is `timestamp(3) with time zone` (millisecond precision, migration 0020): it is
+ * the keyset of `findCursor` (recipe list and follow feed), whose cursor carries a JavaScript
+ * `Date` (milliseconds only). With microsecond values a cursor never equalled the stored value,
+ * so ascending pages repeated a row and descending pages skipped rows inside one millisecond.
+ */
 export const recipes = pgTable(
   'recipe',
   {
@@ -153,7 +190,7 @@ export const recipes = pgTable(
       (): AnyPgColumn => recipes.id,
     ),
     featured: boolean('featured').notNull().default(false),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
@@ -177,7 +214,7 @@ export const recipes = pgTable(
      * Composite index for homepage feed and explore page queries.
      *
      * Serves `findMany` (model.ts:270) with default sortBy 'createdAt',
-     * `getFeed` (model.ts:679), and `findStarred` (model.ts:700).
+     * `getFeed`, and `findStarred` (all via `findListPage` in recipe/model.ts).
      * Visibility is equality; createdAt supports ORDER BY DESC without a
      * separate sort step.
      */
@@ -202,10 +239,20 @@ export const recipes = pgTable(
      * Postgres can scan this index backward for ASC queries.
      */
     index('recipe_created_at_id_idx').on(table.createdAt.desc(), table.id.desc()),
+    /**
+     * GIN trigram index (`pg_trgm`, ADR-017) serving the title branch of the recipe search
+     * union: `ilike(recipes.title, '%term%')` in `buildRecipeFilters` and the title part of
+     * the relevance score in `buildListPageQuery` (recipe/model.ts). Leading-wildcard
+     * `ILIKE` cannot use a B-tree. Requires the `enable_pg_trgm` migration.
+     */
+    index('recipe_title_trgm_idx').using('gin', table.title.op('gin_trgm_ops')),
   ],
 );
 
-/** Immutable recipe versions; unique on (`recipeId`, `versionNumber`), rating CHECK 1–10. */
+/**
+ * Recipe versions: the current version may be amended by its author; earlier versions are
+ * immutable. Unique on (`recipeId`, `versionNumber`), rating CHECK 1–10.
+ */
 export const recipeVersions = pgTable(
   'recipe_version',
   {
@@ -272,6 +319,25 @@ export const recipeVersions = pgTable(
      * subquery selects only `recipeId`.
      */
     index('recipe_version_coffee_variety_idx').on(table.coffeeVarietyId, table.recipeId),
+    /**
+     * GIN trigram index (`pg_trgm`, ADR-017) serving the version branch of the recipe search
+     * union and the version score subquery: `ilike(recipeVersions.productName, '%term%')` in
+     * `buildRecipeFilters` and `buildListPageQuery` (recipe/model.ts).
+     */
+    index('recipe_version_product_name_trgm_idx').using(
+      'gin',
+      table.productName.op('gin_trgm_ops'),
+    ),
+    /**
+     * GIN trigram index (`pg_trgm`, ADR-017) serving the version branch of the recipe search
+     * union and the version score subquery: `ilike(recipeVersions.personalNotes, '%term%')`
+     * in `buildRecipeFilters` and `buildListPageQuery` (recipe/model.ts).
+     */
+    index('recipe_version_personal_notes_trgm_idx').using(
+      'gin',
+      table.personalNotes.op('gin_trgm_ops'),
+    ),
+    // D03 raw-SQL exception: check() takes an SQL expression by API; it interpolates columns only.
     check('recipe_version_rating_check', sql`${table.rating} BETWEEN 1 AND 10`),
   ],
 );
@@ -300,6 +366,7 @@ export const recipeTasteNotes = pgTable(
     ),
     index('recipe_taste_note_recipe_version_id_idx').on(table.recipeVersionId),
     index('recipe_taste_note_taste_note_id_idx').on(table.tasteNoteId),
+    // D03 raw-SQL exception: check() takes an SQL expression by API; it interpolates columns only.
     check('recipe_taste_note_intensity_check', sql`${table.intensity} BETWEEN 1 AND 3`),
   ],
 );
@@ -602,7 +669,13 @@ export const tasteNotes = pgTable(
   ],
 );
 
-/** User brewing setups with five equipment slots; soft-deleted via `deletedAt`. */
+/**
+ * User brewing setups with five equipment slots; soft-deleted via `deletedAt`.
+ *
+ * At most one active default per user: the partial unique index `setup_user_default_unique`
+ * covers `user_id` where `is_default = true and deleted_at is null`, and the setup model switches
+ * the default (clear the old one, write the new one) inside one transaction.
+ */
 export const setups = pgTable(
   'setup',
   {
@@ -636,6 +709,11 @@ export const setups = pgTable(
      * sorts by createdAt DESC.
      */
     index('setup_user_created_idx').on(table.userId, table.createdAt),
+    // D03 raw-SQL exception: an index's .where() takes an SQL expression by API, and DDL cannot
+    // carry bound parameters; the partial predicate interpolates columns only.
+    uniqueIndex('setup_user_default_unique')
+      .on(table.userId)
+      .where(sql`${table.isDefault} = true and ${table.deletedAt} is null`),
   ],
 );
 
@@ -792,7 +870,47 @@ export const userRecipeRatings = pgTable(
     unique('user_recipe_rating_user_id_recipe_id_unique').on(table.userId, table.recipeId),
     index('user_recipe_rating_user_id_idx').on(table.userId),
     index('user_recipe_rating_recipe_id_idx').on(table.recipeId),
+    // D03 raw-SQL exception: check() takes an SQL expression by API; it interpolates columns only.
     check('user_recipe_rating_rating_check', sql`${table.rating} BETWEEN 1 AND 10`),
+  ],
+);
+
+/**
+ * Private per-user recipe notes ("My private notes"); unique on (`userId`, `recipeId`).
+ *
+ * Separate from the author's PUBLIC brewer notes (`recipe_version.personal_notes`):
+ * a row is readable and writable only by its owner through the caller-scoped
+ * `GET|PUT|DELETE /api/v1/recipes/:id/notes` endpoints (`recipe-note` module) and
+ * never appears on any other surface (detail, search, feeds, crawler, cache).
+ * Notes belong to the recipe, not to a version, so they survive version bumps.
+ *
+ * Soft delete sets `deletedAt` AND scrubs `notes` to `''`; a later save revives
+ * the same row (upsert on the unique pair clears `deletedAt`). Text is capped at
+ * 10,000 characters by `user_recipe_note_notes_length_check`, matching
+ * `RecipeNotesSchema`.
+ */
+export const userRecipeNotes = pgTable(
+  'user_recipe_note',
+  {
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
+    recipeId: varchar('recipe_id', { length: 36 })
+      .notNull()
+      .references(() => recipes.id),
+    notes: text('notes').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    unique('user_recipe_note_user_id_recipe_id_unique').on(table.userId, table.recipeId),
+    index('user_recipe_note_recipe_id_idx').on(table.recipeId),
+    // D03 raw-SQL exception: check() takes an SQL expression by API; it interpolates columns only.
+    check('user_recipe_note_notes_length_check', sql`char_length(${table.notes}) <= 10000`),
   ],
 );
 
@@ -1090,6 +1208,8 @@ export const brewLogs = pgTable(
     index('brew_log_user_brewed_idx').on(table.userId, table.brewedAt),
     index('brew_log_recipe_brewed_idx').on(table.recipeId, table.userId, table.brewedAt),
     index('brew_log_deleted_at_idx').on(table.deletedAt),
+    // D03 raw-SQL exception: check() takes an SQL expression by API; it interpolates columns only
+    // (covers the three brew_log checks below).
     check('brew_log_personal_rating_check', sql`${table.personalRating} BETWEEN 1 AND 10`),
     check('brew_log_yield_actual_check', sql`${table.yieldActual} > 0`),
     check('brew_log_dose_actual_check', sql`${table.doseActual} > 0`),
@@ -1175,7 +1295,7 @@ export const notifications = pgTable(
 // Relations
 // ============================================================
 
-/** Drizzle relations for users: preferences, recipes, comments, badges, follows (both directions), likes, favourites, setups, equipment, beans, vendors, audit logs, password resets, email verifications, reports, collections, notifications, brew logs. */
+/** Drizzle relations for users: preferences, recipes, comments, badges, follows (both directions), likes, favourites, private recipe notes, setups, equipment, beans, vendors, audit logs, password resets, email verifications, reports, collections, notifications, brew logs. */
 export const usersRelations = relations(users, ({ one, many }) => ({
   preferences: one(userPreferences, {
     fields: [users.id],
@@ -1188,6 +1308,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   followsAsFollowing: many(userFollows, { relationName: 'UserFollowing' }),
   likes: many(userRecipeLikes),
   favourites: many(userRecipeFavourites),
+  recipeNotes: many(userRecipeNotes),
   collections: many(collections),
   setups: many(setups),
   equipment: many(equipment),
@@ -1209,7 +1330,7 @@ export const userPreferencesRelations = relations(userPreferences, ({ one }) => 
   }),
 }));
 
-/** Drizzle relations for recipes: author, versions, photos, comments, likes, favourites, and fork lineage (forkedFrom/forks), collection items, and brew logs. */
+/** Drizzle relations for recipes: author, versions, photos, comments, likes, favourites, users' private notes, and fork lineage (forkedFrom/forks), collection items, and brew logs. */
 export const recipesRelations = relations(recipes, ({ one, many }) => ({
   author: one(users, {
     fields: [recipes.authorId],
@@ -1220,6 +1341,7 @@ export const recipesRelations = relations(recipes, ({ one, many }) => ({
   comments: many(comments),
   likes: many(userRecipeLikes),
   favourites: many(userRecipeFavourites),
+  userNotes: many(userRecipeNotes),
   collectionItems: many(collectionItems),
   brewLogs: many(brewLogs),
   forkedFrom: one(recipes, {
@@ -1411,11 +1533,14 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
     fields: [comments.authorId],
     references: [users.id],
   }),
+  // Self-relation: both sides name `commentReplies`, or Drizzle cannot pair the
+  // `many` side with its `one` side on the same table (relational `with: { replies }`).
   parentComment: one(comments, {
     fields: [comments.parentCommentId],
     references: [comments.id],
+    relationName: 'commentReplies',
   }),
-  replies: many(comments),
+  replies: many(comments, { relationName: 'commentReplies' }),
 }));
 
 /** Drizzle relations for the user_follows join table: follower and followed user. */
@@ -1452,6 +1577,18 @@ export const userRecipeRatingsRelations = relations(userRecipeRatings, ({ one })
   }),
   recipe: one(recipes, {
     fields: [userRecipeRatings.recipeId],
+    references: [recipes.id],
+  }),
+}));
+
+/** Drizzle relations for the user_recipe_note table (private per-user notes): owner and recipe. */
+export const userRecipeNotesRelations = relations(userRecipeNotes, ({ one }) => ({
+  user: one(users, {
+    fields: [userRecipeNotes.userId],
+    references: [users.id],
+  }),
+  recipe: one(recipes, {
+    fields: [userRecipeNotes.recipeId],
     references: [recipes.id],
   }),
 }));

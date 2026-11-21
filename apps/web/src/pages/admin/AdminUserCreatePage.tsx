@@ -1,18 +1,25 @@
-import { type AdminCreateUser, AdminCreateUserSchema } from '@brewform/shared/schemas';
+import { AdminCreateUserSchema } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
-import { adminApi } from '../../api/index.ts';
+import { Link, useActionData, useNavigation, useSubmit } from 'react-router';
 import { Field } from '../../components/form/Field.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import type { action } from './AdminUserCreatePage.data.ts';
 
 const log = createLogger('AdminUserCreatePage');
 
-/** Admin page: create-user form validated with `AdminCreateUserSchema`; redirects to the user list on success. */
+/**
+ * Admin page: create-user form validated with `AdminCreateUserSchema`, submitted to the
+ * `/admin/users/new` route action, which redirects to the user list on success or returns
+ * `{ ok: false, error, code }` shown inline (a `CONFLICT` means the email/username is taken).
+ */
 export function AdminUserCreatePage() {
-  const navigate = useNavigate();
   const { t } = useTranslation();
+  const submit = useSubmit();
+  const navigation = useNavigation();
+  const actionData = useActionData<typeof action>();
+  const saving = navigation.state === 'submitting';
   const [form, setForm] = useState({
     email: '',
     username: '',
@@ -23,8 +30,11 @@ export function AdminUserCreatePage() {
     isBanned: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [serverError, setServerError] = useState('');
+  const failure = actionData && 'ok' in actionData && !actionData.ok ? actionData : null;
+  const serverError = failure
+    ? failure.error ||
+      (failure.code === 'CONFLICT' ? t('admin.users.conflictError') : t('admin.users.createError'))
+    : '';
 
   useEffect(() => {
     log.debug({}, 'AdminUserCreatePage mounted');
@@ -44,36 +54,16 @@ export function AdminUserCreatePage() {
     return errs;
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  /** Validates the form, then submits it to the route action. */
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
-
-    setSaving(true);
-    setServerError('');
-    try {
-      const data: AdminCreateUser = {
-        email: form.email,
-        username: form.username,
-        password: form.password,
-      };
-      if (form.displayName) data.displayName = form.displayName;
-      if (form.bio) data.bio = form.bio;
-      if (form.isAdmin) data.isAdmin = true;
-      if (form.isBanned) data.isBanned = true;
-      await adminApi.createUser(data);
-      navigate('/admin/users');
-    } catch (err: unknown) {
-      const apiErr = err as { code?: string; message?: string };
-      if (apiErr.code === 'CONFLICT') {
-        setServerError(apiErr.message || t('admin.users.conflictError'));
-      } else {
-        setServerError(apiErr.message || t('admin.users.createError'));
-      }
-    } finally {
-      setSaving(false);
-    }
+    submit(
+      { ...form, isAdmin: String(form.isAdmin), isBanned: String(form.isBanned) },
+      { method: 'post' },
+    );
   }
 
   return (

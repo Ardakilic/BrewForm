@@ -93,4 +93,26 @@ describe('IntensityDots', () => {
     render(<IntensityDots intensity={2} />);
     expect(screen.getByLabelText('Intensity 2 of 3')).toBeInTheDocument();
   });
+
+  // ── wave-6 t6: value-driven meters are clamped (task 19.19) ──────────────
+
+  /** Number of filled dots in a render. */
+  function filledCount(container: HTMLElement): number {
+    return Array.from(container.querySelectorAll<HTMLElement>('span[aria-hidden="true"]')).filter(
+      (dot) => dot.style.backgroundColor === 'var(--accent-primary)',
+    ).length;
+  }
+
+  it.each([
+    [5, 3],
+    [Number.NaN, 0],
+    [2.4, 2],
+    [2.6, 3],
+    [-1, 0],
+    [Number.POSITIVE_INFINITY, 3],
+  ])('intensity %s fills %s dots and announces the clamped value', (intensity, expected) => {
+    const { container } = render(<IntensityDots intensity={intensity} />);
+    expect(filledCount(container)).toBe(expected);
+    expect(screen.getByRole('img')).toHaveAccessibleName(`Intensity ${expected} of 3`);
+  });
 });

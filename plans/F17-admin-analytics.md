@@ -1,5 +1,12 @@
 # F17 — Admin Analytics Dashboard Improvements
 
+> **Re-scope (2026-11-21, wave 6): phase 1 is a UI over the existing `/api/v1/admin/analytics/*` endpoints**
+>
+> - **Phase 1 (do first, no new API):** chart the four endpoints that already ship in `apps/api/src/modules/admin/index.ts` — `GET /analytics/users?days=` (:71) and `GET /analytics/recipes?days=` (:87) as daily time series, `GET /analytics/top-recipes?limit=` (:103) and `GET /analytics/top-users?limit=` (:119) as ranked bars — next to the existing `/admin/stats` totals. Work items: output Zod schemas for those four responses in `packages/shared/src/schemas/responses/` (with co-located tests) wired into their `describeRoute()` responses via `resolver(successEnvelope(…))` (they document a bare `200` today); typed `adminApi` methods in `apps/web/src/api/index.ts`; the `/admin` loader (`apps/web/src/pages/admin/AdminDashboard.data.ts`, already `requireAdmin` + `withDataLog`) loads stats and the four series in parallel and keeps the window in the URL (`?days=7|30|90`, via the wave-6 URL-state helpers), so the period selector is a link/`<Form method="get">`, not component state.
+> - **Charts use t6's chart primitive** (wave 6): the shared `apps/web/src/utils/chart/` module (`niceTicks` for axes, `fitViewBox`/`labelBox` so labels never clip, `wrapLabel`/`estimateTextWidth` for long recipe titles, `sanitizeNumber`/`clampPct`/`safeRatio` for defensive values), the same toolkit `ScaaRadarChart` and `BrewTimeline` (`apps/web/src/components/recipe/`) are built on. Plain SVG components (`components/admin/LineChart.tsx`, `BarList.tsx`); still no chart library. Colours come from the theme tokens in `globals.css`, all labels through `t()` in both `en.json` and `tr.json`.
+> - **Phase 2 (only after phase 1 ships and admins ask for more):** the body's net-new `/analytics/trends`, `/analytics/retention` and `/analytics/export` endpoints, subject to the 2026-08-13 corrections below (JS date bucketing, no raw SQL, `days` query param, full OpenAPI envelopes). The CSV export goes through a resource route (`apps/web/src/routes/resources/`, like the QR download) using `api.getText`, not a component-level `fetch`.
+> - The 2026-08-13 frontend bullet is superseded: `AdminDashboard` already loads through a route loader (wave 6, ADR-018), and the web data-loading enforcement test forbids `useEffect` fetching in pages.
+>
 > **Validation status (2026-08-13): refreshed — corrections below**
 >
 > **Note:** The body below this line is the pre-refresh draft, kept as historical context; it includes an older 2026-07-13 banner whose line numbers have since drifted and which this banner supersedes. Treat the corrections below as authoritative — do not use the body as a current implementation reference.
@@ -12,10 +19,10 @@
 > - **Types:** `apps/web/src/api/types.ts` was DELETED (D42) — define AnalyticsTrends/RetentionMetrics as Zod schemas in packages/shared/src/schemas/responses/ and use `z.infer` on the web side.
 > - **Components:** apps/web/src/components/admin/ contains only BanDialog.tsx — LineChart/PieChart/PeriodSelector are net-new; no chart library is installed, so the SVG approach stands. AdminDashboard already defines a local `StatCard` (AdminDashboard.tsx:70) — reuse/extract it rather than creating a duplicate file.
 > - **Schema facts verified:** `comments.authorId` (packages/db/src/schema.ts:602), `recipes.authorId` (:136), `userRecipeLikes.userId` (:692, table at :688), `userRecipeRatings.userId` (:709, table at :705) — likes/ratings have NO `deletedAt` (plan correctly omits it); users/recipes/comments must filter `deletedAt IS NULL` (plan does). `recipeVersions.brewMethod` (:216), `recipeVersions.createdAt` (:238). admin/model.ts does not yet import `userRecipeLikes`/`userRecipeRatings` — add them to the `@brewform/db/schema` import (model.ts:13-29).
-> - **Cache (optional):** existing analytics service functions don't cache. If added, use `CacheProvider` (`get/set(key: string[], { ttlMs })`, apps/api/src/utils/cache/index.ts:9-18) via the `cacheProvider` singleton already imported at admin/index.ts:33 — never `Deno.openKv()` directly.
-> - **Tests:** add to the existing apps/api/src/modules/admin/model.test.ts / service.test.ts / index.test.ts (`*.test.ts`, bdd + @std/expect); the openapi coverage test (apps/api/src/routes/openapi.coverage.test.ts) will pick up new routes.
+> - **Cache (optional):** existing analytics service functions don't cache. If added, use `CacheProvider` (`get/set(key: string[], { ttlMs })`, apps/api/src/utils/cache/index.ts) via the `cacheProvider` singleton already imported in admin/index.ts — never construct a cache backend (memory or redis driver) directly.
+> - **Tests:** add to the existing apps/api/src/modules/admin/model.test.ts / service.test.ts / index.test.ts (`*.test.ts`, Vitest `describe`/`it`/`expect` from `vitest`; run `make test-api` or `make test-specific filter=src/modules/admin/model.test.ts`), plus `AdminDashboard.test.tsx` and chart component tests under `make test-web`. The openapi coverage test (apps/api/src/routes/openapi.coverage.test.ts) excludes admin routes today, so check the new `describeRoute()` blocks by hand.
 > - **Stale references:** the body's References (model.ts:453 `getDashboardStats`, :491 `getUserGrowth`) are now :480 and :518.
-> - **Pre-existing risk to reconcile:** AdminDashboard's local `DashboardStats` interface (AdminDashboard.tsx:11-18) expects `totalPhotos/recentSignups/recentRecipes`, but `GET /admin/stats` returns `totalReports/pendingReports/newUsersToday/newRecipesToday` (model.ts:506-514). Fix this mismatch while reworking the dashboard.
+> - **Resolved risk:** the dashboard expected `totalPhotos/recentSignups/recentRecipes`, which `GET /admin/stats` never returned. The wave-6 review remediation (task 4.11) moved the web type `AdminDashboardStats` and the tiles to the real keys (`totalUsers`, `totalRecipes`, `totalComments`, `totalReports`, `pendingReports`, `newUsersToday`, `newRecipesToday`), pinned by a route test in `apps/api/src/modules/admin/index.test.ts`.
 
 > **Validation status (2026-07-13): ⚠️ Outdated — raw-SQL/date-pattern conflict**
 >
@@ -615,7 +622,7 @@ GET /api/v1/admin/analytics/trends?period=30d
 9. **Add CSV download handler**
 10. **Add API types** to frontend
 11. **Add tests** for analytics queries
-12. **Run `make check && make lint && make test`**
+12. **Run `make check && make lint && make test-api && make test-web`**
 
 ## Dependencies
 
@@ -625,6 +632,6 @@ GET /api/v1/admin/analytics/trends?period=30d
 
 ## References
 
-- [Drizzle ORM docs](/drizzle-team/drizzle-orm-docs) — aggregate queries, date functions
+- [Drizzle ORM docs](https://orm.drizzle.team/docs) (Context7 id `/drizzle-team/drizzle-orm-docs`) — aggregate queries, date functions
 - Existing: `apps/api/src/modules/admin/model.ts:453` — `getDashboardStats()` pattern
 - Existing: `apps/api/src/modules/admin/model.ts:491` — `getUserGrowth()` for time-series pattern

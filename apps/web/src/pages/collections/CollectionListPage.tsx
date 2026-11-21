@@ -1,43 +1,27 @@
-import type { CollectionListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
 import { Link, useLoaderData } from 'react-router';
-import { collectionApi } from '../../api/index.ts';
 import { CollectionCard } from '../../components/collections/CollectionCard.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
+import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useListUrlState } from '../../hooks/useListUrlState.ts';
+import { parsePageOnlyParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './CollectionListPage.data.ts';
 
 const log = createLogger('CollectionListPage');
 
-/** Loader payload for {@link CollectionListPage}. */
-export interface CollectionListLoaderData {
-  collectionsResponse: PaginatedResponse<CollectionListItemOutput>;
-}
-
-/**
- * React Router data loader for `/collections` — fetches the authenticated
- * user's collections (all visibilities), paginated.
- */
-export const loader = async (): Promise<CollectionListLoaderData> => {
-  log.debug({}, 'CollectionListPage loader started');
-  try {
-    const collectionsResponse = await collectionApi.list();
-    log.debug({}, 'CollectionListPage loader completed');
-    return { collectionsResponse };
-  } catch (err) {
-    log.error({ err }, 'CollectionListPage loader failed');
-    throw err;
-  }
-};
-
 /**
  * Page component for `/collections` — displays a grid of the user's
- * collections with a "Create Collection" button.
+ * collections (from the `/collections` route loader in `CollectionListPage.data.ts`) with a
+ * "Create Collection" button and URL pagination (`?page`, omitted for page 1).
  */
 export function CollectionListPage() {
-  const { collectionsResponse } = useLoaderData() as CollectionListLoaderData;
+  const { collectionsResponse } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
+  const { setPage } = useListUrlState(parsePageOnlyParams);
+  const { page, totalPages } = collectionsResponse.meta.pagination;
 
   useEffect(() => {
     log.debug({}, 'CollectionListPage mounted');
@@ -65,6 +49,9 @@ export function CollectionListPage() {
             <CollectionCard key={collection.id} collection={collection} />
           ))}
         </div>
+      )}
+      {totalPages > 1 && (
+        <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} />
       )}
     </PageContainer>
   );

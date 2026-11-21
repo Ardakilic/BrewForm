@@ -151,6 +151,33 @@ describe('Coffee Variety Routes — Integration', () => {
       });
       expect(res.status).toBe(400);
     });
+
+    it('should reject a list item longer than 100 characters and create nothing', async () => {
+      let createCalls = 0;
+      deps.service = {
+        ...deps.service,
+        createCoffeeVariety: () => {
+          createCalls++;
+          return Promise.resolve({});
+        },
+      } as unknown as typeof deps.service;
+      const app = createTestApp();
+      const res = await app.request('/coffee-varieties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Geisha',
+          category: 'variety',
+          notableFarms: ['x'.repeat(101)],
+        }),
+      });
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('VALIDATION_ERROR');
+      expect(body.error.details.map((d: { field: string }) => d.field)).toContain('notableFarms.0');
+      expect(createCalls).toBe(0);
+    });
   });
 
   describe('GET /coffee-varieties/:id', () => {

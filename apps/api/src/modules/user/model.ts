@@ -3,11 +3,19 @@
  *
  * Provides user lookup by ID or username, profile updates, soft-delete,
  * aggregated stats (recipe/follower/following counts), public recipe listing
- * with latest version metadata, and full-text username/displayName search.
+ * with latest version metadata, and active-user id batching.
  */
 import { db } from '@brewform/db';
-import { recipes, recipeVersions, userFollows, userPreferences, users } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, gt, isNull, like, or } from 'drizzle-orm';
+import {
+  lower,
+  recipes,
+  recipeVersions,
+  userFollows,
+  userPreferences,
+  users,
+} from '@brewform/db/schema';
+import { and, asc, count, desc, eq, gt, isNull } from 'drizzle-orm';
+import { listableRecipeCondition } from '../recipe/model.ts';
 
 /**
  * Find a user by ID, including preferences via LEFT JOIN.
@@ -48,12 +56,16 @@ export async function findById(id: string) {
   };
 }
 
-/** Find a user by username. Returns null if deleted or not found. */
+/**
+ * Find a user by username, case-insensitively: both sides are lowered in SQL
+ * (`lower(username) = lower($1)`, served by `user_username_lower_unique`), so `/users/ARDA`
+ * resolves `Arda` with the database's own case rules. Returns null if deleted or not found.
+ */
 export async function findByUsername(username: string) {
   const result = await db
     .select()
     .from(users)
-    .where(and(eq(users.username, username), isNull(users.deletedAt)))
+    .where(and(eq(lower(users.username), lower(username)), isNull(users.deletedAt)))
     .limit(1);
   return result[0] ?? null;
 }
@@ -84,6 +96,10 @@ export async function deleteUser(id: string) {
 /**
  * Get aggregated stats for a user (public recipe count, followers, following).
  *
+ * `recipeCount` is a discovery count (capability `recipe-visibility`): it counts the
+ * user's recipes that `listableRecipeCondition(null)` selects (non-deleted `public`
+ * only), for every viewer including the user, matching {@link getUserPublicRecipes}.
+ *
  * @returns Object with recipeCount, followerCount, and followingCount
  */
 export async function getUserStats(id: string) {
@@ -91,9 +107,7 @@ export async function getUserStats(id: string) {
     db
       .select({ count: count() })
       .from(recipes)
-      .where(
-        and(eq(recipes.authorId, id), isNull(recipes.deletedAt), eq(recipes.visibility, 'public')),
-      ),
+      .where(and(eq(recipes.authorId, id), listableRecipeCondition(null))),
     db.select({ count: count() }).from(userFollows).where(eq(userFollows.followingId, id)),
     db.select({ count: count() }).from(userFollows).where(eq(userFollows.followerId, id)),
   ]);
@@ -104,15 +118,17 @@ export async function getUserStats(id: string) {
   };
 }
 
-/** Get a user's public recipes with their latest version's brew method and drink type. */
+/**
+ * Get a user's public recipes with their latest version's brew method and drink type.
+ *
+ * The profile `recipes` array is a discovery surface (capability `recipe-visibility`):
+ * it lists what `listableRecipeCondition(null)` selects (non-deleted `public` only), for
+ * every viewer including the profile owner.
+ */
 export async function getUserPublicRecipes(userId: string) {
   // Fetch the user's public recipes with their latest version's brew method and drink type.
   const userRecipes = await db.query.recipes.findMany({
-    where: and(
-      eq(recipes.authorId, userId),
-      eq(recipes.visibility, 'public'),
-      isNull(recipes.deletedAt),
-    ),
+    where: and(eq(recipes.authorId, userId), listableRecipeCondition(null)),
     orderBy: desc(recipes.createdAt),
     columns: {
       id: true,
@@ -140,39 +156,6 @@ export async function getUserPublicRecipes(userId: string) {
     createdAt: r.createdAt,
     currentVersion: r.versions?.[0] ?? null,
   }));
-}
-
-/**
- * Search users by username or displayName with pagination.
- *
- * @param query - Search term (LIKE match)
- * @param page - 1-based page number
- * @param perPage - Results per page
- * @returns Paginated user list with total count
- */
-export async function searchUsers(query: string, page: number, perPage: number) {
-  const where = and(
-    isNull(users.deletedAt),
-    or(like(users.username, `%${query}%`), like(users.displayName, `%${query}%`)),
-  );
-  const [data, totalResult] = await Promise.all([
-    db
-      .select({
-        id: users.id,
-        username: users.username,
-        displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
-        bio: users.bio,
-        createdAt: users.createdAt,
-      })
-      .from(users)
-      .where(where)
-      .orderBy(desc(users.createdAt), asc(users.id))
-      .limit(perPage)
-      .offset((page - 1) * perPage),
-    db.select({ count: count() }).from(users).where(where),
-  ]);
-  return { users: data, total: totalResult[0].count };
 }
 
 /**

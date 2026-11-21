@@ -1,596 +1,293 @@
 /**
- * Unit tests for buildRecipeFilters() — the shared filter-building helper.
+ * DB-backed tests (`brewform_test`) of the recipe model, run against the real schema and `db`:
  *
- * These tests use a minimal mock Drizzle surface (eq, inArray, ilike, or)
- * matching the pattern in service.preservation.test.ts, so no real DB is
- * required. The tests verify the shape of the SQL[] returned for each
- * filter branch.
+ * - `upsertUserRating` — concurrent first ratings keep one row (error-handling);
+ * - `decrementComments` — lowers the stored count by a bound amount (E1);
+ * - deleted recipe authors (E11) — reads keep the recipe with `author: null` and the `author`
+ *   filter stops matching the account;
+ * - the version-column drift guard (a pure check against the real `recipe_version` table);
+ * - `forkRecipe` — every version-level value is copied.
  *
- * NOTE: Because the real helper imports `db` and Drizzle operators from
- * modules that cannot be cleanly stubbed under Vitest, this file holds a
- * faithful inline copy of `buildRecipeFilters` (and the delegated
- * `recipeCoffeeVarietyCondition`) wired against the local mock surface.
- * Mirror any change to the real implementation here.
- *
- * TODO(integration-testing): Evaluate lightweight integration options
- * (in-memory PostgreSQL, testcontainers, or minimal adapter stubs) so the
- * real `buildRecipeFilters` and `recipeCoffeeVarietyCondition` exported
- * from `./model.ts` can be exercised here without a full DB fixture.
- * Tracking this in the repo issue tracker is the recommended follow-up;
- * once a path is chosen, the duplicated inline copy in this file should
- * be removed in favour of importing the real implementations.
+ * The shared filter helper `buildRecipeFilters` is exercised through the real
+ * `buildListRecipesWhere` → `findMany` path in `model.cursor.test.ts` ("Recipe model — list
+ * filters (DB)"), search and the date range in `model.search.test.ts`; no copy of production
+ * code lives here (model-test-coverage, "Test files exercise the production module they name").
  */
 
-import { describe, expect, it } from 'vitest';
-import { rankRecipes } from './service.ts';
+import '../../test-setup.ts';
+import { db } from '@brewform/db';
+import { recipes, recipeVersions, userRecipeRatings, users } from '@brewform/db/schema';
+import { and, eq, getTableColumns } from 'drizzle-orm';
+import { afterEach, assert, beforeEach, describe, expect, it } from 'vitest';
+import { NoteFixtures } from '../recipe-note/test-helpers.ts';
+import * as recipeModel from './model.ts';
+import * as recipeService from './service.ts';
+import { RecipeWriteFixtures } from './test-helpers.ts';
 
-type MockCondition = {
-  type: string;
-  column?: string | MockCondition;
-  value?: unknown;
-  conditions?: MockCondition[];
-};
+/**
+ * upsertUserRating — two concurrent first ratings by the same user must both
+ * succeed and leave exactly one `user_recipe_rating` row (spec: error-handling,
+ * "Concurrent first rating does not 500"). With select-then-insert both calls
+ * see no row and the loser's insert hits the unique constraint.
+ */
+describe('upsertUserRating — concurrent first rating', () => {
+  let userId: string;
+  let recipeId: string;
 
-function eq(column: string, value: unknown): MockCondition {
-  return { type: 'eq', column, value };
-}
-
-function inArray(column: string, subquery: unknown): MockCondition {
-  return { type: 'inArray', column, value: subquery };
-}
-
-function ilike(column: string, value: unknown): MockCondition {
-  return { type: 'ilike', column, value };
-}
-
-function or(...conditions: MockCondition[]): MockCondition {
-  return { type: 'or', conditions };
-}
-
-function gte(column: string | MockCondition, value: unknown): MockCondition {
-  return { type: 'gte', column, value };
-}
-
-function lte(column: string | MockCondition, value: unknown): MockCondition {
-  return { type: 'lte', column, value };
-}
-
-function avg(column: string): MockCondition {
-  return { type: 'avg', column };
-}
-
-function and(...conditions: (MockCondition | undefined)[]): MockCondition | undefined {
-  const filtered = conditions.filter((c) => c !== undefined) as MockCondition[];
-  if (filtered.length === 0) return undefined;
-  if (filtered.length === 1) return filtered[0];
-  return { type: 'and', conditions: filtered };
-}
-
-const recipes = {
-  id: 'recipes.id',
-  currentVersionId: 'recipes.currentVersionId',
-  title: 'recipes.title',
-  createdAt: 'recipes.createdAt',
-  authorId: 'recipes.authorId',
-  featured: 'recipes.featured',
-};
-
-const recipeVersions = {
-  recipeId: 'recipeVersions.recipeId',
-  brewMethod: 'recipeVersions.brewMethod',
-  drinkType: 'recipeVersions.drinkType',
-  productName: 'recipeVersions.productName',
-  brewerDetails: 'recipeVersions.brewerDetails',
-  coffeeVarietyId: 'recipeVersions.coffeeVarietyId',
-  personalNotes: 'recipeVersions.personalNotes',
-  id: 'recipeVersions.id',
-};
-
-const recipeEquipment = {
-  recipeVersionId: 'recipeEquipment.recipeVersionId',
-  equipmentId: 'recipeEquipment.equipmentId',
-};
-
-const recipeTasteNotes = {
-  recipeVersionId: 'recipeTasteNotes.recipeVersionId',
-  tasteNoteId: 'recipeTasteNotes.tasteNoteId',
-};
-
-const users = {
-  id: 'users.id',
-  username: 'users.username',
-  displayName: 'users.displayName',
-};
-
-const userRecipeRatings = {
-  recipeId: 'userRecipeRatings.recipeId',
-  rating: 'userRecipeRatings.rating',
-};
-
-// The db mock needs an `any` type because the real Drizzle db has a deeply
-// chained query builder (select → from → where/groupBy/having) whose exact
-// return types are not exported. The mock returns plain objects that satisfy
-// the shape buildRecipeFilters builds, so any is the pragmatic choice here.
-// biome-ignore lint/suspicious/noExplicitAny: test mock parameter
-const db: any = {
-  select: (projection: unknown) => ({
-    from: (table: unknown) => ({
-      where: (cond: unknown) => ({ projection, table, where: cond }),
-      groupBy: (..._cols: unknown[]) => ({
-        having: (cond: unknown) => ({ projection, table, having: cond }),
-      }),
-    }),
-  }),
-};
-
-interface RecipeFilterCriteria {
-  brewMethod?: string;
-  drinkType?: string;
-  search?: string;
-  equipmentId?: string;
-  tasteNoteIds?: string;
-  tasteNoteId?: string;
-  mainBrewer?: string;
-  coffeeVarietyId?: string;
-  author?: string;
-  dateFrom?: Date;
-  dateTo?: Date;
-  minRating?: number;
-  maxRating?: number;
-}
-
-function recipeCoffeeVarietyCondition(coffeeVarietyId: string): MockCondition {
-  return inArray(
-    recipes.id,
-    db
-      .select({ id: recipeVersions.recipeId })
-      .from(recipeVersions)
-      .where(eq(recipeVersions.coffeeVarietyId, coffeeVarietyId)),
-  );
-}
-
-function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
-  const conditions: MockCondition[] = [];
-
-  if (filters.brewMethod) {
-    conditions.push(
-      inArray(
-        recipes.id,
-        db
-          .select({ id: recipeVersions.recipeId })
-          .from(recipeVersions)
-          .where(eq(recipeVersions.brewMethod, filters.brewMethod)),
-      ),
-    );
-  }
-
-  if (filters.drinkType) {
-    conditions.push(
-      inArray(
-        recipes.id,
-        db
-          .select({ id: recipeVersions.recipeId })
-          .from(recipeVersions)
-          .where(eq(recipeVersions.drinkType, filters.drinkType)),
-      ),
-    );
-  }
-
-  if (filters.search) {
-    const sanitized = filters.search.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      const searchCondition = or(
-        ilike(recipes.title, searchTerm),
-        inArray(
-          recipes.id,
-          db
-            .select({ id: recipeVersions.recipeId })
-            .from(recipeVersions)
-            .where(
-              or(
-                ilike(recipeVersions.productName, searchTerm),
-                // F11: personalNotes added to search scope (weight 1)
-                ilike(recipeVersions.personalNotes, searchTerm),
-              ),
-            ),
-        ),
-      );
-      if (searchCondition) conditions.push(searchCondition);
-    }
-  }
-
-  if (filters.mainBrewer) {
-    const sanitized = filters.mainBrewer.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      conditions.push(
-        inArray(
-          recipes.id,
-          db
-            .select({ id: recipeVersions.recipeId })
-            .from(recipeVersions)
-            .where(ilike(recipeVersions.brewerDetails, searchTerm)),
-        ),
-      );
-    }
-  }
-
-  // F11: author username/displayName substring filter
-  if (filters.author) {
-    const sanitized = filters.author.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      conditions.push(
-        inArray(
-          recipes.authorId,
-          db
-            .select({ id: users.id })
-            .from(users)
-            .where(or(ilike(users.username, searchTerm), ilike(users.displayName, searchTerm))),
-        ),
-      );
-    }
-  }
-
-  // F11: date range filter on recipes.createdAt
-  if (filters.dateFrom) {
-    conditions.push(gte(recipes.createdAt, filters.dateFrom));
-  }
-  if (filters.dateTo) {
-    conditions.push(lte(recipes.createdAt, filters.dateTo));
-  }
-
-  // F11: rating range filter via avg(userRecipeRatings.rating) subquery
-  if (filters.minRating || filters.maxRating) {
-    const minCondition = filters.minRating
-      ? gte(avg(userRecipeRatings.rating), filters.minRating)
-      : undefined;
-    const maxCondition = filters.maxRating
-      ? lte(avg(userRecipeRatings.rating), filters.maxRating)
-      : undefined;
-    const havingClause = and(minCondition, maxCondition);
-    if (havingClause) {
-      conditions.push(
-        inArray(
-          recipes.id,
-          db
-            .select({ recipeId: userRecipeRatings.recipeId })
-            .from(userRecipeRatings)
-            .groupBy(userRecipeRatings.recipeId)
-            .having(havingClause),
-        ),
-      );
-    }
-  }
-
-  if (filters.coffeeVarietyId) {
-    conditions.push(recipeCoffeeVarietyCondition(filters.coffeeVarietyId));
-  }
-
-  if (filters.equipmentId) {
-    conditions.push(
-      inArray(
-        recipes.currentVersionId,
-        db
-          .select({ id: recipeEquipment.recipeVersionId })
-          .from(recipeEquipment)
-          .where(eq(recipeEquipment.equipmentId, filters.equipmentId)),
-      ),
-    );
-  }
-
-  if (filters.tasteNoteIds) {
-    const ids = filters.tasteNoteIds.split(',').map((id) => id.trim());
-    for (const noteId of ids) {
-      conditions.push(
-        inArray(
-          recipes.currentVersionId,
-          db
-            .select({ id: recipeTasteNotes.recipeVersionId })
-            .from(recipeTasteNotes)
-            .where(eq(recipeTasteNotes.tasteNoteId, noteId)),
-        ),
-      );
-    }
-  } else if (filters.tasteNoteId) {
-    conditions.push(
-      inArray(
-        recipes.currentVersionId,
-        db
-          .select({ id: recipeTasteNotes.recipeVersionId })
-          .from(recipeTasteNotes)
-          .where(eq(recipeTasteNotes.tasteNoteId, filters.tasteNoteId)),
-      ),
-    );
-  }
-
-  return conditions;
-}
-
-describe('buildRecipeFilters', () => {
-  it('returns an empty array when no filters are set', () => {
-    const result = buildRecipeFilters({});
-    expect(result).toEqual([]);
-  });
-
-  it('generates a brewMethod condition', () => {
-    const result = buildRecipeFilters({ brewMethod: 'v60' });
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('inArray');
-    expect(result[0].column).toBe(recipes.id);
-    const sub = result[0].value as { where: MockCondition };
-    expect(sub.where).toEqual(eq(recipeVersions.brewMethod, 'v60'));
-  });
-
-  it('generates a drinkType condition', () => {
-    const result = buildRecipeFilters({ drinkType: 'espresso' });
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('inArray');
-    expect(result[0].column).toBe(recipes.id);
-    const sub = result[0].value as { where: MockCondition };
-    expect(sub.where).toEqual(eq(recipeVersions.drinkType, 'espresso'));
-  });
-
-  it('generates a sanitized search condition with or()', () => {
-    const result = buildRecipeFilters({ search: 'fr%uit_y' });
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('or');
-    const subs = result[0].conditions!;
-    expect(subs).toHaveLength(2);
-    expect(subs[0]).toEqual(ilike(recipes.title, '%fruity%'));
-    expect(subs[1].type).toBe('inArray');
-    expect(subs[1].column).toBe(recipes.id);
-  });
-
-  it('skips search when sanitized input is empty', () => {
-    expect(buildRecipeFilters({ search: '%_%' })).toEqual([]);
-    expect(buildRecipeFilters({ search: '' })).toEqual([]);
-  });
-
-  it('generates a sanitized mainBrewer condition', () => {
-    const result = buildRecipeFilters({ mainBrewer: 'Hario%' });
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('inArray');
-    expect(result[0].column).toBe(recipes.id);
-    const sub = result[0].value as { where: MockCondition };
-    expect(sub.where).toEqual(ilike(recipeVersions.brewerDetails, '%Hario%'));
-  });
-
-  it('skips mainBrewer when sanitized input is empty', () => {
-    expect(buildRecipeFilters({ mainBrewer: '%' })).toEqual([]);
-    expect(buildRecipeFilters({ mainBrewer: '' })).toEqual([]);
-  });
-
-  it('generates an equipmentId condition', () => {
-    const result = buildRecipeFilters({ equipmentId: 'equip-uuid' });
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('inArray');
-    expect(result[0].column).toBe(recipes.currentVersionId);
-    const sub = result[0].value as { where: MockCondition };
-    expect(sub.where).toEqual(eq(recipeEquipment.equipmentId, 'equip-uuid'));
-  });
-
-  it('delegates coffeeVarietyId to recipeCoffeeVarietyCondition', () => {
-    const result = buildRecipeFilters({ coffeeVarietyId: 'variety-uuid' });
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual(recipeCoffeeVarietyCondition('variety-uuid'));
-  });
-
-  it('generates one condition per id for tasteNoteIds (multi)', () => {
-    const result = buildRecipeFilters({ tasteNoteIds: 'a, b ,c' });
-    expect(result).toHaveLength(3);
-    const ids = result.map((cond) => {
-      const sub = cond.value as { where: MockCondition };
-      return sub.where.value;
+  beforeEach(async () => {
+    userId = crypto.randomUUID();
+    recipeId = crypto.randomUUID();
+    await db.insert(users).values({
+      id: userId,
+      email: `rate-race-${userId}@example.com`,
+      username: `rate-race-${userId.slice(0, 8)}`,
+      passwordHash: 'hash',
     });
-    expect(ids).toEqual(['a', 'b', 'c']);
-    for (const cond of result) {
-      expect(cond.type).toBe('inArray');
-      expect(cond.column).toBe(recipes.currentVersionId);
-    }
-  });
-
-  it('generates a single tasteNoteId condition (deprecated, singular)', () => {
-    const result = buildRecipeFilters({ tasteNoteId: 'note-uuid' });
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('inArray');
-    expect(result[0].column).toBe(recipes.currentVersionId);
-    const sub = result[0].value as { where: MockCondition };
-    expect(sub.where).toEqual(eq(recipeTasteNotes.tasteNoteId, 'note-uuid'));
-  });
-
-  it('prefers tasteNoteIds over tasteNoteId when both are set', () => {
-    const result = buildRecipeFilters({ tasteNoteIds: 'a,b', tasteNoteId: 'c' });
-    expect(result).toHaveLength(2);
-    const ids = result.map((cond) => {
-      const sub = cond.value as { where: MockCondition };
-      return sub.where.value;
+    await db.insert(recipes).values({
+      id: recipeId,
+      slug: `rate-race-${recipeId}`,
+      title: 'Rate race',
+      authorId: userId,
+      visibility: 'public',
     });
-    expect(ids).toEqual(['a', 'b']);
-    expect(ids).not.toContain('c');
   });
 
-  // --- F11: author filter ---
-  it('buildRecipeFilters: author generates users subquery condition', () => {
-    const conditions = buildRecipeFilters({ author: 'alice' });
-    expect(conditions).toHaveLength(1);
-    expect(conditions[0].type).toBe('inArray');
-    expect(conditions[0].column).toBe(recipes.authorId);
+  afterEach(async () => {
+    await db.delete(userRecipeRatings).where(eq(userRecipeRatings.recipeId, recipeId));
+    await db.delete(recipes).where(eq(recipes.id, recipeId));
+    await db.delete(users).where(eq(users.id, userId));
   });
 
-  it('buildRecipeFilters: empty author generates no condition', () => {
-    const conditions = buildRecipeFilters({ author: '' });
-    expect(conditions).toHaveLength(0);
+  it('should resolve both calls and keep one row holding one of the values', async () => {
+    const results = await Promise.all([
+      recipeService.upsertUserRating(userId, recipeId, 3),
+      recipeService.upsertUserRating(userId, recipeId, 4),
+    ]);
+    expect(results.map((r) => r.rating).sort()).toEqual([3, 4]);
+
+    const rows = await db
+      .select({ rating: userRecipeRatings.rating, userId: userRecipeRatings.userId })
+      .from(userRecipeRatings)
+      .where(eq(userRecipeRatings.recipeId, recipeId));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].userId).toBe(userId);
+    expect([3, 4]).toContain(rows[0].rating);
   });
 
-  it('buildRecipeFilters: author with wildcards stripped', () => {
-    const conditions = buildRecipeFilters({ author: '%alice%' });
-    expect(conditions).toHaveLength(1);
-    const sub = conditions[0].value as { where: MockCondition };
-    const orCond = sub.where;
-    expect(orCond.type).toBe('or');
-    const orConds = orCond.conditions!;
-    expect(orConds[0]).toEqual(ilike(users.username, '%alice%'));
-    expect(orConds[1]).toEqual(ilike(users.displayName, '%alice%'));
-  });
-
-  // --- F11: date range filter ---
-  it('buildRecipeFilters: dateFrom generates gte condition', () => {
-    const date = new Date('2025-01-01');
-    const conditions = buildRecipeFilters({ dateFrom: date });
-    expect(conditions).toHaveLength(1);
-    expect(conditions[0].type).toBe('gte');
-    expect(conditions[0].column).toBe(recipes.createdAt);
-    expect(conditions[0].value).toBe(date);
-  });
-
-  it('buildRecipeFilters: dateTo generates lte condition', () => {
-    const date = new Date('2025-12-01');
-    const conditions = buildRecipeFilters({ dateTo: date });
-    expect(conditions).toHaveLength(1);
-    expect(conditions[0].type).toBe('lte');
-    expect(conditions[0].column).toBe(recipes.createdAt);
-    expect(conditions[0].value).toBe(date);
-  });
-
-  it('buildRecipeFilters: both dateFrom and dateTo generate two conditions', () => {
-    const conditions = buildRecipeFilters({
-      dateFrom: new Date('2025-01-01'),
-      dateTo: new Date('2025-12-01'),
-    });
-    expect(conditions).toHaveLength(2);
-  });
-
-  // --- F11: rating range filter ---
-  it('buildRecipeFilters: minRating generates having-gte subquery', () => {
-    const conditions = buildRecipeFilters({ minRating: 7 });
-    expect(conditions).toHaveLength(1);
-    expect(conditions[0].type).toBe('inArray');
-    expect(conditions[0].column).toBe(recipes.id);
-  });
-
-  it('buildRecipeFilters: maxRating generates having-lte subquery', () => {
-    const conditions = buildRecipeFilters({ maxRating: 9 });
-    expect(conditions).toHaveLength(1);
-    expect(conditions[0].type).toBe('inArray');
-    expect(conditions[0].column).toBe(recipes.id);
-  });
-
-  it('buildRecipeFilters: both minRating and maxRating generate one subquery with two having conditions', () => {
-    const conditions = buildRecipeFilters({ minRating: 5, maxRating: 9 });
-    expect(conditions).toHaveLength(1); // single inArray with both having clauses
-    const sub = conditions[0].value as { having: MockCondition };
-    expect(sub.having.type).toBe('and');
-    expect(sub.having.conditions).toHaveLength(2);
-  });
-
-  // --- F11: search personalNotes ---
-  it('buildRecipeFilters: search includes personalNotes in or() condition', () => {
-    const conditions = buildRecipeFilters({ search: 'V60' });
-    expect(conditions).toHaveLength(1);
-    expect(conditions[0].type).toBe('or');
-    // The inner inArray subquery's where should be an or() with productName + personalNotes
-    const subs = conditions[0].conditions!;
-    expect(subs[1].type).toBe('inArray');
-    const innerWhere = (subs[1].value as { where: MockCondition }).where;
-    expect(innerWhere.type).toBe('or');
-    expect(innerWhere.conditions).toHaveLength(2);
-    expect(innerWhere.conditions![0]).toEqual(ilike(recipeVersions.productName, '%V60%'));
-    expect(innerWhere.conditions![1]).toEqual(ilike(recipeVersions.personalNotes, '%V60%'));
+  it('should update the existing row on a later rating', async () => {
+    await recipeService.upsertUserRating(userId, recipeId, 2);
+    await recipeService.upsertUserRating(userId, recipeId, 9);
+    const rows = await db
+      .select({ rating: userRecipeRatings.rating })
+      .from(userRecipeRatings)
+      .where(eq(userRecipeRatings.recipeId, recipeId));
+    expect(rows).toEqual([{ rating: 9 }]);
   });
 });
 
-describe('rankRecipes', () => {
-  it('title match scores higher than productName match', () => {
-    const recipes = [
-      {
-        title: 'Untitled',
-        currentVersionId: 'v2',
-        versions: [{ id: 'v2', productName: 'Espresso Blend', personalNotes: null }],
-      },
-      {
-        title: 'Espresso',
-        currentVersionId: 'v1',
-        versions: [{ id: 'v1', productName: 'Generic', personalNotes: null }],
-      },
-    ];
-    const ranked = rankRecipes(recipes, 'espresso');
-    expect(ranked[0].title).toBe('Espresso'); // score 3 > score 2
+/** E1: `decrementComments(id, by)` lowers the stored count by the number of comments removed. */
+describe('decrementComments — by a bound amount', () => {
+  let userId: string;
+  let recipeId: string;
+
+  beforeEach(async () => {
+    userId = crypto.randomUUID();
+    recipeId = crypto.randomUUID();
+    await db.insert(users).values({
+      id: userId,
+      email: `decrement-${userId}@example.com`,
+      username: `decrement-${userId.slice(0, 8)}`,
+      passwordHash: 'hash',
+    });
+    await db.insert(recipes).values({
+      id: recipeId,
+      slug: `decrement-${recipeId}`,
+      title: 'Decrement comments',
+      authorId: userId,
+      visibility: 'public',
+      commentCount: 5,
+    });
   });
 
-  it('equal scores preserve DB order (stable sort)', () => {
-    const recipes = [
-      {
-        title: 'Match A',
-        currentVersionId: 'v1',
-        versions: [{ id: 'v1', productName: null, personalNotes: null }],
-      },
-      {
-        title: 'Match B',
-        currentVersionId: 'v2',
-        versions: [{ id: 'v2', productName: null, personalNotes: null }],
-      },
-    ];
-    const ranked = rankRecipes(recipes, 'match');
-    expect(ranked[0].title).toBe('Match A'); // original order preserved
-    expect(ranked[1].title).toBe('Match B');
+  afterEach(async () => {
+    await db.delete(recipes).where(eq(recipes.id, recipeId));
+    await db.delete(users).where(eq(users.id, userId));
   });
 
-  it('personalNotes match scores lowest', () => {
-    const recipes = [
-      {
-        title: 'Untitled',
-        currentVersionId: 'v1',
-        versions: [{ id: 'v1', productName: null, personalNotes: 'Try V60' }],
-      },
-      {
-        title: 'V60 Recipe',
-        currentVersionId: 'v2',
-        versions: [{ id: 'v2', productName: null, personalNotes: null }],
-      },
-    ];
-    const ranked = rankRecipes(recipes, 'v60');
-    expect(ranked[0].title).toBe('V60 Recipe'); // score 3 > score 1
+  it('lowers commentCount by 3 with by = 3, then by 1 with the default', async () => {
+    const afterThree = await recipeModel.decrementComments(recipeId, 3);
+    expect(afterThree?.commentCount).toBe(2);
+    const afterOne = await recipeModel.decrementComments(recipeId);
+    expect(afterOne?.commentCount).toBe(1);
+    const [row] = await db
+      .select({ commentCount: recipes.commentCount })
+      .from(recipes)
+      .where(eq(recipes.id, recipeId));
+    expect(row.commentCount).toBe(1);
+  });
+});
+
+/**
+ * E11 (account-deletion, "A deleted account has no public identity"): a recipe whose author
+ * soft-deleted the account stays readable and listed, with `author: null`, and the `author`
+ * filter no longer matches that account.
+ */
+describe('deleted recipe authors (E11)', () => {
+  const fixtures = new NoteFixtures();
+
+  afterEach(async () => {
+    await fixtures.cleanup();
   });
 
-  it('scores best matching version across ALL versions, not just currentVersionId', () => {
-    const recipes = [
-      {
-        title: 'Untitled',
-        currentVersionId: 'v1',
-        versions: [
-          { id: 'v1', productName: null, personalNotes: null },
-          { id: 'v2', productName: 'Espresso Blend', personalNotes: null },
-        ],
-      },
-      {
-        title: 'Other',
-        currentVersionId: 'v3',
-        versions: [{ id: 'v3', productName: null, personalNotes: 'weak match' }],
-      },
-    ];
-    const ranked = rankRecipes(recipes, 'espresso');
-    // Recipe 0: productName match on v2 (non-current) → score 2
-    // Recipe 1: no match → score 0
-    expect(ranked[0].title).toBe('Untitled');
+  /** Soft-delete a user the way account deletion does (only the user row). */
+  async function softDeleteUser(id: string): Promise<void> {
+    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, id));
+  }
+
+  it('findById, findBySlug and findListPage keep the recipe with author: null', async () => {
+    const author = await fixtures.user('e11-recipe');
+    const { recipe } = await fixtures.recipe(author.id);
+    const scope = { where: eq(recipes.authorId, author.id), page: 1, perPage: 10 };
+    const before = await recipeModel.findListPage(scope);
+    expect(before.recipes[0].author).not.toBeNull();
+
+    await softDeleteUser(author.id);
+
+    const byId = await recipeModel.findById(recipe.id);
+    assert.exists(byId);
+    expect(byId.id).toBe(recipe.id);
+    expect(byId.author).toBeNull();
+    const bySlug = await recipeModel.findBySlug(recipe.slug);
+    assert.exists(bySlug);
+    expect(bySlug.id).toBe(recipe.id);
+    expect(bySlug.author).toBeNull();
+    const after = await recipeModel.findListPage(scope);
+    expect(after.total).toBe(before.total);
+    expect(after.recipes.map((r) => r.id)).toEqual([recipe.id]);
+    expect(after.recipes[0].author).toBeNull();
   });
 
-  it('sanitizes wildcard characters in search term before scoring', () => {
-    const recipes = [
-      {
-        title: 'Espresso',
-        currentVersionId: 'v1',
-        versions: [{ id: 'v1', productName: null, personalNotes: null }],
-      },
-      {
-        title: 'Other',
-        currentVersionId: 'v2',
-        versions: [{ id: 'v2', productName: null, personalNotes: null }],
-      },
-    ];
-    // %espresso% should be sanitized to "espresso" and still match
-    const ranked = rankRecipes(recipes, '%espresso%');
-    expect(ranked[0].title).toBe('Espresso');
+  it('a live author is still returned by findById', async () => {
+    const author = await fixtures.user('e11-live');
+    const { recipe } = await fixtures.recipe(author.id);
+    const byId = await recipeModel.findById(recipe.id);
+    expect(byId?.author).toEqual({
+      id: author.id,
+      username: author.username,
+      displayName: null,
+      avatarUrl: null,
+    });
+  });
+
+  it('the author filter with the deleted username no longer finds the recipe', async () => {
+    const author = await fixtures.user('e11-filter');
+    const { recipe } = await fixtures.recipe(author.id);
+    const where = () =>
+      and(
+        eq(recipes.authorId, author.id),
+        ...recipeModel.buildRecipeFilters({ author: author.username }),
+      );
+    const live = await recipeModel.findListPage({ where: where(), page: 1, perPage: 10 });
+    expect(live.recipes.map((r) => r.id)).toEqual([recipe.id]);
+
+    await softDeleteUser(author.id);
+
+    const gone = await recipeModel.findListPage({ where: where(), page: 1, perPage: 10 });
+    expect(gone.recipes).toEqual([]);
+    expect(gone.total).toBe(0);
+  });
+});
+
+/** `recipe_version` columns every write path leaves to the database or sets itself. */
+const VERSION_KEY_COLUMNS = ['id', 'recipeId', 'versionNumber', 'createdAt'];
+
+/**
+ * Drift guard (recipe-write, "Version-write paths share one column mapping"): a column added to
+ * `recipeVersions` without updating `versionColumnsFrom` fails here and is named in the diff.
+ */
+describe('version-column mapping drift guard', () => {
+  const tableKeys = Object.keys(getTableColumns(recipeVersions));
+  const expected = tableKeys.filter((key) => !VERSION_KEY_COLUMNS.includes(key)).sort();
+  /** One distinct marker value per table column (plus a relation key that must be dropped). */
+  const sample = {
+    ...Object.fromEntries(tableKeys.map((key) => [key, `value:${key}`])),
+    tasteNotes: ['dropped'],
+  } as unknown as recipeModel.RecipeVersionColumns;
+
+  it('versionColumnsFrom maps every recipe_version column except id, recipeId, versionNumber, createdAt', () => {
+    const mapped = recipeModel.versionColumnsFrom(sample) as Record<string, unknown>;
+    const missing = expected.filter((key) => !(key in mapped));
+    expect(missing).toEqual([]);
+    expect(Object.keys(mapped).sort()).toEqual(expected);
+    for (const key of expected) expect(mapped[key]).toBe(`value:${key}`);
+  });
+
+  it('copyVersionColumns uses the same keys and drops identity and relation keys', () => {
+    const copied = recipeModel.copyVersionColumns(sample) as Record<string, unknown>;
+    expect(Object.keys(copied).sort()).toEqual(expected);
+    expect('id' in copied).toBe(false);
+    expect('tasteNotes' in copied).toBe(false);
+  });
+});
+
+/** recipe-write, "Fork copies every version-level value": tds and the coffee variety survive. */
+describe('forkRecipe — version columns', () => {
+  const fixtures = new RecipeWriteFixtures();
+
+  afterEach(async () => {
+    await fixtures.cleanup();
+  });
+
+  it('copies tds and the coffee variety and resets rating and isFavourite', async () => {
+    const author = await fixtures.user('fork-cols-a');
+    const forker = await fixtures.user('fork-cols-b');
+    const variety = await fixtures.variety('Pink Bourbon');
+    const source = await recipeModel.createRecipeWithRelations({
+      authorId: author.id,
+      slugCandidates: [`fork-cols-${crypto.randomUUID().slice(0, 8)}`],
+      title: 'Fork columns',
+      visibility: 'public',
+      productName: 'Finca',
+      coffeeBrand: null,
+      coffeeProcessing: null,
+      vendorId: null,
+      roastDate: null,
+      packageOpenDate: null,
+      grindDate: null,
+      brewDate: new Date(),
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      brewerDetails: null,
+      grinder: null,
+      grindSize: null,
+      groundWeightGrams: null,
+      extractionTimeSeconds: null,
+      extractionVolumeMl: null,
+      temperatureCelsius: null,
+      tds: '1.30',
+      brewRatio: null,
+      flowRate: null,
+      preInfusionTimeSeconds: null,
+      beanId: null,
+      coffeeVarietyId: variety.id,
+      coffeeVarietyName: variety.name,
+      personalNotes: 'Bright',
+      preparationNotes: 'Bloom',
+      isFavourite: true,
+      rating: 8,
+      emojiTag: 'fire',
+    });
+
+    const fork = await recipeModel.forkRecipe(source!.id, forker.id, 'Fork of columns', [
+      `fork-cols-fork-${crypto.randomUUID().slice(0, 8)}`,
+    ]);
+    const forkVersion = fork!.versions[0];
+    expect(forkVersion.tds).toBe('1.30');
+    expect(forkVersion.coffeeVarietyId).toBe(variety.id);
+    expect(forkVersion.coffeeVarietyName).toBe(variety.name);
+    expect(forkVersion.productName).toBe('Finca');
+    expect(forkVersion.emojiTag).toBe('fire');
+    expect(forkVersion.rating).toBeNull();
+    expect(forkVersion.isFavourite).toBe(false);
   });
 });

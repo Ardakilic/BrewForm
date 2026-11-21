@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { COFFEE_VARIETY_CATEGORY_VALUES } from '../constants/coffee-variety.ts';
 import {
   CoffeeVarietyCreateSchema,
@@ -165,5 +166,71 @@ describe('CoffeeVarietyFilterSchema', () => {
       perPage: '101',
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('Coffee-variety list fields are bounded (coffee-variety-write)', () => {
+  const base = { name: 'Bounded', category: 'variety' as const };
+
+  it('rejects a list item longer than 100 characters', () => {
+    const result = CoffeeVarietyCreateSchema.safeParse({
+      ...base,
+      notableFarms: ['x'.repeat(101)],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path)).toContainEqual(['notableFarms', 0]);
+    }
+  });
+
+  it('accepts a 100-character item', () => {
+    const result = CoffeeVarietyCreateSchema.safeParse({
+      ...base,
+      notableFarms: ['x'.repeat(100)],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects 21 items and accepts 20', () => {
+    const items = (count: number) => Array.from({ length: count }, (_, i) => `Process ${i}`);
+    expect(
+      CoffeeVarietyCreateSchema.safeParse({ ...base, processingCompatibility: items(21) }).success,
+    ).toBe(false);
+    expect(
+      CoffeeVarietyCreateSchema.safeParse({ ...base, processingCompatibility: items(20) }).success,
+    ).toBe(true);
+  });
+
+  it.each([[['']], [['   ']]])('rejects the empty item list %j', (subVarieties) => {
+    expect(CoffeeVarietyCreateSchema.safeParse({ ...base, subVarieties }).success).toBe(false);
+  });
+
+  it('trims items', () => {
+    const result = CoffeeVarietyCreateSchema.parse({
+      ...base,
+      processingCompatibility: [' Washed '],
+    });
+    expect(result.processingCompatibility).toEqual(['Washed']);
+  });
+
+  it('accepts the widest seed list (7 notable regions)', () => {
+    const notableRegions = ['Yirgacheffe', 'Sidamo', 'Guji', 'Harrar', 'Limu', 'Jimma', 'Kaffa'];
+    expect(CoffeeVarietyCreateSchema.safeParse({ ...base, notableRegions }).success).toBe(true);
+  });
+
+  it('applies the same bounds to the update schema', () => {
+    const regionalVariants = Array.from({ length: 21 }, (_, i) => `Variant ${i}`);
+    expect(CoffeeVarietyUpdateSchema.safeParse({ regionalVariants }).success).toBe(false);
+    expect(CoffeeVarietyUpdateSchema.safeParse({ notableFarms: ['x'.repeat(101)] }).success).toBe(
+      false,
+    );
+  });
+
+  it('documents maxItems and item maxLength in the JSON Schema', () => {
+    const json = z.toJSONSchema(CoffeeVarietyCreateSchema) as {
+      properties: Record<string, { maxItems?: number; items?: { maxLength?: number } }>;
+    };
+    expect(json.properties.regionalVariants.maxItems).toBe(20);
+    expect(json.properties.regionalVariants.items?.maxLength).toBe(100);
   });
 });

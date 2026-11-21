@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "path": "docs/index.md",
+      "reason": "Still exists, so this entry is not stale."
+    },
+    {
+      "path": "docs/requirements-audit-report.md",
+      "reason": "Deleted document: this entry is stale and must be removed."
+    }
+  ],
+  "retiredCapabilities": {}
+}

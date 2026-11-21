@@ -2,7 +2,8 @@ import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions, users } from '@brewform/db/schema';
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { VisibilityFixtures, type VisibilityScenario } from '../recipe/test-helpers.ts';
 import * as model from './model.ts';
 
 describe('Coffee Variety Model', () => {
@@ -116,6 +117,31 @@ describe('Coffee Variety Model', () => {
       const ids = result.data.map((v) => v.id);
       expect(ids).toContain(varietyId1);
       expect(ids).toContain(varietyId2);
+    });
+
+    /** Insert a variety owned by the describe's user (removed by its afterEach). */
+    async function insertVariety(name: string): Promise<string> {
+      const id = crypto.randomUUID();
+      await db
+        .insert(coffeeVarieties)
+        .values({ id, name, category: 'variety', isSystem: false, createdBy: userId });
+      return id;
+    }
+
+    it('should match an underscore in the search literally', async () => {
+      const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+      const id = await insertVariety(`a_c${tag}`);
+      await insertVariety(`abc${tag}`);
+      const result = await model.findMany({ search: `a_c${tag}`, page: 1, perPage: 10 });
+      expect(result.data.map((v) => v.id)).toEqual([id]);
+    });
+
+    it('should match a percent sign in the search literally', async () => {
+      const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+      const id = await insertVariety(`100%${tag} Blend`);
+      await insertVariety(`1000${tag} Blend`);
+      const result = await model.findMany({ search: `100%${tag}`, page: 1, perPage: 10 });
+      expect(result.data.map((v) => v.id)).toEqual([id]);
     });
   });
 
@@ -367,6 +393,20 @@ describe('Coffee Variety Model', () => {
       await db.delete(coffeeVarieties).where(eq(coffeeVarieties.id, otherVarietyId));
     });
 
+    it('lists the recipe of a soft-deleted author with author: null (E11)', async () => {
+      const live = await model.getRecipesUsingVariety(varietyId, 1, 10);
+      expect(live.data[0].author).toEqual({
+        username: `testuser-${userId}`,
+        displayName: null,
+        avatarUrl: null,
+      });
+      await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
+      const result = await model.getRecipesUsingVariety(varietyId, 1, 10);
+      expect(result.total).toBe(1);
+      expect(result.data[0].id).toBe(recipeId);
+      expect(result.data[0].author).toBeNull();
+    });
+
     it('should not include soft-deleted recipes', async () => {
       await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, recipeId));
 
@@ -382,5 +422,29 @@ describe('Coffee Variety Model', () => {
       expect(result.total).toBe(0);
       expect(result.data.length).toBe(0);
     });
+  });
+});
+
+/**
+ * Regression lock for capability `recipe-visibility` (task 11.1): the coffee-variety detail
+ * recipe list is a discovery surface, so an unlisted recipe whose current version uses the
+ * variety is neither listed nor counted.
+ */
+describe('getRecipesUsingVariety — unlisted recipes (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let scenario: VisibilityScenario;
+
+  beforeAll(async () => {
+    scenario = await fixtures.scenario('vis-variety');
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  it('excludes the unlisted recipe from data and total', async () => {
+    const result = await model.getRecipesUsingVariety(scenario.varietyId, 1, 10);
+    expect(result.data.map((r) => r.id)).toEqual([scenario.publicP.id]);
+    expect(result.total).toBe(1);
   });
 });

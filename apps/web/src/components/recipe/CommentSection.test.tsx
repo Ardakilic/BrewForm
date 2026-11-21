@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, type LoaderFunctionArgs } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../../api/errors.ts';
+import { createCommentAction, deleteCommentAction } from '../../routes/comments.ts';
+import { ToastProvider } from '../ui/Toast.tsx';
 import { CommentSection } from './CommentSection.tsx';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -28,7 +31,7 @@ vi.mock('react-router', async () => {
 });
 
 vi.mock('../../api/client.ts', () => ({
-  api: { get: vi.fn(), post: vi.fn() },
+  api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
 }));
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -109,6 +112,7 @@ function makePaginationInitialData(options: {
       deletedAt: null,
       author: null,
       replies: [],
+      hasMoreReplies: false,
     }),
   );
   return {
@@ -143,7 +147,11 @@ const enT = (key: string) => {
     'comment.replyLabel': 'Reply',
     'comment.posted': 'Comment posted',
     'comment.replyPosted': 'Reply posted',
+    'comment.error': 'Failed to post comment. Please try again.',
+    'comment.deleteFailed': 'Failed to delete comment. Please try again.',
+    'comment.repliesTruncated': 'Showing the first {count} replies.',
     'common.delete': 'Delete',
+    'common.deletedUser': 'Deleted user',
   };
   return map[key] ?? key;
 };
@@ -167,7 +175,9 @@ const trT = (key: string) => {
     'comment.replyLabel': 'Yanıt',
     'comment.posted': 'Yorum gönderildi',
     'comment.replyPosted': 'Yanıt gönderildi',
+    'comment.repliesTruncated': 'İlk {count} yanıt gösteriliyor.',
     'common.delete': 'Sil',
+    'common.deletedUser': 'Silinmiş kullanıcı',
   };
   return map[key] ?? key;
 };
@@ -219,6 +229,7 @@ const topLevelComment: CommentWithRepliesOutput = {
   deletedAt: null,
   author: { id: 'user-2', username: 'bob', displayName: 'Bob', avatarUrl: null },
   replies: [],
+  hasMoreReplies: false,
 };
 
 const commentByOwner: CommentWithRepliesOutput = {
@@ -232,6 +243,7 @@ const commentByOwner: CommentWithRepliesOutput = {
   deletedAt: null,
   author: { id: recipeAuthorId, username: 'alice', displayName: 'Alice', avatarUrl: null },
   replies: [],
+  hasMoreReplies: false,
 };
 
 const replyByAlice = {
@@ -253,11 +265,19 @@ const commentWithReply: CommentWithRepliesOutput = {
 
 // ── Render helper ──────────────────────────────────────────────────────────
 
+/**
+ * Renders `CommentSection` under a memory router (inside `ToastProvider`) whose child routes
+ * stand in for the comment resource routes. By default the create/delete actions are stubs
+ * that succeed with the `{ ok: true, … }` contract; `realActions: true` wires the real
+ * `createCommentAction`/`deleteCommentAction` from `routes/comments.ts` (backed by the
+ * mocked API client) so failure paths run end to end.
+ */
 function renderCommentSection(
   props: Partial<{
     recipeId: string;
     recipeAuthorId: string;
     initialComments: typeof defaultComments;
+    realActions: boolean;
   }> = {},
 ) {
   const router = createMemoryRouter(
@@ -285,7 +305,7 @@ function renderCommentSection(
              * so the "all pages loaded" assertion (`comments.length === total`)
              * passes once the user clicks "Load More" twice.
              */
-            loader: async ({ request, params }: LoaderFunctionArgs) => {
+            loader: ({ request, params }: LoaderFunctionArgs) => {
               if (params.recipeId !== 'recipe-1') {
                 throw new Response('Wrong recipe id', { status: 400 });
               }
@@ -299,6 +319,7 @@ function renderCommentSection(
                     authorId: 'user-1',
                     createdAt: '2024-02-01T10:00:00Z',
                     replies: [],
+                    hasMoreReplies: false,
                   })),
                   meta: {
                     pagination: { total: 25, page: 2, perPage: 10, totalPages: 3 },
@@ -313,6 +334,7 @@ function renderCommentSection(
                     authorId: 'user-3',
                     createdAt: '2024-02-01T08:00:00Z',
                     replies: [],
+                    hasMoreReplies: false,
                   })),
                   meta: {
                     pagination: { total: 25, page: 3, perPage: 10, totalPages: 3 },
@@ -326,21 +348,26 @@ function renderCommentSection(
                 },
               };
             },
-            action: async ({ request }: { request: Request }) => {
-              const formData = await request.formData();
-              const content = formData.get('content') as string;
-              return {
-                id: `new-${Date.now()}`,
-                content,
-                authorId: testCurrentUserId,
-                createdAt: new Date().toISOString(),
-              };
-            },
+            action: props.realActions
+              ? createCommentAction
+              : async ({ request }: { request: Request }) => {
+                  const formData = await request.formData();
+                  const content = formData.get('content') as string;
+                  return {
+                    ok: true,
+                    comment: {
+                      id: `new-${Date.now()}`,
+                      content,
+                      authorId: testCurrentUserId,
+                      createdAt: new Date().toISOString(),
+                    },
+                  };
+                },
             element: null,
           },
           {
             path: 'comments/:id',
-            action: async () => ({ success: true }),
+            action: props.realActions ? deleteCommentAction : async () => ({ ok: true }),
             element: null,
           },
         ],
@@ -348,7 +375,11 @@ function renderCommentSection(
     ],
     { initialEntries: ['/'] },
   );
-  return render(<RouterProvider router={router} />);
+  return render(
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>,
+  );
 }
 
 // ── Setup ──────────────────────────────────────────────────────────────────
@@ -359,6 +390,74 @@ beforeEach(() => {
   mockApi.get.mockResolvedValue([]);
   mockUseAuth.mockReturnValue(guestAuth as ReturnType<typeof useAuth>);
   mockUseTranslation.mockReturnValue(defaultTranslation);
+});
+
+// ── Reply cap hint (E10) ───────────────────────────────────────────────────
+
+describe('CommentSection — reply cap hint', () => {
+  function initialWith(comment: CommentWithRepliesOutput): InitialComments {
+    return {
+      data: [comment],
+      meta: { pagination: { total: 1, page: 1, perPage: 10, totalPages: 1 } },
+    };
+  }
+
+  it('shows the hint with the cap (20) under a thread with hasMoreReplies', async () => {
+    renderCommentSection({
+      initialComments: initialWith({ ...commentWithReply, hasMoreReplies: true }),
+    });
+    expect(await screen.findByText('Showing the first 20 replies.')).toBeInTheDocument();
+  });
+
+  it('shows the Turkish hint when the locale is tr', async () => {
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+    renderCommentSection({
+      initialComments: initialWith({ ...commentWithReply, hasMoreReplies: true }),
+    });
+    expect(await screen.findByText('İlk 20 yanıt gösteriliyor.')).toBeInTheDocument();
+  });
+
+  it('shows no hint when hasMoreReplies is false', async () => {
+    renderCommentSection({ initialComments: initialWith(commentWithReply) });
+    await screen.findByText('Thanks!');
+    expect(screen.queryByText(/Showing the first/)).not.toBeInTheDocument();
+  });
+});
+
+// ── Deleted accounts (E11) ─────────────────────────────────────────────────
+
+describe('CommentSection — deleted accounts', () => {
+  it('renders "Deleted user" without a profile link for a null author on a comment and a reply', async () => {
+    const comment: CommentWithRepliesOutput = {
+      ...topLevelComment,
+      author: null,
+      replies: [{ ...replyByAlice, author: null }],
+    };
+    renderCommentSection({
+      initialComments: {
+        data: [comment],
+        meta: { pagination: { total: 1, page: 1, perPage: 10, totalPages: 1 } },
+      },
+    });
+
+    expect(await screen.findAllByText('Deleted user')).toHaveLength(2);
+    expect(document.querySelector('a[href^="/u/"]')).toBeNull();
+    const articles = screen.getAllByRole('article');
+    expect(articles[0].getAttribute('aria-label')).toContain('Deleted user');
+    expect(articles[1].getAttribute('aria-label')).toBe('Reply by Deleted user');
+    expect(screen.queryByText('Unknown')).not.toBeInTheDocument();
+  });
+
+  it('uses the Turkish label when the locale is tr', async () => {
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+    renderCommentSection({
+      initialComments: {
+        data: [{ ...topLevelComment, author: null }],
+        meta: { pagination: { total: 1, page: 1, perPage: 10, totalPages: 1 } },
+      },
+    });
+    expect(await screen.findByText('Silinmiş kullanıcı')).toBeInTheDocument();
+  });
 });
 
 // ── i18n ───────────────────────────────────────────────────────────────────
@@ -918,7 +1017,7 @@ describe('CommentSection — comment form', () => {
       user: regularUser,
       isAuthenticated: true,
     } as ReturnType<typeof useAuth>);
-    mockApi.get.mockReturnValue(new Promise(() => {}));
+    mockApi.get.mockReturnValue(new Promise(() => undefined));
 
     renderCommentSection();
 
@@ -926,7 +1025,7 @@ describe('CommentSection — comment form', () => {
   });
 
   it('hides the form when not authenticated', () => {
-    mockApi.get.mockReturnValue(new Promise(() => {}));
+    mockApi.get.mockReturnValue(new Promise(() => undefined));
 
     renderCommentSection();
 
@@ -1149,5 +1248,112 @@ describe('CommentSection — Load More pagination', () => {
     });
 
     expect(screen.getByRole('button', { name: /load more/i })).toBeInTheDocument();
+  });
+});
+
+// ── Action failures (web-data-loading: actions return { ok: false, error }) ──
+
+describe('CommentSection — action failures', () => {
+  const serverError = () => new ApiError('INTERNAL_ERROR', 'Something broke', undefined, 500);
+
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue({
+      ...guestAuth,
+      user: regularUser,
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+  });
+
+  it('keeps the section and the typed comment when create fails, and toasts the error', async () => {
+    mockApi.post.mockRejectedValue(serverError());
+    renderCommentSection({
+      realActions: true,
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
+
+    await userEvent.type(screen.getByPlaceholderText('Write a comment...'), 'Will this post?');
+    await userEvent.click(screen.getByRole('button', { name: 'Post Comment' }));
+
+    expect(
+      await screen.findByText('Failed to post comment. Please try again.'),
+    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Write a comment...')).toHaveValue('Will this post?');
+    expect(screen.getByText('Great recipe!')).toBeInTheDocument();
+    expect(screen.getByText('Comments (0)')).toBeInTheDocument();
+    expect(screen.queryByText('Will this post?', { selector: 'p' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the reply form and its text open when a reply fails', async () => {
+    mockUseAuth.mockReturnValue({
+      ...guestAuth,
+      user: recipeOwnerUser,
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+    mockApi.post.mockRejectedValue(serverError());
+    renderCommentSection({
+      realActions: true,
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reply' }));
+    await userEvent.type(screen.getByPlaceholderText('Write a reply...'), 'Agreed');
+    await userEvent.click(screen.getByRole('button', { name: 'Post Reply' }));
+
+    expect(
+      await screen.findByText('Failed to post comment. Please try again.'),
+    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Write a reply...')).toHaveValue('Agreed');
+  });
+
+  it('restores a deleted comment and the total when delete fails, and toasts the error', async () => {
+    const ownComment: CommentWithRepliesOutput = {
+      ...topLevelComment,
+      id: 'comment-own',
+      content: 'My take',
+      authorId: regularUser.id,
+      author: { id: regularUser.id, username: 'user-2', displayName: null, avatarUrl: null },
+    };
+    mockApi.delete.mockRejectedValue(serverError());
+    renderCommentSection({
+      realActions: true,
+      initialComments: {
+        data: [ownComment],
+        meta: { pagination: { total: 1, page: 1, perPage: 10, totalPages: 1 } },
+      },
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    expect(
+      await screen.findByText('Failed to delete comment. Please try again.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('My take')).toBeInTheDocument();
+    expect(screen.getByText('Comments (1)')).toBeInTheDocument();
+    expect(mockApi.delete).toHaveBeenCalledWith('/comments/comment-own', {
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it('removes the comment for good when delete succeeds', async () => {
+    const ownComment: CommentWithRepliesOutput = {
+      ...topLevelComment,
+      id: 'comment-own',
+      content: 'My take',
+      authorId: regularUser.id,
+    };
+    mockApi.delete.mockResolvedValue({ message: 'deleted' });
+    renderCommentSection({
+      realActions: true,
+      initialComments: {
+        data: [ownComment],
+        meta: { pagination: { total: 1, page: 1, perPage: 10, totalPages: 1 } },
+      },
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => expect(screen.queryByText('My take')).not.toBeInTheDocument());
+    expect(screen.getByText('Comments (0)')).toBeInTheDocument();
+    expect(screen.queryByText('Failed to delete comment. Please try again.')).toBeNull();
   });
 });

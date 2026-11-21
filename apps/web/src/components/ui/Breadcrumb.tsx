@@ -21,7 +21,7 @@ interface BreadcrumbProps {
 export function Breadcrumb({ items }: BreadcrumbProps) {
   const { t } = useTranslation();
   return (
-    <nav aria-label={t('a11y.breadcrumb')}>
+    <nav aria-label={t('a11y.breadcrumb')} className="print-hidden">
       <ol className="flex items-center gap-1 flex-wrap text-[color:var(--text-tertiary)] text-xs">
         {items.map((item, i) => {
           const isLast = i === items.length - 1;

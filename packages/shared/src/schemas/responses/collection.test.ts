@@ -221,3 +221,25 @@ describe('RecipeCollectionsOutputSchema', () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe('E11 — a deleted account is returned as author: null', () => {
+  it('CollectionDetailOutputSchema accepts a null owner and a null item recipe author', () => {
+    const payload = {
+      ...collectionRow,
+      author: null,
+      items: [{ ...collectionItem, recipe: { ...recipeListItem, author: null } }],
+      recipeCount: 1,
+    };
+    expect(CollectionDetailOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+
+  it('PublicCollectionListItemOutputSchema accepts a null owner', () => {
+    const payload = { ...collectionRow, recipeCount: 3, author: null };
+    expect(PublicCollectionListItemOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+
+  it('CollectionItemRecipeOutputSchema inherits the nullable author', () => {
+    const payload = { ...recipeListItem, author: null };
+    expect(CollectionItemRecipeOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+});

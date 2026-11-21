@@ -19,7 +19,8 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-function renderCards(props: React.ComponentProps<typeof StatCards>) {
+function renderCards(props: React.ComponentProps<typeof StatCards>, locale: 'en' | 'tr' = 'en') {
+  localStorage.setItem('brewform_locale', locale);
   return render(
     <I18nProvider>
       <StatCards {...props} />
@@ -181,5 +182,30 @@ describe('StatCards', () => {
     });
     // 18g ≈ 0.6 oz (formatWeight uses a space)
     expect(screen.getByText('0.6 oz')).toBeInTheDocument();
+  });
+});
+
+describe('StatCards — locale-aware values (wave-6 t6)', () => {
+  const longBrew = {
+    groundWeightGrams: 100,
+    extractionVolumeMl: 500,
+    extractionTimeSeconds: 43200,
+    brewRatio: 2.2222223,
+    temperatureCelsius: 20,
+    tds: null,
+  };
+
+  it('shows 12h and 1:2.2 in en (never 43200s or the unrounded ratio)', () => {
+    renderCards({ version: longBrew, unitSystem: 'metric' }, 'en');
+    expect(screen.getByText('12h')).toBeInTheDocument();
+    expect(screen.getByText('1:2.2')).toBeInTheDocument();
+    expect(screen.queryByText('43200s')).not.toBeInTheDocument();
+    expect(screen.queryByText(/2\.2222/)).not.toBeInTheDocument();
+  });
+
+  it('shows 12 sa and 1:2,2 in tr', () => {
+    renderCards({ version: longBrew, unitSystem: 'metric' }, 'tr');
+    expect(screen.getByText('12 sa')).toBeInTheDocument();
+    expect(screen.getByText('1:2,2')).toBeInTheDocument();
   });
 });

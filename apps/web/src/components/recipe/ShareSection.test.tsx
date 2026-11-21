@@ -1,16 +1,37 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ShareSection } from './ShareSection.tsx';
+import type { ReactNode } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
   useTranslation: vi.fn(),
-  I18nProvider: ({ children }: { children: unknown }) => children,
+  I18nProvider: ({ children }: { children: ReactNode }) => children,
 }));
 
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
+}));
+
+vi.mock('../../api/index.ts', () => ({
+  qrcodeApi: { recipeSvg: vi.fn() },
+}));
+
+import { qrcodeApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { recipeQrLoader, shouldRevalidateRecipeQr } from '../../routes/resources/qrcode.ts';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { ShareSection } from './ShareSection.tsx';
+
+const mockRecipeSvg = vi.mocked(qrcodeApi.recipeSvg);
 
 const mockUseTranslation = vi.mocked(useTranslation);
 
@@ -20,6 +41,7 @@ const enT = (key: string) => {
     'a11y.share.copyUrl': 'Copy recipe URL to clipboard',
     'a11y.share.downloadQr': 'Download QR code as SVG',
     'a11y.share.on': 'Share on {platform}',
+    'qrcode.downloadFailed': 'Failed to download QR code.',
   };
   return map[key] ?? key;
 };
@@ -33,11 +55,26 @@ const defaultTranslation = {
 
 // ── Setup ──────────────────────────────────────────────────────────────────
 
-// ShareSection uses window.location.origin — provide a stable value
-Object.defineProperty(globalThis, 'location', {
-  value: { origin: 'https://brewform.app' },
-  writable: true,
-});
+/** Share section props for the fixture recipe. */
+type Props = Parameters<typeof ShareSection>[0];
+
+/**
+ * Renders the share section inside the app providers, next to the real
+ * `resources/qrcode/recipe/:slug` resource route its QR download fetcher loads.
+ */
+function render(ui: React.ReactElement<Props>) {
+  return renderWithAppProviders([
+    { path: '/', element: ui },
+    {
+      path: '/resources/qrcode/recipe/:slug',
+      loader: recipeQrLoader,
+      shouldRevalidate: shouldRevalidateRecipeQr,
+    },
+  ]);
+}
+
+/** The share card, or null when it is hidden. */
+const shareCard = () => screen.queryByRole('region', { name: 'Share recipe' });
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -48,31 +85,23 @@ beforeEach(() => {
 
 describe('ShareSection — visibility gating', () => {
   it('renders null when visibility is "private"', () => {
-    const { container } = render(
-      <ShareSection slug="my-espresso" title="My Espresso" visibility="private" />,
-    );
-    expect(container.firstChild).toBeNull();
+    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="private" />);
+    expect(shareCard()).toBeNull();
   });
 
   it('renders null when visibility is "draft"', () => {
-    const { container } = render(
-      <ShareSection slug="my-espresso" title="My Espresso" visibility="draft" />,
-    );
-    expect(container.firstChild).toBeNull();
+    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="draft" />);
+    expect(shareCard()).toBeNull();
   });
 
   it('renders when visibility is "public"', () => {
-    const { container } = render(
-      <ShareSection slug="my-espresso" title="My Espresso" visibility="public" />,
-    );
-    expect(container.firstChild).not.toBeNull();
+    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+    expect(shareCard()).not.toBeNull();
   });
 
   it('renders when visibility is "unlisted"', () => {
-    const { container } = render(
-      <ShareSection slug="my-espresso" title="My Espresso" visibility="unlisted" />,
-    );
-    expect(container.firstChild).not.toBeNull();
+    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="unlisted" />);
+    expect(shareCard()).not.toBeNull();
   });
 });
 
@@ -130,15 +159,15 @@ describe('ShareSection — social share buttons', () => {
   });
 });
 
-describe('ShareSection — copy behavior (task 9.2)', () => {
-  beforeEach(() => {
-    // Mock navigator.clipboard
-    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
-  });
+/** Replaces `navigator.clipboard` with a stub exposing `writeText`. */
+function stubClipboard(writeText: ReturnType<typeof vi.fn>) {
+  Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+}
 
+describe('ShareSection — copy behavior (task 9.2)', () => {
   it('copy button shows "Copied!" for 3 seconds after successful copy', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    stubClipboard(writeText);
 
     render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
 
@@ -154,7 +183,7 @@ describe('ShareSection — copy behavior (task 9.2)', () => {
 
   it('copy button shows error state for 3 seconds on clipboard failure', async () => {
     const writeText = vi.fn().mockRejectedValue(new Error('Clipboard denied'));
-    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    stubClipboard(writeText);
 
     render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
 
@@ -166,5 +195,45 @@ describe('ShareSection — copy behavior (task 9.2)', () => {
         'recipe.share.copyError',
       );
     });
+  });
+});
+
+describe('ShareSection — QR download', () => {
+  let clickSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    Object.defineProperty(globalThis.URL, 'createObjectURL', {
+      value: vi.fn(() => 'blob:qr'),
+      configurable: true,
+    });
+    Object.defineProperty(globalThis.URL, 'revokeObjectURL', {
+      value: vi.fn(),
+      configurable: true,
+    });
+    clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    clickSpy.mockRestore();
+  });
+
+  it('downloads the SVG through the QR resource route', async () => {
+    mockRecipeSvg.mockResolvedValue('<svg/>');
+    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+
+    await userEvent.click(screen.getByRole('button', { name: /download qr/i }));
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect(mockRecipeSvg).toHaveBeenCalledWith('my-espresso', { signal: expect.any(AbortSignal) });
+  });
+
+  it('shows an error toast instead of failing silently', async () => {
+    mockRecipeSvg.mockRejectedValue(new Error('down'));
+    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+
+    await userEvent.click(screen.getByRole('button', { name: /download qr/i }));
+
+    expect(await screen.findByText('Failed to download QR code.')).toBeInTheDocument();
+    expect(clickSpy).not.toHaveBeenCalled();
   });
 });

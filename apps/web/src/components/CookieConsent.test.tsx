@@ -50,6 +50,10 @@ describe('CookieConsent — i18n', () => {
     expect(screen.getByText('We use cookies to improve your experience')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument();
+    // Site chrome: print hides only marked elements (V2).
+    expect(
+      screen.getByText('We use cookies to improve your experience').closest('.print-hidden'),
+    ).not.toBeNull();
   });
 
   it('renders consent text and buttons in Turkish when locale is tr', () => {

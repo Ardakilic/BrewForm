@@ -6,7 +6,8 @@
  */
 import { db } from '@brewform/db';
 import { vendors } from '@brewform/db/schema';
-import { and, asc, count, eq, isNull, like } from 'drizzle-orm';
+import { and, asc, count, eq, ilike, isNull } from 'drizzle-orm';
+import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
 
 /** Find a vendor by ID. Returns null if deleted or not found. */
 export async function findById(id: string) {
@@ -38,12 +39,18 @@ export async function findMany(page: number, perPage: number) {
   return { vendors: data, total: totalResult[0].count };
 }
 
-/** Search non-deleted vendors by name (LIKE match), limited to 10 results. */
-export function search(query: string) {
-  return db
+/**
+ * Search non-deleted vendors by name (case-insensitive literal substring match through
+ * `ilike(name, toContainsPattern(term))`), limited to 10 results. A term that is empty after
+ * trimming returns `[]` without querying.
+ */
+export async function search(query: string) {
+  const term = normalizeSearchTerm(query);
+  if (term === '') return [];
+  return await db
     .select()
     .from(vendors)
-    .where(and(isNull(vendors.deletedAt), like(vendors.name, `%${query}%`)))
+    .where(and(isNull(vendors.deletedAt), ilike(vendors.name, toContainsPattern(term))))
     .orderBy(asc(vendors.name))
     .limit(10);
 }

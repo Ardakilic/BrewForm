@@ -32,6 +32,11 @@ describe('Breadcrumb', () => {
     expect(container.querySelector('ol')).toBeInTheDocument();
   });
 
+  it('is navigation marked print-hidden (print hides only marked elements, V2)', () => {
+    render(<Breadcrumb items={[{ label: 'Home' }]} />);
+    expect(screen.getByRole('navigation')).toHaveClass('print-hidden');
+  });
+
   it('renders each item as a list item', () => {
     const { container } = render(
       <Breadcrumb items={[{ label: 'Recipes', to: '/recipes' }, { label: 'Pour Over' }]} />,

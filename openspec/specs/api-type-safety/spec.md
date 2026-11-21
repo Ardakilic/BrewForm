@@ -175,7 +175,7 @@ The 12 P2 locations (per the D34 plan, with line-number drift corrected):
 #### Scenario: make lint passes with no new suppressions
 
 - **WHEN** `make lint` is invoked
-- **THEN** zero new lint suppressions are introduced; the existing `// deno-lint-ignore-file` directives on stretch files (`utils/openapi/index.ts`) are unchanged or removed if the cast is cleaned
+- **THEN** zero new lint suppressions are introduced and no file-level or range suppression exists; the single line-level `// biome-ignore lint/suspicious/noExplicitAny` on the `utils/openapi/index.ts` stretch cast is unchanged or removed if the cast is cleaned
 
 ### Requirement: P3 stretch casts are documented or simplified (optional)
 
@@ -206,7 +206,7 @@ The D34 plan lists four explicit acceptance criteria. This change SHALL satisfy 
 
 1. **No `any` in the 12 P2 locations:** No `any` (parameter, variable, or cast) remains in the twelve P2 locations listed in the `api-type-safety` MODIFIED requirement above.
 2. **Payload types derive from shared Zod schemas:** All payload types (`BeanCreate`, `BeanUpdate`, `SetupCreate`, `SetupUpdate`, `VendorCreate`, `VendorUpdate`, `EquipmentCreate`, `EquipmentUpdate`) derive from the shared Zod schemas via `z.infer<>` — no hand-duplicated interfaces. The `UserPreferencesUpdate`/flatData exception (using `typeof userPreferences.$inferInsert` instead of the nested shared `UserPreferences`) is documented in design Decision 3 and is NOT a hand-duplicated interface — it's the Drizzle inferred DB row type.
-3. **`make ci` passes with no new lint suppressions:** `make check`, `make lint`, `make fmt`, and `make test` all pass. No new `// deno-lint-ignore-file` directives are introduced on the P2 files. The existing `// deno-lint-ignore-file no-explicit-any` on `utils/openapi/index.ts` (stretch file) is unchanged or removed if the cast is cleaned.
+3. **`make ci` passes with no new lint suppressions:** `make check`, `make lint`, `make fmt`, and `make test` all pass. No new suppressions are introduced on the P2 files. The existing line-level `// biome-ignore lint/suspicious/noExplicitAny` on `utils/openapi/index.ts` (stretch file) is unchanged or removed if the cast is cleaned.
 4. **Stretch casts removed or annotated:** The P3 stretch casts (openapi, jwt, errorHandler, equipment cache) are either removed (clean typed alternative) or annotated with a one-line justification comment. This is optional — the P2 scope is required, the P3 stretch is not.
 
 **Reason:** These are the explicit acceptance gates from `plans/D34-residual-any-elimination.md`. A fresh-context implementer must verify all four before marking the change complete.
@@ -224,5 +224,5 @@ The D34 plan lists four explicit acceptance criteria. This change SHALL satisfy 
 #### Scenario: make fmt check passes
 
 - **WHEN** `make fmt` is run followed by `git diff --exit-code`
-- **THEN** there is no diff — `deno fmt` has been applied to all changed files (CI enforces `deno fmt --check`)
+- **THEN** there is no diff — Biome formatting (`biome check --write`) has been applied to all changed files (CI enforces `pnpm run fmt-check`)
 

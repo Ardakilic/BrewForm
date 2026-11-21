@@ -1,32 +1,28 @@
-import { useEffect, useState } from 'react';
-import { api } from '../../api/client.ts';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { useEffect } from 'react';
+import { useLoaderData } from 'react-router';
 import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useListUrlState } from '../../hooks/useListUrlState.ts';
 import { formatDate } from '../../utils/format.ts';
+import { parseAuditLogParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './AdminAuditLogPage.data.ts';
 
 const log = createLogger('AdminAuditLogPage');
 
-interface AuditLogEntry {
-  id: string;
-  adminId: string;
-  action: string;
-  entityType: string;
-  entityId: string;
-  details: string | null;
-  createdAt: string;
-  admin?: { username: string };
-}
-
-/** Admin page: paginated audit-log table with an entity-type filter. */
+/**
+ * Admin page: paginated audit-log table with an entity-type filter. Both selections live in
+ * the URL (`?entityType=`, `?page=`) and the rows come from the route loader
+ * (`AdminAuditLogPage.data.ts`), so the view is shareable and Back/Forward step through it.
+ */
 export function AdminAuditLogPage() {
   const { t, locale } = useTranslation();
-  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
-  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
-  const [page, setPage] = useState(1);
-  const [entityFilter, setEntityFilter] = useState('');
+  const { logs, pagination } = useLoaderData<typeof loader>();
+  const {
+    state: { entityType },
+    setFilter,
+    setPage,
+  } = useListUrlState(parseAuditLogParams);
 
   useEffect(() => {
     log.debug({}, 'AdminAuditLogPage mounted');
@@ -34,21 +30,6 @@ export function AdminAuditLogPage() {
       log.debug({}, 'AdminAuditLogPage unmounted');
     };
   }, []);
-
-  useEffect(() => {
-    const params = new URLSearchParams({ page: String(page), perPage: '50' });
-    if (entityFilter) params.set('entityType', entityFilter);
-    api
-      .get<{ logs: AuditLogEntry[]; total: number }>(`/admin/audit-log?${params}`)
-      .then((data) => {
-        setLogs(data.logs || []);
-        setStatus('ready');
-      })
-      .catch((err) => {
-        log.error({ err }, 'audit log fetch failed');
-        setStatus('error');
-      });
-  }, [page, entityFilter]);
 
   return (
     <div>
@@ -58,11 +39,8 @@ export function AdminAuditLogPage() {
 
       <div className="mb-4">
         <select
-          value={entityFilter}
-          onChange={(e) => {
-            setEntityFilter(e.target.value);
-            setPage(1);
-          }}
+          value={entityType}
+          onChange={(e) => setFilter('entityType', e.target.value)}
           className="input-field w-auto"
         >
           <option value="">{t('admin.audit.allEntities')}</option>
@@ -75,10 +53,8 @@ export function AdminAuditLogPage() {
         </select>
       </div>
 
-      {status === 'loading' ? (
-        <LoadingState />
-      ) : status === 'error' ? (
-        <ErrorState message={t('admin.audit.loadError')} />
+      {logs.length === 0 ? (
+        <p style={{ color: 'var(--text-tertiary)' }}>{t('admin.audit.noResults')}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -132,12 +108,13 @@ export function AdminAuditLogPage() {
         </div>
       )}
 
-      <PaginationControls
-        page={page}
-        totalPages={page + 1}
-        onPageChange={setPage}
-        showPageLabel={false}
-      />
+      {pagination.totalPages > 1 && (
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

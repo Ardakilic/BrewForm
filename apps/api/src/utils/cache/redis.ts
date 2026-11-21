@@ -6,7 +6,7 @@
  * Values are JSON-serialized so complex objects survive the round-trip;
  * TTL maps 1:1 to PX (ms). Prefix deletes use SCAN (never KEYS — it blocks).
  */
-import { Redis } from 'ioredis';
+import { createRedisClient } from '../redis/client.ts';
 import type { CacheProvider } from './index.ts';
 
 /** Minimal Redis command surface used by the provider (real client or test fake). */
@@ -18,6 +18,11 @@ export interface RedisClient {
   disconnect(): void;
 }
 
+/**
+ * {@link CacheProvider} backed by a Redis-protocol server (`CACHE_DRIVER=redis`): JSON values
+ * under `brewform:`-namespaced keys, millisecond TTLs (`SET PX`), prefix deletes through `SCAN`.
+ * Built by {@link createRedisProvider}; takes a {@link RedisClient} so tests can pass a fake.
+ */
 export class RedisCacheProvider implements CacheProvider {
   private readonly client: RedisClient;
 
@@ -57,9 +62,10 @@ export class RedisCacheProvider implements CacheProvider {
     }
   }
 
-  /** Disconnect the underlying client. */
-  async close(): Promise<void> {
+  /** Disconnect the underlying client (synchronous in ioredis; resolves at once). */
+  close(): Promise<void> {
     this.client.disconnect();
+    return Promise.resolve();
   }
 }
 
@@ -84,7 +90,18 @@ function escapeGlob(value: string): string {
   return value.replace(/[*?[\]\\]/g, (c) => `\\${c}`);
 }
 
-/** Build a Redis-backed provider from a URL (e.g. redis://redis:6379). */
+/**
+ * Build a Redis-backed provider from a URL (e.g. `redis://:password@valkey:6379`)
+ * on its own connection from the shared {@link createRedisClient} factory, so
+ * it inherits the fast-fail options (no offline queue, one retry, 500 ms
+ * command timeout, 2 s connect timeout, background reconnects). Callers wrap
+ * it in `FailSoftCacheProvider` (see `createCacheProvider('redis')`) so a
+ * backend failure degrades to a cache miss. The URL is never logged.
+ *
+ * @param url - Redis-protocol URL of the shared cache server.
+ * @returns A provider over a new `brewform-cache` connection.
+ */
 export function createRedisProvider(url: string): RedisCacheProvider {
-  return new RedisCacheProvider(new Redis(url) as unknown as RedisClient);
+  const client = createRedisClient(url, { connectionName: 'brewform-cache' });
+  return new RedisCacheProvider(client as unknown as RedisClient);
 }

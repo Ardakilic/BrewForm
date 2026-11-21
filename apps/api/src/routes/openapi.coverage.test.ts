@@ -17,7 +17,7 @@
  *
  * The pre-existing `routes/openapi.test.ts` smoke test is left unchanged.
  */
-import { beforeAll, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Test environment — set BEFORE the dynamic import of the router so the
@@ -54,7 +54,7 @@ interface OpenApiSpec {
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'];
 
-/** The 20 in-scope base paths (matched by prefix). */
+/** The 21 in-scope base paths (matched by prefix). */
 const IN_SCOPE_BASE_PATHS = [
   '/api/v1/beans',
   '/api/v1/badges',
@@ -76,6 +76,7 @@ const IN_SCOPE_BASE_PATHS = [
   '/api/v1/vendors',
   '/share',
   '/api/v1/sitemap.xml',
+  '/sitemap.xml',
 ];
 
 interface OpEntry {
@@ -105,7 +106,7 @@ function isResolvedSchema(value: unknown): boolean {
   return true;
 }
 
-/** True when an operation path belongs to one of the 20 in-scope groups. */
+/** True when an operation path belongs to one of the 21 in-scope groups. */
 function isInScope(path: string): boolean {
   return IN_SCOPE_BASE_PATHS.some((base) => path === base || path.startsWith(base + '/'));
 }
@@ -137,7 +138,7 @@ describe('OpenAPI coverage — generated spec is well-formed', () => {
   });
 
   // Property 1 — coverage of all in-scope routes.
-  it('documents all 20 in-scope base paths (P1)', () => {
+  it('documents all 21 in-scope base paths (P1)', () => {
     const pathKeys = Object.keys(spec.paths ?? {});
     const missing = IN_SCOPE_BASE_PATHS.filter(
       (base) => !pathKeys.some((p) => p === base || p.startsWith(base + '/')),
@@ -278,12 +279,27 @@ describe('OpenAPI coverage — non-JSON routes (Requirements 9.x)', () => {
   });
 
   it('sitemap operation documents application/xml and is not a JSON envelope', () => {
-    const op = findOp((p) => p.includes('sitemap'));
-    expect(op).toBeDefined();
-    const ok = op!.responses?.['200'];
-    expect(ok).toBeDefined();
-    expect(ok!.content?.['application/xml']).toBeDefined();
-    expect(ok!.content?.['application/json']).toBeUndefined();
+    const op = findOp((p) => p === '/sitemap.xml');
+    assert.exists(op);
+    const ok = op.responses?.['200'];
+    assert.exists(ok);
+    expect(ok.content?.['application/xml']).toBeDefined();
+    expect(ok.content?.['application/json']).toBeUndefined();
+    expect(Object.keys(op.responses ?? {})).toEqual(expect.arrayContaining(['400', '404']));
+  });
+
+  it('the legacy /api/v1/sitemap.xml operation is deprecated and documents a 301', () => {
+    const op = findOp((p) => p === '/api/v1/sitemap.xml') as
+      | (Operation & {
+          deprecated?: boolean;
+          responses?: Record<string, { headers?: Record<string, unknown> }>;
+        })
+      | undefined;
+    assert.exists(op);
+    expect(op.deprecated).toBe(true);
+    expect(op.responses?.['301']).toBeDefined();
+    expect(op.responses?.['301'].headers?.Location).toBeDefined();
+    expect(op.responses?.['200']).toBeUndefined();
   });
 
   it('qrcode 200 documents an image content type and is not a JSON envelope', () => {

@@ -1,5 +1,5 @@
 import type { AuthUser } from '@brewform/shared/types';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../contexts/I18nContext.tsx';
@@ -10,9 +10,12 @@ const { mockLogger } = vi.hoisted(() => ({
 }));
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
+vi.mock('../utils/auth-broadcast.ts', () => ({ broadcastAuthChange: vi.fn() }));
+
 vi.mock('../api/index', () => ({
   authApi: {
     login: vi.fn(),
+    register: vi.fn(),
     logout: vi.fn().mockResolvedValue({}),
     registrationStatus: vi.fn().mockResolvedValue({ enabled: true }),
   },
@@ -27,25 +30,11 @@ vi.mock('../api/index', () => ({
     delete: vi.fn(),
     upload: vi.fn(),
   },
-  ApiError: class extends Error {
-    code: string;
-    status: number;
-    details?: Array<{ field: string; message: string }>;
-    constructor(
-      code: string,
-      message: string,
-      details?: Array<{ field: string; message: string }>,
-      status: number = 500,
-    ) {
-      super(message);
-      this.code = code;
-      this.status = status;
-      this.details = details;
-    }
-  },
 }));
 
-import { ApiError, userApi } from '../api/index.ts';
+import { ApiError } from '../api/errors.ts';
+import { authApi, userApi } from '../api/index.ts';
+import { broadcastAuthChange } from '../utils/auth-broadcast.ts';
 
 const VALID_USER: AuthUser = {
   id: 'u1',
@@ -151,5 +140,206 @@ describe('AuthContext refreshUser error handling', () => {
     expect(screen.getByTestId('session-error').textContent).toBe('none');
     expect(mockLogger.warn).not.toHaveBeenCalled();
     expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthContext session bootstrap abort', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('passes an AbortSignal to userApi.me and aborts it on unmount without logging an error', async () => {
+    let captured: AbortSignal | undefined;
+    vi.mocked(userApi.me).mockImplementation(
+      (opts?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          captured = opts?.signal;
+          opts?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
+        }),
+    );
+    const { unmount } = render(
+      <MemoryRouter>
+        <I18nProvider>
+          <AuthProvider>
+            <TestConsumer />
+          </AuthProvider>
+        </I18nProvider>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(captured).toBeInstanceOf(AbortSignal));
+    expect(captured?.aborted).toBe(false);
+
+    unmount();
+
+    expect(captured?.aborted).toBe(true);
+    await Promise.resolve();
+    expect(mockLogger.error).not.toHaveBeenCalled();
+    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'AuthContext token refresh aborted');
+  });
+});
+
+/** Exposes `logout(leave)` through a captured context value for the order tests. */
+let capturedAuth: ReturnType<typeof useAuth> | null = null;
+
+/** Captures the auth context and renders the user id. */
+function LogoutConsumer() {
+  capturedAuth = useAuth();
+  return <span data-testid="user-id">{capturedAuth.user?.id ?? 'none'}</span>;
+}
+
+/** Renders the real provider signed in as {@link VALID_USER}. */
+async function renderSignedIn() {
+  vi.mocked(userApi.me).mockResolvedValue(VALID_USER);
+  render(
+    <MemoryRouter>
+      <I18nProvider>
+        <AuthProvider>
+          <LogoutConsumer />
+        </AuthProvider>
+      </I18nProvider>
+    </MemoryRouter>,
+  );
+  await waitFor(() => expect(screen.getByTestId('user-id').textContent).toBe('u1'));
+}
+
+describe('AuthContext logout(leave)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedAuth = null;
+    vi.mocked(authApi.logout).mockResolvedValue({} as never);
+  });
+
+  it('logout runs leave between the server logout and clearing the user', async () => {
+    await renderSignedIn();
+    const order: string[] = [];
+    vi.mocked(authApi.logout).mockImplementation(() => {
+      order.push('server logout');
+      return Promise.resolve({} as never);
+    });
+    let userInsideLeave = '';
+    const leave = vi.fn(() => {
+      order.push('leave');
+      userInsideLeave = screen.getByTestId('user-id').textContent ?? '';
+    });
+
+    await act(() => capturedAuth?.logout(leave) ?? Promise.resolve());
+
+    expect(order).toEqual(['server logout', 'leave']);
+    expect(userInsideLeave).toBe('u1');
+    expect(screen.getByTestId('user-id').textContent).toBe('none');
+  });
+
+  it('a throwing leave still clears the user', async () => {
+    await renderSignedIn();
+    const leave = vi.fn(() => {
+      throw new Error('navigation failed');
+    });
+
+    await act(async () => {
+      await capturedAuth?.logout(leave).catch(() => undefined);
+    });
+
+    expect(leave).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('user-id').textContent).toBe('none');
+  });
+});
+
+describe('AuthContext broadcasts sign-in and sign-out to other tabs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedAuth = null;
+    vi.mocked(authApi.logout).mockResolvedValue({} as never);
+  });
+
+  it('a successful login broadcasts login once', async () => {
+    vi.mocked(userApi.me).mockRejectedValue(new ApiError('UNAUTHORIZED', 'no', undefined, 401));
+    vi.mocked(authApi.login).mockResolvedValue({ user: VALID_USER } as never);
+    render(
+      <MemoryRouter>
+        <I18nProvider>
+          <AuthProvider>
+            <LogoutConsumer />
+          </AuthProvider>
+        </I18nProvider>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(userApi.me).toHaveBeenCalled());
+
+    await act(() => capturedAuth?.login('x@y.z', 'pw') ?? Promise.resolve());
+
+    expect(broadcastAuthChange).toHaveBeenCalledTimes(1);
+    expect(broadcastAuthChange).toHaveBeenCalledWith('login');
+  });
+
+  it('a successful registration broadcasts login once', async () => {
+    vi.mocked(userApi.me).mockRejectedValue(new ApiError('UNAUTHORIZED', 'no', undefined, 401));
+    vi.mocked(authApi.register).mockResolvedValue({ user: VALID_USER } as never);
+    render(
+      <MemoryRouter>
+        <I18nProvider>
+          <AuthProvider>
+            <LogoutConsumer />
+          </AuthProvider>
+        </I18nProvider>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(userApi.me).toHaveBeenCalled());
+
+    await act(
+      () =>
+        capturedAuth?.register({ email: 'x@y.z', username: 'x', password: 'pw' }) ??
+        Promise.resolve(),
+    );
+
+    expect(broadcastAuthChange).toHaveBeenCalledTimes(1);
+    expect(broadcastAuthChange).toHaveBeenCalledWith('login');
+  });
+
+  it('a failed login does not broadcast', async () => {
+    vi.mocked(userApi.me).mockRejectedValue(new ApiError('UNAUTHORIZED', 'no', undefined, 401));
+    vi.mocked(authApi.login).mockRejectedValue(
+      new ApiError('INVALID_CREDENTIALS', 'bad', undefined, 401),
+    );
+    render(
+      <MemoryRouter>
+        <I18nProvider>
+          <AuthProvider>
+            <LogoutConsumer />
+          </AuthProvider>
+        </I18nProvider>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(userApi.me).toHaveBeenCalled());
+
+    await act(async () => {
+      await capturedAuth?.login('x@y.z', 'wrong').catch(() => undefined);
+    });
+
+    expect(broadcastAuthChange).not.toHaveBeenCalled();
+  });
+
+  it('logout broadcasts logout before leave runs, even when the server logout fails', async () => {
+    await renderSignedIn();
+    vi.mocked(authApi.logout).mockRejectedValue(new TypeError('Failed to fetch'));
+    const order: string[] = [];
+    vi.mocked(broadcastAuthChange).mockImplementation((change) => {
+      order.push(`broadcast ${change}`);
+    });
+    const leave = vi.fn(() => {
+      order.push('leave');
+    });
+
+    await act(() => capturedAuth?.logout(leave) ?? Promise.resolve());
+
+    expect(order).toEqual(['broadcast logout', 'leave']);
+    expect(broadcastAuthChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('the session bootstrap does not broadcast', async () => {
+    await renderSignedIn();
+
+    expect(broadcastAuthChange).not.toHaveBeenCalled();
   });
 });

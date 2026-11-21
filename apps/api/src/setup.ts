@@ -2,6 +2,7 @@ import { db } from '@brewform/db';
 import { userPreferences, users } from '@brewform/db/schema';
 import { hashSync } from 'bcryptjs';
 import { count, eq } from 'drizzle-orm';
+import { toLoggableError } from './utils/errors.ts';
 import { createLogger } from './utils/logger/index.ts';
 
 const logger = createLogger('setup');
@@ -55,6 +56,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  logger.error({ err }, 'Setup failed');
+  logger.error({ err: toLoggableError(err) }, 'Setup failed');
   process.exit(1);
 });

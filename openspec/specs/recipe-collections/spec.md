@@ -1,7 +1,13 @@
 # recipe-collections Specification
 
 ## Purpose
-TBD - created by archiving change f01-recipe-collections. Update Purpose after archive.
+
+Defines user recipe collections end to end: the tables and relations, shared input and output
+schemas, the model, service and route layers with OpenAPI metadata, and the web pages, components,
+profile tab, i18n keys and seed data. Collections follow the recipe visibility rules: items and
+counts show only recipes the viewer may list, cached reads re-check visibility, and a non-public
+recipe added to a shared collection stays hidden from other viewers. Logging, docblocks and tests
+are required throughout.
 ## Requirements
 ### Requirement: Database tables for collections and collection items
 
@@ -223,7 +229,7 @@ export const CollectionItemOutputSchema = z.object({
 export type CollectionItemOutput = z.infer<typeof CollectionItemOutputSchema>;
 
 export const CollectionDetailOutputSchema = CollectionOutputSchema.extend({
-  author: RecipeAuthorMiniSchema,
+  author: RecipeAuthorMiniSchema.nullable(), // null when the owner's account was deleted (account-deletion)
   items: z.array(CollectionItemOutputSchema),
   recipeCount: z.number().int(),
 });
@@ -247,7 +253,10 @@ and the inferred types from `packages/shared/src/schemas/index.ts` via explicit
 - **WHEN** `CollectionListItemOutputSchema.safeParse({ ...collectionRow })` is called without `recipeCount`
 - **THEN** `result.success` is `false`
 
----
+#### Scenario: CollectionDetailOutputSchema accepts a deleted owner
+
+- **WHEN** a detail payload whose owner account was deleted (`author: null`) is passed through `wire()` and then `CollectionDetailOutputSchema.safeParse()`
+- **THEN** `result.success` is `true`
 
 ### Requirement: API model layer — pure Drizzle data-access
 
@@ -258,11 +267,17 @@ The system SHALL create `apps/api/src/modules/collection/model.ts` with these fu
 /** Fetch a single collection by UUID, excluding soft-deleted rows. */
 export async function findById(id: string);
 
-/** Fetch a paginated list of a user's collections (all visibilities), with recipeCount. */
-export async function findByUserId(userId: string, page: number, perPage: number, visibility?: string);
+/** Fetch a paginated list of a user's collections (all visibilities), with recipeCount counted for the owner as viewer. */
+export async function findByUserId(userId: string, page: number, perPage: number, visibility?: Visibility, recipeId?: string);
 
-/** Fetch a paginated list of a user's public collections only. */
+/** Fetch a paginated list of a user's public collections only, with recipeCount counted for an anonymous viewer. */
 export async function findPublicByUserId(userId: string, page: number, perPage: number);
+
+/** Fetch all public collections across users, with recipeCount counted for an anonymous viewer. */
+export async function findAllPublic(page: number, perPage: number);
+
+/** Fetch the current visibility/author/deletion state of the given recipes (one query; used to filter collection items and mask their fork sources on every read). */
+export async function getRecipeVisibilityStates(recipeIds: string[]): Promise<Array<{ id: string; visibility: Visibility; authorId: string; deletedAt: Date | null }>>;
 
 /** Insert a new collection row and return it. */
 export async function create(data: typeof collections.$inferInsert);
@@ -282,17 +297,27 @@ export async function removeItem(collectionId: string, recipeId: string);
 /** Reorder all items in a collection by assigning sortOrder = index in a transaction. */
 export async function reorderItems(collectionId: string, itemIds: string[]);
 
-/** Fetch all collection_items for a collection, with nested recipe (excluding soft-deleted recipes), ordered by sortOrder. */
-export async function getItems(collectionId: string);
-
 /** Fetch public collections that contain a given recipe (for RecipeDetailPage). */
 export async function getCollectionsForRecipe(recipeId: string);
 ```
 
-The `findByUserId` and `findPublicByUserId` functions SHALL compute `recipeCount` via a subquery or
-a `db.select({ count: count() }).from(collectionItems).where(eq(collectionItems.collectionId, ...))`
-batch. The `getItems` function SHALL join `recipes` and filter `isNull(recipes.deletedAt)` so
-soft-deleted recipes do not appear. The `create` function uses `db.insert(collections).values(data).returning()`.
+The `findByUserId`, `findPublicByUserId` and `findAllPublic` functions SHALL compute `recipeCount`
+with one batched `db.select({ collectionId, count: count() }).from(collectionItems)` query that
+`innerJoin`s `recipes` on `collectionItems.recipeId` and counts only items whose recipe the list
+audience may list. The filter is the shared condition imported from `../recipe/model.ts` (capability
+`recipe-visibility`): `listableRecipeCondition(userId)` for `findByUserId` (the owner's own list:
+not deleted, and `public` or authored by the owner), and `listableRecipeCondition(null)` for
+`findPublicByUserId` and `findAllPublic` (anonymous audience: not deleted and `public`; `unlisted`
+recipes are not counted). An audience parameter on the shared count helper lets
+`findPublicByUserId` count as anonymous, although it delegates to `findByUserId`. Counting raw
+`collection_item` rows without the recipe join, or comparing `recipes.visibility` inline, is a
+violation of this requirement. The
+`getRecipeVisibilityStates` function SHALL select only `id`, `visibility`, `authorId` and `deletedAt`
+from `recipes` with `inArray(recipes.id, recipeIds)` (returning `[]` without querying when the list
+is empty) and SHALL deliberately NOT filter `deletedAt`, so callers can detect deletions. It is an
+exempt unit in the `recipe-visibility` enforcement test. Collection items are read only through
+`findById` (unfiltered) and filtered by the service with `getRecipeVisibilityStates`; the model has
+no separate item-list function. The `create` function uses `db.insert(collections).values(data).returning()`.
 The `softDelete` function applies `isNull(collections.deletedAt)` in the WHERE to prevent double-soft-delete.
 
 #### Scenario: findById excludes soft-deleted collections
@@ -300,18 +325,27 @@ The `softDelete` function applies `isNull(collections.deletedAt)` in the WHERE t
 - **WHEN** `findById('some-id')` is called for a collection with `deletedAt` set
 - **THEN** the function returns `undefined`
 
-#### Scenario: getItems excludes soft-deleted recipes
-
-- **WHEN** a collection contains an item whose recipe has `deletedAt` set
-- **AND** `getItems(collectionId)` is called
-- **THEN** the soft-deleted recipe's item is NOT in the returned array
-
 #### Scenario: removeItem hard-deletes the join row
 
 - **WHEN** `removeItem(collectionId, recipeId)` is called
 - **THEN** the `collection_item` row is deleted from the database (no `deletedAt` set — join tables are hard-deleted)
 
----
+#### Scenario: List recipeCount excludes soft-deleted and hidden recipes
+
+- **WHEN** a public collection holds 4 items whose recipes are public, soft-deleted, another author's private recipe and another author's unlisted recipe
+- **AND** `findPublicByUserId` or `findAllPublic` returns that collection
+- **THEN** its `recipeCount` is `1`
+
+#### Scenario: Owner list counts the owner's own non-public recipes
+
+- **WHEN** the owner's collection holds one public recipe, one draft recipe and one unlisted recipe authored by the owner, and one unlisted recipe by another author
+- **AND** `findByUserId(ownerId, 1, 20)` returns that collection
+- **THEN** its `recipeCount` is `3`
+
+#### Scenario: getRecipeVisibilityStates reports deletions
+
+- **WHEN** `getRecipeVisibilityStates([publicId, deletedId])` is called
+- **THEN** it returns both rows, and the row for `deletedId` has a non-null `deletedAt`
 
 ### Requirement: API service layer — business logic and permissions
 
@@ -354,10 +388,12 @@ Every function SHALL include `logger.debug({ relevantIds }, 'functionName starte
 **Permission rules:**
 - Mutations: `if (collection.userId !== userId) throw new Error('FORBIDDEN')`
 - Reads on private/draft collections: `if (collection.userId !== userId) throw new Error('FORBIDDEN')`
-- Reads on unlisted/public collections: allowed for any caller (including unauthenticated)
+- Reads on unlisted/public collections: allowed for any caller (including unauthenticated). An `unlisted` collection is reachable only through its direct link, and the list endpoints never return it to non-owners (capability `recipe-visibility`, "Collections follow the same listing rule")
 - `addRecipeToCollection`: fetch recipe; `if (!recipe) throw new Error('RECIPE_NOT_FOUND')`; THEN check visibility `if (recipe.visibility !== 'public' && recipe.authorId !== userId) throw new Error('FORBIDDEN')` (null-check BEFORE property access)
-- `addRecipeToCollection`: catch unique-constraint violation and throw `new Error('ALREADY_IN_COLLECTION')`
-- `reorderCollection`: validate `itemIds.length === collection.items.length` and all belong to the collection, else throw `new Error('REORDER_MISMATCH')`
+- `addRecipeToCollection`: catch unique-constraint violation and throw `new Error('ALREADY_IN_COLLECTION')`. Detection SHALL use `isUniqueViolation(err, 'collection_item_collection_id_recipe_id_unique')` from `apps/api/src/utils/errors.ts`; searching `err.message` or `err.cause.message` for `unique`/`duplicate` is a violation of this requirement
+- Item visibility: every `CollectionDetailOutput` returned by `getCollection`, `createCollection` and `updateCollection` SHALL contain only the items listable by the viewer as defined by the "Collection items show only recipes the viewer may list" requirement, which uses `canListRecipe` from `recipe/service.ts` (for `createCollection`/`updateCollection` the viewer is the owner). Each returned item's `recipe.forkedFromId` SHALL be masked to `null` unless its fork source is `public` and not soft-deleted, and `recipeCount` SHALL equal the number of returned items
+- `reorderCollection`: the "visible set" is the items whose recipe the owner may list (`canListRecipe(recipe, ownerId)`, the same filter as the detail output). Validate that `itemIds` has no duplicates and is exactly the visible set (same size, every id belongs to it), else throw `new Error('REORDER_MISMATCH')`. Items hidden from the owner (another author's recipe that is or became unlisted, private or draft, or a soft-deleted recipe) SHALL keep their relative order and SHALL be assigned the `sortOrder` values after the visible items, in one transaction
+- `removeRecipeFromCollection`: SHALL remove the item by `recipeId` whether or not the recipe is currently visible
 
 All service failures are thrown as `Error` instances whose `message` is a stable UPPER_SNAKE code;
 the route layer maps each code to its HTTP response (COLLECTION_NOT_FOUND/RECIPE_NOT_FOUND → 404
@@ -394,7 +430,16 @@ REORDER_MISMATCH → 400) rather than 500.
 - **WHEN** `reorderCollection('user-A', 'col-A', ['id-1', 'id-2'])` is called but the collection has 3 items
 - **THEN** the function throws `new Error('REORDER_MISMATCH')`
 
----
+#### Scenario: Reorder succeeds when the collection holds hidden items
+
+- **WHEN** the owner's collection holds visible items `i1`, `i2` and an item `h1` whose recipe (by another author) became private or unlisted
+- **AND** the owner calls `reorderCollection(ownerId, colId, ['i2', 'i1'])` (the ids the web page shows)
+- **THEN** the call succeeds, `i2.sortOrder = 0`, `i1.sortOrder = 1` and `h1.sortOrder = 2`
+
+#### Scenario: Reorder that includes a hidden item id is rejected
+
+- **WHEN** the owner calls `reorderCollection(ownerId, colId, ['i2', 'i1', 'h1'])` for the collection above
+- **THEN** the function throws `new Error('REORDER_MISMATCH')`
 
 ### Requirement: API route layer — 8 Hono routes with OpenAPI metadata
 
@@ -571,23 +616,31 @@ displaying the collection name, visibility badge (🔒 private / 🌐 public), a
 the `RecipeCard.tsx` pattern (Tailwind + `var(--text-*)` CSS vars).
 
 **`AddToCollectionModal.tsx`** — a hand-rolled modal (matching `BanDialog.tsx`) controlled by
-`open: boolean` / `onClose: () => void` props. It lists the user's collections fetched via
-`collectionApi.list()` in a `useEffect`, shows a checkmark for collections that already contain the
-current `recipeId`, and supports inline "create new collection" (name input + visibility dropdown
-defaulting to `private`). Adding/removing calls `collectionApi.addRecipe`/`removeRecipe`. The modal
-creates a `const log = createLogger('AddToCollectionModal')` and logs mount/render.
+`open: boolean` / `onClose: () => void` props. It lists the user's collections loaded with
+`useFetcher().load('/resources/collections/mine')` when it opens (the `web-data-loading` capability;
+no `useEffect` fetch and no direct API-client import), shows a checkmark for collections that already
+contain the current `recipeId`, and supports inline "create new collection" (name input + visibility
+dropdown defaulting to `private`). Adding, removing and creating submit an `intent` to that resource
+route's action with `fetcher.submit`; the action calls `collectionApi.addRecipe`/`removeRecipe`/`create`
+and returns `{ ok, error }`. On `{ ok: false }` the modal shows an error toast and rolls back its
+optimistic checkmark, except that a 409 on add keeps the membership (the recipe is already there). An
+optional `recipeVisibility` prop renders `t('collection.modal.hiddenRecipeNote')` under the list when
+it is `draft`, `private` or `unlisted`. The modal creates a `const log = createLogger('AddToCollectionModal')`
+and logs mount/render.
 
 **`CollectionRecipeList.tsx`** — renders the collection's items ordered by `sortOrder`. Each item shows
 the recipe title (as a `<Link>` to `/recipes/:slug`) and up/down arrow buttons. Clicking an arrow
 optimistically reorders the local array and fires a `useFetcher` PATCH to a resource route action
-(`/collections/:id/reorder`) with the new `itemIds` order. A remove button calls
-`collectionApi.removeRecipe`. Creates a `const log = createLogger('CollectionRecipeList')`.
+(`/collections/:id/reorder`) with the new `itemIds` order; the arrows are disabled while a reorder
+fetcher is pending, so reorders are serialised. A remove button submits a `remove` intent to the
+collection route action (which calls `collectionApi.removeRecipe`) instead of calling the client
+directly. Creates a `const log = createLogger('CollectionRecipeList')`.
 
 The "Add to Collection" button SHALL be added to `RecipeDetailPage.tsx` action-buttons row
 (lines 192-235), gated on `isAuthenticated`:
 
 ```tsx
-{isAuthenticated && <AddToCollectionButton recipeId={recipe.id} />}
+{isAuthenticated && <AddToCollectionButton recipeId={recipe.id} recipeVisibility={recipe.visibility} />}
 ```
 
 where `AddToCollectionButton` is a thin wrapper that manages the `open` state and renders
@@ -597,17 +650,21 @@ where `AddToCollectionButton` is a thin wrapper that manages the `open` state an
 
 - **WHEN** the modal opens for a recipe that is already in 2 of the user's 5 collections
 - **THEN** those 2 collections show a checkmark/indicator
-- **AND** clicking one removes the recipe (calls `collectionApi.removeRecipe`)
-- **AND** clicking an unchecked collection adds the recipe (calls `collectionApi.addRecipe`)
+- **AND** clicking one submits a `remove` intent to the `resources/collections/mine` action, which calls `collectionApi.removeRecipe`
+- **AND** clicking an unchecked collection submits an `add` intent, which calls `collectionApi.addRecipe`
+
+#### Scenario: AddToCollectionModal surfaces a failed add
+
+- **WHEN** the `add` intent returns `{ ok: false, error }` with a 500
+- **THEN** the checkmark rolls back and an error toast is shown
+- **AND** when the failure is a 409, the checkmark stays and no error toast is shown
 
 #### Scenario: CollectionRecipeList up-arrow reorders optimistically
 
 - **WHEN** the user clicks the up-arrow on item at index 2
 - **THEN** the local array immediately swaps items at indices 1 and 2
-- **AND** a `useFetcher` PATCH is fired with the new `itemIds` order
+- **AND** a `useFetcher` PATCH is fired with the new `itemIds` order, and the arrows stay disabled until it settles
 - **AND** on success, the order persists; on error, the local state rolls back
-
----
 
 ### Requirement: Collections tab on UserProfilePage
 
@@ -725,7 +782,8 @@ fresh database — re-seeding an existing database does not rewrite previously-i
 
 #### Scenario: Seed test locks the per-collection numbering
 
-- **WHEN** `deno task test:db` runs on a freshly-seeded test database
+- **WHEN** the `@brewform/db` seed tests run via `make test` (Vitest, `DATABASE_URL` pointing at the
+  freshly provisioned `brewform_test` database from `make test-db-provision`)
 - **THEN** the collections seed assertion passes, and it fails if the global-counter regression is
   reintroduced
 
@@ -783,13 +841,13 @@ The system SHALL create these test files:
 - Update `packages/db/src/schema-columns.test.ts` — `createdAt` assertions for `collectionItems`
 
 **Shared layer:**
-- `packages/shared/src/schemas/collection_test.ts` — unit tests for `CollectionCreateSchema`, `CollectionUpdateSchema`, `CollectionAddRecipeSchema`, `CollectionReorderSchema`, `CollectionListFilterSchema` (safeParse valid/invalid, defaults)
-- `packages/shared/src/schemas/responses/collection_test.ts` — unit tests for `CollectionOutputSchema`, `CollectionListItemOutputSchema`, `CollectionDetailOutputSchema`, `CollectionItemOutputSchema` (using the `wire()` JSON round-trip helper)
+- `packages/shared/src/schemas/collection.test.ts` — unit tests for `CollectionCreateSchema`, `CollectionUpdateSchema`, `CollectionAddRecipeSchema`, `CollectionReorderSchema`, `CollectionListFilterSchema` (safeParse valid/invalid, defaults)
+- `packages/shared/src/schemas/responses/collection.test.ts` — unit tests for `CollectionOutputSchema`, `CollectionListItemOutputSchema`, `CollectionDetailOutputSchema`, `CollectionItemOutputSchema` (using the `wire()` JSON round-trip helper)
 
 **API layer:**
-- `apps/api/src/modules/collection/model_test.ts` — DB integration tests for each model function (real PostgreSQL, `beforeEach`/`afterEach` setup/teardown, `crypto.randomUUID()` for test IDs, `sanitizeOps: false, sanitizeResources: false`)
-- `apps/api/src/modules/collection/service_test.ts` — DB integration tests for permission checks (non-owner FORBIDDEN, private collection visibility, adding private recipe by non-owner, duplicate ALREADY_IN_COLLECTION, reorder mismatch) + entry/exit log assertions
-- `apps/api/src/modules/collection/index_test.ts` — route integration tests using `createTestApp(userId)` pattern (mount real router, `app.request()`, assert status + envelope shape + error codes)
+- `apps/api/src/modules/collection/model.test.ts` — Vitest DB integration tests for each model function (real PostgreSQL `brewform_test` database, `beforeEach`/`afterEach` setup/teardown, `crypto.randomUUID()` for test IDs)
+- `apps/api/src/modules/collection/service.test.ts` — Vitest DB integration tests for permission checks (non-owner FORBIDDEN, private collection visibility, adding private recipe by non-owner, duplicate ALREADY_IN_COLLECTION, reorder mismatch, hidden-item filtering, hidden-item-safe reorder, cached-hit item re-check) + entry/exit log assertions
+- `apps/api/src/modules/collection/index.test.ts` — route integration tests using `createTestApp(userId)` pattern (mount real router, `app.request()`, assert status + envelope shape + error codes)
 
 **Frontend layer:**
 - `apps/web/src/components/collections/CollectionCard.test.tsx`
@@ -817,8 +875,8 @@ Test coverage SHALL be ≥80% for all new code paths. Existing tests SHALL conti
 
 #### Scenario: Formatting passes
 
-- **WHEN** `make fmt` runs (and `deno fmt --check` in CI)
-- **THEN** all files are formatted to Deno's rules (lineWidth 100, indentWidth 2, singleQuote, semiColons)
+- **WHEN** `make fmt` runs (Biome `biome check --write`), and `pnpm run fmt-check` runs in CI
+- **THEN** all files are formatted to the Biome rules in `biome.json` (lineWidth 100, indentWidth 2, single quotes, semicolons) and `fmt-check` reports no diff
 
 ### Requirement: Collection reads are cache-backed with a visibility re-check on cached hits
 
@@ -832,6 +890,8 @@ The collection module SHALL wire read caching through the `cacheProvider` single
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Detail key           | `['collection-detail', id]`, TTL **10 minutes**                                                                                                 |
 | Cached-hit safety    | replay the `service.ts:157-162` visibility check against the cached object (`toDetailOutput` retains `userId`/`visibility` in the cached shape) |
+| Cached shape         | viewer-independent: the collection plus every item whose recipe was not soft-deleted at fill time, each item retaining its recipe's `visibility` and `authorId` |
+| Item safety (both paths) | before returning, on the cache-hit AND the cache-miss path, fetch fresh state for every item's recipe AND every item's fork source with ONE `model.getRecipeVisibilityStates([...recipeIds, ...forkSourceIds])` query; drop items whose recipe is missing, soft-deleted or fails `canListRecipe(state, viewerId)`; mask `recipe.forkedFromId` to `null` when the source state fails `canListRecipe(state, null)`; recompute `recipeCount` |
 | List prefix          | `['cache', 'collections', ...]`, TTL **5 minutes**                                                                                              |
 | `recipeId` handling  | when `listMyCollections` is called with its optional `recipeId` param, **bypass the cache** (read through, no store)                            |
 | `createCollection`   | invalidates the **list prefix only** (fresh UUID — no detail entry can exist)                                                                   |
@@ -841,7 +901,11 @@ The mutation surface is SIX functions, not five: `createCollection` (`service.ts
 `updateCollection` (`:114`), `deleteCollection` (`:136`), `addRecipeToCollection` (`:255`),
 `removeRecipeFromCollection` (`:297`), `reorderCollection` (`:319`). A cache hit SHALL never widen
 access: a cached `private`/`draft` collection requested by a non-owner throws `FORBIDDEN` exactly
-as a cache miss would.
+as a cache miss would, and a cached item whose recipe has since been made `unlisted`, `private` or
+`draft`, or soft-deleted, SHALL NOT be returned to any viewer who may not list that recipe, on any API replica
+and with either cache driver (`memory` or `redis`), without waiting for the TTL. The per-viewer
+item filter SHALL run on both the cache-hit and the cache-miss paths through one shared function,
+so the two paths cannot diverge.
 
 **Reason:** D99.1 — the collection module has zero cache involvement; `getCollection` re-runs the
 4-level multi-join (`collection/model.ts:9-33`) on every GET. The visibility re-check is the
@@ -874,6 +938,33 @@ per-(user, recipe) key with near-zero hit rate.
   `recipeId` set (the AddToCollectionModal membership-marks path)
 - **THEN** the result is read from the database and NOT stored in the cache, and a subsequent
   no-`recipeId` list call is unaffected by it
+
+#### Scenario: Recipe made private disappears from a warm cached detail
+
+- **WHEN** an anonymous visitor warms the detail cache of a public collection containing public recipe R (by author X)
+- **AND** X changes R's visibility to `private`
+- **AND** the anonymous visitor requests the same collection within the 10-minute TTL
+- **THEN** the response does not contain R, `recipeCount` is decremented, and the response is still served without re-running the multi-join `findById`
+
+#### Scenario: Recipe made unlisted disappears from a warm cached detail
+
+- **WHEN** an anonymous visitor warms the detail cache of a public collection containing public recipe R (by author X)
+- **AND** X changes R's visibility to `unlisted`
+- **AND** the anonymous visitor, and then the collection owner, request the same collection within the 10-minute TTL
+- **THEN** neither response contains R, and a request by X within the TTL does contain R
+
+#### Scenario: Fork source made unlisted is masked in a warm cached detail
+
+- **WHEN** the detail cache of a public collection holds public recipe F, forked from public recipe P
+- **AND** P's author changes P to `unlisted`
+- **THEN** the next request within the TTL returns F with `recipe.forkedFromId: null`
+
+#### Scenario: Soft-deleted recipe disappears from a warm cached detail
+
+- **WHEN** the detail cache of a public collection containing recipe R is warm
+- **AND** R is soft-deleted (by its author or an admin)
+- **AND** any viewer, including R's author and the collection owner, requests the collection within the TTL
+- **THEN** the response does not contain R
 
 ### Requirement: Collections containing a recipe are surfaced on the recipe detail page
 
@@ -938,7 +1029,7 @@ test-coverage requirement listed `CollectionListPage.test.tsx` but it never land
 
 #### Scenario: Three new page test files exist and pass
 
-- **WHEN** `deno task --cwd apps/web test` runs after the change
+- **WHEN** `make test-web` (`pnpm --filter @brewform/web run test`, Vitest) runs after the change
 - **THEN** `CollectionCreatePage.test.tsx`, `CollectionEditPage.test.tsx`, and
   `CollectionListPage.test.tsx` all exist next to their pages and pass with zero failures
 
@@ -947,4 +1038,192 @@ test-coverage requirement listed `CollectionListPage.test.tsx` but it never land
 - **WHEN** the web coverage report is generated after the tests land
 - **THEN** all three pages appear in the report with non-zero coverage (they are imported by their
   tests, closing the invisible-file gap for the collections section)
+
+### Requirement: Collection items show only recipes the viewer may list
+
+The collection detail SHALL include an item only when its recipe exists, is not soft-deleted (`deletedAt` is null), and passes `canListRecipe(recipe, viewerId)` for the requesting viewer: `public` recipes are visible to everyone (including anonymous visitors), while `unlisted`, `draft` and `private` recipes are visible only to the recipe's own author.
+
+- The predicate SHALL be the single canonical listing rule `canListRecipe` from
+  `apps/api/src/modules/recipe/service.ts` (capability `recipe-visibility`, "One shared listing condition
+  and predicate pair decides visibility"). The collection module SHALL NOT re-implement the visibility
+  comparison. `canViewRecipe` is NOT the item predicate: it lets anyone open an `unlisted` recipe by
+  link, and a collection is a listing, not a link.
+- Owning the collection grants no extra visibility. A collection owner does NOT see another author's
+  recipe that is, or later becomes, `unlisted`, `private` or `draft`, and nobody (including the recipe's
+  author and the collection owner) sees a soft-deleted recipe. The admin flag is not considered on this
+  surface (matching the recipe detail route, which calls `canViewRecipe(recipe, userId)` without
+  `isAdmin`).
+- The filter SHALL apply to `GET /api/v1/collections/:id` and to the detail returned by
+  `POST /api/v1/collections` and `PATCH /api/v1/collections/:id`.
+- Returned items SHALL always carry a non-null `recipe` whose `deletedAt` is `null`, matching
+  `CollectionItemOutputSchema` (whose `recipe` is non-nullable).
+- Each returned item's `recipe.forkedFromId` SHALL be `null` unless the fork source is `public` and not
+  soft-deleted (`recipe-visibility`, "Fork attribution never reveals a recipe the viewer could not
+  list"). This is computed from the same state lookup as the item filter.
+- Filtering happens in the service after the collection-level visibility check, so a
+  `private`/`draft` collection still returns `403` to non-owners before any item is considered. An
+  `unlisted` collection opens for anyone holding its link, with its items filtered by this rule.
+
+#### Scenario: Soft-deleted recipe is hidden from everyone
+
+- **WHEN** a public collection contains recipe R and R is soft-deleted
+- **AND** the collection is requested anonymously, by the collection owner, and by R's author
+- **THEN** none of the three responses contains R (today all three do, with R's title, slug and author)
+
+#### Scenario: Another author's recipe made private is hidden from the collection owner
+
+- **WHEN** user A's public collection contains user X's recipe R and X changes R to `private`
+- **AND** the collection is requested anonymously and by A
+- **THEN** neither response contains R
+- **AND** a request by X (R's author) does contain R
+
+#### Scenario: Owner's own draft in a public collection is visible only to the owner
+
+- **WHEN** user A adds A's own `draft` recipe D to A's public collection
+- **THEN** `GET /api/v1/collections/:id` by A contains D
+- **AND** the same request anonymously or by user B does not contain D, and its `recipeCount` excludes D
+
+#### Scenario: Another author's unlisted recipe is hidden from everyone but its author
+
+- **WHEN** user A's public collection contains user X's recipe U, which was public when A added it, and X changes U to `unlisted`
+- **AND** the collection is requested anonymously, by user B and by A (the collection owner)
+- **THEN** none of the three responses contains U, and each `recipeCount` excludes U
+- **AND** a request by X (U's author) contains U
+
+#### Scenario: Owner's own unlisted recipe is visible only to the owner
+
+- **WHEN** user A adds A's own `unlisted` recipe U to A's public collection
+- **THEN** `GET /api/v1/collections/:id` by A contains U
+- **AND** the same request anonymously or by user B does not contain U, even though U itself opens for them by its direct link
+
+#### Scenario: Private collection is still forbidden before item filtering
+
+- **WHEN** user B requests user A's `private` collection
+- **THEN** the response is `403 FORBIDDEN` and no item data is returned
+
+#### Scenario: Unlisted collection opens by link with filtered items
+
+- **WHEN** an anonymous visitor requests user A's `unlisted` collection K, which holds one public recipe and A's own unlisted recipe
+- **THEN** the response is `200` and contains only the public recipe, with `recipeCount` `1`
+
+### Requirement: Collection recipe counts reflect only visible items
+
+The system SHALL compute every `recipeCount` exposed by the collection API from the items the response's audience may list, never from raw `collection_item` rows.
+
+- Detail (`GET /api/v1/collections/:id`, and create/update responses): `recipeCount` SHALL equal
+  `items.length` after the per-viewer filter.
+- The owner's own list (`GET /api/v1/collections`, and `GET /api/v1/users/:userId/collections` when
+  the viewer is that user): `recipeCount` SHALL count items whose recipe matches
+  `listableRecipeCondition(ownerId)`. That means not soft-deleted, and either `public` or authored by
+  the owner.
+- Public lists (`GET /api/v1/users/:userId/collections` for other viewers, and the global browse
+  endpoint `GET /api/v1/collections/public`): `recipeCount` SHALL count items whose recipe matches
+  `listableRecipeCondition(null)`. That means not soft-deleted and `public`, so `unlisted` items are
+  not counted.
+- Cached list counts may lag a recipe's visibility change by at most the list TTL (5 minutes). They
+  never expose recipe identifiers.
+- `containsRecipe` (the AddToCollectionModal membership flag) SHALL keep reporting raw membership,
+  because the owner is looking at a recipe they can open.
+
+#### Scenario: Public list count matches what visitors can list
+
+- **WHEN** user A's public collection holds a public recipe, A's own draft, A's own unlisted recipe, another author's unlisted recipe and a soft-deleted recipe
+- **AND** user B lists A's collections via `GET /api/v1/users/<A>/collections`
+- **THEN** the collection's `recipeCount` is `1`
+
+#### Scenario: Owner list count includes the owner's own non-public recipes
+
+- **WHEN** user A lists A's own collections via `GET /api/v1/collections` for the same collection
+- **THEN** its `recipeCount` is `3` (the public recipe, A's draft and A's unlisted recipe)
+
+#### Scenario: Detail count equals returned items
+
+- **WHEN** any viewer requests any collection detail
+- **THEN** `recipeCount === items.length` in the response
+
+### Requirement: Adding a non-public recipe to a shared collection keeps it hidden from other viewers
+
+The system SHALL keep the existing add rule (a collection owner may add any non-deleted recipe they authored, of any visibility, and only `public` recipes authored by others) and SHALL make the resulting visibility explicit: an added `draft`, `private` or `unlisted` recipe stays hidden from every viewer except its author, even in a `public` or `unlisted` collection, until the author makes it `public`.
+
+- `POST /api/v1/collections/:id/recipes` with the owner's own `draft`/`private`/`unlisted` recipe SHALL
+  return `201` (unchanged). With another author's non-`public` recipe, including an `unlisted` one, it
+  SHALL return `403 FORBIDDEN` (unchanged). With a soft-deleted or unknown recipe it SHALL return
+  `404 NOT_FOUND` (unchanged).
+- The web `AddToCollectionModal` SHALL accept the current recipe's visibility (passed from
+  `RecipeDetailPage` through `AddToCollectionButton`). When it is `draft`, `private` or `unlisted`, the
+  modal SHALL render an informational note under the collection list using the i18n key
+  `collection.modal.hiddenRecipeNote`. The key SHALL exist in BOTH
+  `packages/shared/src/i18n/en.json` ("Only you can see this recipe in your collections until you make
+  it public.") and `packages/shared/src/i18n/tr.json` ("Bu tarifi herkese açık yapana kadar
+  koleksiyonlarında yalnızca sen görebilirsin.").
+- When the recipe later becomes `public`, it SHALL appear to other viewers of the collection on their
+  next request without any further action. The per-request item state re-check applies, not the TTL.
+  Becoming `unlisted` does not reveal it.
+
+#### Scenario: Draft added to a public collection is hidden from others
+
+- **WHEN** user A adds A's draft recipe D to A's public collection C
+- **THEN** the add returns `201`
+- **AND** an anonymous `GET /api/v1/collections/<C>` does not list D
+
+#### Scenario: Making the recipe unlisted keeps it hidden
+
+- **WHEN** A changes D's visibility to `unlisted`
+- **THEN** the next anonymous `GET /api/v1/collections/<C>` still does not list D
+
+#### Scenario: Making the recipe public reveals the item
+
+- **WHEN** A later changes D's visibility to `public`
+- **THEN** the next anonymous `GET /api/v1/collections/<C>` lists D, even if C's detail was cached
+
+#### Scenario: Another author's unlisted recipe cannot be added
+
+- **WHEN** user B tries to add A's unlisted recipe U to B's collection
+- **THEN** the response is `403 FORBIDDEN`
+
+#### Scenario: Modal explains the hidden state
+
+- **WHEN** the author opens the add-to-collection modal on their own `draft`, `private` or `unlisted` recipe
+- **THEN** the modal shows the `collection.modal.hiddenRecipeNote` text in the active locale
+- **AND** the note is not shown for a `public` recipe
+
+### Requirement: Collection visibility filtering has failing-first regression coverage
+
+The system SHALL add regression tests that fail against the pre-change code before the collection filtering is implemented, and SHALL keep structured logging on every touched service function.
+
+- `apps/api/src/modules/collection/service.test.ts` (DB-backed, `brewform_test`):
+  - a soft-deleted item is hidden;
+  - another author's recipe made private is hidden from the owner and from anonymous viewers, but
+    shown to its author;
+  - another author's recipe made unlisted is hidden from the owner, from anonymous viewers and from a
+    third user, but shown to its author;
+  - the owner's own draft and own unlisted recipe are hidden from others and shown to the owner;
+  - `recipeCount` equals the number of items;
+  - fork masking: an item that is a public fork of an unlisted source has `forkedFromId: null`;
+  - cached-hit re-check after a recipe is made private, after it is made unlisted, and after a soft
+    delete;
+  - reorder is safe with hidden items.
+- `apps/api/src/modules/collection/model.test.ts`: list `recipeCount` with owner vs anonymous
+  audience, including own-unlisted and other-unlisted items; `getRecipeVisibilityStates`, including a
+  soft-deleted id and an empty input.
+- `apps/api/src/modules/collection/index.test.ts`:
+  - anonymous `GET /api/v1/collections/:id` omits the title and slug of both a private recipe and
+    another author's unlisted recipe from the JSON body;
+  - unlisted collections are absent from `GET /api/v1/collections/public` and from
+    `GET /api/v1/users/:userId/collections` for non-owners;
+  - an unlisted collection opens by direct link.
+- `apps/web/src/components/collections/AddToCollectionModal.test.tsx`: the hidden-recipe note renders
+  for `draft`, `private` and `unlisted`, and not for `public`.
+- `getCollection` SHALL log `logger.debug({ userId, collectionId, hiddenCount }, 'getCollection completed')`
+  (counts only, never recipe titles) on both the cache-hit and cache-miss paths.
+
+#### Scenario: Leak test fails before the fix
+
+- **WHEN** the "soft-deleted item hidden" and "other author's unlisted item hidden" service tests run against the pre-change `getCollection`
+- **THEN** both fail because the deleted and the unlisted recipes are returned
+
+#### Scenario: Verification passes after the fix
+
+- **WHEN** `make check`, `make lint`, `make test-api` and `make test-web` run after the change
+- **THEN** all pass
 

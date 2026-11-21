@@ -21,6 +21,8 @@ export type { BrewLogCreate, BrewLogUpdate } from './brew-log.ts';
 export { BrewLogCreateSchema, BrewLogUpdateSchema } from './brew-log.ts';
 export type { CoffeeVarietyCreate, CoffeeVarietyUpdate } from './coffee-variety.ts';
 export {
+  COFFEE_VARIETY_LIST_ITEM_MAX_LENGTH,
+  COFFEE_VARIETY_LIST_MAX_ITEMS,
   CoffeeVarietyCategoryEnum,
   CoffeeVarietyCreateSchema,
   CoffeeVarietyFilterSchema,
@@ -37,7 +39,9 @@ export {
 export type { CommentCreate } from './comment.ts';
 export { CommentCreateSchema } from './comment.ts';
 export {
+  EmailSchema,
   PaginationSchema,
+  QR_CODE_FILENAME_PATTERN,
   QrCodeFilenameSchema,
   SearchQuerySchema,
   SlugSchema,
@@ -62,6 +66,8 @@ export { NotificationQuerySchema } from './notification.ts';
 export { PhotoUploadSchema } from './photo.ts';
 export type {
   RecipeCreate,
+  RecipeCrossFieldIssue,
+  RecipeCrossFieldValues,
   RecipeFork,
   RecipeMerge,
   RecipeNotes,
@@ -69,6 +75,8 @@ export type {
   RecipeUpdate,
 } from './recipe.ts';
 export {
+  MAX_ADDITIONAL_PREPARATIONS,
+  MAX_RELATION_IDS,
   RecipeCreateObjectSchema,
   RecipeCreateSchema,
   RecipeFilterSchema,
@@ -76,7 +84,9 @@ export {
   RecipeMergeSchema,
   RecipeNotesSchema,
   RecipeRateSchema,
+  RecipeUpdateObjectSchema,
   RecipeUpdateSchema,
+  recipeCrossFieldIssues,
 } from './recipe.ts';
 export { ReportCreateSchema, ReportFilterSchema } from './report.ts';
 export type { PaginatedResponse, PaginationMeta } from './response.ts';
@@ -123,6 +133,7 @@ export type {
   FollowingListItemOutput,
   FollowOutput,
 } from './responses/follow.ts';
+export type { HealthOutput, ReadinessOutput } from './responses/health.ts';
 export * from './responses/index.ts';
 export type { NotificationOutput, UnreadCountOutput } from './responses/notification.ts';
 export type { PhotoOutput } from './responses/photo.ts';
@@ -133,6 +144,7 @@ export type { UserPreferencesOutput } from './responses/preference.ts';
 // file declares `export type X = z.infer<typeof XSchema>;`; mirror that here so
 // `import type { RecipeDetailOutput } from '@brewform/shared/schemas'` resolves.
 export type {
+  AdminRecipeListItemOutput,
   DiffField,
   DiffStatus,
   FeedRecipeOutput,
@@ -147,6 +159,7 @@ export type {
   VersionDiffOutput,
   VersionMeta,
 } from './responses/recipe.ts';
+export type { RecipeUserNoteOutput } from './responses/recipe-note.ts';
 export type { ReportOutput } from './responses/report.ts';
 export type { SetupOutput } from './responses/setup.ts';
 export type { TasteNoteNodeOutput, TasteNoteOutput } from './responses/taste.ts';
@@ -154,6 +167,8 @@ export type { PublicUserOutput, SelfUserOutput, UserRowOutput } from './response
 export type { VendorOutput } from './responses/vendor.ts';
 export type { SetupCreate, SetupUpdate } from './setup.ts';
 export { SetupCreateSchema, SetupUpdateSchema } from './setup.ts';
+export type { SitemapPart, SitemapQuery } from './sitemap.ts';
+export { SITEMAP_MAX_PAGE, SITEMAP_PARTS, SitemapQuerySchema } from './sitemap.ts';
 export type { TasteNoteCreate, TasteNoteUpdate } from './taste.ts';
 export { TasteNoteCreateSchema, TasteNoteFilterSchema, TasteNoteUpdateSchema } from './taste.ts';
 export type { UserPreferences, UserProfileUpdate } from './user.ts';

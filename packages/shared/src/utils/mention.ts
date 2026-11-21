@@ -13,9 +13,11 @@
  *   token (>30 chars) from silently truncate-matching its first 30 chars — an
  *   over-length run produces no match at all rather than a partial one.
  *
- * Results preserve original case (mention resolution is exact-match),
- * are deduplicated preserving first-seen order, and are capped at
- * {@link MAX_MENTIONS} unique usernames as a lightweight anti-spam measure.
+ * Results keep the first spelling seen, are de-duplicated case-insensitively
+ * (usernames are unique case-insensitively and mention targets are resolved
+ * with `lower()`, so `@Arda @arda` uses one slot) in first-seen order, and are
+ * capped at {@link MAX_MENTIONS} unique usernames as a lightweight anti-spam
+ * measure.
  */
 
 /** Maximum number of unique mentions returned from a single body of text. */
@@ -35,8 +37,9 @@ const MENTION_REGEX = /(?:^|[^a-zA-Z0-9_-])@([a-zA-Z0-9_-]{3,30})(?![a-zA-Z0-9_-
  * Extract unique `@username` mentions from text.
  *
  * @param content - Free-form text (e.g. a comment body) to scan.
- * @returns Usernames (without the leading `@`), case preserved, deduplicated in
- *          first-seen order, capped at {@link MAX_MENTIONS}.
+ * @returns Usernames (without the leading `@`) in their first-seen spelling,
+ *          de-duplicated case-insensitively in first-seen order, capped at
+ *          {@link MAX_MENTIONS}.
  */
 export function parseMentions(content: string): string[] {
   const seen = new Set<string>();
@@ -44,8 +47,9 @@ export function parseMentions(content: string): string[] {
 
   for (const match of content.matchAll(MENTION_REGEX)) {
     const username = match[1];
-    if (seen.has(username)) continue;
-    seen.add(username);
+    const key = username.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
     result.push(username);
     if (result.length >= MAX_MENTIONS) break;
   }

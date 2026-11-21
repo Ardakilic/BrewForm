@@ -1,9 +1,11 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { createElement, type ReactNode } from 'react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { loader, RecipeDetailPage } from './RecipeDetailPage.tsx';
+import { ToastProvider } from '../../components/ui/Toast.tsx';
+import { loader } from './RecipeDetailPage.data.ts';
+import { RecipeDetailPage } from './RecipeDetailPage.tsx';
 
 // ── Partial mock of react-router: override only useNavigation ─────────────
 
@@ -54,12 +56,32 @@ vi.mock('../../hooks/useUnitSystem.ts', () => ({
 
 // ── UI component mocks ────────────────────────────────────────────────────
 
-vi.mock('../../components/seo/SEOHead.tsx', () => ({ SEOHead: vi.fn(() => null) }));
-vi.mock('../../components/seo/JsonLd.tsx', () => ({ RecipeJsonLd: () => null }));
+/** When `real` is true, the SEO head and JSON-LD mocks render the real components. */
+const { seoMode } = vi.hoisted(() => ({ seoMode: { real: false } }));
+
+vi.mock('../../components/seo/SEOHead.tsx', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../components/seo/SEOHead.tsx')>();
+  return {
+    SEOHead: vi.fn((props: Parameters<typeof actual.SEOHead>[0]) =>
+      seoMode.real ? createElement(actual.SEOHead, props) : null,
+    ),
+  };
+});
+vi.mock('../../components/seo/JsonLd.tsx', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../components/seo/JsonLd.tsx')>();
+  return {
+    RecipeJsonLd: (props: Parameters<typeof actual.RecipeJsonLd>[0]) =>
+      seoMode.real ? createElement(actual.RecipeJsonLd, props) : null,
+  };
+});
 vi.mock('../../components/recipe/LikeButton.tsx', () => ({ LikeButton: () => null }));
 vi.mock('../../components/recipe/FavouriteButton.tsx', () => ({ FavouriteButton: () => null }));
 vi.mock('../../components/recipe/CommentSection.tsx', () => ({ CommentSection: () => null }));
-vi.mock('../../components/recipe/StarRating.tsx', () => ({ StarRating: () => null }));
+vi.mock('../../components/recipe/StarRating.tsx', () => ({ StarRating: vi.fn(() => null) }));
+// The add-to-collection modal (fetchers + toasts) has its own tests in AddToCollectionModal.test.tsx.
+vi.mock('../../components/collections/AddToCollectionButton.tsx', () => ({
+  AddToCollectionButton: () => null,
+}));
 vi.mock('../../components/recipe/ForkCard.tsx', () => ({
   ForkCard: () => <div data-testid="fork-card">ForkCard</div>,
 }));
@@ -99,7 +121,8 @@ vi.mock('../../components/recipe/ShareSection.tsx', () => ({
   ShareSection: () => <div data-testid="share-section" />,
 }));
 vi.mock('../../components/recipe/RecipeNotesSection.tsx', () => ({
-  RecipeNotesSection: () => <div data-testid="recipe-notes-section" />,
+  // A spy, so tests can assert the props (only `recipeId`) and that a guest never mounts it.
+  RecipeNotesSection: vi.fn(() => <div data-testid="recipe-notes-section" />),
 }));
 vi.mock('../../components/brew-log/RecipeBrewStats.tsx', () => ({
   RecipeBrewStats: () => <div data-testid="recipe-brew-stats" />,
@@ -116,8 +139,11 @@ import type {
   RecipeCollectionsOutput,
   RecipeDetailOutput,
 } from '@brewform/shared/schemas';
+import { ApiError } from '../../api/errors.ts';
 import { collectionApi, commentApi, recipeApi } from '../../api/index.ts';
 import { getTasteNotesCached } from '../../api/static-cache.ts';
+import { RecipeNotesSection } from '../../components/recipe/RecipeNotesSection.tsx';
+import { StarRating } from '../../components/recipe/StarRating.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
@@ -129,6 +155,8 @@ const mockCommentApiList = vi.mocked(commentApi.list);
 const mockCollectionApiListByRecipe = vi.mocked(collectionApi.listByRecipe);
 const mockGetTasteNotesCached = vi.mocked(getTasteNotesCached);
 const mockSEOHead = vi.mocked(SEOHead);
+const mockStarRating = vi.mocked(StarRating);
+const mockRecipeNotesSection = vi.mocked(RecipeNotesSection);
 
 // ── Translation helpers ────────────────────────────────────────────────────
 
@@ -255,13 +283,22 @@ function renderDetailPage(slug = 'my-espresso', opts: RenderOpts = {}) {
   const router = createMemoryRouter([route], {
     initialEntries: [`/recipes/${slug}`],
   });
-  return render(<RouterProvider router={router} />);
+  // The page toasts rating failures (useActionFeedback), so it needs the toast context.
+  return render(
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>,
+  );
 }
 
 // ── Setup ──────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   vi.clearAllMocks();
+  seoMode.real = false;
+  for (const el of document.head.querySelectorAll('meta[name="robots"], link[rel="canonical"]')) {
+    el.remove();
+  }
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockUseAuth.mockReturnValue(guestAuth as ReturnType<typeof useAuth>);
   mockRecipeApiGet.mockResolvedValue(sampleRecipe);
@@ -546,6 +583,22 @@ const nonOwnerAuth = {
   clearSessionError: vi.fn(),
 };
 
+describe('RecipeDetailPage — print marks (group-20 V2)', () => {
+  it('marks the action buttons, the sidebar and the comments print-hidden', async () => {
+    renderDetailPage();
+
+    const printButton = await screen.findByRole('button', { name: 'Print recipe' });
+    expect(printButton.closest('.print-hidden')).not.toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Focus mode' }).closest('.print-hidden'),
+    ).not.toBeNull();
+    expect(screen.getByTestId('social-actions-card').closest('.print-hidden')).not.toBeNull();
+    expect(screen.getByTestId('comment-section-wrapper')).toHaveClass('print-hidden');
+    // The recipe title is content: never inside a print-hidden element.
+    expect(screen.getByRole('heading', { level: 1 }).closest('.print-hidden')).toBeNull();
+  });
+});
+
 describe('RecipeDetailPage — Social_Actions_Card layout', () => {
   it('guest: social-actions-card inner div has flex and flex-row classes', async () => {
     renderDetailPage();
@@ -681,7 +734,7 @@ describe('RecipeDetailPage — Responsive layout', () => {
     expect(sidebar!.classList.contains('space-y-4')).toBe(true);
   });
 
-  it('sidebar has no-print class for print hiding', async () => {
+  it('sidebar has the print-hidden class for print hiding', async () => {
     renderDetailPage();
 
     await waitFor(() => {
@@ -691,7 +744,7 @@ describe('RecipeDetailPage — Responsive layout', () => {
     const socialActionsCard = screen.getByTestId('social-actions-card');
     const sidebar = socialActionsCard.parentElement;
     expect(sidebar).not.toBeNull();
-    expect(sidebar!.classList.contains('no-print')).toBe(true);
+    expect(sidebar!.classList.contains('print-hidden')).toBe(true);
   });
 
   it('ShareSection is the first child of the sidebar', async () => {
@@ -729,7 +782,7 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
     clearSessionError: vi.fn(),
   };
 
-  it('guest (isAuthenticated=false): recipe notes section is NOT rendered', async () => {
+  it('guest (isAuthenticated=false): recipe notes section is NOT rendered and never mounted', async () => {
     renderDetailPage();
 
     await waitFor(() => {
@@ -737,6 +790,8 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
     });
 
     expect(screen.queryByTestId('recipe-notes-section')).toBeNull();
+    // The section is the only notes reader, so never mounting it means no notes request is sent.
+    expect(mockRecipeNotesSection).not.toHaveBeenCalled();
   });
 
   it('authenticated user: recipe notes section IS rendered', async () => {
@@ -747,6 +802,21 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
     await waitFor(() => {
       expect(screen.getByTestId('recipe-notes-section')).toBeInTheDocument();
     });
+  });
+
+  it("passes only recipeId: the private editor is never pre-filled from the brewer's notes", async () => {
+    mockUseAuth.mockReturnValue(authenticatedAuth as ReturnType<typeof useAuth>);
+    // sampleRecipe.currentVersion.personalNotes is 'Great shot' (the author's public note).
+
+    renderDetailPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-notes-section')).toBeInTheDocument();
+    });
+    for (const [props] of mockRecipeNotesSection.mock.calls) {
+      expect(props).toEqual({ recipeId: 'recipe-1' });
+    }
+    expect(JSON.stringify(mockRecipeNotesSection.mock.calls)).not.toContain('Great shot');
   });
 
   it('recipe owner: recipe notes section IS rendered', async () => {
@@ -781,7 +851,7 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
 });
 
 describe('RecipeDetailPage — Print layout hiding', () => {
-  it('comment section wrapper has no-print class', async () => {
+  it('comment section wrapper has the print-hidden class', async () => {
     renderDetailPage();
 
     await waitFor(() => {
@@ -789,7 +859,7 @@ describe('RecipeDetailPage — Print layout hiding', () => {
     });
 
     const commentWrapper = screen.getByTestId('comment-section-wrapper');
-    expect(commentWrapper.classList.contains('no-print')).toBe(true);
+    expect(commentWrapper.classList.contains('print-hidden')).toBe(true);
   });
 });
 
@@ -872,5 +942,179 @@ describe('RecipeDetailPage — In collections section (D99.5)', () => {
 
     expect(screen.queryByTestId('in-collections-card')).toBeNull();
     expect(screen.getByText('My Espresso')).toBeInTheDocument();
+  });
+});
+
+describe('RecipeDetailPage — rating form (wave-6 t6, task 19.17)', () => {
+  it('passes busy (not a toggled interactive flag) to the rating slider so focus survives submit', async () => {
+    mockUseAuth.mockReturnValue(nonOwnerAuth as ReturnType<typeof useAuth>);
+    renderDetailPage();
+
+    await waitFor(() => {
+      expect(mockStarRating.mock.calls.some(([props]) => props.onRate !== undefined)).toBe(true);
+    });
+
+    const sliderProps = mockStarRating.mock.calls
+      .map(([props]) => props)
+      .filter((props) => props.onRate !== undefined)
+      .at(-1);
+    expect(sliderProps?.busy).toBe(false);
+    expect(sliderProps?.interactive).toBeUndefined();
+    expect(sliderProps?.label).toBe(enT('recipe.rateThis'));
+    expect(sliderProps?.value).toBeNull();
+  });
+
+  it('renders the author and community ratings read-only', async () => {
+    renderDetailPage();
+
+    await waitFor(() => {
+      expect(mockStarRating).toHaveBeenCalled();
+    });
+
+    const readOnly = mockStarRating.mock.calls.map(([props]) => props).filter((p) => !p.onRate);
+    expect(readOnly.length).toBeGreaterThan(0);
+    for (const props of readOnly) expect(props.interactive).toBe(false);
+  });
+});
+
+// ── QR landing and head rules (wave-6 t3/t5, tasks 15.11-15.12) ─────────────
+
+/** Runs the detail loader for `url` and returns its result or what it threw. */
+function runLoader(url: string, slug = 'my-espresso') {
+  return Promise.resolve()
+    .then(() =>
+      loader({
+        params: { slug },
+        request: new Request(`http://localhost${url}`),
+        context: undefined,
+      } as never),
+    )
+    .catch((err: unknown) => err);
+}
+
+const notFoundError = () => new ApiError('NOT_FOUND', 'Recipe not found', undefined, 404);
+
+describe('RecipeDetailPage loader — QR landing (15.11 a-c)', () => {
+  it('(a) returns data for an unlisted recipe opened with ?from=qr instead of redirecting', async () => {
+    mockRecipeApiGet.mockResolvedValue({ ...sampleRecipe, visibility: 'unlisted' });
+
+    const result = await runLoader('/recipes/my-espresso?from=qr');
+
+    expect(result).not.toBeInstanceOf(Response);
+    expect((result as { recipe: RecipeDetailOutput }).recipe.visibility).toBe('unlisted');
+  });
+
+  it('(b) redirects ?from=qr to /recipes/unavailable when the recipe 404s', async () => {
+    mockRecipeApiGet.mockRejectedValue(notFoundError());
+
+    const result = await runLoader('/recipes/my-espresso?from=qr');
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(302);
+    expect((result as Response).headers.get('Location')).toBe('/recipes/unavailable');
+  });
+
+  it('(c) throws the 404 Response for a missing recipe without from=qr', async () => {
+    mockRecipeApiGet.mockRejectedValue(notFoundError());
+
+    const result = await runLoader('/recipes/my-espresso');
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(404);
+    expect((result as Response).headers.get('Location')).toBeNull();
+  });
+
+  it('forwards request.signal to every request it makes', async () => {
+    await runLoader('/recipes/my-espresso');
+
+    const signalOpts = { signal: expect.any(AbortSignal) };
+    expect(mockRecipeApiGet).toHaveBeenCalledWith('my-espresso', signalOpts);
+    expect(mockGetTasteNotesCached).toHaveBeenCalledWith(signalOpts);
+    expect(mockCommentApiList).toHaveBeenCalledWith('recipe-1', 1, signalOpts);
+    expect(mockCollectionApiListByRecipe).toHaveBeenCalledWith('recipe-1', signalOpts);
+  });
+});
+
+describe('RecipeDetailPage — head rules by visibility (15.11 d-f)', () => {
+  const ownerAuth = {
+    ...guestAuth,
+    user: {
+      id: 'author-1',
+      email: 'alice@example.com',
+      emailVerifiedAt: null,
+      username: 'alice',
+      displayName: 'Alice',
+      avatarUrl: null,
+      isAdmin: false,
+      onboardingCompleted: true,
+    },
+    isAuthenticated: true,
+  };
+
+  /** Renders the page with the real SEO head and JSON-LD and waits for the title. */
+  async function renderWithRealHead() {
+    seoMode.real = true;
+    renderDetailPage();
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+  }
+
+  const robots = () => document.head.querySelector('meta[name="robots"]')?.getAttribute('content');
+  const canonical = () => document.head.querySelector('link[rel="canonical"]');
+  const jsonLd = () => document.querySelector('script[type="application/ld+json"]');
+
+  it('(d) an unlisted recipe is noindex, has no canonical link and no JSON-LD', async () => {
+    mockRecipeApiGet.mockResolvedValue({ ...sampleRecipe, visibility: 'unlisted' });
+
+    await renderWithRealHead();
+
+    await waitFor(() => expect(robots()).toBe('noindex, nofollow'));
+    expect(canonical()).toBeNull();
+    expect(jsonLd()).toBeNull();
+  });
+
+  it('(e) a draft recipe viewed by its author is noindex, has no canonical link and no JSON-LD', async () => {
+    mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
+    mockRecipeApiGet.mockResolvedValue({ ...sampleRecipe, visibility: 'draft' });
+
+    await renderWithRealHead();
+
+    await waitFor(() => expect(robots()).toBe('noindex, nofollow'));
+    expect(canonical()).toBeNull();
+    expect(jsonLd()).toBeNull();
+  });
+
+  it('(f) a public recipe has no robots meta, a canonical link and the JSON-LD script', async () => {
+    await renderWithRealHead();
+
+    await waitFor(() => expect(canonical()).not.toBeNull());
+    expect(canonical()?.getAttribute('href')).toMatch(/\/recipes\/my-espresso$/);
+    expect(robots()).toBeUndefined();
+    expect(jsonLd()).not.toBeNull();
+  });
+});
+
+describe('RecipeDetailPage — coffee variety', () => {
+  it('links the coffee variety to its variety page when one is set', async () => {
+    mockRecipeApiGet.mockResolvedValue({
+      ...sampleRecipe,
+      currentVersion: {
+        ...sampleRecipe.currentVersion,
+        coffeeVarietyId: 'var-pb',
+        coffeeVarietyName: 'Pink Bourbon',
+      },
+    } as unknown as RecipeDetailOutput);
+
+    renderDetailPage();
+
+    const link = await screen.findByRole('link', { name: 'Pink Bourbon' });
+    expect(link).toHaveAttribute('href', '/coffee-varieties/var-pb');
+    expect(screen.getByRole('region', { name: 'recipe.coffeeVariety' })).toContainElement(link);
+  });
+
+  it('shows no variety when the current version has none', async () => {
+    renderDetailPage();
+
+    await screen.findByTestId('stat-cards');
+    expect(screen.queryByRole('region', { name: 'recipe.coffeeVariety' })).toBeNull();
   });
 });

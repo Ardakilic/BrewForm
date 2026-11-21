@@ -137,6 +137,18 @@ describe('EquipmentSection — unit tests', () => {
     expect(screen.getByText('Main Brewer')).toBeInTheDocument();
   });
 
+  it('leaves the equipment buttons unmarked, so print keeps them (V2)', () => {
+    render(
+      <EquipmentSection
+        items={[makeItem({ id: 'a', equipmentId: 'ea' }), makeItem({ id: 'b', equipmentId: 'eb' })]}
+        brewerDetails="V60 02 ceramic"
+      />,
+    );
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(3);
+    for (const button of buttons) expect(button.closest('.print-hidden')).toBeNull();
+  });
+
   it('renders when items is empty but brewerDetails is provided', () => {
     const { container } = render(<EquipmentSection items={[]} brewerDetails="Aeropress" />);
     expect(container.firstChild).not.toBeNull();

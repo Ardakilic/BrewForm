@@ -1,16 +1,20 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useFetcher, useSearchParams } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
-import { authApi } from '../../api/index.ts';
 import { Field } from '../../components/form/Field.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { failureToError } from '../../routes/action-result.ts';
+import { getApiErrorMessage } from '../../utils/apiErrorMessage.ts';
+import type { action } from './ResetPasswordPage.data.ts';
 
 const log = createLogger('ResetPasswordPage');
 
 /**
- * Password-reset form using the `?token=` from the email link; shows a
- * success state with a login link once the password is changed.
+ * Password-reset form using the `?token=` from the email link. Matching passwords are checked
+ * locally; the reset is submitted to the `/reset-password` route action
+ * (`ResetPasswordPage.data.ts`) through a fetcher, and a success state with a login link is
+ * shown once the password is changed.
  */
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -18,9 +22,16 @@ export function ResetPasswordPage() {
   const { t } = useTranslation();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [localError, setLocalError] = useState('');
+  const fetcher = useFetcher<typeof action>();
+  const loading = fetcher.state !== 'idle';
+  const result = fetcher.state === 'idle' ? fetcher.data : undefined;
+  const success = result?.ok === true;
+  const error =
+    localError ||
+    (result && !result.ok
+      ? getApiErrorMessage(failureToError(result), t, 'auth.resetPassword.error.failed')
+      : '');
 
   useEffect(() => {
     log.debug({}, 'ResetPasswordPage mounted');
@@ -29,31 +40,22 @@ export function ResetPasswordPage() {
     };
   }, []);
 
-  async function handleSubmit(e: FormEvent) {
+  /** Validates the form locally, then submits the token and new password to the route action. */
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError('');
+    setLocalError('');
 
     if (newPassword !== confirmPassword) {
-      setError(t('auth.register.passwordsMismatch'));
+      setLocalError(t('auth.register.passwordsMismatch'));
       return;
     }
 
     if (!token) {
-      setError(t('auth.resetPassword.error.invalidToken'));
+      setLocalError(t('auth.resetPassword.error.invalidToken'));
       return;
     }
 
-    setLoading(true);
-    try {
-      await authApi.resetPassword({ token, newPassword });
-      setSuccess(true);
-    } catch (err: unknown) {
-      log.error({ err }, 'ResetPasswordPage resetPassword failed');
-      const message = err instanceof Error ? err.message : t('auth.resetPassword.error.failed');
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
+    fetcher.submit({ token, newPassword }, { method: 'post' });
   }
 
   if (success) {

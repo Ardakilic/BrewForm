@@ -17,6 +17,11 @@ describe('TypeBadge', () => {
     const span = container.querySelector('span');
     expect(span?.style.backgroundColor).toBe('var(--accent-primary)');
   });
+
+  it('renders its text in var(--bg-primary), never a white literal', () => {
+    const { container } = render(<TypeBadge label="grinder" />);
+    expect(container.querySelector('span')?.style.color).toBe('var(--bg-primary)');
+  });
 });
 
 describe('varietyCategoryLabel', () => {
@@ -47,16 +52,18 @@ describe('CategoryTabs', () => {
   ];
 
   it('renders all tab buttons', () => {
-    render(<CategoryTabs tabs={tabs} active="" onSelect={() => {}} />);
+    render(<CategoryTabs tabs={tabs} active="" onSelect={() => undefined} />);
     expect(screen.getByText('All')).toBeInTheDocument();
     expect(screen.getByText('Grinder')).toBeInTheDocument();
     expect(screen.getByText('Kettle')).toBeInTheDocument();
   });
 
   it('applies active styling to the selected tab', () => {
-    render(<CategoryTabs tabs={tabs} active="grinder" onSelect={() => {}} />);
+    render(<CategoryTabs tabs={tabs} active="grinder" onSelect={() => undefined} />);
     const activeBtn = screen.getByText('Grinder');
     expect(activeBtn.className).toContain('bg-[color:var(--accent-primary)]');
+    expect(activeBtn.className).toContain('text-[color:var(--bg-primary)]');
+    expect(activeBtn.className).not.toContain('text-white');
   });
 
   it('calls onSelect with tab value on click', async () => {

@@ -8,12 +8,43 @@
 import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { collectionItems, collections, recipes, users } from '@brewform/db/schema';
-import { eq, inArray } from 'drizzle-orm';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { DrizzleQueryError, eq, inArray } from 'drizzle-orm';
+import {
+  afterAll,
+  afterEach,
+  assert,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { type CacheProvider, InMemoryCacheProvider } from '../../utils/cache/index.ts';
 import { cacheProvider, setCacheProvider } from '../../utils/cache/singleton.ts';
 import * as model from './model.ts';
 import * as service from './service.ts';
+
+// Spy on every model export while keeping the real implementations, so a test
+// can make `addItem` reject once with a crafted driver error.
+vi.mock('./model.ts', { spy: true });
+
+/**
+ * Build a `DrizzleQueryError` wrapping a postgres-js `PostgresError`-shaped
+ * unique violation on `constraint`, exactly as drizzle-orm 0.45 surfaces it.
+ */
+function wrappedUniqueViolation(constraint: string) {
+  const pgErr = Object.assign(new Error('duplicate key value violates unique constraint'), {
+    name: 'PostgresError',
+    code: '23505',
+    constraint_name: constraint,
+  });
+  return new DrizzleQueryError(
+    'insert into "collection_item" ("collection_id", "recipe_id") values ($1, $2)',
+    ['collection-id', 'recipe-id'],
+    pgErr,
+  );
+}
 
 async function createUser(prefix: string) {
   const id = crypto.randomUUID();
@@ -64,6 +95,13 @@ async function createCollectionRow(
     })
     .returning();
   return col;
+}
+
+/** Loads a live collection's items through `findById`, failing the test when it is missing. */
+async function itemsOf(collectionId: string) {
+  const found = await model.findById(collectionId);
+  assert.exists(found);
+  return found.items;
 }
 
 async function cleanupCollections(collectionIds: string[]) {
@@ -122,18 +160,17 @@ describe('collection service — createCollection', () => {
       description: 'Best pours',
       visibility: 'public',
     });
-    colIds.push(result!.id);
-    expect(result).toBeDefined();
-    expect(result!.id).toBeDefined();
-    expect(result!.name).toBe('My V60s');
-    expect(result!.description).toBe('Best pours');
-    expect(result!.visibility).toBe('public');
-    expect(result!.userId).toBe(user.id);
-    expect(result!.author).toBeDefined();
-    expect(result!.author.username).toBe(user.username);
-    expect(Array.isArray(result!.items)).toBe(true);
-    expect(result!.items.length).toBe(0);
-    expect(result!.recipeCount).toBe(0);
+    assert.exists(result);
+    colIds.push(result.id);
+    expect(result.id).toBeDefined();
+    expect(result.name).toBe('My V60s');
+    expect(result.description).toBe('Best pours');
+    expect(result.visibility).toBe('public');
+    expect(result.userId).toBe(user.id);
+    expect(result.author?.username).toBe(user.username);
+    expect(Array.isArray(result.items)).toBe(true);
+    expect(result.items.length).toBe(0);
+    expect(result.recipeCount).toBe(0);
   });
 
   it('defaults visibility to private when omitted', async () => {
@@ -266,7 +303,7 @@ describe('collection service — addRecipeToCollection', () => {
 
   it('public recipe by non-owner succeeds', async () => {
     await service.addRecipeToCollection(userA.id, colA.id, publicRecipe.id);
-    const items = await model.getItems(colA.id);
+    const items = await itemsOf(colA.id);
     expect(items.some((i) => i.recipeId === publicRecipe.id)).toBe(true);
   });
 
@@ -280,7 +317,7 @@ describe('collection service — addRecipeToCollection', () => {
     const ownCol = await createCollectionRow(userB.id, 'OwnCol', 'public');
     colIds.push(ownCol.id);
     await service.addRecipeToCollection(userB.id, ownCol.id, privateRecipe.id);
-    const items = await model.getItems(ownCol.id);
+    const items = await itemsOf(ownCol.id);
     expect(items.some((i) => i.recipeId === privateRecipe.id)).toBe(true);
   });
 
@@ -298,6 +335,24 @@ describe('collection service — addRecipeToCollection', () => {
     await expect(service.addRecipeToCollection(userA.id, colA.id, dupRecipe.id)).rejects.toThrow(
       'ALREADY_IN_COLLECTION',
     );
+  });
+
+  it('a DrizzleQueryError-wrapped 23505 on the item constraint maps to ALREADY_IN_COLLECTION', async () => {
+    vi.mocked(model.addItem).mockRejectedValueOnce(
+      wrappedUniqueViolation('collection_item_collection_id_recipe_id_unique'),
+    );
+    await expect(service.addRecipeToCollection(userA.id, colA.id, publicRecipe.id)).rejects.toThrow(
+      'ALREADY_IN_COLLECTION',
+    );
+  });
+
+  it('a unique violation on another constraint is not reported as ALREADY_IN_COLLECTION', async () => {
+    const err = wrappedUniqueViolation('collection_item_pkey');
+    vi.mocked(model.addItem).mockRejectedValueOnce(err);
+    const thrown = await service
+      .addRecipeToCollection(userA.id, colA.id, publicRecipe.id)
+      .catch((e: unknown) => e);
+    expect(thrown).toBe(err);
   });
 
   it('non-owner of collection throws FORBIDDEN', async () => {
@@ -348,7 +403,7 @@ describe('collection service — reorderCollection', () => {
   it('correct full order succeeds and assigns sortOrder = index', async () => {
     const reordered = [itemIds[2], itemIds[1], itemIds[0]];
     await service.reorderCollection(user.id, col.id, reordered);
-    const items = await model.getItems(col.id);
+    const items = await itemsOf(col.id);
     expect(items[0].id).toBe(itemIds[2]);
     expect(items[0].sortOrder).toBe(0);
     expect(items[1].id).toBe(itemIds[1]);
@@ -464,8 +519,22 @@ describe('collection service — removeRecipeFromCollection', () => {
 
   it('owner removes the recipe', async () => {
     await service.removeRecipeFromCollection(userA.id, col.id, r1.id);
-    const items = await model.getItems(col.id);
+    const items = await itemsOf(col.id);
     expect(items.length).toBe(0);
+  });
+
+  it('add, remove, add leaves exactly one collection_item row (join rows are re-creatable)', async () => {
+    const reAddCol = await createCollectionRow(userA.id, 'ReAddCol', 'public');
+    colIds.push(reAddCol.id);
+    await service.addRecipeToCollection(userA.id, reAddCol.id, r1.id);
+    await service.removeRecipeFromCollection(userA.id, reAddCol.id, r1.id);
+    await service.addRecipeToCollection(userA.id, reAddCol.id, r1.id);
+
+    const rows = await db
+      .select({ id: collectionItems.id })
+      .from(collectionItems)
+      .where(eq(collectionItems.collectionId, reAddCol.id));
+    expect(rows).toHaveLength(1);
   });
 });
 
@@ -616,6 +685,52 @@ describe('collection service — listAllPublicCollections', () => {
         expect(page2.collections.length).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe('collection service — deleted accounts (E11)', () => {
+  let originalCache: CacheProvider;
+  const userIds: string[] = [];
+  const colIds: string[] = [];
+
+  beforeEach(() => {
+    // A fresh cache, so no list or detail cached by an earlier test hides the new rows.
+    originalCache = cacheProvider;
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  afterEach(async () => {
+    setCacheProvider(originalCache);
+    await cleanupCollections(colIds);
+    colIds.length = 0;
+    await cleanupUsers(userIds);
+    userIds.length = 0;
+  });
+
+  it('detail and public list carry author: null for a deleted owner and recipe author', async () => {
+    const owner = await createUser('svc-gone-owner');
+    const recipeAuthor = await createUser('svc-gone-author');
+    userIds.push(owner.id, recipeAuthor.id);
+    const recipe = await createRecipe(recipeAuthor.id);
+    const col = await createCollectionRow(owner.id, 'E11 gone owner', 'public');
+    colIds.push(col.id);
+    await db
+      .insert(collectionItems)
+      .values({ collectionId: col.id, recipeId: recipe.id, sortOrder: 0 });
+    await db
+      .update(users)
+      .set({ deletedAt: new Date() })
+      .where(inArray(users.id, [owner.id, recipeAuthor.id]));
+
+    const detail = await service.getCollection(null, col.id);
+    expect(detail.author).toBeNull();
+    expect(detail.items).toHaveLength(1);
+    expect(detail.items[0].recipe.author).toBeNull();
+
+    const list = await service.listAllPublicCollections(1, 100);
+    const listed = list.collections.find((c) => c.id === col.id);
+    assert.exists(listed);
+    expect(listed.author).toBeNull();
   });
 });
 
@@ -861,5 +976,292 @@ describe('collection service — listCollectionsForRecipe (D99.5)', () => {
     recipeIds.push(other.id);
     const result = await service.listCollectionsForRecipe(owner.id, other.id);
     expect(result).toEqual([]);
+  });
+});
+
+// ── Item visibility (recipe-collections: "Collection items show only recipes the viewer may list") ──
+
+/** Set a recipe's visibility directly, as its author's PATCH would. */
+async function setRecipeVisibility(
+  recipeId: string,
+  visibility: 'private' | 'public' | 'draft' | 'unlisted',
+) {
+  await db.update(recipes).set({ visibility }).where(eq(recipes.id, recipeId));
+}
+
+/** Soft-delete a recipe directly, as its author or an admin would. */
+async function softDeleteRecipe(recipeId: string) {
+  await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, recipeId));
+}
+
+/** Point a recipe's `forkedFromId` at a source recipe. */
+async function markFork(forkId: string, sourceId: string) {
+  await db.update(recipes).set({ forkedFromId: sourceId }).where(eq(recipes.id, forkId));
+}
+
+/** Insert one collection_item row and return it. */
+async function addItemRow(collectionId: string, recipeId: string, sortOrder: number) {
+  const [row] = await db
+    .insert(collectionItems)
+    .values({ collectionId, recipeId, sortOrder })
+    .returning();
+  return row;
+}
+
+/** Recipe ids of a detail's items, in order. */
+function itemRecipeIds(detail: Awaited<ReturnType<typeof service.getCollection>>) {
+  return detail.items.map((i) => i.recipeId);
+}
+
+/** Every detail response satisfies `recipeCount === items.length`. */
+function expectCountMatches(detail: Awaited<ReturnType<typeof service.getCollection>>) {
+  expect(detail.recipeCount).toBe(detail.items.length);
+}
+
+describe('collection service — item visibility', () => {
+  let owner: typeof users.$inferSelect;
+  let author: typeof users.$inferSelect;
+  let third: typeof users.$inferSelect;
+  let originalCache: CacheProvider;
+  const colIds: string[] = [];
+
+  beforeEach(async () => {
+    originalCache = cacheProvider;
+    setCacheProvider(new InMemoryCacheProvider());
+    owner = await createUser('svc-itemvis-owner');
+    author = await createUser('svc-itemvis-author');
+    third = await createUser('svc-itemvis-third');
+  });
+
+  afterEach(async () => {
+    setCacheProvider(originalCache);
+    await cleanupCollections(colIds);
+    colIds.length = 0;
+    // Fork rows reference their source without ON DELETE: clear the links first.
+    await db
+      .update(recipes)
+      .set({ forkedFromId: null })
+      .where(inArray(recipes.authorId, [owner.id, author.id, third.id]));
+    await cleanupUsers([owner.id, author.id, third.id]);
+  });
+
+  it('hides a soft-deleted item from the anonymous viewer, the owner and the recipe author', async () => {
+    const col = await createCollectionRow(owner.id, 'Deleted item', 'public');
+    colIds.push(col.id);
+    const kept = await createRecipe(author.id, 'public');
+    const gone = await createRecipe(author.id, 'public');
+    await addItemRow(col.id, kept.id, 0);
+    await addItemRow(col.id, gone.id, 1);
+    await softDeleteRecipe(gone.id);
+
+    for (const viewer of [null, owner.id, author.id]) {
+      const detail = await service.getCollection(viewer, col.id);
+      expect(itemRecipeIds(detail)).toEqual([kept.id]);
+      expectCountMatches(detail);
+    }
+  });
+
+  it("hides another author's recipe made private from anonymous viewers and the owner, but returns it to its author", async () => {
+    const col = await createCollectionRow(owner.id, 'Private item', 'public');
+    colIds.push(col.id);
+    const kept = await createRecipe(author.id, 'public');
+    const hidden = await createRecipe(author.id, 'public');
+    await addItemRow(col.id, kept.id, 0);
+    await addItemRow(col.id, hidden.id, 1);
+    await setRecipeVisibility(hidden.id, 'private');
+
+    for (const viewer of [null, owner.id]) {
+      const detail = await service.getCollection(viewer, col.id);
+      expect(itemRecipeIds(detail)).toEqual([kept.id]);
+      expectCountMatches(detail);
+    }
+    const asAuthor = await service.getCollection(author.id, col.id);
+    expect(itemRecipeIds(asAuthor)).toEqual([kept.id, hidden.id]);
+    expectCountMatches(asAuthor);
+  });
+
+  it("hides another author's recipe made unlisted from anonymous viewers, the owner and a third user, but returns it to its author", async () => {
+    const col = await createCollectionRow(owner.id, 'Unlisted item', 'public');
+    colIds.push(col.id);
+    const kept = await createRecipe(author.id, 'public');
+    const unlisted = await createRecipe(author.id, 'public');
+    await addItemRow(col.id, kept.id, 0);
+    await addItemRow(col.id, unlisted.id, 1);
+    await setRecipeVisibility(unlisted.id, 'unlisted');
+
+    for (const viewer of [null, owner.id, third.id]) {
+      const detail = await service.getCollection(viewer, col.id);
+      expect(itemRecipeIds(detail)).toEqual([kept.id]);
+      expectCountMatches(detail);
+    }
+    const asAuthor = await service.getCollection(author.id, col.id);
+    expect(itemRecipeIds(asAuthor)).toEqual([kept.id, unlisted.id]);
+    expectCountMatches(asAuthor);
+  });
+
+  it("hides the owner's own draft and own unlisted recipe from others and returns them to the owner", async () => {
+    const col = await createCollectionRow(owner.id, 'Own hidden items', 'public');
+    colIds.push(col.id);
+    const pub = await createRecipe(author.id, 'public');
+    const draft = await createRecipe(owner.id, 'draft');
+    const unlisted = await createRecipe(owner.id, 'unlisted');
+    await addItemRow(col.id, pub.id, 0);
+    await addItemRow(col.id, draft.id, 1);
+    await addItemRow(col.id, unlisted.id, 2);
+
+    for (const viewer of [null, third.id]) {
+      const detail = await service.getCollection(viewer, col.id);
+      expect(itemRecipeIds(detail)).toEqual([pub.id]);
+      expect(detail.recipeCount).toBe(1);
+    }
+    const asOwner = await service.getCollection(owner.id, col.id);
+    expect(itemRecipeIds(asOwner)).toEqual([pub.id, draft.id, unlisted.id]);
+    expect(asOwner.recipeCount).toBe(3);
+  });
+
+  it('keeps recipeCount equal to items.length for every viewer of a mixed collection', async () => {
+    const col = await createCollectionRow(owner.id, 'Mixed', 'public');
+    colIds.push(col.id);
+    const rows = [
+      await createRecipe(author.id, 'public'),
+      await createRecipe(author.id, 'private'),
+      await createRecipe(owner.id, 'draft'),
+      await createRecipe(owner.id, 'unlisted'),
+      await createRecipe(third.id, 'public'),
+    ];
+    for (const [i, r] of rows.entries()) await addItemRow(col.id, r.id, i);
+    await softDeleteRecipe(rows[4].id);
+
+    for (const viewer of [null, owner.id, author.id, third.id]) {
+      expectCountMatches(await service.getCollection(viewer, col.id));
+    }
+  });
+
+  it('masks forkedFromId to null for every viewer when the fork source is unlisted', async () => {
+    const col = await createCollectionRow(owner.id, 'Forks', 'public');
+    colIds.push(col.id);
+    const unlistedSource = await createRecipe(author.id, 'unlisted');
+    const publicSource = await createRecipe(author.id, 'public');
+    const maskedFork = await createRecipe(third.id, 'public');
+    const keptFork = await createRecipe(third.id, 'public');
+    await markFork(maskedFork.id, unlistedSource.id);
+    await markFork(keptFork.id, publicSource.id);
+    await addItemRow(col.id, maskedFork.id, 0);
+    await addItemRow(col.id, keptFork.id, 1);
+
+    // The source's own author included: the cached shape is shared, so the mask is viewer-independent.
+    for (const viewer of [null, owner.id, third.id, author.id]) {
+      const detail = await service.getCollection(viewer, col.id);
+      const byId = new Map(detail.items.map((i) => [i.recipeId, i]));
+      expect(byId.get(maskedFork.id)?.recipe?.forkedFromId).toBeNull();
+      expect(byId.get(keptFork.id)?.recipe?.forkedFromId).toBe(publicSource.id);
+    }
+  });
+
+  describe('warm cache', () => {
+    it('omits a recipe made private on the next anonymous hit without calling model.findById', async () => {
+      const col = await createCollectionRow(owner.id, 'Warm private', 'public');
+      colIds.push(col.id);
+      const kept = await createRecipe(author.id, 'public');
+      const target = await createRecipe(author.id, 'public');
+      await addItemRow(col.id, kept.id, 0);
+      await addItemRow(col.id, target.id, 1);
+
+      const warm = await service.getCollection(null, col.id);
+      expect(itemRecipeIds(warm)).toEqual([kept.id, target.id]);
+
+      await setRecipeVisibility(target.id, 'private');
+      const findByIdCalls = vi.mocked(model.findById).mock.calls.length;
+      const hit = await service.getCollection(null, col.id);
+      expect(vi.mocked(model.findById).mock.calls.length).toBe(findByIdCalls);
+      expect(itemRecipeIds(hit)).toEqual([kept.id]);
+      expect(hit.recipeCount).toBe(1);
+    });
+
+    it('omits a recipe made unlisted on the next anonymous hit and the owner hit', async () => {
+      const col = await createCollectionRow(owner.id, 'Warm unlisted', 'public');
+      colIds.push(col.id);
+      const kept = await createRecipe(author.id, 'public');
+      const target = await createRecipe(author.id, 'public');
+      await addItemRow(col.id, kept.id, 0);
+      await addItemRow(col.id, target.id, 1);
+      await service.getCollection(null, col.id);
+
+      await setRecipeVisibility(target.id, 'unlisted');
+      const findByIdCalls = vi.mocked(model.findById).mock.calls.length;
+      for (const viewer of [null, owner.id]) {
+        const hit = await service.getCollection(viewer, col.id);
+        expect(itemRecipeIds(hit)).toEqual([kept.id]);
+        expectCountMatches(hit);
+      }
+      const asAuthor = await service.getCollection(author.id, col.id);
+      expect(itemRecipeIds(asAuthor)).toEqual([kept.id, target.id]);
+      expect(vi.mocked(model.findById).mock.calls.length).toBe(findByIdCalls);
+    });
+
+    it('omits a soft-deleted recipe on the next hit', async () => {
+      const col = await createCollectionRow(owner.id, 'Warm deleted', 'public');
+      colIds.push(col.id);
+      const kept = await createRecipe(author.id, 'public');
+      const target = await createRecipe(author.id, 'public');
+      await addItemRow(col.id, kept.id, 0);
+      await addItemRow(col.id, target.id, 1);
+      await service.getCollection(null, col.id);
+
+      await softDeleteRecipe(target.id);
+      for (const viewer of [null, owner.id, author.id]) {
+        const hit = await service.getCollection(viewer, col.id);
+        expect(itemRecipeIds(hit)).toEqual([kept.id]);
+        expectCountMatches(hit);
+      }
+    });
+
+    it("masks an item's forkedFromId once its fork source is made unlisted", async () => {
+      const col = await createCollectionRow(owner.id, 'Warm fork', 'public');
+      colIds.push(col.id);
+      const source = await createRecipe(author.id, 'public');
+      const fork = await createRecipe(third.id, 'public');
+      await markFork(fork.id, source.id);
+      await addItemRow(col.id, fork.id, 0);
+
+      const warm = await service.getCollection(null, col.id);
+      expect(warm.items[0].recipe?.forkedFromId).toBe(source.id);
+
+      await setRecipeVisibility(source.id, 'unlisted');
+      const hit = await service.getCollection(null, col.id);
+      expect(hit.items[0].recipe?.forkedFromId).toBeNull();
+    });
+  });
+
+  describe('reorder with hidden items', () => {
+    it('reorders the visible ids, gives hidden items the trailing sortOrder values and rejects a hidden id', async () => {
+      const col = await createCollectionRow(owner.id, 'Reorder hidden', 'public');
+      colIds.push(col.id);
+      const visible1 = await createRecipe(owner.id, 'public');
+      const hiddenPrivate = await createRecipe(author.id, 'public');
+      const visible2 = await createRecipe(author.id, 'public');
+      const hiddenDeleted = await createRecipe(author.id, 'public');
+      const i1 = await addItemRow(col.id, visible1.id, 0);
+      const h1 = await addItemRow(col.id, hiddenPrivate.id, 1);
+      const i2 = await addItemRow(col.id, visible2.id, 2);
+      const h2 = await addItemRow(col.id, hiddenDeleted.id, 3);
+      await setRecipeVisibility(hiddenPrivate.id, 'private');
+      await softDeleteRecipe(hiddenDeleted.id);
+
+      await expect(
+        service.reorderCollection(owner.id, col.id, [i2.id, i1.id, h1.id]),
+      ).rejects.toThrow('REORDER_MISMATCH');
+
+      await service.reorderCollection(owner.id, col.id, [i2.id, i1.id]);
+      const rows = await db
+        .select({ id: collectionItems.id, sortOrder: collectionItems.sortOrder })
+        .from(collectionItems)
+        .where(eq(collectionItems.collectionId, col.id));
+      const order = new Map(rows.map((r) => [r.id, r.sortOrder]));
+      expect(order.get(i2.id)).toBe(0);
+      expect(order.get(i1.id)).toBe(1);
+      expect(order.get(h1.id)).toBe(2);
+      expect(order.get(h2.id)).toBe(3);
+    });
   });
 });

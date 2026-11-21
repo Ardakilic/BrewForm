@@ -1,12 +1,34 @@
 # F25 — Offline Support / PWA
 
+> **Refresh (2026-11-21): brew-log sync is unblocked — F02 shipped (2026-08-13)**
+>
+> - `POST /api/v1/brew-logs` now exists: the `brewLogs` table (`brew_log`,
+>   `packages/db/src/schema.ts:1166`) and the `apps/api/src/modules/brew-log/` module are mounted
+>   at `/api/v1/brew-logs` (`apps/api/src/routes/index.ts:60`), validating with
+>   `BrewLogCreateSchema` (`packages/shared/src/schemas/brew-log.ts`: `recipeId`, optional
+>   `recipeVersionId`, `brewedAt`, `yieldActual`, `doseActual`, `notes`, `personalRating`).
+>   Related reads exist too: the caller's `GET /api/v1/brew-logs/stats/user`
+>   (`service.getUserBrewStats`, `brew-log/service.ts:177`) and the public
+>   `GET /api/v1/brew-logs/stats/recipe/:recipeId` (`brew-log/index.ts:130-132`).
+> - The queued offline payload is therefore a `BrewLogCreate` with an explicit `brewedAt` (the
+>   time of the offline brew, not the sync time). Sync must send the auth header and reuse the
+>   client's base-URL resolution (see below), and a 4xx on replay drops the entry with a visible
+>   error instead of retrying forever.
+> - The web brew-log UI exists (`apps/web/src/pages/brew-logs/`, `components/brew-log/`,
+>   resource route `apps/web/src/routes/resources/brew-logs.ts`); the offline queue should plug
+>   into that route's action rather than a parallel client.
+> - Wave 6 moved every page to loaders/actions, so the "react-router loader pattern" note below
+>   now applies to all pages, `RecipeFocusModePage` included.
+> - The "BLOCKED ON F02" bullets in the two banners below are superseded by this note; the rest
+>   of their corrections still apply.
+
 > **Validation status (2026-08-13): refreshed — corrections below**
 >
 > **Note:** The body below this line (including the 2026-07-13 banner) is the pre-refresh draft; treat the corrections below as authoritative. Verified against the codebase as of 2026-08-13.
 >
 > - ALREADY SHIPPED (do not re-create or overwrite): the web manifest exists at `apps/web/public/manifest.json` with brand theme `#c8a27a` and icons `/icon-192.png`, `/icon-512.png`, `/favicon.svg` — NOT the plan's `#3b82f6` or `/icons/icon-*.png` paths (72/96/128/144 sizes do not exist in `apps/web/public/`). `apps/web/index.html` already carries the manifest link (:15), `theme-color` (:11), and `apple-touch-icon` (:14). Of the plan's "Manifest Link" section, only the `apple-mobile-web-app-capable` / `apple-mobile-web-app-status-bar-style` meta tags are net-new.
 > - NET-NEW and valid (purely additive): everything else in the shell — no service worker exists anywhere (no `apps/web/public/sw.js`, no registration in `apps/web/src/main.tsx` (10 lines, plain `createRoot`), no `vite-plugin-pwa`/workbox in `apps/web/package.json`), no `offline.html`, no OfflineIndicator, zero `navigator.onLine` usage in `apps/web/src/`. Steps 2, 3, 5, 6 can ship independently.
-> - BLOCKED ON F02: all brew-log sync scope (US-3, US-4, the sw.js `sync` handler, `offline-db.ts`, `syncPendingBrewLogs`) POSTs `/api/v1/brew-logs`, which does not exist — no brew-log module, table, or schemas anywhere (confirmed net-new in `plans/F02-brew-journal.md` 2026-08-13 banner; `plans/ROADMAP.md:34,42`). Ship the shell without sync, or sequence after F02.
+> - ~~BLOCKED ON F02~~ — resolved (F02 shipped 2026-08-13; see the 2026-11-21 refresh above). The brew-log sync scope (US-3, US-4, the sw.js `sync` handler, `offline-db.ts`, `syncPendingBrewLogs`) targets `POST /api/v1/brew-logs`, which now exists; it can ship with the shell or after it.
 > - Carried forward from 2026-07-13, still unfixed: the `sw.js` snippet contains TypeScript (typed `openIndexedDB(): Promise<IDBDatabase>` at body line 196, `event.target as IDBOpenDBRequest` at :202) inside a raw `.js` file — strip the types.
 > - DESIGN FLAW in US-2 ("view recipe pages offline"): `/recipes/*` are client-side SPA routes — Caddy serves `index.html` for all of them (`apps/web/Caddyfile:12` `try_files {path} /index.html`), so cache-first on `/recipes/` only caches the app shell HTML. Recipe data arrives via `/api/...` GETs, which the plan's SW handles network-first with a 503 JSON fallback and NEVER caches. Offline recipe viewing requires caching recipe API GET responses (e.g. stale-while-revalidate on `GET /recipes/:slug` payloads), not navigation requests.
 > - API base is not always same-origin `/api/v1`: `apps/web/src/api/client.ts:12-14` resolves runtime `/config.js` → `VITE_API_URL` → `/api/v1` and may point at another origin (Dockerfile.web runtime retargeting). The plan's hardcoded `fetch('/api/v1/brew-logs')` in `sw.js`/`offline-db.ts` breaks cross-origin deployments — sync must reuse the same base-URL resolution.
@@ -17,7 +39,7 @@
 > **Validation status (2026-07-13): ⚠️ Outdated — corrections below**
 >
 > - PWA shell (manifest, service worker, offline page, registration) is valid and purely additive — can ship independently.
-> - Offline brew-log sync still POSTs `/api/v1/brew-logs`, which does not exist — blocked on F02 (and related F20). Ship the shell without sync or sequence after F02.
+> - Offline brew-log sync POSTs `/api/v1/brew-logs` — at the time blocked on F02; resolved, the endpoint exists since 2026-08-13 (see the 2026-11-21 refresh above).
 > - `sw.js` still contains TypeScript (typed `openIndexedDB(): Promise<IDBDatabase>`, `event.target as …`) inside a raw `.js` file — strip the types or compile the worker.
 
 ## Overview

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,13 +7,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../api/index.ts', () => ({
   brewLogApi: { list: vi.fn() },
-  ApiError: class extends Error {
-    status: number;
-    constructor(status: number) {
-      super('api error');
-      this.status = status;
-    }
-  },
 }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
@@ -34,9 +27,11 @@ vi.mock('@/utils/logger.ts', () => ({
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import type { BrewLogListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
+import { ApiError } from '../../api/errors.ts';
 import { brewLogApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { BrewLogListPage, loader } from './BrewLogListPage.tsx';
+import { loader } from './BrewLogListPage.data.ts';
+import { BrewLogListPage } from './BrewLogListPage.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockList = vi.mocked(brewLogApi.list);
@@ -109,7 +104,7 @@ function renderListPage(initialEntry = '/brew-logs') {
     [{ path: '/brew-logs', element: <BrewLogListPage />, loader, HydrateFallback }],
     { initialEntries: [initialEntry] },
   );
-  return render(<RouterProvider router={router} />);
+  return { ...render(<RouterProvider router={router} />), router };
 }
 
 // ── Setup ──────────────────────────────────────────────────────────────────
@@ -146,7 +141,7 @@ describe('BrewLogListPage', () => {
     renderListPage('/brew-logs?page=3');
 
     await waitFor(() => {
-      expect(mockList).toHaveBeenCalledWith({ page: 3 });
+      expect(mockList).toHaveBeenCalledWith({ page: 3 }, { signal: expect.any(AbortSignal) });
     });
   });
 
@@ -175,19 +170,56 @@ describe('BrewLogListPage — loader page parsing', () => {
     for (const bad of ['-2', '1.5', 'Infinity', '0', 'abc']) {
       mockList.mockClear();
       await loader({ request: new Request(`http://localhost/brew-logs?page=${bad}`) });
-      expect(mockList).toHaveBeenCalledWith({ page: 1 });
+      expect(mockList).toHaveBeenCalledWith({ page: 1 }, { signal: expect.any(AbortSignal) });
     }
   });
 
   it('defaults a missing page param to 1', async () => {
     mockList.mockClear();
     await loader({ request: new Request('http://localhost/brew-logs') });
-    expect(mockList).toHaveBeenCalledWith({ page: 1 });
+    expect(mockList).toHaveBeenCalledWith({ page: 1 }, { signal: expect.any(AbortSignal) });
   });
 
   it('passes a valid positive integer page through', async () => {
     mockList.mockClear();
     await loader({ request: new Request('http://localhost/brew-logs?page=4') });
-    expect(mockList).toHaveBeenCalledWith({ page: 4 });
+    expect(mockList).toHaveBeenCalledWith({ page: 4 }, { signal: expect.any(AbortSignal) });
+  });
+});
+
+describe('BrewLogListPage loader — auth guard', () => {
+  it('redirects a final 401 to /login with the encoded return path', async () => {
+    mockList.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
+
+    const thrown = await loader({
+      request: new Request('http://localhost/brew-logs?page=2'),
+    }).catch((err: unknown) => err);
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).headers.get('Location')).toBe(
+      '/login?next=%2Fbrew-logs%3Fpage%3D2',
+    );
+  });
+});
+
+describe('BrewLogListPage — canonical page URL', () => {
+  it('Next writes ?page=2 and Previous back to page 1 omits the param', async () => {
+    mockList.mockImplementation(async (params?: { page?: number }) =>
+      makeListResponse([makeLog()], { page: params?.page ?? 1, totalPages: 3 }),
+    );
+    const { router } = renderListPage('/brew-logs');
+    await screen.findByRole('button', { name: 'Next' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() => expect(router.state.location.search).toBe('?page=2'));
+    await waitFor(() =>
+      expect(mockList).toHaveBeenLastCalledWith({ page: 2 }, { signal: expect.any(AbortSignal) }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Previous' })).not.toBeDisabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+    await waitFor(() => expect(router.state.location.search).toBe(''));
   });
 });

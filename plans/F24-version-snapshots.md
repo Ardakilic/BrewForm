@@ -1,391 +1,167 @@
 # F24 — Recipe Version Immutability Guards
 
-> **Validation status (2026-07-13): ✅ Valid**
+> **Refresh (2026-11-21): scope cut to the immutability guards.**
 >
-> - All `FIELD_LABELS` fields verified on `recipeVersions` (`packages/db/src/schema.ts:176-239`); components are props-based; plan is self-contained.
-> - `GET /recipes/:slug/versions` exists (`recipe/index.ts:262`, was cited as :264). Catch-all `/:slugOrId` at line 300 — register the immutability PATCH/PUT rejections before it.
-> - Note on the known `currentVersion` trap: the plan is safe. `recipes` has a `currentVersionId` **column** (`schema.ts:116`) and a `versions` **relation** (loaded by `recipe/model.ts:236` `findById`), but there is NO `currentVersion` relation. The guard correctly uses `.versions` + `.currentVersionId`, so it never touches the missing relation.
+> - The diff half of this plan (`version-diff.ts`, `computeVersionDiff`, `generateDiffSummary`,
+>   `getVersionsWithDiff`, `VersionDiffSchema`, `VersionDiffBadge`, `VersionDetail` and the
+>   diff-enriched `GET /recipes/:slug/versions`) shipped as **F09** (recipe version diff,
+>   2026-07-28) and is removed from this plan. F09 provides `diffVersions(recipeId, v1Id, v2Id)`
+>   (`apps/api/src/modules/recipe/service.ts`, over `DIFF_SCALAR_FIELDS` plus taste-note and
+>   equipment set diffs), the route `GET /api/v1/recipes/:slug/versions/diff?v1=&v2=`
+>   (`recipe/index.ts`), `VersionDiffOutputSchema` (`packages/shared/src/schemas/responses/recipe.ts`)
+>   and the web `VersionDiffPage` with `DiffHighlighter`.
+> - Wave 6 (group 8) defines the write model the guards must respect: `PATCH /api/v1/recipes/:id`
+>   either **amends the current version in place** (`bumpVersion: false`) or **bumps** to a new
+>   version (`bumpVersion: true`), both inside one transaction under a recipe row lock
+>   (`model.updateRecipeWithVersion`, `.for('update')`). Amending the current version is allowed
+>   by design. Only versions *other than* `recipes.currentVersionId` are immutable.
+> - Today no code path writes an earlier version: `updateRecipeWithVersion` updates only the row
+>   it read as current, `replaceVersionRelations` only runs on that row, and no route accepts a
+>   write under `/recipes/:slug/versions/:versionId` (Hono answers 404). This plan turns that
+>   property into explicit guards and regression tests so a future write path cannot break it.
+> - An `amendedAt` column (showing that the current version was amended in place) is a separate
+>   debt-ledger follow-up, not part of F24.
+>
+> **Validation status (2026-07-13): ✅ Valid** (superseded by the refresh above for the diff scope)
 
 ## Overview
 
-Ensure version snapshots are truly immutable with application-level guards and change tracking. Versions cannot be modified after creation, and users can see exactly what changed between versions.
+Guarantee that recipe version history is append-only apart from the current version: an earlier
+version, its taste notes, equipment, additional preparations and photo links can never be
+changed or deleted through the API, by the author or anyone else. The current version stays
+amendable through `PATCH /recipes/:id` with `bumpVersion: false`.
 
 ## Goals
 
-1. Prevent modification of existing recipe versions
-2. Track changes between consecutive versions
-3. Show visual diff indicators in the UI
-4. Provide structured diff data in the API
-5. Maintain version history integrity
+1. Earlier versions (any `recipe_version` row whose id is not `recipes.currentVersionId`) are
+   never updated or deleted by application code.
+2. Version relation rows (`recipe_taste_note`, `recipe_equipment`,
+   `recipe_additional_preparation`, `recipe_version_photo`) of an earlier version are never
+   replaced.
+3. Explicit `PATCH`/`PUT`/`DELETE` attempts on a single version are rejected with a documented
+   error instead of an accidental 404 or a future accidental write.
+4. Regression tests pin the amend and bump paths so a refactor cannot widen what they write.
 
 ## User Stories
 
 | # | As a… | I want to… | So that… |
 |---|-------|-----------|----------|
-| US-1 | Authenticated user | Know that recipe versions cannot be changed | I can trust the version history is reliable |
-| US-2 | Authenticated user | See what changed between two versions | I can understand how the recipe evolved |
-| US-3 | Authenticated user | See which fields changed at a glance | I can quickly identify modifications |
-| US-4 | Developer | Receive structured diff data from the API | I can build custom diff visualizations |
+| US-1 | Authenticated user | Know that earlier recipe versions cannot be changed | I can trust the version history (and F09's diffs of it) |
+| US-2 | Recipe author | Keep fixing typos in my current version without creating a new version | Small corrections do not clutter the history |
+| US-3 | Developer | Get a clear, documented error when I try to write a single version | I do not build clients against a write path that must not exist |
 
 ## Technical Design
 
 ### No New Tables
 
-This feature enhances the existing `recipeVersions` module with application-level guards and computed diff fields.
+No schema change. The guards live in the recipe model (single writer of versions) and the route
+layer.
 
-### Immutability Guard
+### Model guard: only the current version is writable
 
-Modify `apps/api/src/modules/recipe/service.ts`:
+`apps/api/src/modules/recipe/model.ts` is the only module that writes `recipe_version` rows and
+their relations. Add one internal helper and call it before every in-place version write:
 
 ```ts
 /**
- * Guard: prevent updates to recipe versions that are currently active.
- * Recipe versions are immutable once created.
+ * Throws `VERSION_IS_IMMUTABLE` unless `versionId` is the recipe's current version.
+ * Call inside the transaction, after the recipe row is locked, before any UPDATE of a
+ * `recipe_version` row or any replacement of its relation rows.
  */
-export async function guardVersionImmutability(
+async function assertCurrentVersion(
+  tx: Transaction,
   recipeId: string,
-  versionId: string
+  versionId: string,
 ): Promise<void> {
-  const recipe = await recipeModel.findById(recipeId);
-  if (!recipe) throw new Error('RECIPE_NOT_FOUND');
-
-  // Reject ANY attempt to modify an existing version — versions are immutable
-  const versionExists = recipe.versions?.some((v: any) => v.id === versionId);
-  if (versionExists || recipe.currentVersionId === versionId) {
-    throw new Error('VERSION_IS_IMMUTABLE');
-  }
-}
-
-/**
- * Reject any PATCH/PUT to recipe_version endpoint.
- * Versions are immutable.
- */
-export async function rejectVersionUpdate(
-  userId: string,
-  recipeId: string,
-  versionId: string
-): Promise<void> {
-  const recipe = await recipeModel.findById(recipeId);
-  if (!recipe) throw new Error('RECIPE_NOT_FOUND');
-  if (recipe.authorId !== userId) throw new Error('FORBIDDEN');
-
-  // Always reject — versions are immutable
-  throw new Error('VERSION_IMMUTABLE');
+  const [row] = await tx
+    .select({ currentVersionId: recipes.currentVersionId })
+    .from(recipes)
+    .where(and(eq(recipes.id, recipeId), isNull(recipes.deletedAt)));
+  if (!row) throw new Error('RECIPE_NOT_FOUND');
+  const current = row.currentVersionId ?? (await highestVersionId(tx, recipeId)); // legacy rows
+  if (current !== versionId) throw new Error('VERSION_IS_IMMUTABLE');
 }
 ```
 
-### Diff Computation
+- `updateRecipeWithVersion` (`mode: 'amend'`) calls it with `current.id` before
+  `tx.update(recipeVersions)` and `replaceVersionRelations`. (`findCurrentVersionRow` falls back
+  to the highest version number when `currentVersionId` is null; for such legacy rows the guard
+  accepts the highest version only. Keep that fallback and test it.)
+- `replaceVersionRelations` stays non-exported and is only reachable through the guarded amend
+  path.
+- `mode: 'bump'` and fork/merge only `INSERT` new versions and relation rows; they must never
+  call `tx.update(recipeVersions)` or delete relation rows of an existing version. A test asserts
+  the previous version's row and relations are byte-for-byte unchanged after a bump.
+- `VERSION_IS_IMMUTABLE` maps to `409 VERSION_IS_IMMUTABLE` through the typed errors in
+  `apps/api/src/utils/errors.ts` (`ConflictError`), not a new string-matched error.
 
-Create `apps/api/src/modules/recipe/version-diff.ts`:
+### Route guard: no single-version write endpoints
+
+In `apps/api/src/modules/recipe/index.ts`, register explicit rejections for
+`PATCH`, `PUT` and `DELETE` on `/:slug/versions/:versionId`, before the `/:slugOrId` catch-all,
+each with `describeRoute()` metadata (tag `Recipes`, `security: [{ bearerAuth: [] }]`) and a
+`resolver(ErrorEnvelopeSchema)` response:
 
 ```ts
-/**
- * Compute diff between two recipe versions.
- * Returns changed fields with old/new values.
- */
-
-export interface VersionDiffField {
-  field: string;
-  label: string;
-  oldValue: unknown;
-  newValue: unknown;
-}
-
-export interface VersionDiff {
-  versionNumber: number;
-  previousVersionNumber: number;
-  changedFields: VersionDiffField[];
-  summary: string;
-}
-
-// Human-readable field labels
-const FIELD_LABELS: Record<string, string> = {
-  productName: 'Product Name',
-  coffeeBrand: 'Coffee Brand',
-  coffeeProcessing: 'Processing',
-  brewMethod: 'Brew Method',
-  drinkType: 'Drink Type',
-  brewerDetails: 'Brewer Details',
-  grinder: 'Grinder',
-  grindSize: 'Grind Size',
-  groundWeightGrams: 'Dose Weight',
-  extractionTimeSeconds: 'Extraction Time',
-  extractionVolumeMl: 'Extraction Volume',
-  temperatureCelsius: 'Temperature',
-  tds: 'TDS',
-  brewRatio: 'Brew Ratio',
-  flowRate: 'Flow Rate',
-  preInfusionTimeSeconds: 'Pre-infusion Time',
-  beanId: 'Bean',
-  coffeeVarietyName: 'Coffee Variety',
-  personalNotes: 'Personal Notes',
-  preparationNotes: 'Preparation Notes',
-  isFavourite: 'Favourite',
-  rating: 'Rating',
-  emojiTag: 'Emoji Tag',
-};
-
-/**
- * Compare two version objects and return changed fields.
- */
-export function computeVersionDiff(
-  current: Record<string, unknown>,
-  previous: Record<string, unknown>
-): VersionDiffField[] {
-  const changes: VersionDiffField[] = [];
-
-  for (const [field, label] of Object.entries(FIELD_LABELS)) {
-    const oldVal = previous[field];
-    const newVal = current[field];
-
-    // Skip undefined/null comparisons (both null = no change)
-    if (oldVal === newVal) continue;
-    if (oldVal == null && newVal == null) continue;
-
-    // Skip default values
-    if (field === 'isFavourite' && !newVal) continue;
-    if (field === 'emojiTag' && !newVal) continue;
-
-    changes.push({
-      field,
-      label,
-      oldValue: oldVal,
-      newValue: newVal,
-    });
-  }
-
-  return changes;
-}
-
-/**
- * Generate human-readable summary of changes.
- */
-export function generateDiffSummary(changes: VersionDiffField[]): string {
-  if (changes.length === 0) return 'No changes';
-  if (changes.length === 1) return `Changed ${changes[0].label.toLowerCase()}`;
-  if (changes.length <= 3) {
-    const names = changes.map(c => c.label.toLowerCase());
-    return `Changed ${names.join(', ')}`;
-  }
-  return `Changed ${changes.length} fields`;
-}
+recipe.on(
+  ['PATCH', 'PUT', 'DELETE'],
+  '/:slug/versions/:versionId',
+  describeRoute({ /* tags, summary, description, security, 405/401 responses */ }),
+  authMiddleware,
+  (c) =>
+    error(
+      c,
+      'VERSION_IS_IMMUTABLE',
+      'Recipe versions are immutable; amend the current version with PATCH /recipes/:id',
+      405,
+    ),
+);
 ```
 
-### Enhanced Version Listing
+405 (with an `Allow: GET` header) states that the resource exists but the method never will;
+the body points at the supported amend path. The OpenAPI coverage test must list the new route.
 
-Modify `apps/api/src/modules/recipe/model.ts`:
+### Logging
 
-```ts
-/**
- * Get versions with diff from previous version.
- * Uses window function to compare consecutive versions.
- */
-export async function getVersionsWithDiff(recipeId: string) {
-  const versions = await db.select()
-    .from(recipeVersions)
-    .where(eq(recipeVersions.recipeId, recipeId))
-    .orderBy(desc(recipeVersions.versionNumber));
-
-  // Compute diffs
-  const versionsWithDiff = versions.map((version, index) => {
-    const previous = versions[index + 1]; // Next in desc order = previous version
-    const diff = previous
-      ? computeVersionDiff(version as Record<string, unknown>, previous as Record<string, unknown>)
-      : [];
-    const summary = generateDiffSummary(diff);
-
-    return {
-      ...version,
-      diffFromPrevious: {
-        changedFields: diff,
-        summary,
-        previousVersionNumber: previous?.versionNumber ?? null,
-      },
-    };
-  });
-
-  return versionsWithDiff;
-}
-```
-
-### API Enhancement
-
-Modify `GET /recipes/:slug/versions` endpoint:
-
-```ts
-recipe.get('/:slug/versions', optionalAuthMiddleware, zValidator('query', PaginationSchema), async (c) => {
-  const slug = c.req.param('slug')!;
-  const { page, perPage } = c.req.valid('query');
-
-  const recipe = await service.getRecipe(slug);
-  if (!recipe) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
-
-  const versions = await service.getVersionsWithDiff(recipe.id);
-  // Apply pagination to versions
-  const start = (page - 1) * perPage;
-  const paginatedVersions = versions.slice(start, start + perPage);
-
-  return paginated(c, paginatedVersions, {
-    page,
-    perPage,
-    total: versions.length,
-    totalPages: Math.ceil(versions.length / perPage),
-  });
-});
-```
-
-### Shared Schemas
-
-Add to `packages/shared/src/schemas/recipe.ts`:
-
-```ts
-export const VersionDiffSchema = z.object({
-  field: z.string(),
-  label: z.string(),
-  oldValue: z.unknown(),
-  newValue: z.unknown(),
-});
-
-export const VersionWithDiffSchema = z.object({
-  id: z.string(),
-  versionNumber: z.number(),
-  diffFromPrevious: z.object({
-    changedFields: z.array(VersionDiffSchema),
-    summary: z.string(),
-    previousVersionNumber: z.number().nullable(),
-  }),
-  // ... other version fields
-});
-```
-
-### Frontend Components
-
-#### Diff Indicators
-
-Create `apps/web/src/components/recipe/VersionDiffBadge.tsx`:
-
-```tsx
-interface VersionDiffBadgeProps {
-  summary: string;
-  changedFields: Array<{ field: string; label: string }>;
-}
-
-export function VersionDiffBadge({ summary, changedFields }: VersionDiffBadgeProps) {
-  if (changedFields.length === 0) return null;
-
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-gray-500">{summary}</span>
-      <div className="flex gap-1">
-        {changedFields.slice(0, 3).map(({ field, label }) => (
-          <span
-            key={field}
-            className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded"
-          >
-            {label}
-          </span>
-        ))}
-        {changedFields.length > 3 && (
-          <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded">
-            +{changedFields.length - 3} more
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-```
-
-#### Version Detail with Diff
-
-Create `apps/web/src/components/recipe/VersionDetail.tsx`:
-
-```tsx
-interface VersionDetailProps {
-  version: VersionWithDiff;
-  isCurrent: boolean;
-}
-
-export function VersionDetail({ version, isCurrent }: VersionDetailProps) {
-  return (
-    <div className="border rounded-lg p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-medium">
-          Version {version.versionNumber}
-          {isCurrent && (
-            <span className="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">
-              Current
-            </span>
-          )}
-        </h3>
-        <VersionDiffBadge
-          summary={version.diffFromPrevious.summary}
-          changedFields={version.diffFromPrevious.changedFields}
-        />
-      </div>
-      {/* ... version details */}
-    </div>
-  );
-}
-```
-
-#### Modifications to Existing Pages
-
-- **RecipeVersionsPage**: Use `VersionDetail` with diff badges
-- Add expandable diff details for each version
-
-### Route Protection
-
-Modify `apps/api/src/modules/recipe/index.ts`:
-
-```ts
-// Reject any update to recipe versions
-recipe.patch('/:slug/versions/:versionId', authMiddleware, async (c) => {
-  return error(c, 'FORBIDDEN', 'Recipe versions are immutable', 403);
-});
-
-recipe.put('/:slug/versions/:versionId', authMiddleware, async (c) => {
-  return error(c, 'FORBIDDEN', 'Recipe versions are immutable', 403);
-});
-```
+The guard logs `log.warn({ recipeId, versionId }, 'VERSION_IS_IMMUTABLE rejected')` (ids only),
+and the route rejection logs at `debug` with the request id.
 
 ## API Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/api/v1/recipes/:slug/versions` | Optional | List versions with diff data |
-| `PATCH` | `/api/v1/recipes/:slug/versions/:id` | Required | **Rejected** — versions immutable |
-| `PUT` | `/api/v1/recipes/:slug/versions/:id` | Required | **Rejected** — versions immutable |
+| `PATCH` | `/api/v1/recipes/:id` | Required | Unchanged: amends the current version (`bumpVersion: false`) or bumps (`bumpVersion: true`) |
+| `PATCH`/`PUT`/`DELETE` | `/api/v1/recipes/:slug/versions/:versionId` | Required | **Rejected** with `405 VERSION_IS_IMMUTABLE` |
+| `GET` | `/api/v1/recipes/:slug/versions/diff` | Optional | Unchanged (F09) |
 
 ## Acceptance Criteria
 
-- [ ] PATCH/PUT to version endpoints return 403
-- [ ] Version listing includes diff from previous version
-- [ ] Diff shows changed fields with old/new values
-- [ ] Diff summary is human-readable
-- [ ] Visual diff badges show changed field names
-- [ ] Current version is clearly indicated
-- [ ] Versions cannot be modified even by recipe owner
+- [ ] `PATCH`, `PUT` and `DELETE` on `/recipes/:slug/versions/:versionId` return 405 with
+      `VERSION_IS_IMMUTABLE`, for the author and for admins, and carry OpenAPI metadata
+- [ ] An amend (`bumpVersion: false`) still updates the current version in place
+- [ ] A bump leaves the previous version's row and all its relation rows unchanged (DB-backed test)
+- [ ] An amend never touches any version other than the current one (DB-backed test with a
+      three-version recipe)
+- [ ] `assertCurrentVersion` rejects a non-current version id with `VERSION_IS_IMMUTABLE` (409)
+- [ ] F09's diff endpoint and `VersionDiffPage` are unchanged
 - [ ] Type-check passes (`make check`)
 - [ ] Lint passes (`make lint`)
-- [ ] Tests pass (`make test`)
+- [ ] Tests pass (`make test-api`)
 
 ## Implementation Steps
 
-1. Create `apps/api/src/modules/recipe/version-diff.ts`
-2. Add `getVersionsWithDiff` to `apps/api/src/modules/recipe/model.ts`
-3. Modify `GET /recipes/:slug/versions` endpoint to include diff data
-4. Add immutability guard routes (reject PATCH/PUT)
-5. Add `VersionDiffSchema` to shared schemas
-6. Create `apps/web/src/components/recipe/VersionDiffBadge.tsx`
-7. Create `apps/web/src/components/recipe/VersionDetail.tsx`
-8. Modify `RecipeVersionsPage` to use new components
-9. Write tests for diff computation and immutability guards
-10. Run `make check && make lint && make test`
+1. Failing tests first: a DB-backed model test (bump keeps the previous version and its relations
+   unchanged; amend writes only the current version) using `RecipeWriteFixtures` from
+   `apps/api/src/modules/recipe/test-helpers.ts`, and a route test for the three rejected methods.
+2. Add `assertCurrentVersion` to `recipe/model.ts` and call it in the amend branch of
+   `updateRecipeWithVersion`.
+3. Map `VERSION_IS_IMMUTABLE` through the typed errors in `apps/api/src/utils/errors.ts`.
+4. Add the rejecting route with `describeRoute()` before `/:slugOrId`.
+5. Run `make check && make lint && make test-api`.
 
 ## Dependencies
 
-- Existing `recipeVersions` table
-- Existing `recipes` table (for currentVersionId check)
-- Existing `authMiddleware`
-- Existing response helpers
+- `recipes.currentVersionId` and the `recipe_version` relation tables (`packages/db/src/schema.ts`)
+- `model.updateRecipeWithVersion` (wave 6 group 8 amend/bump transaction)
+- F09 (shipped) for every diff concern
+- Typed errors (`apps/api/src/utils/errors.ts`) and response helpers

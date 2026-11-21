@@ -1,13 +1,43 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+# Project context, shown to AI when creating artifacts.
+context: |
+  Project: BrewForm, a coffee recipe sharing app (recipes, versions, forks, collections, brew
+  journal, comparisons, notifications, admin).
+
+  Stack:
+  - Runtime: Node 26 (native TypeScript type stripping), pnpm 12 workspaces
+    (`apps/api`, `apps/web`, `packages/shared`, `packages/db`). Everything runs through Docker
+    via `make <target>`; no other JavaScript runtime is used.
+  - API: Hono (typed `AppEnv` context), `hono-openapi` `describeRoute()` metadata plus
+    `@hono/zod-validator` `zValidator` for validation (ADR-012), Zod 4 schemas shared from
+    `@brewform/shared/schemas`, pino structured logging.
+  - Database: PostgreSQL via Drizzle ORM on the postgres-js driver; schema in
+    `packages/db/src/schema.ts`, migrations generated with `make db-generate`.
+  - Web: React 19 with the react-router data router (loaders, actions, fetchers), Vite,
+    Tailwind 4, base-ui components, i18n in `packages/shared/src/i18n/{en,tr}.json`.
+  - Tooling: Vitest for every test suite, Biome for lint and format (lineWidth 100,
+    indentWidth 2, single quotes, semicolons).
+
+  Key AGENTS.md rules every artifact must respect:
+  - API modules follow `model.ts` -> `service.ts` -> `index.ts`; services never import
+    `drizzle-orm`; the frontend never imports `@brewform/db`.
+  - Every route has `describeRoute()` metadata and a `zValidator` request validator.
+  - No raw SQL, no JSONB/UUID columns; soft deletes use `deletedAt` and queries filter with
+    `isNull(table.deletedAt)`; schema changes only in `schema.ts`, never hand-edited SQL.
+  - Structured logging with ids only (no passwords, tokens, emails or IPs); entry/exit debug
+    logs on public service functions.
+  - Every user-visible string exists in both `en.json` and `tr.json`.
+  - Explicit `.ts`/`.tsx` import extensions; run `make fmt` after edits.
+
+  OpenSpec rules:
+  - The openspec CLI parses only the FIRST line after `### Requirement:` as the requirement
+    text, so SHALL or MUST must appear on that first line.
+  - Never ship an all-REMOVED delta (a delta that removes every requirement of a spec): it
+    validates but makes `openspec archive` abort. Retire a capability by deleting its folder
+    and recording the rationale in the proposal instead.
+  - Use RENAMED (FROM/TO) plus MODIFIED to change a requirement title.
+  - Validate with `openspec validate <change> --strict`.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.

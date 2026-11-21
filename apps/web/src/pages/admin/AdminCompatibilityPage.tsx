@@ -1,27 +1,25 @@
-import { useEffect, useState } from 'react';
-import { api } from '../../api/client.ts';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
-import { useToast } from '../../components/ui/Toast.tsx';
+import { useEffect } from 'react';
+import { useFetcher, useLoaderData } from 'react-router';
+import type { CompatibilityRule } from '../../api/types.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './AdminCompatibilityPage.data.ts';
 
 const log = createLogger('AdminCompatibilityPage');
 
-interface CompatibilityRule {
-  id: string;
-  brewMethod: string;
-  equipmentType: string;
-  isCompatible: boolean;
-}
-
-/** Admin page: brew-method/equipment compatibility rules with toggle and cache flush. */
+/**
+ * Admin page: brew-method/equipment compatibility rules with a per-rule toggle and a cache
+ * flush. Rules come from the route loader; both mutations submit `intent`s to the route action
+ * (`AdminCompatibilityPage.data.ts`) through fetchers and toast on `{ ok: false }`.
+ */
 export function AdminCompatibilityPage() {
   const { t } = useTranslation();
-  const toast = useToast();
-  const [rules, setRules] = useState<CompatibilityRule[]>([]);
-  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
-  const [flushing, setFlushing] = useState(false);
+  const { rules } = useLoaderData<typeof loader>();
+  const flushFetcher = useFetcher<typeof action>();
+  const flushing = flushFetcher.state !== 'idle';
+
+  useActionFeedback(flushFetcher, { errorKey: 'admin.compatibility.flushError' });
 
   useEffect(() => {
     log.debug({}, 'AdminCompatibilityPage mounted');
@@ -30,41 +28,9 @@ export function AdminCompatibilityPage() {
     };
   }, []);
 
-  useEffect(() => {
-    api
-      .get<CompatibilityRule[]>('/admin/compatibility')
-      .then((data) => {
-        setRules(data as CompatibilityRule[]);
-        setStatus('ready');
-      })
-      .catch((err) => {
-        log.error({ err }, 'compatibility rules fetch failed');
-        setStatus('error');
-      });
-  }, []);
-
-  async function toggleCompatibility(id: string, current: boolean) {
-    try {
-      const updated = await api.patch<CompatibilityRule>(`/admin/compatibility/${id}`, {
-        isCompatible: !current,
-      });
-      setRules((prev) => prev.map((r) => (r.id === id ? (updated as CompatibilityRule) : r)));
-    } catch (err) {
-      log.error({ err, ruleId: id }, 'toggleCompatibility failed');
-      toast.error('admin.compatibility.toggleError');
-    }
-  }
-
-  async function flushCache() {
-    setFlushing(true);
-    try {
-      await api.post('/admin/cache/flush', {});
-    } catch (err) {
-      log.error({ err }, 'flushCache failed');
-      toast.error('admin.compatibility.flushError');
-    } finally {
-      setFlushing(false);
-    }
+  /** Submits the `flush` intent. */
+  function flushCache() {
+    flushFetcher.submit({ intent: 'flush' }, { method: 'post' });
   }
 
   return (
@@ -78,56 +44,71 @@ export function AdminCompatibilityPage() {
         </button>
       </div>
 
-      {status === 'loading' ? (
-        <LoadingState />
-      ) : status === 'error' ? (
-        <ErrorState message={t('admin.compatibility.loadError')} />
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                  {t('admin.compatibility.brewMethod')}
-                </th>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                  {t('admin.compatibility.equipmentType')}
-                </th>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                  {t('admin.compatibility.compatible')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rules.map((rule) => (
-                <tr key={rule.id} style={{ borderBottom: '1px solid var(--border-primary)' }}>
-                  <td className="py-2 px-3" style={{ color: 'var(--text-primary)' }}>
-                    {rule.brewMethod.replace(/_/g, ' ')}
-                  </td>
-                  <td className="py-2 px-3" style={{ color: 'var(--text-primary)' }}>
-                    {rule.equipmentType.replace(/_/g, ' ')}
-                  </td>
-                  <td className="py-2 px-3">
-                    <button
-                      type="button"
-                      onClick={() => toggleCompatibility(rule.id, rule.isCompatible)}
-                      className="rounded px-3 py-1 text-xs font-medium"
-                      style={{
-                        backgroundColor: rule.isCompatible
-                          ? 'var(--success)'
-                          : 'var(--bg-tertiary)',
-                        color: rule.isCompatible ? 'white' : 'var(--text-primary)',
-                      }}
-                    >
-                      {rule.isCompatible ? t('common.yes') : t('common.no')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
+              <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                {t('admin.compatibility.brewMethod')}
+              </th>
+              <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                {t('admin.compatibility.equipmentType')}
+              </th>
+              <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                {t('admin.compatibility.compatible')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rules.map((rule) => (
+              <CompatibilityRow key={rule.id} rule={rule} />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
+  );
+}
+
+/**
+ * One rule row with its own fetcher, so several toggles can be in flight at once. The button
+ * shows the submitted value optimistically and the loader revalidation brings the saved rule;
+ * a failed toggle toasts `admin.compatibility.toggleError` and falls back to the saved value.
+ */
+function CompatibilityRow({ rule }: { rule: CompatibilityRule }) {
+  const { t } = useTranslation();
+  const fetcher = useFetcher<typeof action>();
+  useActionFeedback(fetcher, { errorKey: 'admin.compatibility.toggleError' });
+  const pending = fetcher.formData?.get('isCompatible');
+  const isCompatible =
+    pending === undefined || pending === null ? rule.isCompatible : pending === 'true';
+
+  return (
+    <tr style={{ borderBottom: '1px solid var(--border-primary)' }}>
+      <td className="py-2 px-3" style={{ color: 'var(--text-primary)' }}>
+        {rule.brewMethod.replace(/_/g, ' ')}
+      </td>
+      <td className="py-2 px-3" style={{ color: 'var(--text-primary)' }}>
+        {rule.equipmentType.replace(/_/g, ' ')}
+      </td>
+      <td className="py-2 px-3">
+        <button
+          type="button"
+          onClick={() =>
+            fetcher.submit(
+              { intent: 'toggle', id: rule.id, isCompatible: String(!isCompatible) },
+              { method: 'post' },
+            )
+          }
+          className="rounded px-3 py-1 text-xs font-medium"
+          style={{
+            backgroundColor: isCompatible ? 'var(--success)' : 'var(--bg-tertiary)',
+            color: isCompatible ? 'var(--bg-primary)' : 'var(--text-primary)',
+          }}
+        >
+          {isCompatible ? t('common.yes') : t('common.no')}
+        </button>
+      </td>
+    </tr>
   );
 }

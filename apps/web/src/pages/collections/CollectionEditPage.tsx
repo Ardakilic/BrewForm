@@ -1,56 +1,40 @@
-import type { CollectionDetailOutput, CollectionUpdate } from '@brewform/shared/schemas';
+import type { CollectionUpdate } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { useLoaderData, useNavigate } from 'react-router';
-import { ApiError, collectionApi } from '../../api/index.ts';
+import { useActionData, useLoaderData, useNavigation, useSubmit } from 'react-router';
 import { Field } from '../../components/form/Field.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { failureToError } from '../../routes/action-result.ts';
+import { getApiErrorMessage } from '../../utils/apiErrorMessage.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './CollectionEditPage.data.ts';
 
 const log = createLogger('CollectionEditPage');
 
-/** Loader payload for {@link CollectionEditPage}. */
-export interface CollectionEditLoaderData {
-  collection: CollectionDetailOutput;
-}
+/** The collection visibilities the form offers, in display order. */
+type CollectionVisibility = 'private' | 'unlisted' | 'public' | 'draft';
 
 /**
- * React Router data loader for `/collections/:id/edit` — fetches the collection.
- * A 404 is mapped to `throw new Response('Not Found', { status: 404 })`.
- */
-export const loader = async ({
-  params,
-}: {
-  params: Record<string, string | undefined>;
-}): Promise<CollectionEditLoaderData> => {
-  const id = params.id;
-  if (!id) throw new Response('Not Found', { status: 404 });
-  log.debug({ collectionId: id }, 'CollectionEditPage loader started');
-  let collection: CollectionDetailOutput;
-  try {
-    collection = await collectionApi.get(id);
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      throw new Response('Not Found', { status: 404 });
-    }
-    log.error({ err, collectionId: id }, 'CollectionEditPage loader failed');
-    throw err;
-  }
-  log.debug({ collectionId: id }, 'CollectionEditPage loader completed');
-  return { collection };
-};
-
-/**
- * Page component for `/collections/:id/edit` — form to edit a collection.
+ * Page component for `/collections/:id/edit` — form to edit a collection. The collection
+ * comes from the route loader (`CollectionEditPage.data.ts`); the form submits a JSON
+ * `CollectionUpdate` (with `description` only when it changed) to the route action, which
+ * redirects to the collection on success or returns `{ ok: false }`, shown inline.
  */
 export function CollectionEditPage() {
-  const { collection } = useLoaderData() as CollectionEditLoaderData;
+  const { collection } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
+  const navigation = useNavigation();
+  const submit = useSubmit();
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [name, setName] = useState(collection.name);
   const [description, setDescription] = useState(collection.description ?? '');
   const [visibility, setVisibility] = useState(collection.visibility);
-  const [submitting, setSubmitting] = useState(false);
+  const submitting = navigation.state === 'submitting';
+  const failure = actionData && 'ok' in actionData && !actionData.ok ? actionData : null;
+  const error = failure
+    ? getApiErrorMessage(failureToError(failure), t, 'collection.error.save')
+    : '';
 
   useEffect(() => {
     log.debug({ collectionId: collection.id }, 'CollectionEditPage mounted');
@@ -59,26 +43,18 @@ export function CollectionEditPage() {
     };
   }, [collection.id]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  /** Builds the update payload (description only when changed) and submits it to the action. */
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
-    setSubmitting(true);
-    try {
-      const data: CollectionUpdate = {
-        name: name.trim(),
-        visibility: visibility as 'private' | 'unlisted' | 'public' | 'draft',
-      };
-      if (description.trim() !== (collection.description ?? '')) {
-        data.description = description.trim();
-      }
-      await collectionApi.update(collection.id, data);
-      log.debug({ collectionId: collection.id }, 'Collection updated');
-      navigate(`/collections/${collection.id}`);
-    } catch (err) {
-      log.error({ err, collectionId: collection.id }, 'Failed to update collection');
-    } finally {
-      setSubmitting(false);
+    if (!name.trim() || submitting) return;
+    const data: CollectionUpdate = {
+      name: name.trim(),
+      visibility: visibility as CollectionVisibility,
+    };
+    if (description.trim() !== (collection.description ?? '')) {
+      data.description = description.trim();
     }
+    submit(data, { method: 'post', encType: 'application/json' });
   };
 
   return (
@@ -86,6 +62,7 @@ export function CollectionEditPage() {
       <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
         {t('collection.detail.edit')}
       </h1>
+      {error && <ErrorState message={error} className="mb-4" />}
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label={t('collection.create.name')} htmlFor="collection-name" required>
           <input
@@ -110,9 +87,7 @@ export function CollectionEditPage() {
           <select
             id="collection-visibility"
             value={visibility}
-            onChange={(e) =>
-              setVisibility(e.target.value as 'private' | 'unlisted' | 'public' | 'draft')
-            }
+            onChange={(e) => setVisibility(e.target.value as CollectionVisibility)}
             className="input w-full"
           >
             <option value="draft">{t('collection.visibility.draft')}</option>

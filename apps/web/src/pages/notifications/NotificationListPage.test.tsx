@@ -1,9 +1,5 @@
 // ── Module-level mocks (hoisted by Vitest — MUST come before imports) ──
 
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: vi.fn(),
-}));
-
 vi.mock('../../api/index.ts', () => ({
   notificationApi: {
     list: vi.fn(),
@@ -11,23 +7,10 @@ vi.mock('../../api/index.ts', () => ({
     markRead: vi.fn(),
     unreadCount: vi.fn(),
   },
-  ApiError: class extends Error {
-    code: string;
-    status: number;
-    constructor(code: string, message: string, status = 500) {
-      super(message);
-      this.code = code;
-      this.status = status;
-    }
-  },
 }));
 
 vi.mock('../../utils/logger.ts', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
-}));
-
-vi.mock('../../utils/notification-events.ts', () => ({
-  notifyNotificationsChanged: vi.fn(),
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
@@ -44,49 +27,47 @@ vi.mock('../../components/layout/NotificationItem.tsx', () => ({
 }));
 
 vi.mock('../../components/recipe-list/index.ts', () => ({
-  PaginationControls: ({ page, totalPages }: { page: number; totalPages: number }) => (
+  PaginationControls: ({
+    page,
+    totalPages,
+    onPageChange,
+  }: {
+    page: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+  }) => (
     <nav data-testid="pagination">
       page {page}/{totalPages}
+      <button type="button" onClick={() => onPageChange(page - 1)}>
+        Previous
+      </button>
+      <button type="button" onClick={() => onPageChange(page + 1)}>
+        Next
+      </button>
     </nav>
   ),
 }));
 
 // ── Imports (after all vi.mock calls) ──
 
+import { t } from '@brewform/shared/i18n';
 import type { NotificationOutput, PaginatedResponse } from '@brewform/shared/schemas';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter } from 'react-router';
-import { RouterProvider } from 'react-router/dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../../api/errors.ts';
 import { notificationApi } from '../../api/index.ts';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { loader, NotificationListPage } from './NotificationListPage.tsx';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { markAllReadAction } from '../../routes/resources/notifications.ts';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { loader } from './NotificationListPage.data.ts';
+import { NotificationListPage } from './NotificationListPage.tsx';
 
-const mockUseTranslation = vi.mocked(useTranslation);
 const mockList = vi.mocked(notificationApi.list);
 const mockMarkAllRead = vi.mocked(notificationApi.markAllRead);
 
-const enMap: Record<string, string> = {
-  'notifications.title': 'Notifications',
-  'notifications.filterLabel': 'Filter notifications',
-  'notifications.empty': 'No notifications yet',
-  'notifications.markAllRead': 'Mark all as read',
-  'notifications.all': 'All',
-  'notifications.unread': 'Unread',
-  'common.previous': 'Previous',
-  'common.next': 'Next',
-  'common.pagination': 'Page {page} of {total}',
-};
-
-const trMap: Record<string, string> = {
-  'notifications.title': 'Bildirimler',
-  'notifications.filterLabel': 'Bildirimleri filtrele',
-  'notifications.empty': 'Henüz bildirim yok',
-  'notifications.markAllRead': 'Tümünü okundu işaretle',
-  'notifications.all': 'Tümü',
-  'notifications.unread': 'Okunmamış',
-};
+/** The request options every loader call forwards. */
+const SIGNAL = { signal: expect.any(AbortSignal) };
 
 function makeNotification(overrides: Partial<NotificationOutput> = {}): NotificationOutput {
   return {
@@ -116,28 +97,31 @@ function makeResponse(
   };
 }
 
-function renderPage(locale: 'en' | 'tr' = 'en') {
-  mockUseTranslation.mockReturnValue({
-    locale,
-    setLocale: vi.fn(),
-    t: (key: string) => (locale === 'tr' ? trMap : enMap)[key] ?? key,
-    availableLocales: ['en', 'tr'],
-  });
+/** Renders `/notifications` (or `entry`) through its real loader and the read-all action. */
+function renderAt(entry = '/notifications', locale: 'en' | 'tr' = 'en') {
+  return renderWithAppProviders(
+    [
+      {
+        path: '/notifications',
+        loader,
+        Component: NotificationListPage,
+        errorElement: <RouteErrorState />,
+      },
+      { path: '/resources/notifications/read-all', action: markAllReadAction },
+    ],
+    { initialEntries: [entry], auth: 'user', locale },
+  ).router;
+}
 
-  const router = createMemoryRouter(
-    [{ path: '/notifications', element: <NotificationListPage />, loader }],
-    { initialEntries: ['/notifications'] },
-  );
-  return render(<RouterProvider router={router} />);
+/** Renders `/notifications` in `locale`. */
+function renderPage(locale: 'en' | 'tr' = 'en') {
+  return renderAt('/notifications', locale);
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   mockMarkAllRead.mockResolvedValue({ message: 'ok' });
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
 });
 
 describe('NotificationListPage', () => {
@@ -150,25 +134,49 @@ describe('NotificationListPage', () => {
     await waitFor(() => {
       expect(screen.getAllByTestId('notif-item')).toHaveLength(2);
     });
-    expect(mockList).toHaveBeenCalledWith(1, false);
+    expect(mockList).toHaveBeenCalledWith(1, false, SIGNAL);
   });
 
   it('shows the empty state when there are no notifications', async () => {
     mockList.mockResolvedValue(makeResponse([]));
     renderPage();
 
-    expect(await screen.findByText('No notifications yet')).toBeInTheDocument();
+    expect(await screen.findByText(t('notifications.empty'))).toBeInTheDocument();
   });
 
-  it('marks all notifications as read when the button is clicked', async () => {
+  it('marks all notifications as read through the action without reloading the page', async () => {
     const user = userEvent.setup();
     mockList.mockResolvedValue(makeResponse([makeNotification({ readAt: null })]));
     renderPage();
 
-    const button = await screen.findByText('Mark all as read');
+    const button = await screen.findByText(t('notifications.markAllRead'));
     await user.click(button);
 
-    await waitFor(() => expect(mockMarkAllRead).toHaveBeenCalled());
+    await waitFor(() => expect(mockMarkAllRead).toHaveBeenCalledWith(SIGNAL));
+    await waitFor(() =>
+      expect(screen.queryByText(t('notifications.markAllRead'))).not.toBeInTheDocument(),
+    );
+    expect(mockList).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows an error toast and keeps the button when mark-all-read fails', async () => {
+    const user = userEvent.setup();
+    mockMarkAllRead.mockRejectedValue(new ApiError('INTERNAL_ERROR', 'boom', undefined, 500));
+    mockList.mockResolvedValue(makeResponse([makeNotification({ readAt: null })]));
+    renderPage();
+
+    await user.click(await screen.findByText(t('notifications.markAllRead')));
+
+    expect(await screen.findByText(t('notifications.markAllReadError'))).toBeInTheDocument();
+    expect(screen.getByText(t('notifications.markAllRead'))).toBeInTheDocument();
+  });
+
+  it('renders the route error state (not the empty state) when the load fails', async () => {
+    mockList.mockRejectedValue(new ApiError('INTERNAL_ERROR', 'boom', undefined, 500));
+    renderPage();
+
+    expect(await screen.findByText(t('error.route.loadFailed'))).toBeInTheDocument();
+    expect(screen.queryByText(t('notifications.empty'))).not.toBeInTheDocument();
   });
 
   it('renders pagination controls when there is more than one page', async () => {
@@ -182,8 +190,10 @@ describe('NotificationListPage', () => {
     mockList.mockResolvedValue(makeResponse([]));
     renderPage('tr');
 
-    expect(await screen.findByText('Bildirimler')).toBeInTheDocument();
-    expect(screen.getByText('Henüz bildirim yok')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: t('notifications.title', 'tr') }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t('notifications.empty', 'tr'))).toBeInTheDocument();
   });
 
   it('initial render loads notifications with unread filter off (default All)', async () => {
@@ -193,7 +203,7 @@ describe('NotificationListPage', () => {
     await waitFor(() => {
       expect(screen.getAllByTestId('notif-item')).toHaveLength(1);
     });
-    expect(mockList).toHaveBeenCalledWith(1, false);
+    expect(mockList).toHaveBeenCalledWith(1, false, SIGNAL);
   });
 
   it("clicking the 'Unread' filter calls notificationApi.list with unreadOnly: true", async () => {
@@ -205,10 +215,10 @@ describe('NotificationListPage', () => {
       expect(screen.getAllByTestId('notif-item')).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: 'Unread' }));
+    await user.click(screen.getByRole('button', { name: t('notifications.unread') }));
 
     await waitFor(() => {
-      expect(mockList).toHaveBeenCalledWith(1, true);
+      expect(mockList).toHaveBeenCalledWith(1, true, SIGNAL);
     });
   });
 
@@ -221,12 +231,90 @@ describe('NotificationListPage', () => {
       expect(screen.getAllByTestId('notif-item')).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: 'Unread' }));
-    await waitFor(() => expect(mockList).toHaveBeenCalledWith(1, true));
+    await user.click(screen.getByRole('button', { name: t('notifications.unread') }));
+    await waitFor(() => expect(mockList).toHaveBeenCalledWith(1, true, SIGNAL));
 
-    await user.click(screen.getByRole('button', { name: 'All' }));
+    await user.click(screen.getByRole('button', { name: t('notifications.all') }));
     await waitFor(() => {
-      expect(mockList).toHaveBeenLastCalledWith(1, false);
+      expect(mockList).toHaveBeenLastCalledWith(1, false, SIGNAL);
     });
+  });
+});
+
+describe('NotificationListPage loader', () => {
+  /** Calls the loader for `url`. */
+  function runLoader(url: string, signal?: AbortSignal) {
+    return loader({
+      request: new Request(url, signal ? { signal } : undefined),
+      params: {},
+      context: undefined,
+    } as never);
+  }
+
+  it('reads ?page and ?unreadOnly and forwards the request signal', async () => {
+    mockList.mockResolvedValue(makeResponse([]));
+    const controller = new AbortController();
+
+    await runLoader('http://localhost/notifications?page=2&unreadOnly=true', controller.signal);
+
+    expect(mockList).toHaveBeenCalledWith(2, true, SIGNAL);
+    const opts = mockList.mock.calls[0][2];
+    controller.abort();
+    expect(opts?.signal?.aborted).toBe(true);
+  });
+
+  it('redirects a final 401 to /login with the encoded return path', async () => {
+    mockList.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
+
+    const thrown = await runLoader('http://localhost/notifications?unreadOnly=true').catch(
+      (err: unknown) => err,
+    );
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).headers.get('Location')).toBe(
+      '/login?next=%2Fnotifications%3FunreadOnly%3Dtrue',
+    );
+  });
+});
+
+describe('NotificationListPage — canonical URL state', () => {
+  it('switching to All drops both unreadOnly and page from the URL', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue(makeResponse([makeNotification()], 4, 3));
+    const router = renderAt('/notifications?unreadOnly=true&page=3');
+    await waitFor(() => expect(screen.getAllByTestId('notif-item')).toHaveLength(1));
+    expect(mockList).toHaveBeenCalledWith(3, true, SIGNAL);
+
+    await user.click(screen.getByRole('button', { name: t('notifications.all') }));
+
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+    await waitFor(() => expect(mockList).toHaveBeenLastCalledWith(1, false, SIGNAL));
+  });
+
+  it('paging keeps the filter and omits page 1', async () => {
+    const user = userEvent.setup();
+    mockList.mockImplementation(async (page: number) =>
+      makeResponse([makeNotification()], 3, page),
+    );
+    const router = renderAt('/notifications?unreadOnly=true&page=2');
+    await screen.findByText('page 2/3');
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() => expect(router.state.location.search).toBe('?unreadOnly=true&page=3'));
+    await screen.findByText('page 3/3');
+
+    await user.click(screen.getByRole('button', { name: 'Previous' }));
+    await waitFor(() => expect(router.state.location.search).toBe('?unreadOnly=true&page=2'));
+    await screen.findByText('page 2/3');
+
+    await user.click(screen.getByRole('button', { name: 'Previous' }));
+    await waitFor(() => expect(router.state.location.search).toBe('?unreadOnly=true'));
+  });
+
+  it('normalises an invalid page to 1 without an error', async () => {
+    mockList.mockResolvedValue(makeResponse([makeNotification()]));
+    renderAt('/notifications?page=abc');
+    await waitFor(() => expect(screen.getAllByTestId('notif-item')).toHaveLength(1));
+    expect(mockList).toHaveBeenCalledWith(1, false, SIGNAL);
   });
 });

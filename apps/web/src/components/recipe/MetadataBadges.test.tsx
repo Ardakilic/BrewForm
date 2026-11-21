@@ -1,6 +1,8 @@
+import { t } from '@brewform/shared/i18n';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import { MetadataBadges } from './MetadataBadges.tsx';
 
 vi.mock('react-router', () => ({
@@ -45,10 +47,26 @@ describe('MetadataBadges — author badge (Req 2.1)', () => {
     expect(screen.getByRole('link', { name: 'Jane Doe' })).toHaveAttribute('href', '/u/jdoe');
   });
 
-  it('renders without author badge when author is null', () => {
+  it('renders a "Deleted user" pill without a link when author is null (deleted account)', () => {
     render(<MetadataBadges {...baseProps} author={null} />);
-    expect(screen.queryByRole('link', { name: /jane doe/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /jdoe/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    const pill = screen.getByText(t('common.deletedUser'));
+    expect(pill.tagName).toBe('SPAN');
+    expect(pill.className).toContain('rounded-full');
+  });
+
+  it('renders the Turkish "Deleted user" pill under the tr provider', () => {
+    localStorage.setItem('brewform_locale', 'tr');
+    try {
+      render(
+        <I18nProvider>
+          <MetadataBadges {...baseProps} author={null} />
+        </I18nProvider>,
+      );
+      expect(screen.getByText(t('common.deletedUser', 'tr'))).toBeInTheDocument();
+    } finally {
+      localStorage.clear();
+    }
   });
 });
 
@@ -126,6 +144,22 @@ describe('MetadataBadges — version info (Req 2.4 & 2.5)', () => {
     render(<MetadataBadges {...baseProps} versionNumber={2} versionCount={2} />);
     expect(screen.getByText('v2')).toBeInTheDocument();
     expect(screen.getByText('1 prior version')).toBeInTheDocument();
+  });
+
+  it('shows the Turkish prior-versions text under the tr locale', () => {
+    localStorage.setItem('brewform_locale', 'tr');
+    try {
+      render(
+        <I18nProvider>
+          <MetadataBadges {...baseProps} versionNumber={3} versionCount={3} />
+        </I18nProvider>,
+      );
+      expect(
+        screen.getByText(t('recipe.priorVersions.other', 'tr').replace('{count}', '2')),
+      ).toBeInTheDocument();
+    } finally {
+      localStorage.clear();
+    }
   });
 
   it('does not show version info when versionCount is 1', () => {

@@ -18,6 +18,43 @@ export const SCAA_CATEGORIES = [
 /** Union of the 9 SCAA top-level flavor-wheel category names. */
 export type ScaaCategory = (typeof SCAA_CATEGORIES)[number];
 
+/**
+ * i18n slug of each SCAA category: the label is `t('taste.category.<slug>')`,
+ * present in both `en.json` and `tr.json`.
+ */
+export const SCAA_CATEGORY_SLUGS: Readonly<Record<ScaaCategory, string>> = {
+  Floral: 'floral',
+  Fruity: 'fruity',
+  Sweet: 'sweet',
+  'Nutty/Cocoa': 'nuttyCocoa',
+  Spices: 'spices',
+  Roasted: 'roasted',
+  'Green/Vegetative': 'greenVegetative',
+  'Sour/Fermented': 'sourFermented',
+  Other: 'other',
+};
+
+/** Lower-cased canonical category name → category, for case-insensitive lookups. */
+const CATEGORY_BY_LOWER_NAME = new Map<string, ScaaCategory>(
+  SCAA_CATEGORIES.map((cat) => [cat.toLowerCase(), cat]),
+);
+
+/**
+ * Returns the `taste.category.<slug>` i18n key for one of the 9 canonical SCAA
+ * category names (case-insensitive, surrounding whitespace ignored).
+ *
+ * Unlike {@link mapToScaaCategory}, unknown names are NOT folded into "Other":
+ * they return `null`, so callers (radar labels, chip-group headings) can fall
+ * back to the raw name.
+ *
+ * @param category - A category or root taste-note name.
+ * @returns The i18n key, or `null` when the name is not an SCAA category.
+ */
+export function scaaCategoryLabelKey(category: string): string | null {
+  const match = CATEGORY_BY_LOWER_NAME.get(category.trim().toLowerCase());
+  return match ? `taste.category.${SCAA_CATEGORY_SLUGS[match]}` : null;
+}
+
 /** A taste note flattened for radar-chart aggregation, with its resolved root category. */
 export interface TasteNoteForChart {
   tasteNoteId: string;

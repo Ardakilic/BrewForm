@@ -1,11 +1,14 @@
 import '../../test-setup.ts';
 import { escapeHtml } from '@brewform/shared/utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { reloadConfig } from '../../config/env.ts';
 import { template as resetPasswordTemplate } from '../../templates/email/generated/reset-password.ts';
 import { template as verifyEmailTemplate } from '../../templates/email/generated/verify-email.ts';
 import { template as welcomeTemplate } from '../../templates/email/generated/welcome.ts';
-import { appBaseUrl } from '../../utils/notify/index.ts';
+import { logCallsContain, smtpEnvelopeError } from '../../test-fixtures/mail.ts';
+import { appBaseUrl, getTransporter } from '../../utils/notify/index.ts';
 import {
+  logger,
   renderTemplate,
   sendPasswordResetEmail,
   sendVerificationEmail,
@@ -85,6 +88,31 @@ describe('Auth Email', () => {
     });
   });
 
+  describe('send failures', () => {
+    it('logs a rejected welcome email without the recipient address, and rethrows', async () => {
+      const previousEnv = process.env.APP_ENV;
+      process.env.APP_ENV = 'development';
+      reloadConfig();
+      const sendMail = vi
+        .spyOn(getTransporter(), 'sendMail')
+        .mockImplementation(() => Promise.reject(smtpEnvelopeError('victim@example.com')));
+      const error = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+      try {
+        await expect(sendWelcomeEmail('victim@example.com', 'v')).rejects.toThrow();
+        expect(error).toHaveBeenCalledTimes(1);
+        expect(error.mock.calls[0][0]).toMatchObject({
+          err: { code: 'EENVELOPE', command: 'RCPT TO', responseCode: 550 },
+        });
+        expect(logCallsContain(error.mock.calls, 'victim@example.com')).toBe(false);
+      } finally {
+        sendMail.mockRestore();
+        error.mockRestore();
+        process.env.APP_ENV = previousEnv ?? 'test';
+        reloadConfig();
+      }
+    });
+  });
+
   describe('sendPasswordResetEmail', () => {
     it('should not throw in test environment', async () => {
       await expect(
@@ -114,6 +142,31 @@ describe('Auth Email', () => {
       expect(html).toContain(appBaseUrl().replace(/\//g, '&#x2F;'));
       expect(html).toContain('href="' + escapedResetUrl + '"');
       expect(html).toContain(encodeURIComponent(token));
+    });
+
+    it('builds the reset link without a double slash when PUBLIC_APP_URL ends with a slash', async () => {
+      const previousUrl = process.env.PUBLIC_APP_URL;
+      const previousEnv = process.env.APP_ENV;
+      process.env.PUBLIC_APP_URL = 'https://brewform.example.com/';
+      process.env.APP_ENV = 'development';
+      reloadConfig();
+      const sendMail = vi
+        .spyOn(getTransporter(), 'sendMail')
+        .mockImplementation(() => Promise.resolve({} as never));
+      try {
+        await sendPasswordResetEmail('reset@example.com', 'token123', 'testuser');
+        expect(sendMail).toHaveBeenCalledTimes(1);
+        // The template HTML-escapes the link (`/` becomes `&#x2F;`), so compare escaped text.
+        const html = String(sendMail.mock.calls[0][0].html);
+        expect(html).toContain(escapeHtml('https://brewform.example.com/reset-password?token='));
+        expect(html).not.toContain(escapeHtml('https://brewform.example.com//'));
+      } finally {
+        sendMail.mockRestore();
+        if (previousUrl === undefined) delete process.env.PUBLIC_APP_URL;
+        else process.env.PUBLIC_APP_URL = previousUrl;
+        process.env.APP_ENV = previousEnv ?? 'test';
+        reloadConfig();
+      }
     });
   });
 

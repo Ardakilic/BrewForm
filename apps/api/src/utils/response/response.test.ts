@@ -5,8 +5,11 @@ import {
   cursorPaginated,
   error,
   forbidden,
+  NOINDEX_NOFOLLOW,
+  noIndexUnlessPublic,
   notFound,
   paginated,
+  ROBOTS_TAG_HEADER,
   success,
   unauthorized,
   validationError,
@@ -207,5 +210,31 @@ describe('cursorPaginated with headers option (D28)', () => {
     app.get('/test', (c) => cursorPaginated(c, [], { nextCursor: null, hasMore: false }));
     const res = await app.request('/test');
     expect(res.headers.get('Deprecation')).toBeNull();
+  });
+});
+
+describe('noIndexUnlessPublic (recipe-visibility)', () => {
+  /** A Hono app whose handler marks the response for the `visibility` query value. */
+  function appFor() {
+    const app = new Hono();
+    app.get('/', (c) => {
+      const marked = noIndexUnlessPublic(c, c.req.query('visibility') ?? '');
+      return c.json({ marked });
+    });
+    return app;
+  }
+
+  it('sets X-Robots-Tag: noindex, nofollow for every non-public visibility', async () => {
+    for (const visibility of ['unlisted', 'private', 'draft']) {
+      const res = await appFor().request(`/?visibility=${visibility}`);
+      expect(res.headers.get(ROBOTS_TAG_HEADER), visibility).toBe(NOINDEX_NOFOLLOW);
+      expect(await res.json(), visibility).toEqual({ marked: true });
+    }
+  });
+
+  it('leaves a public response unmarked', async () => {
+    const res = await appFor().request('/?visibility=public');
+    expect(res.headers.get(ROBOTS_TAG_HEADER)).toBeNull();
+    expect(await res.json()).toEqual({ marked: false });
   });
 });

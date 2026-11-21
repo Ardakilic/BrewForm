@@ -125,7 +125,9 @@ equipment.get(
   describeRoute({
     tags: ['Equipment'],
     summary: 'List recipes using a piece of equipment',
-    description: 'Returns recipes that use the given equipment along with a total count.',
+    description:
+      'Returns recipes that use the given equipment along with a total count.' +
+      ' An author (or owner) whose account was deleted is returned as `null`.',
     parameters: [
       { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
       { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },

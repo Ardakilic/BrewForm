@@ -1,6 +1,8 @@
 import type { BrewLogCreate, BrewLogUpdate } from '@brewform/shared/schemas';
+import { toLoggableError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import * as recipeModel from '../recipe/model.ts';
+import { canViewRecipe } from '../recipe/service.ts';
 import * as model from './model.ts';
 
 /** Module logger (exported for test spies — mirrors collection/service.ts). */
@@ -9,10 +11,13 @@ export const logger = createLogger('brew-log-service');
 /**
  * Create a brew log for the authenticated user.
  *
- * The recipe must exist and be visible to the user (public, or authored by
- * the user); non-public recipes of other users are reported as not found.
- * When `recipeVersionId` is given it must belong to that recipe. `brewedAt`
- * defaults to now.
+ * The recipe must exist, not be soft-deleted, and be visible to the user per
+ * `canViewRecipe` (capability `recipe-visibility`): `public` and `unlisted`
+ * recipes for anyone, so a signed-in link holder can "Brew again" on an
+ * unlisted recipe; `draft`/`private` recipes only for their author. Other
+ * users' `draft`/`private` recipes are reported as not found. The log is
+ * visible only to its owner. When `recipeVersionId` is given it must belong to
+ * that recipe. `brewedAt` defaults to now.
  *
  * @param userId - The authenticated user's UUID.
  * @param data   - Brew log creation payload.
@@ -24,9 +29,7 @@ export async function createBrewLog(userId: string, data: BrewLogCreate) {
   logger.debug({ userId, recipeId: data.recipeId }, 'createBrewLog started');
   try {
     const recipe = await recipeModel.findById(data.recipeId);
-    if (!recipe || (recipe.visibility !== 'public' && recipe.authorId !== userId)) {
-      throw new Error('RECIPE_NOT_FOUND');
-    }
+    if (!recipe || !canViewRecipe(recipe, userId)) throw new Error('RECIPE_NOT_FOUND');
     if (data.recipeVersionId) {
       const version = await recipeModel.fetchRecipeVersionWithRelations(data.recipeVersionId);
       if (!version || version.recipeId !== data.recipeId) {
@@ -46,7 +49,10 @@ export async function createBrewLog(userId: string, data: BrewLogCreate) {
     logger.debug({ userId, brewLogId: created.id }, 'createBrewLog completed');
     return created;
   } catch (err) {
-    logger.error({ err, userId, recipeId: data.recipeId }, 'createBrewLog failed');
+    logger.error(
+      { err: toLoggableError(err), userId, recipeId: data.recipeId },
+      'createBrewLog failed',
+    );
     throw err;
   }
 }
@@ -68,7 +74,7 @@ export async function getBrewLog(userId: string, id: string) {
     logger.debug({ userId, id }, 'getBrewLog completed');
     return log;
   } catch (err) {
-    logger.error({ err, userId, id }, 'getBrewLog failed');
+    logger.error({ err: toLoggableError(err), userId, id }, 'getBrewLog failed');
     throw err;
   }
 }
@@ -94,7 +100,7 @@ export async function updateBrewLog(userId: string, id: string, data: BrewLogUpd
     logger.debug({ userId, id }, 'updateBrewLog completed');
     return updated;
   } catch (err) {
-    logger.error({ err, userId, id }, 'updateBrewLog failed');
+    logger.error({ err: toLoggableError(err), userId, id }, 'updateBrewLog failed');
     throw err;
   }
 }
@@ -116,7 +122,7 @@ export async function deleteBrewLog(userId: string, id: string) {
     logger.debug({ userId, id }, 'deleteBrewLog completed');
     return deleted;
   } catch (err) {
-    logger.error({ err, userId, id }, 'deleteBrewLog failed');
+    logger.error({ err: toLoggableError(err), userId, id }, 'deleteBrewLog failed');
     throw err;
   }
 }

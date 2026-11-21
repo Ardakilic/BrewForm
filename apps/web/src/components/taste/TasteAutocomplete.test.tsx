@@ -1,22 +1,40 @@
+import { t } from '@brewform/shared/i18n';
+import type { TasteNoteOutput } from '@brewform/shared/schemas';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 
+import { tasteNotesLoader } from '../../routes/resources/taste-notes.ts';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 import { TasteAutocomplete } from './TasteAutocomplete.tsx';
 
-// ── Mock API ───────────────────────────────────────────────────────────────
+// ── Mock the static cache behind the resources/taste-notes route ───────────
 
-vi.mock('../../api/index.ts', () => ({
-  api: { get: vi.fn() },
+vi.mock('../../api/static-cache.ts', () => ({
+  getTasteNotesCached: vi.fn(),
 }));
 
-import { api } from '../../api/index.ts';
+import { getTasteNotesCached } from '../../api/static-cache.ts';
 
-const mockApiGet = vi.mocked(api.get);
+const mockGetTasteNotes = vi.mocked(getTasteNotesCached);
+
+/** Renders `ui` with the real `resources/taste-notes` resource route registered. */
+function renderWithRouter(ui: ReactElement) {
+  const router = createMemoryRouter(
+    [
+      { path: '/', element: ui },
+      { path: '/resources/taste-notes', loader: tasteNotesLoader },
+    ],
+    { initialEntries: ['/'] },
+  );
+  return render(<RouterProvider router={router} />);
+}
 
 // ── Taste note fixtures ────────────────────────────────────────────────────
 
@@ -35,7 +53,7 @@ function setup(props: Partial<React.ComponentProps<typeof TasteAutocomplete>> = 
   const onSelectionChange = vi.fn();
   const onIntensitiesChange = vi.fn();
 
-  const utils = render(
+  const utils = renderWithRouter(
     <TasteAutocomplete
       selectedIds={[]}
       onSelectionChange={onSelectionChange}
@@ -51,8 +69,8 @@ function setup(props: Partial<React.ComponentProps<typeof TasteAutocomplete>> = 
 
 describe('TasteAutocomplete', () => {
   beforeEach(() => {
-    mockApiGet.mockReset();
-    mockApiGet.mockResolvedValue(tasteNotes);
+    mockGetTasteNotes.mockReset();
+    mockGetTasteNotes.mockResolvedValue(tasteNotes as TasteNoteOutput[]);
   });
 
   it('shows all notes grouped by category on focus', async () => {
@@ -132,7 +150,7 @@ describe('TasteAutocomplete', () => {
 
     // Clicking a category should not trigger selection
     const onSelectionChange = vi.fn();
-    render(<TasteAutocomplete selectedIds={[]} onSelectionChange={onSelectionChange} />);
+    renderWithRouter(<TasteAutocomplete selectedIds={[]} onSelectionChange={onSelectionChange} />);
 
     const input2 = screen.getAllByPlaceholderText('Search SCAA taste notes...')[1];
     await user.click(input2);
@@ -167,6 +185,21 @@ describe('TasteAutocomplete', () => {
     expect(removeButton).toBeInTheDocument();
   });
 
+  it('gives the chip intensity and remove buttons a 24 × 24 px target (WCAG 2.2 minimum, V6)', async () => {
+    setup({ selectedIds: ['leaf-1'], intensities: { 'leaf-1': 2 } });
+
+    const buttons = [
+      await screen.findByLabelText('Set intensity for Raspberry'),
+      screen.getByLabelText('Remove Raspberry'),
+    ];
+    for (const button of buttons) {
+      // Tailwind `min-w-6`/`min-h-6` = 1.5rem = 24 CSS px (jsdom has no layout: assert the classes).
+      expect(button).toHaveClass('min-w-6', 'min-h-6');
+      expect(button.style.lineHeight).not.toBe('0');
+      expect(button.className).not.toMatch(/leading-(?:\[0\]|none)/);
+    }
+  });
+
   it('cycles intensity when clicking the intensity button', async () => {
     const onIntensitiesChange = vi.fn();
     setup({
@@ -183,6 +216,32 @@ describe('TasteAutocomplete', () => {
     fireEvent.click(intensityButton);
 
     expect(onIntensitiesChange).toHaveBeenCalledWith({ 'leaf-1': 3 });
+  });
+
+  it('shows a removable chip for a linked note missing from the catalog', async () => {
+    const user = userEvent.setup();
+    const { onSelectionChange } = setup({
+      selectedIds: ['gone-1'],
+      linkedNotes: [{ id: 'gone-1', name: 'Tobacco', depth: 2, parentId: 'mid-x' }],
+    });
+
+    const remove = await screen.findByRole('button', { name: 'Remove Tobacco' });
+    await user.click(remove);
+
+    expect(onSelectionChange).toHaveBeenCalledWith([]);
+  });
+
+  it('does not offer a linked-only note in the dropdown', async () => {
+    const user = userEvent.setup();
+    setup({
+      selectedIds: ['gone-1'],
+      linkedNotes: [{ id: 'gone-1', name: 'Tobacco', depth: 2, parentId: 'mid-x' }],
+    });
+
+    await user.click(screen.getByPlaceholderText('Search SCAA taste notes...'));
+    await screen.findByText('Raspberry');
+
+    expect(screen.queryByRole('option', { name: /Tobacco/ })).toBeNull();
   });
 
   it('removes a note when clicking the remove button', async () => {
@@ -248,7 +307,7 @@ describe('TasteAutocomplete', () => {
   });
 
   it('shows loading state when taste notes have not loaded yet', async () => {
-    mockApiGet.mockImplementation(() => new Promise(() => {})); // never resolves
+    mockGetTasteNotes.mockImplementation(() => new Promise(() => undefined)); // never resolves
     setup();
 
     const input = screen.getByPlaceholderText('Search SCAA taste notes...');
@@ -257,6 +316,25 @@ describe('TasteAutocomplete', () => {
     await waitFor(() => {
       expect(screen.getByText('Loading taste notes...')).toBeInTheDocument();
     });
+  });
+
+  it('loads the notes once through the resource route, forwarding the request signal', async () => {
+    setup();
+
+    await waitFor(() => {
+      expect(mockGetTasteNotes).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
+    });
+    expect(mockGetTasteNotes).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays in the loading state when the lookup fails', async () => {
+    mockGetTasteNotes.mockRejectedValue(new Error('down'));
+    setup();
+
+    fireEvent.focus(screen.getByPlaceholderText('Search SCAA taste notes...'));
+
+    await waitFor(() => expect(mockGetTasteNotes).toHaveBeenCalled());
+    expect(screen.getByText('Loading taste notes...')).toBeInTheDocument();
   });
 
   it('toggles a note on click', async () => {
@@ -273,5 +351,94 @@ describe('TasteAutocomplete', () => {
 
     await user.click(screen.getByText('Raspberry'));
     expect(onSelectionChange).toHaveBeenCalledWith(['leaf-1']);
+  });
+});
+
+describe('tr locale', () => {
+  beforeEach(() => {
+    mockGetTasteNotes.mockReset();
+    mockGetTasteNotes.mockResolvedValue(tasteNotes as TasteNoteOutput[]);
+    localStorage.clear();
+  });
+
+  /** Renders the picker with the app providers in Turkish and the taste-notes resource route. */
+  function renderTr(props: Partial<React.ComponentProps<typeof TasteAutocomplete>> = {}) {
+    return renderWithAppProviders(
+      [
+        {
+          path: '/',
+          element: (
+            <TasteAutocomplete
+              selectedIds={[]}
+              onSelectionChange={vi.fn()}
+              onIntensitiesChange={vi.fn()}
+              {...props}
+            />
+          ),
+        },
+        { path: '/resources/taste-notes', loader: tasteNotesLoader },
+      ],
+      { locale: 'tr' },
+    );
+  }
+
+  it('renders the hint and the flavour-wheel link in Turkish', async () => {
+    renderTr();
+
+    expect(
+      await screen.findByText(t('taste.autocomplete.intensityHint', 'tr')),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: t('taste.reference', 'tr') })).toBeInTheDocument();
+  });
+
+  it('shows the Turkish loading text while the lookup runs', async () => {
+    mockGetTasteNotes.mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+    renderTr();
+
+    await user.click(await screen.findByPlaceholderText(t('taste.autocomplete.placeholder', 'tr')));
+
+    expect(screen.getByText(t('taste.autocomplete.loading', 'tr'))).toBeInTheDocument();
+  });
+
+  it('titles the intensity button in Turkish', async () => {
+    renderTr({ selectedIds: ['leaf-1'], intensities: { 'leaf-1': 2 } });
+
+    const button = await screen.findByRole('button', {
+      name: t('a11y.taste.setIntensity', 'tr').replace('{name}', 'Raspberry'),
+    });
+
+    expect(button).toHaveAttribute(
+      'title',
+      t('a11y.taste.intensityTitle', 'tr').replace('{level}', '2'),
+    );
+  });
+
+  it('translates the category part of the group headings like the radar chart (V7)', async () => {
+    const user = userEvent.setup();
+    renderTr();
+
+    await user.click(await screen.findByPlaceholderText(t('taste.autocomplete.placeholder', 'tr')));
+    await screen.findByText('Raspberry');
+
+    // Root headings use the radar's `taste.category.*` labels (Meyvemsi, Çiçeksi) …
+    expect(screen.getByText(t('taste.category.fruity', 'tr'))).toBeInTheDocument();
+    expect(screen.getByText(t('taste.category.floral', 'tr'))).toBeInTheDocument();
+    // … and so does the sub-group heading; the note name itself is catalog data.
+    expect(screen.getByText(`${t('taste.category.fruity', 'tr')} > Berry`)).toBeInTheDocument();
+    expect(screen.queryByText('Fruity')).toBeNull();
+    expect(screen.queryByText('Fruity > Berry')).toBeNull();
+  });
+
+  it('shows the Turkish empty text when nothing matches', async () => {
+    const user = userEvent.setup();
+    renderTr();
+    const input = await screen.findByPlaceholderText(t('taste.autocomplete.placeholder', 'tr'));
+    await user.click(input);
+    await screen.findByText('Raspberry');
+
+    fireEvent.change(input, { target: { value: 'zzz' } });
+
+    expect(await screen.findByText(t('taste.notFound', 'tr'))).toBeInTheDocument();
   });
 });

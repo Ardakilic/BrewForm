@@ -1,43 +1,21 @@
-import type { RecipeListItemOutput } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
 import { Link, useLoaderData, useNavigation } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
-import { recipeApi } from '../api/index.ts';
 import { RecipeCard } from '../components/recipe-list/index.ts';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { RecipeCardSkeletonGrid } from '../components/ui/Skeleton.tsx';
 import { useTranslation } from '../contexts/I18nContext.tsx';
+import type { loader } from './HomePage.data.ts';
 
 const log = createLogger('HomePage');
 
-/** Loader data for the home page — latest and most-liked public recipes. */
-export interface HomeLoaderData {
-  latestRecipes: RecipeListItemOutput[];
-  popularRecipes: RecipeListItemOutput[];
-}
-
-/**
- * Home loader: fetches the six latest and six most-liked public recipes
- * in parallel and returns them as {@link HomeLoaderData}.
- */
-export const loader = async (): Promise<HomeLoaderData> => {
-  const [latestRes, popularRes] = await Promise.all([
-    recipeApi.list({ perPage: '6', sortBy: 'createdAt' }),
-    recipeApi.list({ perPage: '6', sortBy: 'likeCount' }),
-  ]);
-  return {
-    latestRecipes: latestRes.data ?? [],
-    popularRecipes: popularRes.data ?? [],
-  };
-};
-
 /**
  * Landing page: hero with browse/register CTAs plus "latest" and
- * "popular" recipe grids from loader data, with skeletons while
- * navigating.
+ * "popular" recipe grids from the `/` route loader (`HomePage.data.ts`),
+ * with skeletons while navigating.
  */
 export function HomePage() {
-  const { latestRecipes, popularRecipes } = useLoaderData() as HomeLoaderData;
+  const { latestRecipes, popularRecipes } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const loading = navigation.state === 'loading' && navigation.location?.pathname === '/';
   const { t } = useTranslation();

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { generateUniqueUsername } from './username.ts';
+import { generateUniqueUsername, isReservedUsername, RESERVED_USERNAMES } from './username.ts';
 
-async function neverTaken(_username: string): Promise<boolean> {
-  return false;
+/** Availability check stub: every username is free. */
+function neverTaken(_username: string): Promise<boolean> {
+  return Promise.resolve(false);
 }
 
-async function alwaysTaken(_username: string): Promise<boolean> {
-  return true;
+/** Availability check stub: every username is taken. */
+function alwaysTaken(_username: string): Promise<boolean> {
+  return Promise.resolve(true);
 }
 
 function makeTakenSet(set: Set<string>): (username: string) => Promise<boolean> {
@@ -76,5 +78,24 @@ describe('generateUniqueUsername', () => {
   it('should handle mixed case by preserving case', async () => {
     const result = await generateUniqueUsername('CoffeeLover', neverTaken);
     expect(result).toBe('CoffeeLover');
+  });
+});
+
+describe('isReservedUsername', () => {
+  it('is true for reserved names in any case and for the deleted- prefix', () => {
+    expect(isReservedUsername('Support')).toBe(true);
+    expect(isReservedUsername('ADMIN')).toBe(true);
+    expect(isReservedUsername('deleted-abc123')).toBe(true);
+  });
+
+  it('is false for an ordinary username', () => {
+    expect(isReservedUsername('arda')).toBe(false);
+  });
+
+  it('covers every RESERVED_USERNAMES entry', () => {
+    expect(RESERVED_USERNAMES).toHaveLength(17);
+    for (const name of RESERVED_USERNAMES) {
+      expect(isReservedUsername(name)).toBe(true);
+    }
   });
 });

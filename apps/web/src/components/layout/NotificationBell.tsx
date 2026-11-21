@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFetcher } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
-import { notificationApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { UNREAD_COUNT_PATH, type unreadCountLoader } from '../../routes/resources/notifications.ts';
 import { NOTIFICATIONS_CHANGED_EVENT } from '../../utils/notification-events.ts';
 import { NotificationDropdown } from './NotificationDropdown.tsx';
 
@@ -15,34 +16,43 @@ interface NotificationBellProps {
 
 /**
  * Navbar bell button with an unread-notification count badge (hidden at 0,
- * capped at "9+"). Refetches the count on mount, on window focus, and on the
- * `NOTIFICATIONS_CHANGED_EVENT` window event (no polling). Clicking toggles
- * a {@link NotificationDropdown}, closed on outside click or Escape.
- * Auth-gating is the parent's responsibility.
+ * capped at "9+"). The count is read with
+ * `useFetcher().load('/resources/notifications/unread-count')` on mount, on window focus, and
+ * on the `NOTIFICATIONS_CHANGED_EVENT` window event (no polling); the effect only subscribes to
+ * those events and triggers the fetcher, and a newer load cancels the previous one. A failed
+ * load keeps the last known count. Clicking toggles a {@link NotificationDropdown}, closed on
+ * outside click or Escape. Auth-gating is the parent's responsibility.
  */
 export function NotificationBell({ onNavigate }: NotificationBellProps) {
   const { t } = useTranslation();
+  const fetcher = useFetcher<typeof unreadCountLoader>();
   const [count, setCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const fetchCount = useCallback(() => {
-    notificationApi
-      .unreadCount()
-      .then(({ count: unread }) => setCount(unread))
-      .catch((err) => log.error({ err }, 'unread count fetch failed'));
-  }, []);
+  const loadRef = useRef(fetcher.load);
+  loadRef.current = fetcher.load;
+  const result = fetcher.data;
 
   // Refresh triggers: mount, window focus, and notification read-state changes.
   useEffect(() => {
-    fetchCount();
-    globalThis.addEventListener('focus', fetchCount);
-    globalThis.addEventListener(NOTIFICATIONS_CHANGED_EVENT, fetchCount);
-    return () => {
-      globalThis.removeEventListener('focus', fetchCount);
-      globalThis.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, fetchCount);
+    log.debug({}, 'NotificationBell mounted');
+    const refresh = () => {
+      loadRef.current(UNREAD_COUNT_PATH);
     };
-  }, [fetchCount]);
+    refresh();
+    globalThis.addEventListener('focus', refresh);
+    globalThis.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
+    return () => {
+      log.debug({}, 'NotificationBell unmounted');
+      globalThis.removeEventListener('focus', refresh);
+      globalThis.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
+    };
+  }, []);
+
+  // Keep the last successfully loaded count (a failed load leaves the badge unchanged).
+  useEffect(() => {
+    if (result?.ok) setCount(result.count);
+  }, [result]);
 
   // Close the dropdown on outside click (mousedown, TasteAutocomplete pattern).
   useEffect(() => {
@@ -95,7 +105,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
           <>
             <span
               aria-hidden="true"
-              className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[color:var(--accent-primary)] px-1 text-[10px] font-bold leading-none text-white"
+              className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[color:var(--accent-primary)] px-1 text-[10px] font-bold leading-none text-[color:var(--bg-primary)]"
             >
               {count > 9 ? '9+' : count}
             </span>

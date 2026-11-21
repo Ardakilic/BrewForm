@@ -1,39 +1,44 @@
-import type { CoffeeVarietyOutput } from '@brewform/shared/schemas';
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
-import { api } from '../../api/client.ts';
+import { useEffect } from 'react';
+import { useLoaderData, useLocation, useNavigation } from 'react-router';
 import { CatalogEntityCard } from '../../components/catalog/CatalogEntityCard.tsx';
 import { CategoryTabs } from '../../components/catalog/CategoryTabs.tsx';
 import { varietyCategoryLabel } from '../../components/catalog/TypeBadge.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { CardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { useDebounce } from '../../hooks/useDebounce.ts';
+import { useDebouncedUrlText, useListUrlState } from '../../hooks/useListUrlState.ts';
+import { parseCoffeeVarietyCatalogParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './CoffeeVarietiesPage.data.ts';
 
 const log = createLogger('CoffeeVarietiesPage');
 
 /**
  * Public coffee-variety catalog with URL-driven pagination, category
- * tabs, and debounced search; cards link to variety detail pages.
+ * tabs, and debounced search; cards link to variety detail pages. All
+ * selections live in the URL (`page`, `category`, `q`; a legacy `search` link
+ * is still read): tabs push history, the search box commits after a 300 ms
+ * pause with `replace`, and page 1 is never written. The cards come from the
+ * `/coffee-varieties` route loader (`CoffeeVarietiesPage.data.ts`); a skeleton
+ * shows while a new URL state loads, and a failed load renders the route error
+ * state.
  */
 export function CoffeeVarietiesPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [varieties, setVarieties] = useState<CoffeeVarietyOutput[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [retryNonce, setRetryNonce] = useState(0);
+  const {
+    state: { page, category, q: search },
+    setFilter,
+    setPage,
+    clearAll,
+  } = useListUrlState(parseCoffeeVarietyCatalogParams);
+  const searchInput = useDebouncedUrlText('q', { legacyKeys: ['search'] });
+  const { varieties, totalPages } = useLoaderData<typeof loader>();
+  const navigation = useNavigation();
+  const location = useLocation();
+  const loading =
+    navigation.state === 'loading' && navigation.location.pathname === location.pathname;
   const { t } = useTranslation();
-
-  const rawPage = Number(searchParams.get('page'));
-  const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
-  const category = searchParams.get('category') || '';
-  const search = searchParams.get('search') || '';
-  const debouncedSearch = useDebounce(search, 300);
 
   useEffect(() => {
     log.debug({}, 'CoffeeVarietiesPage mounted');
@@ -48,44 +53,6 @@ export function CoffeeVarietiesPage() {
     { value: 'processing', label: t('coffeeVarieties.category.processing') },
     { value: 'market_name', label: t('coffeeVarieties.category.market_name') },
   ];
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    const params = new URLSearchParams();
-    params.set('page', String(page));
-    params.set('perPage', '12');
-    if (category) params.set('category', category);
-    if (debouncedSearch) params.set('search', debouncedSearch);
-
-    api
-      .getWithMeta<{ data: CoffeeVarietyOutput[]; meta: { pagination?: { total: number } } }>(
-        `/coffee-varieties?${params.toString()}`,
-      )
-      .then((data) => {
-        const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-        setVarieties(items);
-        setTotalPages(Math.ceil((data?.meta?.pagination?.total ?? items.length) / 12) || 1);
-      })
-      .catch((err) => {
-        log.error({ err }, 'CoffeeVarietiesPage loadData failed');
-        setError(t('coffeeVarieties.error.load'));
-      })
-      .finally(() => setLoading(false));
-  }, [page, category, debouncedSearch, retryNonce]);
-
-  function updateFilter(key: string, value: string) {
-    const params = new URLSearchParams(searchParams);
-    if (value) {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
-    if (key !== 'page') {
-      params.delete('page');
-    }
-    setSearchParams(params, { preventScrollReset: true });
-  }
 
   const hasActiveFilters = !!(category || search);
 
@@ -104,7 +71,7 @@ export function CoffeeVarietiesPage() {
       <CategoryTabs
         tabs={categoryButtons}
         active={category}
-        onSelect={(v) => updateFilter('category', v)}
+        onSelect={(v) => setFilter('category', v)}
       />
 
       {/* Search */}
@@ -112,8 +79,8 @@ export function CoffeeVarietiesPage() {
         <input
           type="text"
           placeholder={t('coffeeVarieties.searchPlaceholder')}
-          value={search}
-          onChange={(e) => updateFilter('search', e.target.value)}
+          value={searchInput.value}
+          onChange={(e) => searchInput.setValue(e.target.value)}
           className="input-field text-sm max-w-md"
         />
       </div>
@@ -124,11 +91,7 @@ export function CoffeeVarietiesPage() {
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {t('common.activeFilters')}
           </span>
-          <button
-            type="button"
-            onClick={() => setSearchParams({})}
-            className="btn-secondary text-sm"
-          >
+          <button type="button" onClick={clearAll} className="btn-secondary text-sm">
             {t('common.clearAll')}
           </button>
         </div>
@@ -137,34 +100,12 @@ export function CoffeeVarietiesPage() {
       {/* Content */}
       {loading ? (
         <CardSkeletonGrid variant="catalog" />
-      ) : error ? (
-        <div className="text-center py-12">
-          <ErrorState message={error} className="mb-4" />
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setLoading(true);
-              setRetryNonce((n) => n + 1);
-              const params = new URLSearchParams(searchParams);
-              params.delete('page');
-              setSearchParams(params);
-            }}
-            className="btn-primary"
-          >
-            {t('common.retry')}
-          </button>
-        </div>
       ) : varieties.length === 0 ? (
         <EmptyState
           message={t('coffeeVarieties.empty')}
           action={
             hasActiveFilters ? (
-              <button
-                type="button"
-                onClick={() => setSearchParams({})}
-                className="btn-secondary text-sm"
-              >
+              <button type="button" onClick={clearAll} className="btn-secondary text-sm">
                 {t('common.clearSearch')}
               </button>
             ) : undefined
@@ -196,11 +137,7 @@ export function CoffeeVarietiesPage() {
           </div>
 
           {/* Pagination */}
-          <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            onPageChange={(p) => updateFilter('page', String(p))}
-          />
+          <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
     </div>

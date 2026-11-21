@@ -7,7 +7,6 @@ actual measurements (yield, dose), free-text notes, and a 1–10 personal rating
 soft-deletable and visible only to their owner. Aggregate stats are computed per user (own,
 authenticated) and per recipe (public). A "Brew Again" flow on the recipe detail page pre-fills
 the log form from the recipe's current version.
-
 ## Requirements
 ### Requirement: Database table for brew logs
 
@@ -195,8 +194,14 @@ The system SHALL add `apps/api/src/modules/brew-log/service.ts` with a module-sc
 on every public function. Functions:
 
 - `createBrewLog(userId, data)` — SHALL throw `'RECIPE_NOT_FOUND'` if the recipe does not exist,
-  is soft-deleted, or is neither public nor owned by the caller; SHALL throw
-  `'RECIPE_VERSION_MISMATCH'` if `recipeVersionId` does not belong to that recipe.
+  is soft-deleted, or fails `canViewRecipe(recipe, userId)` imported from
+  `apps/api/src/modules/recipe/service.ts`. That means it accepts `public` and `unlisted` recipes for
+  any caller, and `draft`/`private` recipes only for their author. The hand-written
+  `recipe.visibility !== 'public' && recipe.authorId !== userId` check (`brew-log/service.ts:27`) is
+  removed, so a signed-in holder of an `unlisted` recipe's link can use "Brew again" (capability
+  `recipe-visibility`, "Unlisted recipes stay usable through their direct link"). The resulting log
+  is visible only to its owner. SHALL throw `'RECIPE_VERSION_MISMATCH'` if `recipeVersionId` does not
+  belong to that recipe.
 - `updateBrewLog(userId, id, data)` and `deleteBrewLog(userId, id)` — SHALL throw
   `'BREW_LOG_NOT_FOUND'` when the log does not exist or belongs to another user (no ownership
   leakage), and `'FORBIDDEN'` is NOT required because non-ownership maps to not-found.
@@ -211,15 +216,18 @@ on every public function. Functions:
 #### Scenario: Create validates recipe accessibility
 
 - **WHEN** `createBrewLog` is called with a soft-deleted recipe id, or with another user's private
-  recipe id
+  or draft recipe id
 - **THEN** the service throws `'RECIPE_NOT_FOUND'` and no row is inserted
+
+#### Scenario: Create accepts another user's unlisted recipe
+
+- **WHEN** user B calls `createBrewLog` for user A's `unlisted` recipe
+- **THEN** the log is created for B, `POST /api/v1/brew-logs` returns `201`, and the log appears in B's `GET /api/v1/brew-logs` and in no other user's list
 
 #### Scenario: Create validates version belongs to recipe
 
 - **WHEN** `createBrewLog` is called with a `recipeVersionId` that belongs to a different recipe
 - **THEN** the service throws `'RECIPE_VERSION_MISMATCH'`
-
----
 
 ### Requirement: Brew log CRUD routes
 
@@ -396,8 +404,10 @@ for `brewedAt` (native date/datetime input), `yieldActual`, `doseActual`, `notes
 `personalRating` (1–10), with client-side constraints matching the shared schemas. On create, the
 loader SHALL read `recipeId` (required) and `recipeVersionId` (optional) from the URL search
 params, fetch the recipe, and pre-fill `doseActual`/`yieldActual` from the version's parameters as
-starting points. On edit, the loader SHALL fetch the existing log and reject non-owners. Submit
-SHALL POST/PATCH via `brewLogApi` and navigate back to the brew log list on success.
+starting points; a recipe that no longer exists (API 404) SHALL render the not-found page through
+`getRecipeOr404`, not the generic load-failed state. On edit, the loader SHALL fetch the existing log
+and reject non-owners. Submit SHALL POST/PATCH via `brewLogApi` and navigate back to the brew log
+list on success.
 
 #### Scenario: Brew Again prefill
 
@@ -406,12 +416,15 @@ SHALL POST/PATCH via `brewLogApi` and navigate back to the brew log list on succ
 - **THEN** the form shows that recipe with `doseActual` pre-filled to 15 and `yieldActual` to 250,
   both editable
 
+#### Scenario: Brew Again for a deleted recipe
+
+- **WHEN** an authenticated user opens `/brew-logs/new?recipeId=<id>` for a recipe that has been deleted
+- **THEN** the route renders the not-found page and no error is logged
+
 #### Scenario: Edit round-trip
 
 - **WHEN** the owner opens `/brew-logs/:id/edit`, changes the rating, and submits
 - **THEN** a PATCH is sent with only the form values and the user lands on the updated list
-
----
 
 ### Requirement: Brew stats and history on the recipe detail page
 

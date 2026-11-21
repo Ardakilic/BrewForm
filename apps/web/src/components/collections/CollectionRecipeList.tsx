@@ -1,8 +1,11 @@
 import { BREW_METHODS_LIST } from '@brewform/shared/constants';
 import type { CollectionItemOutput } from '@brewform/shared/schemas';
-import { useEffect, useMemo, useState } from 'react';
-import { collectionApi } from '../../api/index.ts';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFetcher } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
+import type { action as collectionAction } from '../../pages/collections/CollectionDetailPage.data.ts';
+import type { reorderAction } from '../../routes/resources/collections.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { RecipeCard } from '../recipe-list/RecipeCard.tsx';
 
@@ -73,9 +76,14 @@ function groupByBrewMethod(items: CollectionItemOutput[], otherLabel: string): B
 /**
  * Reorderable, brew-method-grouped list of recipes in a collection. Each group
  * is rendered as a section with a heading and a grid of {@link RecipeCard}s.
- * The owner sees small up/down/remove buttons below each card; reordering is
- * optimistic — the local array is swapped immediately and a PATCH is fired in
- * the background, with a rollback on error.
+ * The owner sees small up/down/remove buttons below each card.
+ *
+ * Reordering is optimistic: the local array is swapped immediately and the new `itemIds`
+ * order is PATCHed through a fetcher to the `collections/:id/reorder` resource action
+ * (without revalidating the page loader). The arrows stay disabled while that fetcher is
+ * pending, so reorders are serialised, and a `{ ok: false }` result rolls the order back and
+ * shows an error toast. Remove submits a `remove` intent to the `/collections/:id` route action
+ * (which revalidates the page, so the recipe count follows) and toasts on failure.
  *
  * Reordering is global across all groups (the `sortOrder` field is shared), so
  * moving an item up/down may move it across a group boundary.
@@ -83,11 +91,36 @@ function groupByBrewMethod(items: CollectionItemOutput[], otherLabel: string): B
 export function CollectionRecipeList({ collectionId, items, isOwner }: CollectionRecipeListProps) {
   const { t } = useTranslation();
   const [localItems, setLocalItems] = useState(items);
+  const reorderFetcher = useFetcher<typeof reorderAction>();
+  const removeFetcher = useFetcher<typeof collectionAction>();
+  /** The order before the pending reorder, restored if the action fails. */
+  const rollbackItems = useRef<CollectionItemOutput[] | null>(null);
+  const reordering = reorderFetcher.state !== 'idle';
+  const removing = removeFetcher.state !== 'idle';
 
-  // Sync localItems when the items prop changes (e.g. navigating to a different collection)
+  // Sync localItems when the items prop changes (e.g. navigating to a different collection,
+  // or the loader revalidating after a removal)
   useEffect(() => {
     setLocalItems(items);
   }, [items]);
+
+  useActionFeedback(reorderFetcher, {
+    errorKey: 'collection.error.reorder',
+    onSuccess: () => {
+      log.debug({ collectionId }, 'CollectionRecipeList reorder saved');
+      rollbackItems.current = null;
+    },
+    onError: () => {
+      if (rollbackItems.current) setLocalItems(rollbackItems.current);
+      rollbackItems.current = null;
+    },
+  });
+  useActionFeedback(removeFetcher, {
+    errorKey: 'collection.error.remove',
+    onSuccess: (data) => {
+      if (data.ok) setLocalItems((current) => current.filter((i) => i.recipeId !== data.recipeId));
+    },
+  });
 
   log.debug({ collectionId, itemCount: localItems.length }, 'CollectionRecipeList rendered');
 
@@ -103,34 +136,33 @@ export function CollectionRecipeList({ collectionId, items, isOwner }: Collectio
     flatIndex.set(item.id, index);
   });
 
-  const moveItem = async (index: number, direction: 'up' | 'down') => {
+  /** Swaps the item with its neighbour, then PATCHes the new order (no-op while one is pending). */
+  const moveItem = (index: number, direction: 'up' | 'down') => {
+    if (reordering) return;
     if (direction === 'up' && index === 0) return;
     if (direction === 'down' && index === localItems.length - 1) return;
     const newItems = [...localItems];
     const swapIndex = direction === 'up' ? index - 1 : index + 1;
     [newItems[index], newItems[swapIndex]] = [newItems[swapIndex], newItems[index]];
-    // Optimistic update
-    const previousItems = localItems;
+    rollbackItems.current = localItems;
     setLocalItems(newItems);
-    try {
-      const itemIds = newItems.map((i) => i.id);
-      await collectionApi.reorder(collectionId, itemIds);
-      log.debug({ collectionId }, 'Collection reordered');
-    } catch (err) {
-      // Rollback on error
-      setLocalItems(previousItems);
-      log.error({ err, collectionId }, 'Failed to reorder collection');
-    }
+    reorderFetcher.submit(
+      { itemIds: newItems.map((i) => i.id) },
+      {
+        method: 'patch',
+        action: `/collections/${collectionId}/reorder`,
+        encType: 'application/json',
+        defaultShouldRevalidate: false,
+      },
+    );
   };
 
-  const handleRemove = async (itemId: string, recipeId: string) => {
-    try {
-      await collectionApi.removeRecipe(collectionId, recipeId);
-      setLocalItems(localItems.filter((i) => i.id !== itemId));
-      log.debug({ collectionId, recipeId }, 'Recipe removed from collection');
-    } catch (err) {
-      log.error({ err }, 'Failed to remove recipe from collection');
-    }
+  /** Submits the `remove` intent for one recipe to the collection route action. */
+  const handleRemove = (recipeId: string) => {
+    removeFetcher.submit(
+      { intent: 'remove', recipeId },
+      { method: 'post', action: `/collections/${collectionId}` },
+    );
   };
 
   return (
@@ -151,7 +183,7 @@ export function CollectionRecipeList({ collectionId, items, isOwner }: Collectio
                       <button
                         type="button"
                         onClick={() => moveItem(index, 'up')}
-                        disabled={index === 0}
+                        disabled={reordering || index === 0}
                         className="btn-secondary text-xs px-2 py-1 disabled:opacity-30"
                         aria-label={t('collection.moveUp')}
                       >
@@ -160,7 +192,7 @@ export function CollectionRecipeList({ collectionId, items, isOwner }: Collectio
                       <button
                         type="button"
                         onClick={() => moveItem(index, 'down')}
-                        disabled={index === localItems.length - 1}
+                        disabled={reordering || index === localItems.length - 1}
                         className="btn-secondary text-xs px-2 py-1 disabled:opacity-30"
                         aria-label={t('collection.moveDown')}
                       >
@@ -168,7 +200,8 @@ export function CollectionRecipeList({ collectionId, items, isOwner }: Collectio
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleRemove(item.id, item.recipeId)}
+                        onClick={() => handleRemove(item.recipeId)}
+                        disabled={removing}
                         className="btn-secondary text-xs px-2 py-1 text-red-600"
                         aria-label={t('collection.detail.removeFromCollection')}
                       >

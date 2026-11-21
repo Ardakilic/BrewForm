@@ -3,12 +3,14 @@
  *
  * Orchestrates profile retrieval with sensitive-field stripping, public profile
  * enrichment (stats, recipes, follow status), profile updates with input
- * sanitization, and account soft-deletion.
+ * sanitization, and account soft-deletion (which also soft-deletes and scrubs
+ * the user's private recipe notes through the `recipe-note` service).
  */
 
 import { createLogger } from '../../utils/logger/index.ts';
 import { sanitizeName, sanitizeText } from '../../utils/sanitize.ts';
 import * as followModel from '../follow/model.ts';
+import * as recipeNoteService from '../recipe-note/service.ts';
 import * as model from './model.ts';
 
 /**
@@ -93,9 +95,21 @@ export async function updateProfile(
   return safe;
 }
 
-/** Soft-delete the authenticated user's account. */
+/**
+ * Soft-delete the authenticated user's account.
+ *
+ * First soft-deletes and scrubs every private recipe note the user owns
+ * (`recipeNoteService.deleteAllNotesForUser`), so a failure there leaves the
+ * account intact rather than deleted with private text still stored; then
+ * soft-deletes the user row. Display surfaces stop showing the account's identity
+ * (`visibleIdentity`); releasing its identifiers and clearing the row's profile data
+ * stay in D99.26.
+ *
+ * @param userId - The authenticated user's id.
+ */
 export async function deleteAccount(userId: string) {
   log.debug({ userId }, 'deleteAccount started');
+  await recipeNoteService.deleteAllNotesForUser(userId);
   await model.deleteUser(userId);
   log.debug({ userId }, 'deleteAccount completed');
 }

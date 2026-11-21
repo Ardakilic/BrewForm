@@ -40,8 +40,8 @@ function createMatchMediaStub(initialMatches: boolean) {
     removeEventListener: (_type: string, listener: ChangeListener) => {
       listeners.delete(listener);
     },
-    addListener: () => {},
-    removeListener: () => {},
+    addListener: () => undefined,
+    removeListener: () => undefined,
     dispatchEvent: () => true,
   } as unknown as MediaQueryList;
 

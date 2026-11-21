@@ -13,6 +13,11 @@ interface MergeSelectorProps {
   onMerge: (selections: Record<string, 'v1' | 'v2'>) => void;
 }
 
+/**
+ * Per-field picker for merging two recipe versions: shows each field's value from both versions
+ * as a radio pair and calls `onMerge` with the chosen `v1`/`v2` selections when the user clicks
+ * the create button. Fields left unselected are omitted from the selections.
+ */
 export function MergeSelector({ fields, onMerge }: MergeSelectorProps) {
   const { t } = useTranslation();
   const [selections, setSelections] = useState<Record<string, string>>({});

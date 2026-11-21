@@ -8,7 +8,8 @@ import { AuthorRefSchema } from './_shared.ts';
  * `model.create` (POST). `CommentWithAuthorOutputSchema` adds the left-joined
  * `author` projection (nullable) used in list rows and replies.
  * `CommentWithRepliesOutputSchema` is a top-level list item with a `replies[]`
- * array of with-author comments (from `findByRecipe`).
+ * array of with-author comments, capped per thread, and `hasMoreReplies` (from
+ * `findByRecipe`).
  *
  * Verified against `packages/db/src/schema.ts` (`comments`, `users`) and
  * `apps/api/src/modules/comment/{service,model}.ts`.
@@ -35,9 +36,15 @@ export const CommentWithAuthorOutputSchema = CommentOutputSchema.extend({
 /** Inferred type of {@link CommentWithAuthorOutputSchema}. */
 export type CommentWithAuthorOutput = z.infer<typeof CommentWithAuthorOutputSchema>;
 
-/** Validates a top-level comment list item with nested `replies[]`; response envelope for GET /api/v1/comments/recipe/:recipeId. */
+/**
+ * Validates a top-level comment list item with nested `replies[]`; response envelope for
+ * GET /api/v1/comments/recipe/:recipeId. `replies` holds at most `MAX_REPLIES_PER_COMMENT`
+ * (20, `@brewform/shared/constants`) replies, oldest first; `hasMoreReplies` is true when
+ * the thread has more than that.
+ */
 export const CommentWithRepliesOutputSchema = CommentWithAuthorOutputSchema.extend({
   replies: z.array(CommentWithAuthorOutputSchema),
+  hasMoreReplies: z.boolean(),
 });
 
 /** Inferred type of {@link CommentWithRepliesOutputSchema}. */

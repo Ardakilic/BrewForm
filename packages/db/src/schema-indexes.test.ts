@@ -13,6 +13,11 @@
  * Coverage:
  *  - All 17 new indexes across 11 tables: 16 composite indexes + 1
  *    single-column parity index on tasteNotes.deletedAt
+ *  - `user_recipe_note` (wave-6 private notes): the `recipe_id` index, the
+ *    (`user_id`, `recipe_id`) unique constraint and the notes length CHECK
+ *  - wave-6 identifier uniqueness: the `lower()` expression unique indexes on
+ *    `user.email` / `user.username` and the partial `setup_user_default_unique`
+ *  - wave-6 search: the three GIN `gin_trgm_ops` trigram indexes (`pg_trgm`)
  */
 
 import type { IndexedColumn, PgTableWithColumns } from 'drizzle-orm/pg-core';
@@ -33,6 +38,8 @@ import {
   setups,
   tasteNotes,
   userFollows,
+  userRecipeNotes,
+  users,
 } from './schema.ts';
 
 /**
@@ -142,6 +149,49 @@ describe('Recipe versions table composite indexes', () => {
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['coffee_variety_id', 'recipe_id']);
     expect(idx!.isUnique).toBe(false);
+  });
+});
+
+describe('Trigram search indexes (wave 6, advanced-search)', () => {
+  /**
+   * Find a named index and report its access method and each column's operator class.
+   *
+   * @param table - The Drizzle table that declares the index.
+   * @param name - The index name.
+   */
+  // biome-ignore lint/suspicious/noExplicitAny: test any usage, mirrors getTableIndexes
+  function trigramIndex(table: PgTableWithColumns<any>, name: string) {
+    const idx = getTableConfig(table).indexes.find((i) => i.config.name === name);
+    expect(idx).toBeDefined();
+    const config = idx?.config;
+    return {
+      method: config?.method,
+      columns: (config?.columns ?? []).map((col) => ({
+        name: (col as IndexedColumn).name,
+        opClass: (col as IndexedColumn).indexConfig?.opClass,
+      })),
+    };
+  }
+
+  it('has recipe_title_trgm_idx as GIN gin_trgm_ops on title', () => {
+    expect(trigramIndex(recipes, 'recipe_title_trgm_idx')).toEqual({
+      method: 'gin',
+      columns: [{ name: 'title', opClass: 'gin_trgm_ops' }],
+    });
+  });
+
+  it('has recipe_version_product_name_trgm_idx as GIN gin_trgm_ops on product_name', () => {
+    expect(trigramIndex(recipeVersions, 'recipe_version_product_name_trgm_idx')).toEqual({
+      method: 'gin',
+      columns: [{ name: 'product_name', opClass: 'gin_trgm_ops' }],
+    });
+  });
+
+  it('has recipe_version_personal_notes_trgm_idx as GIN gin_trgm_ops on personal_notes', () => {
+    expect(trigramIndex(recipeVersions, 'recipe_version_personal_notes_trgm_idx')).toEqual({
+      method: 'gin',
+      columns: [{ name: 'personal_notes', opClass: 'gin_trgm_ops' }],
+    });
   });
 });
 
@@ -400,5 +450,58 @@ describe('Brew logs table indexes', () => {
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['deleted_at']);
     expect(idx!.isUnique).toBe(false);
+  });
+});
+
+describe('User recipe notes table indexes and constraints', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+  let uniques: ReturnType<typeof getTableUniqueConstraints>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(userRecipeNotes);
+    uniques = getTableUniqueConstraints(userRecipeNotes);
+  });
+
+  it('has user_recipe_note_recipe_id_idx on (recipeId)', () => {
+    const idx = indexes.find((i) => i.name === 'user_recipe_note_recipe_id_idx');
+    expect(idx).toBeDefined();
+    expect(idx?.columns).toEqual(['recipe_id']);
+    expect(idx?.isUnique).toBe(false);
+  });
+
+  it('has user_recipe_note_user_id_recipe_id_unique on (userId, recipeId)', () => {
+    const uc = uniques.find((u) => u.name === 'user_recipe_note_user_id_recipe_id_unique');
+    expect(uc).toBeDefined();
+    expect(uc?.columns).toEqual(['user_id', 'recipe_id']);
+  });
+
+  it('declares the user_recipe_note_notes_length_check CHECK constraint', () => {
+    const { checks } = getTableConfig(userRecipeNotes);
+    expect(checks.map((c) => c.name)).toEqual(['user_recipe_note_notes_length_check']);
+  });
+});
+
+describe('Identifier unique indexes (wave-6 unique-identifiers)', () => {
+  it('users has case-insensitive unique indexes on email and username', () => {
+    const { indexes } = getTableConfig(users);
+    for (const name of ['user_email_lower_unique', 'user_username_lower_unique']) {
+      const idx = indexes.find((i) => i.config.name === name);
+      expect(idx, name).toBeDefined();
+      expect(idx?.config.unique).toBe(true);
+    }
+  });
+
+  it('users keeps the exact unique constraints the seed conflict target relies on', () => {
+    const { columns } = getTableConfig(users);
+    expect(columns.find((c) => c.name === 'email')?.isUnique).toBe(true);
+    expect(columns.find((c) => c.name === 'username')?.isUnique).toBe(true);
+  });
+
+  it('setups has the partial setup_user_default_unique index', () => {
+    const { indexes } = getTableConfig(setups);
+    const idx = indexes.find((i) => i.config.name === 'setup_user_default_unique');
+    expect(idx).toBeDefined();
+    expect(idx?.config.unique).toBe(true);
+    expect(idx?.config.where).toBeDefined();
   });
 });

@@ -26,15 +26,6 @@ vi.mock('../../contexts/AuthContext.tsx', () => ({
 
 vi.mock('../../api/client.ts', () => ({
   api: { get: vi.fn(), getWithMeta: vi.fn() },
-  ApiError: class extends Error {
-    code: string;
-    status: number;
-    constructor(code: string, message: string, _details?: unknown, status: number = 500) {
-      super(message);
-      this.code = code;
-      this.status = status;
-    }
-  },
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
@@ -59,10 +50,13 @@ vi.mock('@/utils/logger.ts', () => ({
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import { useSearchParams } from 'react-router';
-import { ApiError, api } from '../../api/client.ts';
+import { api } from '../../api/client.ts';
+import { ApiError } from '../../api/errors.ts';
+import { ToastProvider } from '../../components/ui/Toast.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { loader, UserProfilePage } from './UserProfilePage.tsx';
+import { loader } from './UserProfilePage.data.ts';
+import { UserProfilePage } from './UserProfilePage.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -95,6 +89,8 @@ const enT = (key: string) => {
     'brewLog.card.notes': 'Notes',
     'brewLog.card.yieldActual': 'Yield',
     'brewLog.card.doseActual': 'Dose',
+    'follow.follow': 'Follow',
+    'follow.followingState': 'Following',
   };
   return map[key] ?? key;
 };
@@ -158,13 +154,23 @@ function renderProfilePage(username = 'diana', tab = 'recipes') {
     [{ path: '/u/:username', element: <UserProfilePage />, loader, HydrateFallback }],
     { initialEntries: [`/u/${username}?tab=${tab}`] },
   );
-  return render(<RouterProvider router={router} />);
+  // FollowButton toasts failures (useActionFeedback), so the page needs the toast context.
+  return render(
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>,
+  );
 }
 
 // ── Setup ──────────────────────────────────────────────────────────────────
 
 /** Viewer identity returned by the mocked `GET /users/me` (null = logged out). */
-let meUser: { username: string } | null = null;
+let meUser: { id: string; username: string } | null = null;
+
+/** The `/users/me` identity of the profile owner (`mockProfile`). */
+const DIANA_ME = { id: 'profile-user-id', username: 'diana' };
+/** The `/users/me` identity of another user. */
+const ALICE_ME = { id: 'current-user', username: 'alice' };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -221,7 +227,7 @@ describe('UserProfilePage — FollowButton visibility', () => {
     mockUseAuth.mockReturnValue({
       ...defaultAuth,
       user: {
-        id: 'current-user',
+        id: 'profile-user-id',
         email: 'diana@example.com',
         emailVerifiedAt: null,
         username: 'diana',
@@ -240,6 +246,48 @@ describe('UserProfilePage — FollowButton visibility', () => {
     expect(editProfileLink).toHaveAttribute('href', '/settings');
 
     expect(screen.queryByText('Follow')).not.toBeInTheDocument();
+  });
+});
+
+describe('UserProfilePage — own profile under any URL casing', () => {
+  it('treats /u/arda as the own profile of Arda (ids match) and loads the brew journal', async () => {
+    meUser = { id: 'u1', username: 'Arda' };
+    mockUseAuth.mockReturnValue({
+      ...defaultAuth,
+      user: {
+        id: 'u1',
+        email: 'arda@example.com',
+        emailVerifiedAt: null,
+        username: 'Arda',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: true,
+      },
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+    mockApiGet.mockImplementation((url: string) =>
+      Promise.resolve(
+        url === '/users/me'
+          ? meUser
+          : { ...mockProfile, id: 'u1', username: 'Arda', displayName: 'Arda' },
+      ),
+    );
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'brews' }));
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [],
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total: 0, totalPages: 0 } },
+    });
+
+    renderProfilePage('arda', 'brews');
+
+    expect(await screen.findByText('Edit Profile')).toBeInTheDocument();
+    expect(screen.queryByText('Follow')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Brew Journal' })).toBeInTheDocument();
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=1', {
+      signal: expect.any(AbortSignal),
+    });
   });
 });
 
@@ -297,6 +345,75 @@ describe('UserProfilePage — shared cards', () => {
   });
 });
 
+/**
+ * Builds a follow-list profile (the API nests it under `follower` or `following`).
+ *
+ * @param username - The profile's username (also used to derive its id).
+ * @param displayName - The display name, or null/empty to exercise the username fallback.
+ */
+function followProfile(username: string, displayName: string | null) {
+  return { id: `id-${username}`, username, displayName, avatarUrl: null, bio: null };
+}
+
+/**
+ * Serves `rows` for the follow-list request at `path`, the profile for every other request, and
+ * a logged-out viewer.
+ *
+ * @param path - The follow-list request path (`/follow/<profile id>/followers|following`).
+ * @param rows - The follow records the API returns.
+ */
+function mockFollowList(path: string, rows: unknown[]) {
+  mockApiGet.mockImplementation((url: string) => {
+    if (url === '/users/me') {
+      return Promise.reject(new ApiError('UNAUTHORIZED', 'no token', undefined, 401));
+    }
+    return Promise.resolve(url === path ? rows : mockProfile);
+  });
+}
+
+describe('UserProfilePage — follow lists', () => {
+  it('renders each follower from the nested follower profile: name, @handle and profile link', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'followers' }));
+    mockFollowList('/follow/profile-user-id/followers', [
+      { id: 'f1', followerId: 'id-alice', follower: followProfile('alice', 'Alice') },
+      { id: 'f4', followerId: 'id-dave', follower: followProfile('dave', 'Dave Smith') },
+    ]);
+
+    renderProfilePage('diana', 'followers');
+
+    expect(await screen.findByText('Alice')).toBeInTheDocument();
+    expect(screen.getByText('@alice')).toBeInTheDocument();
+    expect(screen.getByText('Alice').closest('a')?.getAttribute('href')).toBe('/u/alice');
+    expect(screen.getByText('Dave Smith')).toBeInTheDocument();
+    expect(screen.getByText('@dave')).toBeInTheDocument();
+  });
+
+  it('falls back to the username when a followed profile has a null or empty display name', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'following' }));
+    mockFollowList('/follow/profile-user-id/following', [
+      { id: 'f2', followingId: 'id-bob', following: followProfile('bob', null) },
+      { id: 'f3', followingId: 'id-carol', following: followProfile('carol', '') },
+    ]);
+
+    renderProfilePage('diana', 'following');
+
+    expect(await screen.findByText('bob')).toBeInTheDocument();
+    expect(screen.getByText('@bob')).toBeInTheDocument();
+    expect(screen.getByText('bob').closest('a')?.getAttribute('href')).toBe('/u/bob');
+    expect(screen.getByText('carol')).toBeInTheDocument();
+    expect(screen.getByText('@carol')).toBeInTheDocument();
+  });
+
+  it('shows the empty message when the profile has no followers', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'followers' }));
+    mockFollowList('/follow/profile-user-id/followers', []);
+
+    renderProfilePage('diana', 'followers');
+
+    expect(await screen.findByText('No followers yet.')).toBeInTheDocument();
+  });
+});
+
 describe('UserProfilePage — brews tab (F02)', () => {
   const selfAuth = {
     ...defaultAuth,
@@ -330,7 +447,7 @@ describe('UserProfilePage — brews tab (F02)', () => {
   };
 
   it('shows the brews tab and renders brew logs on the own profile', async () => {
-    meUser = { username: 'diana' };
+    meUser = DIANA_ME;
     mockUseAuth.mockReturnValue(selfAuth as ReturnType<typeof useAuth>);
     mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'brews' }));
     mockApiGetWithMeta.mockResolvedValue({
@@ -350,7 +467,7 @@ describe('UserProfilePage — brews tab (F02)', () => {
   });
 
   it('shows the empty state when the own journal has no brews', async () => {
-    meUser = { username: 'diana' };
+    meUser = DIANA_ME;
     mockUseAuth.mockReturnValue(selfAuth as ReturnType<typeof useAuth>);
     mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'brews' }));
     mockApiGetWithMeta.mockResolvedValue({
@@ -367,7 +484,7 @@ describe('UserProfilePage — brews tab (F02)', () => {
   });
 
   it('renders pagination and sets brewsPage when the history spans pages', async () => {
-    meUser = { username: 'diana' };
+    meUser = DIANA_ME;
     mockUseAuth.mockReturnValue(selfAuth as ReturnType<typeof useAuth>);
     const setParams = vi.fn();
     mockUseSearchParams.mockReturnValue([
@@ -389,13 +506,34 @@ describe('UserProfilePage — brews tab (F02)', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'common.next' }));
 
     expect(setParams).toHaveBeenCalledTimes(1);
+    // Page params are built on the latest URL (here the router's `?tab=brews`) and passed as a value.
     const next = setParams.mock.calls[0][0] as URLSearchParams;
     expect(next.get('brewsPage')).toBe('2');
     expect(next.get('tab')).toBe('brews');
   });
 
+  it('renders collections pagination and sets collectionsPage, keeping the tab', async () => {
+    const setParams = vi.fn();
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ tab: 'collections' }),
+      setParams,
+    ] as ReturnType<typeof useSearchParams>);
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [],
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total: 45, totalPages: 3 } },
+    });
+
+    renderProfilePage('diana', 'collections');
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'common.next' }));
+
+    const next = setParams.mock.calls[0][0] as URLSearchParams;
+    expect(next.toString()).toBe('tab=collections&collectionsPage=2');
+  });
+
   it("hides the brews tab on another user's profile", async () => {
-    meUser = { username: 'alice' };
+    meUser = ALICE_ME;
     mockUseAuth.mockReturnValue({
       ...defaultAuth,
       user: {
@@ -428,7 +566,7 @@ describe('UserProfilePage — brews loader (F02)', () => {
   });
 
   it('passes a valid ?brewsPage through when the viewer owns the profile', async () => {
-    meUser = { username: 'diana' };
+    meUser = DIANA_ME;
     mockApiGetWithMeta.mockResolvedValue({
       success: true,
       data: [],
@@ -437,11 +575,13 @@ describe('UserProfilePage — brews loader (F02)', () => {
 
     await loader(loaderArgs('http://localhost/u/diana?tab=brews&brewsPage=2'));
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=2');
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=2', {
+      signal: expect.any(AbortSignal),
+    });
   });
 
   it('defaults an invalid ?brewsPage to 1', async () => {
-    meUser = { username: 'diana' };
+    meUser = DIANA_ME;
     mockApiGetWithMeta.mockResolvedValue({
       success: true,
       data: [],
@@ -450,7 +590,9 @@ describe('UserProfilePage — brews loader (F02)', () => {
 
     await loader(loaderArgs('http://localhost/u/diana?tab=brews&brewsPage=-3'));
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=1');
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=1', {
+      signal: expect.any(AbortSignal),
+    });
   });
 
   it('skips the brew-log fetch when logged out (brewsData stays null)', async () => {
@@ -463,7 +605,7 @@ describe('UserProfilePage — brews loader (F02)', () => {
   });
 
   it("skips the brew-log fetch on a URL-forced brews tab for another user's profile", async () => {
-    meUser = { username: 'alice' };
+    meUser = ALICE_ME;
 
     const data = await loader(loaderArgs('http://localhost/u/diana?tab=brews'));
 
@@ -472,12 +614,94 @@ describe('UserProfilePage — brews loader (F02)', () => {
   });
 
   it('propagates brew-log fetch errors once ownership is established', async () => {
-    meUser = { username: 'diana' };
+    meUser = DIANA_ME;
     const serverError = new ApiError('INTERNAL', 'boom');
     mockApiGetWithMeta.mockRejectedValue(serverError);
 
     await expect(loader(loaderArgs('http://localhost/u/diana?tab=brews'))).rejects.toBe(
       serverError,
     );
+  });
+});
+
+describe('UserProfilePage — collections loader pagination', () => {
+  it('requests the ?collectionsPage of the user collections with a fixed perPage', async () => {
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [],
+      meta: { requestId: 'test', pagination: { page: 2, perPage: 20, total: 30, totalPages: 2 } },
+    });
+
+    await loader({
+      params: { username: 'diana' },
+      request: new Request('http://localhost/u/diana?tab=collections&collectionsPage=2'),
+    });
+
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
+      expect.stringMatching(/\/users\/[^/]+\/collections\?page=2&perPage=20$/),
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+});
+
+describe('UserProfilePage — loader not-found mapping', () => {
+  it('throws a 404 Response (not-found page) when the profile request returns 404', async () => {
+    mockApiGet.mockRejectedValue(new ApiError('NOT_FOUND', 'User not found', undefined, 404));
+
+    const thrown = await loader({
+      params: { username: 'ghost' },
+      request: new Request('http://localhost/u/ghost'),
+    }).catch((err: unknown) => err);
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).status).toBe(404);
+  });
+
+  it('rethrows non-404 profile errors unchanged', async () => {
+    const serverError = new ApiError('INTERNAL', 'boom', undefined, 500);
+    mockApiGet.mockRejectedValue(serverError);
+
+    await expect(
+      loader({ params: { username: 'ghost' }, request: new Request('http://localhost/u/ghost') }),
+    ).rejects.toBe(serverError);
+  });
+});
+
+describe('UserProfilePage loader — request.signal', () => {
+  it('forwards request.signal to the profile, follow-list and viewer requests', async () => {
+    meUser = DIANA_ME;
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [],
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total: 0, totalPages: 0 } },
+    });
+    const signalOpts = { signal: expect.any(AbortSignal) };
+
+    await loader({
+      params: { username: 'diana' },
+      request: new Request('http://localhost/u/diana?tab=followers'),
+    });
+    expect(mockApiGet).toHaveBeenCalledWith('/users/diana', signalOpts);
+    expect(mockApiGet).toHaveBeenCalledWith('/follow/profile-user-id/followers', signalOpts);
+
+    await loader({
+      params: { username: 'diana' },
+      request: new Request('http://localhost/u/diana?tab=brews'),
+    });
+    expect(mockApiGet).toHaveBeenCalledWith('/users/me', signalOpts);
+  });
+
+  it('rethrows an aborted viewer lookup instead of treating it as logged out', async () => {
+    const abort = new DOMException('aborted', 'AbortError');
+    mockApiGet.mockImplementation((url: string) =>
+      url === '/users/me' ? Promise.reject(abort) : Promise.resolve(mockProfile),
+    );
+
+    await expect(
+      loader({
+        params: { username: 'diana' },
+        request: new Request('http://localhost/u/diana?tab=brews'),
+      }),
+    ).rejects.toBe(abort);
   });
 });

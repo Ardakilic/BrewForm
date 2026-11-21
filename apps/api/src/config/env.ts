@@ -3,13 +3,137 @@
  * All env vars are parsed at startup — invalid or missing required vars
  * cause the server to exit immediately with a descriptive error.
  * Defaults are suitable for local development (Mailpit on port 1025, etc.).
+ *
+ * Blank values are treated as unset: a variable whose value is empty or
+ * whitespace-only (what Compose produces for `${VAR:-}` and what operators
+ * leave in a `.env` file or a Coolify variable) is dropped before validation,
+ * so optional variables fall back to their default and required ones still fail.
+ *
+ * Public base URLs (`S3_PUBLIC_URL`, `PUBLIC_APP_URL`, `APP_URL`) are normalised
+ * once here: every trailing `/` is stripped, so code that builds a URL from them
+ * appends `/<path>` and never trims the value again.
  */
+import { isIP } from 'node:net';
+import * as path from 'node:path';
 import { z } from 'zod';
+import {
+  isSupportedImageMime,
+  SUPPORTED_IMAGE_MIME_TYPES,
+  type SupportedImageMime,
+} from '../utils/upload/mime.ts';
 
-/** Zod schema for the API environment. Exported for tests; see {@link config}. */
-export const envSchema = z
+/**
+ * Copy the raw environment and drop every key whose value is a string that
+ * trims to `''`, so blank values behave exactly like unset ones.
+ *
+ * @param input - The raw input (normally `process.env`).
+ * @returns A shallow copy without blank string values (non-objects pass through).
+ */
+function dropBlankValues(input: unknown): unknown {
+  if (typeof input !== 'object' || input === null) return input;
+  const copy: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (typeof value === 'string' && value.trim() === '') continue;
+    copy[key] = value;
+  }
+  return copy;
+}
+
+/**
+ * Strip every trailing `/` from a public base URL, so `https://cdn.example.com/`
+ * and `https://cdn.example.com` build the same `<base>/<path>` URLs.
+ *
+ * @param value - The validated URL string.
+ * @returns The value without trailing slashes.
+ */
+const withoutTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
+
+/** A TCP port: an integer between 1 and 65535 (coerced from the env string). */
+const portSchema = z.coerce.number().int().min(1).max(65535);
+
+/**
+ * `UPLOAD_ALLOWED_TYPES`: a comma-separated list, split, trimmed, lower-cased
+ * and stripped of empty entries, that must be a non-empty subset of
+ * {@link SUPPORTED_IMAGE_MIME_TYPES} (the types the upload detector can
+ * recognise). The error names the variable and the unsupported entries.
+ */
+const uploadAllowedTypesSchema = z
+  .string()
+  .default(SUPPORTED_IMAGE_MIME_TYPES.join(','))
+  .transform((value, ctx): SupportedImageMime[] => {
+    const entries = value
+      .split(',')
+      .map((entry) => entry.trim().toLowerCase())
+      .filter((entry) => entry !== '');
+    const unsupported = entries.filter((entry) => !isSupportedImageMime(entry));
+    if (unsupported.length > 0) {
+      ctx.addIssue({
+        code: 'custom',
+        input: value,
+        message: `UPLOAD_ALLOWED_TYPES contains unsupported types: ${unsupported.join(', ')} (supported: ${SUPPORTED_IMAGE_MIME_TYPES.join(', ')})`,
+      });
+      return z.NEVER;
+    }
+    if (entries.length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        input: value,
+        message: 'UPLOAD_ALLOWED_TYPES must list at least one image type',
+      });
+      return z.NEVER;
+    }
+    return entries.filter(isSupportedImageMime);
+  });
+
+/**
+ * Check one CIDR string: a valid IPv4 or IPv6 address (`node:net` `isIP`)
+ * followed by `/<prefix>`, where the prefix is a whole number of at most 32
+ * bits for IPv4 and 128 bits for IPv6.
+ *
+ * @param cidr - A trimmed entry such as `10.0.0.0/8` or `2001:db8::/32`.
+ * @returns `true` when the entry is a well-formed CIDR.
+ */
+export function isValidCidr(cidr: string): boolean {
+  const slash = cidr.lastIndexOf('/');
+  if (slash <= 0) return false;
+  const address = cidr.slice(0, slash);
+  const prefix = cidr.slice(slash + 1);
+  if (!/^\d{1,3}$/.test(prefix)) return false;
+  const family = isIP(address);
+  if (family === 0) return false;
+  return Number(prefix) <= (family === 4 ? 32 : 128);
+}
+
+/**
+ * `TRUST_PROXY_CIDRS`: optional comma-separated IPv4/IPv6 CIDRs of extra
+ * trusted edges for `TRUST_PROXY=cloudflare`. Entries are trimmed, empty ones
+ * dropped, and each one validated by {@link isValidCidr}; the output is the
+ * parsed `string[]` (empty when unset).
+ */
+const trustProxyCidrsSchema = z
+  .string()
+  .default('')
+  .transform((value, ctx): string[] => {
+    const entries = value
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter((entry) => entry !== '');
+    const invalid = entries.filter((entry) => !isValidCidr(entry));
+    if (invalid.length > 0) {
+      ctx.addIssue({
+        code: 'custom',
+        input: value,
+        message: `TRUST_PROXY_CIDRS contains ${invalid.length} invalid CIDR(s); expected comma-separated IPv4/IPv6 CIDRs such as 10.0.0.0/8, 2001:db8::/32`,
+      });
+      return z.NEVER;
+    }
+    return entries;
+  });
+
+/** The validated environment object, before the blank-value preprocessing step. */
+const envObjectSchema = z
   .object({
-    APP_PORT: z.coerce.number().default(8000),
+    APP_PORT: portSchema.default(8000),
     APP_ENV: z.enum(['development', 'production', 'test']).default('development'),
     LOG_LEVEL: z.string().default('info'),
     LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
@@ -23,6 +147,25 @@ export const envSchema = z
       .transform((v) => v === 'true'),
     CACHE_DRIVER: z.enum(['memory', 'redis']).default('memory'),
     REDIS_URL: z.string().optional(),
+    // Entry cap of the memory cache driver (LRU eviction above it).
+    CACHE_MEMORY_MAX_ENTRIES: z.coerce.number().int().min(100).max(1_000_000).default(10_000),
+
+    // Client identity for rate limiting: which forwarding headers to trust.
+    // none = TCP peer only (secure default); hops = right-most X-Forwarded-For
+    // entry after TRUST_PROXY_HOPS trusted proxies; cloudflare = CF-Connecting-IP
+    // only when the hop is a Cloudflare (or TRUST_PROXY_CIDRS) address.
+    TRUST_PROXY: z.enum(['none', 'hops', 'cloudflare']).default('none'),
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(1),
+    TRUST_PROXY_CIDRS: trustProxyCidrsSchema,
+
+    // Rate limiting is independent of the cache: only RATE_LIMIT_ENABLED turns it
+    // off, and RATE_LIMIT_STORE=redis reuses REDIS_URL for a dedicated client.
+    RATE_LIMIT_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
+    RATE_LIMIT_STORE: z.enum(['memory', 'redis']).default('memory'),
+    RATE_LIMIT_GLOBAL_MAX: z.coerce.number().int().positive().default(100),
 
     JWT_SECRET: z.string().min(16),
     JWT_ACCESS_EXPIRY: z
@@ -41,7 +184,7 @@ export const envSchema = z
     CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://localhost:8000'),
 
     SMTP_HOST: z.string().default('localhost'),
-    SMTP_PORT: z.coerce.number().default(1025),
+    SMTP_PORT: portSchema.default(1025),
     SMTP_USER: z.string().default(''),
     SMTP_PASS: z.string().default(''),
     SMTP_SECURE: z
@@ -66,15 +209,27 @@ export const envSchema = z
     S3_BUCKET: z.string().optional(),
     S3_ACCESS_KEY: z.string().optional(),
     S3_SECRET_KEY: z.string().optional(),
-    S3_PUBLIC_URL: z.url().optional(),
+    // Public base URL of the bucket; a trailing slash is ignored (see withoutTrailingSlash).
+    S3_PUBLIC_URL: z.url().transform(withoutTrailingSlash).optional(),
 
-    // Retained for local driver
-    UPLOAD_DIR: z.string().default('./uploads'),
-    UPLOAD_MAX_SIZE_BYTES: z.coerce.number().default(10 * 1024 * 1024),
-    UPLOAD_ALLOWED_TYPES: z.string().default('image/jpeg,image/png,image/webp'),
+    // Local storage driver. UPLOAD_DIR is resolved to an absolute path at load
+    // (relative values against the process working directory); the production
+    // image sets /app/uploads, the path the production compose file mounts.
+    UPLOAD_DIR: z
+      .string()
+      .default('./uploads')
+      .transform((p) => path.resolve(p)),
+    UPLOAD_MAX_SIZE_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(10 * 1024 * 1024),
+    UPLOAD_ALLOWED_TYPES: uploadAllowedTypesSchema,
 
-    APP_URL: z.string().default('http://localhost:8000'),
-    PUBLIC_APP_URL: z.url().optional(),
+    // Base URLs for QR/OG links (APP_URL) and email/share links (PUBLIC_APP_URL);
+    // a trailing slash is ignored (see withoutTrailingSlash).
+    APP_URL: z.string().default('http://localhost:8000').transform(withoutTrailingSlash),
+    PUBLIC_APP_URL: z.url().transform(withoutTrailingSlash).optional(),
 
     ADMIN_EMAIL: z.string().default('admin@brewform.local'),
     ADMIN_USERNAME: z.string().default('admin'),
@@ -88,6 +243,14 @@ export const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['REDIS_URL'],
         message: 'REDIS_URL is required when CACHE_ENABLED is true and CACHE_DRIVER is redis',
+      });
+    }
+    // Independent of CACHE_ENABLED/CACHE_DRIVER: the limiter has its own client.
+    if (obj.RATE_LIMIT_STORE === 'redis' && !obj.REDIS_URL) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['REDIS_URL'],
+        message: 'REDIS_URL is required when RATE_LIMIT_STORE is redis',
       });
     }
     if (obj.STORAGE_DRIVER !== 's3') return;
@@ -109,9 +272,23 @@ export const envSchema = z
     }
   });
 
-/** Inferred type of the validated environment schema — the shape of {@link config}. */
-export type Env = z.infer<typeof envSchema>;
+/**
+ * Zod schema for the API environment: {@link dropBlankValues} followed by the
+ * object schema. Exported for tests; see {@link config}.
+ */
+export const envSchema = z.preprocess(dropBlankValues, envObjectSchema);
 
+/** Output type of the validated environment schema — the shape of {@link config}. */
+export type Env = z.output<typeof envSchema>;
+
+/**
+ * Parse `process.env` with {@link envSchema}. On failure, print each failing
+ * variable name with its validation messages (never the offending values,
+ * which may be secrets) and throw.
+ *
+ * @returns The validated configuration.
+ * @throws {Error} `Invalid environment variables` when validation fails.
+ */
 function loadEnv(): Env {
   const result = envSchema.safeParse(process.env);
   if (!result.success) {

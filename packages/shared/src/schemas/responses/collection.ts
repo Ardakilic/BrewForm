@@ -67,9 +67,12 @@ export const CollectionItemOutputSchema = z.object({
 /** Inferred type of {@link CollectionItemOutputSchema}. */
 export type CollectionItemOutput = z.infer<typeof CollectionItemOutputSchema>;
 
-/** Full collection detail with author, items, and computed recipe count. */
+/**
+ * Full collection detail with author, items, and computed recipe count. The owner
+ * `author` (and each item recipe's `author`) is `null` when that account was deleted.
+ */
 export const CollectionDetailOutputSchema = CollectionOutputSchema.extend({
-  author: RecipeAuthorMiniSchema,
+  author: RecipeAuthorMiniSchema.nullable(),
   items: z.array(CollectionItemOutputSchema),
   recipeCount: z.number().int(),
 });
@@ -79,10 +82,11 @@ export type CollectionDetailOutput = z.infer<typeof CollectionDetailOutputSchema
 /**
  * Public collection list item — a {@link CollectionListItemOutputSchema}
  * enriched with a mini author projection so the global browse page can
- * display "by @username" without a second request.
+ * display "by @username" without a second request. `author` is `null` when the
+ * owner's account was deleted.
  */
 export const PublicCollectionListItemOutputSchema = CollectionListItemOutputSchema.extend({
-  author: RecipeAuthorMiniSchema,
+  author: RecipeAuthorMiniSchema.nullable(),
 });
 /** Inferred type of {@link PublicCollectionListItemOutputSchema}. */
 export type PublicCollectionListItemOutput = z.infer<typeof PublicCollectionListItemOutputSchema>;

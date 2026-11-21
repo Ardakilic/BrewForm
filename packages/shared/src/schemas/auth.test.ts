@@ -268,3 +268,27 @@ describe('PasswordResetConfirmSchema', () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe('account email and username normalization', () => {
+  const password = 'Str0ng!Pass';
+
+  it('AuthRegisterSchema lower-cases and trims the email and trims the username', () => {
+    const parsed = AuthRegisterSchema.parse({
+      email: '  Mixed.Case@Example.COM ',
+      username: ' Arda ',
+      password,
+    });
+    expect(parsed.email).toBe('mixed.case@example.com');
+    expect(parsed.username).toBe('Arda');
+  });
+
+  it('AuthLoginSchema lower-cases and trims the email', () => {
+    expect(AuthLoginSchema.parse({ email: ' A@B.CO ', password: 'x' }).email).toBe('a@b.co');
+  });
+
+  it('PasswordResetSchema lower-cases and trims the email', () => {
+    expect(PasswordResetSchema.parse({ email: ' User@Example.COM ' }).email).toBe(
+      'user@example.com',
+    );
+  });
+});

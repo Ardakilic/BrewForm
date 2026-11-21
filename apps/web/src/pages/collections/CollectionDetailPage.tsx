@@ -1,56 +1,30 @@
-import type { CollectionDetailOutput } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
 import { Link, useLoaderData } from 'react-router';
-import { ApiError, collectionApi } from '../../api/index.ts';
 import { CollectionRecipeList } from '../../components/collections/CollectionRecipeList.tsx';
 import { CollectionVisibilityBadge } from '../../components/collections/CollectionVisibilityBadge.tsx';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './CollectionDetailPage.data.ts';
 
 const log = createLogger('CollectionDetailPage');
 
-/** Loader payload for {@link CollectionDetailPage}. */
-export interface CollectionDetailLoaderData {
-  collection: CollectionDetailOutput;
-}
-
-/**
- * React Router data loader for `/collections/:id` — fetches the collection
- * by ID. A 404 from the API is mapped to `throw new Response('Not Found', { status: 404 })`.
- */
-export const loader = async ({
-  params,
-}: {
-  params: Record<string, string | undefined>;
-}): Promise<CollectionDetailLoaderData> => {
-  const id = params.id;
-  if (!id) throw new Response('Not Found', { status: 404 });
-  log.debug({ collectionId: id }, 'CollectionDetailPage loader started');
-  let collection: CollectionDetailOutput;
-  try {
-    collection = await collectionApi.get(id);
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      throw new Response('Not Found', { status: 404 });
-    }
-    log.error({ err, collectionId: id }, 'CollectionDetailPage loader failed');
-    throw err;
-  }
-  log.debug({ collectionId: id }, 'CollectionDetailPage loader completed');
-  return { collection };
-};
-
 /**
  * Page component for `/collections/:id` — displays the collection header
- * (name, description, visibility badge, owner link), the reorderable recipe
- * list, and edit/delete buttons for the owner.
+ * (name, description, visibility badge, owner link, or "Deleted user" as plain text when
+ * the owner's account was deleted), the reorderable recipe
+ * list, and edit/delete buttons for the owner. The collection comes from the route loader
+ * (`CollectionDetailPage.data.ts`); the list's remove and reorder submit to that module's
+ * actions. Head rules: the title is `<name> | BrewForm`, and every collection that is not
+ * `public` (`unlisted`, `private`, `draft`) gets `<meta name="robots" content="noindex,
+ * nofollow">`, so link-only and owner-only collections are never indexed.
  */
 export function CollectionDetailPage() {
-  const { collection } = useLoaderData() as CollectionDetailLoaderData;
+  const { collection } = useLoaderData<typeof loader>();
   const { user } = useAuth();
   const { t } = useTranslation();
   const isOwner = user?.id === collection.userId;
@@ -64,6 +38,11 @@ export function CollectionDetailPage() {
 
   return (
     <PageContainer width="4xl">
+      <SEOHead
+        title={collection.name}
+        description={collection.description ?? undefined}
+        noIndex={collection.visibility !== 'public'}
+      />
       <div className="mb-6">
         <div className="mb-2">
           <Breadcrumb
@@ -89,9 +68,13 @@ export function CollectionDetailPage() {
           </p>
         )}
         <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          <Link to={`/u/${collection.author.username}`} className="hover:underline">
-            {collection.author.displayName || collection.author.username}
-          </Link>
+          {collection.author ? (
+            <Link to={`/u/${collection.author.username}`} className="hover:underline">
+              {collection.author.displayName || collection.author.username}
+            </Link>
+          ) : (
+            <span>{t('common.deletedUser')}</span>
+          )}
           <span>
             {t('collection.detail.recipes')}: {collection.recipeCount}
           </span>

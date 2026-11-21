@@ -2,7 +2,7 @@ import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { recipes, recipeVersions, users } from '@brewform/db/schema';
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, assert, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 /**
@@ -70,15 +70,16 @@ describe('findBySlug', () => {
 
   it('should return { id, visibility } for an active recipe', async () => {
     const result = await model.findBySlug(slug);
-    expect(result).not.toBeNull();
-    expect(result!.id).toBe(recipeId);
-    expect(result!.visibility).toBe('public');
+    assert.exists(result);
+    expect(result.id).toBe(recipeId);
+    expect(result.visibility).toBe('public');
   });
 
-  it('should return only id and visibility keys', async () => {
+  it('should return only the id, visibility and authorId keys', async () => {
     const result = await model.findBySlug(slug);
-    expect(result).not.toBeNull();
-    expect(Object.keys(result!).sort()).toEqual(['id', 'visibility'].sort());
+    assert.exists(result);
+    expect(Object.keys(result).sort()).toEqual(['authorId', 'id', 'visibility']);
+    expect(result.authorId).toBe(userId);
   });
 
   it('should return null for a soft-deleted recipe', async () => {

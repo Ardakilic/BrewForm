@@ -1,17 +1,51 @@
 import '../../test-setup.ts';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import * as path from 'node:path';
 import { db } from '@brewform/db';
 import { photos, recipes, users } from '@brewform/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { config } from '../../config/index.ts';
+import {
+  GIF89A_1x1,
+  HTML_BYTES,
+  JPEG_1x1,
+  PNG_1x1,
+  PNG_BOMB_HEADER,
+  WEBP_LOSSY_1x1,
+} from '../../test-fixtures/images.ts';
+import type { StorageDriver } from '../../utils/storage/types.ts';
+import { UploadValidationError } from '../../utils/upload/errors.ts';
+import { storageDeps } from '../../utils/upload/index.ts';
 import * as service from './service.ts';
 
 describe('Photo Service', () => {
+  let uploadDir: string;
+  let originalUploadDir: string;
   let authorId: string;
   let otherUserId: string;
   let recipeId: string;
   let recipeIds: string[];
 
+  beforeAll(async () => {
+    uploadDir = await mkdtemp(path.join(tmpdir(), 'brewform-photo-service-'));
+    originalUploadDir = config.UPLOAD_DIR;
+    // The local storage driver reads config.UPLOAD_DIR at call time, so these
+    // tests write to a throwaway directory and can assert what was stored.
+    // biome-ignore lint/suspicious/noExplicitAny: test config mutation
+    (config as any).UPLOAD_DIR = uploadDir;
+  });
+
+  afterAll(async () => {
+    // Restore the shared config singleton for the next test file.
+    // biome-ignore lint/suspicious/noExplicitAny: test config mutation
+    (config as any).UPLOAD_DIR = originalUploadDir;
+    await rm(uploadDir, { recursive: true, force: true });
+  });
+
   beforeEach(async () => {
+    await rm(uploadDir, { recursive: true, force: true });
     authorId = crypto.randomUUID();
     otherUserId = crypto.randomUUID();
     recipeIds = [];
@@ -68,16 +102,27 @@ describe('Photo Service', () => {
     return row;
   }
 
+  /** An upload part whose bytes match the declared type (a 1x1 PNG unless overridden). */
   function makeFile(
-    overrides: Partial<{ name: string; type: string; size: number; data: Uint8Array }> = {},
+    overrides: Partial<{ declaredType: string; size: number; data: Uint8Array }> = {},
   ) {
+    const data = overrides.data ?? PNG_1x1;
     return {
-      name: 'brew-photo.png',
-      type: 'image/png',
-      size: 3,
-      data: new Uint8Array([1, 2, 3]),
+      declaredType: 'image/png',
+      size: data.byteLength,
+      data,
       ...overrides,
     };
+  }
+
+  /** Files currently stored in the test UPLOAD_DIR (empty when it does not exist). */
+  function storedFiles(): Promise<string[]> {
+    return readdir(uploadDir).catch(() => []);
+  }
+
+  /** Photo rows currently linked to the seeded recipe. */
+  function photoRows() {
+    return db.select().from(photos).where(eq(photos.recipeId, recipeId));
   }
 
   describe('uploadPhoto', () => {
@@ -94,28 +139,87 @@ describe('Photo Service', () => {
     });
 
     it('should reject unsupported file types', async () => {
-      for (const type of ['image/gif', 'application/pdf']) {
-        await expect(
-          service.uploadPhoto(authorId, recipeId, makeFile({ type }), null),
-        ).rejects.toThrow(`Unsupported file type: ${type}`);
+      const unsupported = [
+        makeFile({ declaredType: 'image/gif', data: GIF89A_1x1 }),
+        makeFile({ declaredType: 'application/pdf' }),
+      ];
+      for (const file of unsupported) {
+        await expect(service.uploadPhoto(authorId, recipeId, file, null)).rejects.toMatchObject({
+          code: 'UNSUPPORTED_MEDIA_TYPE',
+          status: 415,
+          field: 'file',
+        });
       }
     });
 
     it('should reject a file exceeding the maximum size', async () => {
       const tooLarge = makeFile({ size: 10 * 1024 * 1024 + 1 });
 
-      await expect(service.uploadPhoto(authorId, recipeId, tooLarge, null)).rejects.toThrow(
-        'File too large',
-      );
+      await expect(service.uploadPhoto(authorId, recipeId, tooLarge, null)).rejects.toMatchObject({
+        code: 'FILE_TOO_LARGE',
+        status: 400,
+        field: 'file',
+      });
+    });
+
+    it('should reject HTML bytes declared as image/jpeg and create no photo row', async () => {
+      const disguised = makeFile({ declaredType: 'image/jpeg', data: HTML_BYTES });
+
+      const err = await service.uploadPhoto(authorId, recipeId, disguised, null).catch((e) => e);
+
+      expect(err).toBeInstanceOf(UploadValidationError);
+      expect(err).toMatchObject({ code: 'UNSUPPORTED_MEDIA_TYPE', field: 'file' });
+      expect(await photoRows()).toHaveLength(0);
+    });
+
+    it('should reject an HTML thumbnail with a valid original and store nothing', async () => {
+      const thumbnail = {
+        declaredType: 'image/jpeg',
+        size: HTML_BYTES.byteLength,
+        data: HTML_BYTES,
+      };
+
+      const err = await service
+        .uploadPhoto(authorId, recipeId, makeFile(), thumbnail)
+        .catch((e) => e);
+
+      expect(err).toBeInstanceOf(UploadValidationError);
+      expect(err).toMatchObject({ code: 'UNSUPPORTED_MEDIA_TYPE', field: 'thumbnail' });
+      expect(await photoRows()).toHaveLength(0);
+      expect(await storedFiles()).toEqual([]);
+    });
+
+    it('should reject a PNG decompression-bomb header with INVALID_IMAGE', async () => {
+      const bomb = makeFile({ declaredType: 'image/png', data: PNG_BOMB_HEADER });
+
+      await expect(service.uploadPhoto(authorId, recipeId, bomb, null)).rejects.toMatchObject({
+        code: 'INVALID_IMAGE',
+        status: 400,
+        field: 'file',
+      });
+      expect(await storedFiles()).toEqual([]);
+    });
+
+    it('should store PNG bytes declared as image/jpeg under a .png key', async () => {
+      const mislabelled = makeFile({ declaredType: 'image/jpeg', data: PNG_1x1 });
+
+      const photo = await service.uploadPhoto(authorId, recipeId, mislabelled, null);
+
+      expect(photo.url).toMatch(/\.png$/);
+      expect(await storedFiles()).toEqual([path.basename(photo.url)]);
     });
 
     it('should accept every allowed image type', async () => {
-      for (const type of ['image/jpeg', 'image/png', 'image/webp']) {
-        const ext = type.split('/')[1];
+      const cases = [
+        { declaredType: 'image/jpeg', data: JPEG_1x1, ext: 'jpg' },
+        { declaredType: 'image/png', data: PNG_1x1, ext: 'png' },
+        { declaredType: 'image/webp', data: WEBP_LOSSY_1x1, ext: 'webp' },
+      ];
+      for (const { declaredType, data, ext } of cases) {
         const photo = await service.uploadPhoto(
           authorId,
           recipeId,
-          makeFile({ name: `brew.${ext}`, type }),
+          makeFile({ declaredType, data }),
           null,
         );
         expect(photo.recipeId).toBe(recipeId);
@@ -139,17 +243,17 @@ describe('Photo Service', () => {
     });
 
     it('should store a provided thumbnail and link its derived URL', async () => {
-      const photo = await service.uploadPhoto(
-        authorId,
-        recipeId,
-        makeFile(),
-        new Uint8Array([9, 9, 9]),
-      );
+      const thumbnail = { declaredType: 'image/jpeg', size: JPEG_1x1.byteLength, data: JPEG_1x1 };
+
+      const photo = await service.uploadPhoto(authorId, recipeId, makeFile(), thumbnail);
 
       expect(photo.thumbnailUrl).not.toBeNull();
       expect(photo.thumbnailUrl).not.toBe(photo.url);
       expect(photo.thumbnailUrl!.startsWith('/uploads/')).toBe(true);
-      expect(photo.thumbnailUrl).toContain('_medium');
+      // The thumbnail reuses the original's UUID and takes its own detected type.
+      const id = path.basename(photo.url, '.png');
+      expect(photo.thumbnailUrl).toBe(`/uploads/${id}_medium.jpg`);
+      expect((await storedFiles()).sort()).toEqual([`${id}.png`, `${id}_medium.jpg`].sort());
     });
 
     it('should persist alt text and sortOrder when provided', async () => {
@@ -172,6 +276,100 @@ describe('Photo Service', () => {
       const photo = await service.uploadPhoto(authorId, recipeId, atMax, null);
 
       expect(photo.recipeId).toBe(recipeId);
+    });
+  });
+
+  describe('uploadPhoto partial-write cleanup', () => {
+    let originalDriver: StorageDriver;
+    let attempted: string[];
+    let deleted: string[];
+
+    beforeEach(() => {
+      originalDriver = storageDeps.driver;
+      attempted = [];
+      deleted = [];
+    });
+
+    afterEach(() => {
+      storageDeps.driver = originalDriver;
+    });
+
+    /**
+     * A fake driver that records every key it is asked to write and rejects the `failOn`-th
+     * `save` (1 = the original, 2 = the thumbnail) with `error`; `delete` records the key and
+     * fails too when `failDelete` is set.
+     */
+    function installFailingDriver(options: {
+      failOn: 1 | 2;
+      error?: Error;
+      failDelete?: boolean;
+    }): void {
+      const { failOn, error = new Error('thumbnail write failed'), failDelete = false } = options;
+      storageDeps.driver = {
+        save: (_data, key) => {
+          attempted.push(key);
+          if (attempted.length === failOn) return Promise.reject(error);
+          return Promise.resolve(`/uploads/${key}`);
+        },
+        delete: (key) => {
+          deleted.push(key);
+          return failDelete ? Promise.reject(new Error('cleanup failed')) : Promise.resolve();
+        },
+      };
+    }
+
+    const thumbnail = { declaredType: 'image/jpeg', size: JPEG_1x1.byteLength, data: JPEG_1x1 };
+
+    it('deletes the key of a failed original write, and creates no row', async () => {
+      installFailingDriver({ failOn: 1, error: new Error('ENOSPC') });
+
+      await expect(service.uploadPhoto(authorId, recipeId, makeFile(), thumbnail)).rejects.toThrow(
+        'ENOSPC',
+      );
+
+      expect(attempted).toHaveLength(1);
+      expect(deleted).toEqual([attempted[0]]);
+      expect(await photoRows()).toHaveLength(0);
+    });
+
+    it('deletes the original and the thumbnail key when the thumbnail write fails, and creates no row', async () => {
+      installFailingDriver({ failOn: 2 });
+
+      await expect(service.uploadPhoto(authorId, recipeId, makeFile(), thumbnail)).rejects.toThrow(
+        'thumbnail write failed',
+      );
+
+      expect(attempted).toHaveLength(2);
+      expect(attempted[1]).toMatch(/_medium\.jpg$/);
+      expect(deleted).toEqual([attempted[0], attempted[1]]);
+      expect(await photoRows()).toHaveLength(0);
+    });
+
+    it('never deletes a key whose write failed with EEXIST, and rethrows', async () => {
+      installFailingDriver({
+        failOn: 1,
+        error: Object.assign(new Error('exists'), { code: 'EEXIST' }),
+      });
+
+      await expect(service.uploadPhoto(authorId, recipeId, makeFile(), thumbnail)).rejects.toThrow(
+        'exists',
+      );
+
+      expect(attempted).toHaveLength(1);
+      expect(deleted).toEqual([]);
+      expect(await photoRows()).toHaveLength(0);
+    });
+
+    it('still surfaces the original error when the cleanup delete also fails', async () => {
+      installFailingDriver({ failOn: 2, failDelete: true });
+
+      await expect(service.uploadPhoto(authorId, recipeId, makeFile(), thumbnail)).rejects.toThrow(
+        'thumbnail write failed',
+      );
+
+      expect(attempted).toHaveLength(2);
+      expect(deleted).toEqual([attempted[0], attempted[1]]);
+      expect(await photoRows()).toHaveLength(0);
     });
   });
 

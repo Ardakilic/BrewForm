@@ -260,4 +260,97 @@ describe('POST /api/v1/recipes/merge', () => {
     expect(body.error.code).toBe('VALIDATION_ERROR');
     expect(body.error.details).toBeDefined();
   });
+
+  describe('source access', () => {
+    let other: typeof users.$inferSelect;
+    const extraRecipeIds: string[] = [];
+    const extraVersionIds: string[] = [];
+
+    /**
+     * Inserts a source recipe with one version and returns the version id.
+     *
+     * @param authorId - The source recipe's author.
+     * @param visibility - The source recipe's visibility.
+     * @param deletedAt - Optional soft-delete timestamp.
+     */
+    async function insertSource(
+      authorId: string,
+      visibility: 'public' | 'private',
+      deletedAt: Date | null = null,
+    ): Promise<string> {
+      const recipeId = crypto.randomUUID();
+      const versionId = crypto.randomUUID();
+      await db.insert(recipes).values({
+        id: recipeId,
+        slug: `mr-src-${recipeId.slice(0, 8)}`,
+        title: `Route Source ${visibility}`,
+        authorId,
+        visibility,
+        deletedAt,
+      });
+      await db.insert(recipeVersions).values({
+        id: versionId,
+        recipeId,
+        versionNumber: 1,
+        brewMethod: 'v60',
+        drinkType: 'pour_over',
+        preparationNotes: 'source notes',
+        personalNotes: '',
+        brewDate: new Date(),
+        isFavourite: false,
+      });
+      extraRecipeIds.push(recipeId);
+      extraVersionIds.push(versionId);
+      return versionId;
+    }
+
+    /** Posts a merge of `versionId1` with the given version as the second source. */
+    async function postMerge(secondVersionId: string): Promise<Response> {
+      const app = createTestApp(user.id);
+      return await app.request('/api/v1/recipes/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipeVersionId1: versionId1,
+          recipeVersionId2: secondVersionId,
+          title: 'Source Access Merge',
+          selections: {},
+        }),
+      });
+    }
+
+    beforeAll(async () => {
+      other = await createUser('merge-route-other');
+    });
+
+    afterAll(async () => {
+      if (extraVersionIds.length) {
+        await db.delete(recipeVersions).where(inArray(recipeVersions.id, extraVersionIds));
+      }
+      if (extraRecipeIds.length) {
+        await db.delete(recipes).where(inArray(recipes.id, extraRecipeIds));
+      }
+      await db.delete(users).where(eq(users.id, other.id));
+    });
+
+    it("returns 403 FORBIDDEN for another user's private source", async () => {
+      const res = await postMerge(await insertSource(other.id, 'private'));
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(403);
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('FORBIDDEN');
+    });
+
+    it('returns 404 NOT_FOUND for a soft-deleted source', async () => {
+      const res = await postMerge(await insertSource(user.id, 'public', new Date()));
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(404);
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('NOT_FOUND');
+    });
+  });
 });

@@ -9,7 +9,6 @@ import {
   RecipeFilterSchema,
   RecipeForkSchema,
   RecipeMergeSchema,
-  RecipeNotesSchema,
   RecipeRateSchema,
   RecipeUpdateSchema,
   successEnvelope,
@@ -23,12 +22,14 @@ import { z } from 'zod';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import type { AppEnv } from '../../types/hono.ts';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { AppError } from '../../utils/errors.ts';
+import { jsonRequestBody, ROBOTS_TAG_RESPONSE_HEADERS } from '../../utils/openapi/index.ts';
 import {
   cursorPaginated,
   error,
   invalidCursor,
   isEmailVerified,
+  noIndexUnlessPublic,
   paginated,
   success,
   zodValidationHook,
@@ -50,6 +51,52 @@ function optionalAuthGuard(c: Context<AppEnv>, next: Next) {
   return deps.optionalAuthMiddleware(c, next);
 }
 
+/**
+ * Map a service validation failure to a `400 VALIDATION_ERROR` envelope with its field
+ * details: a typed `VALIDATION_ERROR` {@link AppError} (empty title, cross-field rules on merged
+ * values, invalid references) or a legacy `VALIDATION_ERROR…` message.
+ *
+ * @param c - The request context.
+ * @param err - The caught error.
+ * @returns The 400 response, or `null` when `err` is not a validation failure.
+ */
+function validationFailure(c: Context<AppEnv>, err: unknown): Response | null {
+  if (err instanceof AppError && err.code === 'VALIDATION_ERROR') {
+    return error(c, 'VALIDATION_ERROR', err.message, 400, err.details);
+  }
+  if (err instanceof Error && err.message.startsWith('VALIDATION_ERROR')) {
+    return error(c, 'VALIDATION_ERROR', 'Validation failed', 400);
+  }
+  return null;
+}
+
+/** OpenAPI `search` query parameter shared by `GET /` and `GET /starred` (advanced-search). */
+const SEARCH_PARAMETER = {
+  name: 'search',
+  in: 'query' as const,
+  required: false,
+  schema: { type: 'string' as const, maxLength: 200 },
+  description:
+    'Case-insensitive substring match on title, coffee name and personal notes; results ordered by relevance (title 3, coffee name 2, notes 1), then sortBy. Trimmed; `%`, `_` and `\\` match literally; whitespace-only means no search.',
+};
+
+/** OpenAPI `sortBy` query parameter shared by `GET /` and `GET /starred`. */
+const SORT_BY_PARAMETER = {
+  name: 'sortBy',
+  in: 'query' as const,
+  required: false,
+  schema: { type: 'string' as const, enum: ['createdAt', 'likeCount', 'rating'] },
+  description:
+    'Sort key: `createdAt` (default), `likeCount`, or `rating` (average rating, unrated last). `recipes.id` breaks ties.',
+};
+
+/** OpenAPI 503 response for a list query cancelled by the statement timeout. */
+const QUERY_TIMEOUT_RESPONSE = {
+  description:
+    'The query exceeded the database statement timeout (`QUERY_TIMEOUT`); try a more specific search',
+  content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+};
+
 /** Hono sub-router for recipe endpoints, mounted at `/api/v1/recipes`. */
 const recipe = new Hono<AppEnv>();
 
@@ -59,7 +106,7 @@ recipe.get(
     tags: ['Recipes'],
     summary: 'List recipes',
     description:
-      'Paginated, filterable list of recipes. Supports cursor-based pagination when `cursor` is provided with `sortBy=createdAt`. When offset pagination is active, `meta.pagination` replaces `meta.cursor`.',
+      'Paginated, filterable list of recipes. Supports cursor-based pagination when `cursor` is provided with `sortBy=createdAt`. When offset pagination is active, `meta.pagination` replaces `meta.cursor`. An author (or owner) whose account was deleted is returned as `null`.',
     parameters: [
       { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
       {
@@ -68,12 +115,7 @@ recipe.get(
         required: false,
         schema: { type: 'integer', minimum: 1, maximum: 100 },
       },
-      {
-        name: 'sortBy',
-        in: 'query',
-        required: false,
-        schema: { type: 'string', enum: ['createdAt', 'likeCount', 'rating'] },
-      },
+      SORT_BY_PARAMETER,
       {
         name: 'sortOrder',
         in: 'query',
@@ -88,13 +130,7 @@ recipe.get(
         description: 'Base64 cursor for keyset pagination (sortBy=createdAt only)',
       },
       { name: 'includeTotal', in: 'query', required: false, schema: { type: 'boolean' } },
-      {
-        name: 'search',
-        in: 'query',
-        required: false,
-        schema: { type: 'string' },
-        description: 'Full-text search (ilike on title, productName, personalNotes)',
-      },
+      SEARCH_PARAMETER,
       { name: 'brewMethod', in: 'query', required: false, schema: { type: 'string' } },
       { name: 'drinkType', in: 'query', required: false, schema: { type: 'string' } },
       { name: 'visibility', in: 'query', required: false, schema: { type: 'string' } },
@@ -130,14 +166,14 @@ recipe.get(
         in: 'query',
         required: false,
         schema: { type: 'string', format: 'date' },
-        description: 'Recipes created on or after this date (inclusive)',
+        description: 'Recipes created on or after this UTC day (inclusive, `YYYY-MM-DD`)',
       },
       {
         name: 'dateTo',
         in: 'query',
         required: false,
         schema: { type: 'string', format: 'date' },
-        description: 'Recipes created on or before this date (inclusive)',
+        description: 'Recipes created on or before this UTC day (inclusive, `YYYY-MM-DD`)',
       },
       {
         name: 'minRating',
@@ -192,13 +228,15 @@ recipe.get(
         },
       },
       400: {
-        description: 'Invalid cursor',
+        description:
+          'Validation error (for example `search` over 200 characters or `perPage` over 100) or an invalid cursor',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
+      503: QUERY_TIMEOUT_RESPONSE,
     },
   }),
   optionalAuthMiddleware,
-  zValidator('query', RecipeFilterSchema),
+  zValidator('query', RecipeFilterSchema, zodValidationHook),
   async (c) => {
     const filters = c.req.valid('query');
     const userId = c.get('userId') ?? null;
@@ -262,9 +300,20 @@ recipe.get(
     security: [{ bearerAuth: [] }],
     parameters: [
       { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
-      { name: 'perPage', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
-      { name: 'sortBy', in: 'query', required: false, schema: { type: 'string' } },
-      { name: 'sortOrder', in: 'query', required: false, schema: { type: 'string' } },
+      {
+        name: 'perPage',
+        in: 'query',
+        required: false,
+        schema: { type: 'integer', minimum: 1, maximum: 100 },
+      },
+      SORT_BY_PARAMETER,
+      {
+        name: 'sortOrder',
+        in: 'query',
+        required: false,
+        schema: { type: 'string', enum: ['asc', 'desc'] },
+      },
+      SEARCH_PARAMETER,
       {
         name: 'tasteNoteId',
         in: 'query',
@@ -297,14 +346,20 @@ recipe.get(
           },
         },
       },
+      400: {
+        description:
+          'Validation error (for example `search` over 200 characters or `perPage` over 100)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
       401: {
         description: 'Unauthorized',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
+      503: QUERY_TIMEOUT_RESPONSE,
     },
   }),
   authGuard,
-  zValidator('query', RecipeFilterSchema),
+  zValidator('query', RecipeFilterSchema, zodValidationHook),
   async (c) => {
     const userId = c.get('userId') as string;
     const filters = c.req.valid('query');
@@ -363,9 +418,9 @@ recipe.get(
     tags: ['Recipes'],
     summary: 'List recipe version history',
     description:
-      'Returns recipe title, slug, and all versions ordered by version number descending.',
+      "Returns recipe title, slug, and all versions ordered by version number descending. A non-public recipe's response carries `X-Robots-Tag: noindex, nofollow`.",
     responses: {
-      200: { description: 'Version history payload' },
+      200: { description: 'Version history payload', headers: ROBOTS_TAG_RESPONSE_HEADERS },
       404: { description: 'Recipe not found' },
     },
   }),
@@ -378,6 +433,7 @@ recipe.get(
       if (!service.canViewRecipe(recipe, c.get('userId'))) {
         return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
+      noIndexUnlessPublic(c, recipe.visibility);
       const versions = await service.getVersionsByRecipeId(recipe.id);
       return success(c, {
         id: recipe.id,
@@ -404,7 +460,7 @@ recipe.get(
     tags: ['Recipes'],
     summary: 'Diff two versions of a recipe',
     description:
-      'Returns a field-by-field comparison between two versions of the same recipe, including scalar field diffs and set diffs for taste notes and equipment.',
+      "Returns a field-by-field comparison between two versions of the same recipe, including scalar field diffs and set diffs for taste notes and equipment. A non-public recipe's response carries `X-Robots-Tag: noindex, nofollow`.",
     parameters: [
       {
         name: 'slug',
@@ -430,6 +486,7 @@ recipe.get(
     responses: {
       200: {
         description: 'Version diff payload',
+        headers: ROBOTS_TAG_RESPONSE_HEADERS,
         content: {
           'application/json': {
             schema: resolver(successEnvelope(VersionDiffOutputSchema)),
@@ -458,9 +515,11 @@ recipe.get(
     try {
       const recipe = await service.getRecipe(slug);
       if (!recipe) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
-      if (!service.canViewRecipe(recipe, c.get('userId'), c.get('user')?.isAdmin)) {
+      // Same existence-hiding visibility gate as GET '/:slugOrId' (no admin bypass).
+      if (!service.canViewRecipe(recipe, c.get('userId'))) {
         return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
+      noIndexUnlessPublic(c, recipe.visibility);
       const diff = await service.diffVersions(recipe.id, v1, v2);
       return success(c, diff);
     } catch (err: unknown) {
@@ -527,9 +586,10 @@ recipe.get(
   describeRoute({
     tags: ['Recipes'],
     summary: 'Get a recipe by slug or id',
-    description: 'Drafts and private recipes are visible only to their author.',
+    description:
+      "Drafts and private recipes are visible only to their author; unlisted recipes open for anyone with the link. A non-public recipe's response carries `X-Robots-Tag: noindex, nofollow`. `forkedFrom`, `forkedFromId` and `forkedFromSlug` are `null` unless the fork source is public (the source's own author also sees it). An author (or owner) whose account was deleted is returned as `null`.",
     responses: {
-      200: { description: 'Recipe payload' },
+      200: { description: 'Recipe payload', headers: ROBOTS_TAG_RESPONSE_HEADERS },
       404: { description: 'Recipe not found' },
     },
   }),
@@ -541,6 +601,7 @@ recipe.get(
       if (!service.canViewRecipe(r, c.get('userId'))) {
         return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
+      noIndexUnlessPublic(c, r.visibility);
       // Transform the Drizzle result into the shape the frontend expects:
       // - currentVersion: the latest version (versions[0])
       // - tasteNotes: flattened from currentVersion.tasteNotes[].tasteNote
@@ -561,6 +622,8 @@ recipe.get(
       ]);
       const payload = {
         ...r,
+        // Fork fields are masked unless the viewer may list the source (recipe-visibility).
+        ...service.resolveForkAttribution(r.forkedFrom, userId),
         currentVersion,
         tasteNotes:
           currentVersion?.tasteNotes?.map((t) => ({
@@ -576,7 +639,6 @@ recipe.get(
           })) ?? [],
         bean: currentVersion?.bean ?? null,
         versionCount: r.versions?.length ?? 1,
-        forkedFromSlug: r.forkedFrom?.slug ?? null,
         userLiked: likeStatus.userLiked,
         userFavourited: likeStatus.userFavourited,
         favouriteCount,
@@ -598,7 +660,12 @@ recipe.post(
   describeRoute({
     tags: ['Recipes'],
     summary: 'Create a recipe',
-    description: 'Creates a recipe with its first version and all child relations.',
+    description:
+      'Creates a recipe with its first version and all child relations. `tds` is stored as a ' +
+      'two-decimal string; `coffeeVarietyId` links a catalogue variety whose name is copied ' +
+      'server-side; `brewRatio` and `flowRate` are derived from the measurements. Every ' +
+      'referenced id (taste notes, equipment, vendor, coffee variety, and a bean owned by the ' +
+      'caller) is checked before anything is written.',
     security: [{ bearerAuth: [] }],
     requestBody: jsonRequestBody(RecipeCreateSchema),
     responses: {
@@ -611,7 +678,9 @@ recipe.post(
         },
       },
       400: {
-        description: 'Validation error',
+        description:
+          'Validation error: invalid body, duplicate relation ids, a title that is empty after ' +
+          'sanitization, or an unknown/inaccessible referenced record (with field details)',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       401: {
@@ -620,6 +689,12 @@ recipe.post(
       },
       403: {
         description: 'Forbidden (email not verified or not authorized)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      409: {
+        description:
+          'SLUG_CONFLICT when every slug candidate for the title is taken, or CONFLICT on any ' +
+          'other unique-constraint conflict',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
     },
@@ -636,6 +711,8 @@ recipe.post(
       const r = await service.createRecipe(authorId, body);
       return success(c, r, 201);
     } catch (err: unknown) {
+      const invalid = validationFailure(c, err);
+      if (invalid) return invalid;
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not authorized', 403);
       throw err;
@@ -669,11 +746,18 @@ recipe.post(
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       403: {
-        description: 'Email not verified or equipment compatibility violation',
+        description:
+          'Email not verified, source recipe not viewable, or equipment compatibility violation',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       404: {
-        description: 'One or both recipe versions not found',
+        description: 'Version not found or recipe deleted',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      409: {
+        description:
+          'SLUG_CONFLICT when every slug candidate for the merged title is taken, or CONFLICT on ' +
+          'any other unique-constraint conflict',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
     },
@@ -703,23 +787,84 @@ recipe.patch(
   describeRoute({
     tags: ['Recipes'],
     summary: 'Update a recipe',
+    description:
+      'Updates a recipe owned by the caller (verified email required). With `bumpVersion: false` ' +
+      '(the default) the current version is amended in place; with `bumpVersion: true` a new ' +
+      'version is created that carries forward every value and relation the body does not ' +
+      'provide (taste notes with intensities, equipment, preparations, photos, `tds`, coffee ' +
+      'variety, `isFavourite`), and `brewDate` is the body value or now. Earlier versions are ' +
+      'never modified. Body semantics: an absent key keeps the stored value, `null` clears a ' +
+      'clearable field, and a relation array replaces the rows (`[]` removes them all). An ' +
+      'omitted `visibility` or `isFavourite` is kept. Cross-field rules are checked on the ' +
+      'payload and on the merged result; referenced ids are checked before anything is written.',
     security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'id',
+        in: 'path',
+        required: true,
+        description: 'Recipe UUID',
+        schema: { type: 'string', format: 'uuid' },
+      },
+    ],
+    requestBody: jsonRequestBody(RecipeUpdateSchema),
     responses: {
-      200: { description: 'Recipe updated' },
-      404: { description: 'Recipe not found' },
-      403: { description: 'Not the recipe owner' },
+      200: {
+        description: 'Recipe updated',
+        content: {
+          'application/json': {
+            schema: resolver(successEnvelope(RecipeDetailOutputSchema)),
+          },
+        },
+      },
+      400: {
+        description:
+          'Validation error: invalid body, null on a required field, a cross-field violation ' +
+          '(payload or merged values), an empty title, or an unknown referenced record',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      401: {
+        description: 'Authentication required',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      403: {
+        description: 'Email not verified (EMAIL_NOT_VERIFIED) or not the author (FORBIDDEN)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      404: {
+        description: 'Recipe not found',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      409: {
+        description:
+          'CONFLICT on a unique-constraint conflict (for example a concurrent version bump)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      422: {
+        description: 'Equipment incompatible with the brew method',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
     },
   }),
   authGuard,
   zValidator('json', RecipeUpdateSchema, zodValidationHook),
   async (c) => {
+    if (!isEmailVerified(c)) {
+      return error(c, 'EMAIL_NOT_VERIFIED', 'Please verify your email to perform this action', 403);
+    }
     const recipeId = c.req.param('id')!;
     const authorId = c.get('userId') as string;
     const body = c.req.valid('json');
     try {
       const r = await service.updateRecipe(recipeId, authorId, body);
-      return success(c, r);
+      // Same fork-field masking as the detail: never echo the source's visibility state.
+      return success(
+        c,
+        r ? { ...r, ...service.resolveForkAttribution(r.forkedFrom, authorId) } : r,
+      );
     } catch (err: unknown) {
+      const invalid = validationFailure(c, err);
+      if (invalid) return invalid;
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your recipe', 403);
@@ -765,8 +910,18 @@ recipe.post(
     security: [{ bearerAuth: [] }],
     responses: {
       201: { description: 'Forked recipe created' },
+      400: {
+        description: 'Validation error: invalid body (for example an over-long title)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
       403: { description: 'Source recipe is not forkable for this user' },
       404: { description: 'Source recipe not found' },
+      409: {
+        description:
+          'SLUG_CONFLICT when every slug candidate for the fork title is taken, or CONFLICT on ' +
+          'any other unique-constraint conflict',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
     },
   }),
   authGuard,
@@ -835,35 +990,6 @@ recipe.post(
       const result = await service.upsertUserRating(userId, recipeId, rating);
       const stats = await service.getRecipeRatingStats(recipeId);
       return success(c, { ...result, ...stats });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
-      throw err;
-    }
-  },
-);
-
-recipe.post(
-  '/:id/notes',
-  describeRoute({
-    tags: ['Recipes'],
-    summary: 'Save personal notes for a recipe',
-    description: 'Saves personal notes to the current version of the recipe.',
-    security: [{ bearerAuth: [] }],
-    responses: {
-      200: { description: 'Notes saved' },
-      401: { description: 'Unauthorized' },
-      404: { description: 'Recipe not found' },
-    },
-  }),
-  authGuard,
-  zValidator('json', RecipeNotesSchema, zodValidationHook),
-  async (c) => {
-    const recipeId = c.req.param('id')!;
-    const { notes } = c.req.valid('json');
-    try {
-      await service.saveNotes(recipeId, notes);
-      return success(c, { message: 'Notes saved' });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);

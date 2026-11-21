@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AdminRecipeListItemOutputSchema,
   FeedRecipeOutputSchema,
   RecipeDetailOutputSchema,
   RecipeListItemOutputSchema,
@@ -272,10 +273,54 @@ describe('RecipeListItemOutputSchema', () => {
     expect(result.success).toBe(false);
   });
 });
+describe('AdminRecipeListItemOutputSchema', () => {
+  it('parses an admin row (recipe row + author { id, username, displayName }) and round-trips', () => {
+    const payload = {
+      ...recipeRow,
+      author: { id: 'user-1', username: 'barista', displayName: null },
+    };
+    const result = AdminRecipeListItemOutputSchema.safeParse(wire(payload));
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual(wire(payload));
+  });
+
+  it('rejects author: null (admin pages keep a deleted account name)', () => {
+    const payload = { ...recipeRow, author: null };
+    expect(AdminRecipeListItemOutputSchema.safeParse(wire(payload)).success).toBe(false);
+  });
+});
+
 describe('RecipeDetailOutputSchema', () => {
   it('parses a full recipe detail payload with nested relations and round-trips', () => {
     const result = RecipeDetailOutputSchema.safeParse(wire(detailPayload));
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual(wire(detailPayload));
+  });
+});
+
+describe('E11 — a deleted account is returned as author: null', () => {
+  it('RecipeWithAuthorOutputSchema accepts author: null', () => {
+    const payload = { ...recipeRow, author: null };
+    expect(RecipeWithAuthorOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+
+  it('RecipeWithVersionsOutputSchema accepts author: null', () => {
+    const payload = { ...recipeRow, author: null, versions: [versionRow] };
+    expect(RecipeWithVersionsOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+
+  it('FeedRecipeOutputSchema and RecipeListItemOutputSchema accept author: null', () => {
+    const payload = { ...recipeRow, author: null };
+    expect(FeedRecipeOutputSchema.safeParse(wire(payload)).success).toBe(true);
+    expect(RecipeListItemOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+
+  it('RecipeDetailOutputSchema accepts author: null', () => {
+    const payload = { ...detailPayload, author: null };
+    expect(RecipeDetailOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+
+  it('still rejects a missing author key', () => {
+    expect(RecipeWithAuthorOutputSchema.safeParse(wire({ ...recipeRow })).success).toBe(false);
   });
 });

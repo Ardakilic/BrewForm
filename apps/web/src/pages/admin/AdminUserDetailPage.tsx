@@ -1,33 +1,39 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
-import { type AdminUserDetail, adminApi } from '../../api/index.ts';
+import { Link, useFetcher, useLoaderData, useNavigate } from 'react-router';
 import { BanDialog } from '../../components/admin/BanDialog.tsx';
 import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { useConfirm } from '../../components/ui/Modal.tsx';
-import { Skeleton } from '../../components/ui/Skeleton.tsx';
-import { useToast } from '../../components/ui/Toast.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { useBanUser } from '../../hooks/useBanUser.ts';
 import { formatDate } from '../../utils/format.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './AdminUserDetailPage.data.ts';
 
 const log = createLogger('AdminUserDetailPage');
 
-/** Admin page: single-user detail view with ban/unban dialog and delete/edit actions. */
+/**
+ * Admin page: single-user detail view with ban/unban dialog and delete/edit actions. The user
+ * comes from the `/admin/users/:id` route loader (a missing user renders the not-found page,
+ * a failed load the route error state inside `AdminLayout`). Delete submits the `delete`
+ * intent to the route action; ban/unban go through {@link useBanUser}, which patches the
+ * status locally without re-fetching.
+ */
 export function AdminUserDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { user: loadedUser } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const { t, locale } = useTranslation();
   const { confirm } = useConfirm();
-  const toast = useToast();
-
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<AdminUserDetail | null>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [loadError, setLoadError] = useState(false);
+  const deleteFetcher = useFetcher<typeof action>();
+  const [bannedOverride, setBannedOverride] = useState<boolean | null>(null);
+  const user = {
+    ...loadedUser,
+    isBanned: bannedOverride ?? loadedUser.isBanned,
+  };
+  const id = user.id;
   const {
     banDialogUser,
     processing: banProcessing,
@@ -37,7 +43,12 @@ export function AdminUserDetailPage() {
     unban,
     closeDialog,
   } = useBanUser((_userId, isBanned) => {
-    setUser((prev) => (prev ? { ...prev, isBanned } : prev));
+    setBannedOverride(isBanned);
+  });
+
+  useActionFeedback(deleteFetcher, {
+    errorKey: 'admin.users.deleteFailed',
+    onSuccess: () => navigate('/admin/users'),
   });
 
   useEffect(() => {
@@ -47,28 +58,9 @@ export function AdminUserDetailPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!id) return;
-    adminApi
-      .getUserDetail(id)
-      .then((data) => {
-        setUser(data);
-      })
-      .catch((err) => {
-        log.error({ err }, 'AdminUserDetailPage loadData failed');
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status === 404) {
-          setNotFound(true);
-        } else {
-          setLoadError(true);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [id]);
-
+  /** Confirms, then submits the `delete` intent; success returns to the user list. */
   async function handleDelete() {
     if (
-      !id ||
       !(await confirm({
         titleKey: 'common.confirmDelete',
         bodyKey: 'admin.users.deleteConfirm',
@@ -76,55 +68,7 @@ export function AdminUserDetailPage() {
       }))
     )
       return;
-    try {
-      await adminApi.deleteUser(id);
-      navigate('/admin/users');
-    } catch (err) {
-      log.error({ err, userId: id }, 'handleDelete failed');
-      toast.error('admin.users.deleteFailed');
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton height="2rem" width="12rem" />
-        <Skeleton height="12rem" />
-        <Skeleton height="6rem" />
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          {t('admin.users.loadFailedTitle')}
-        </h2>
-        <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
-          {t('admin.users.loadFailedMessage')}
-        </p>
-        <Link to="/admin/users" className="btn-primary mt-4 inline-block">
-          {t('admin.users.backToUsers')}
-        </Link>
-      </div>
-    );
-  }
-
-  if (notFound || !user) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          {t('admin.users.notFoundTitle')}
-        </h2>
-        <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
-          {t('admin.users.notFoundMessage')}
-        </p>
-        <Link to="/admin/users" className="btn-primary mt-4 inline-block">
-          {t('admin.users.backToUsers')}
-        </Link>
-      </div>
-    );
+    deleteFetcher.submit({ intent: 'delete' }, { method: 'post' });
   }
 
   const isSelf = currentUser?.id === id;
@@ -148,7 +92,7 @@ export function AdminUserDetailPage() {
       {isSelf && (
         <div
           className="mb-4 p-3 rounded text-sm"
-          style={{ backgroundColor: 'var(--warning-bg, #fffbeb)', color: 'var(--warning)' }}
+          style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning)' }}
         >
           {t('admin.users.selfEditPrefix')}{' '}
           <Link to="/settings" style={{ color: 'var(--accent-primary)' }}>
@@ -163,7 +107,7 @@ export function AdminUserDetailPage() {
           {user.avatarUrl ? (
             <img
               src={user.avatarUrl}
-              alt={`${user.displayName || user.username}'s avatar`}
+              alt={t('a11y.userAvatar').replace('{name}', user.displayName || user.username)}
               className="w-20 h-20 rounded-full object-cover"
               loading="lazy"
               width={80}
@@ -285,7 +229,7 @@ export function AdminUserDetailPage() {
               {t('admin.users.editUser')}
             </Link>
             {user.isBanned ? (
-              <button type="button" onClick={() => unban(id!)} className="btn-secondary">
+              <button type="button" onClick={() => unban(id)} className="btn-secondary">
                 {t('admin.unbanUser')}
               </button>
             ) : (
@@ -293,7 +237,7 @@ export function AdminUserDetailPage() {
                 type="button"
                 onClick={() =>
                   openBanDialog({
-                    id: id!,
+                    id,
                     username: user.username,
                     displayName: user.displayName,
                   })
@@ -303,7 +247,12 @@ export function AdminUserDetailPage() {
                 {t('admin.banUser')}
               </button>
             )}
-            <button type="button" onClick={handleDelete} className="btn-danger-text">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleteFetcher.state !== 'idle'}
+              className="btn-danger-text"
+            >
               {t('admin.users.deleteUser')}
             </button>
           </>

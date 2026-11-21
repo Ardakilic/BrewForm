@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { useSafeT } from '../../utils/safe-translation.ts';
 
 interface MetadataBadgesProps {
   author: { username: string; displayName: string | null } | null;
@@ -24,9 +25,12 @@ const VISIBILITY_DOT_COLORS: Record<string, string> = {
 };
 
 /**
- * Badge row for a recipe header: author link, colour-dotted visibility
+ * Badge row for a recipe header: author link (a "Deleted user" pill without a link when
+ * `author` is `null`, `common.deletedUser`), colour-dotted visibility
  * badge (dashed for drafts), brew method, and a version badge that
- * opens version history when prior versions exist.
+ * opens version history when prior versions exist. The prior-versions label uses
+ * `recipe.priorVersions.one` / `recipe.priorVersions.other` through `useSafeT` (bare renders
+ * without an i18n provider fall back to English).
  */
 export function MetadataBadges({
   author,
@@ -36,23 +40,31 @@ export function MetadataBadges({
   versionCount,
   onVersionHistoryClick,
 }: MetadataBadgesProps) {
+  const t = useSafeT();
   const dotColor = VISIBILITY_DOT_COLORS[visibility] ?? VISIBILITY_DOT_COLORS['draft'];
   const isDraft = visibility === 'draft';
   const priorVersions = versionCount - 1;
+  const priorVersionsLabel = t(
+    priorVersions === 1 ? 'recipe.priorVersions.one' : 'recipe.priorVersions.other',
+  ).replace('{count}', String(priorVersions));
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-[color:var(--text-secondary)]">
-      {/* Author badge */}
-      {author != null && (
+      {/* Author badge: a profile link, or plain "Deleted user" text for a deleted account */}
+      {author != null ? (
         <Link
           to={`/u/${author.username}`}
           className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-secondary)] text-[color:var(--text-secondary)]"
         >
           {author.displayName ?? author.username}
         </Link>
+      ) : (
+        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-secondary)] text-[color:var(--text-secondary)]">
+          {t('common.deletedUser')}
+        </span>
       )}
 
-      {author != null && <span className="text-xs text-[color:var(--text-tertiary)]">•</span>}
+      <span className="text-xs text-[color:var(--text-tertiary)]">•</span>
 
       {/* Visibility badge — draft gets a dashed border */}
       <span
@@ -91,11 +103,11 @@ export function MetadataBadges({
               onClick={onVersionHistoryClick}
               className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-secondary)] text-[color:var(--accent-primary)] cursor-pointer border-none"
             >
-              {priorVersions} prior {priorVersions === 1 ? 'version' : 'versions'}
+              {priorVersionsLabel}
             </button>
           ) : (
             <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-secondary)] text-[color:var(--text-secondary)]">
-              {priorVersions} prior {priorVersions === 1 ? 'version' : 'versions'}
+              {priorVersionsLabel}
             </span>
           )}
         </>

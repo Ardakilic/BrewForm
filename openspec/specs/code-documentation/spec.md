@@ -1,7 +1,12 @@
 # code-documentation Specification
 
 ## Purpose
-TBD - created by archiving change wave-5-debt-clearance. Update Purpose after archive.
+
+Requires a JSDoc docblock in the captured house style on every exported production symbol in the
+API, web, shared and db workspaces, including constants, types, schemas and module singletons.
+Enforcement is automated by `scripts/docblock-scan.ts`, which runs in `make docs-check` and in CI,
+so the code stays self-describing for people and agents alike.
+
 ## Requirements
 ### Requirement: Every exported production symbol carries a JSDoc docblock
 
@@ -17,8 +22,10 @@ the export statement for re-exported JSON bundles like `i18n`'s `en`/`tr`). Line
 plain block comments (`/* */`) do NOT satisfy the rule — upgrade them to `/** */`.
 
 This is the blanket rule for new code: any PR that adds an exported symbol without a docblock is
-incomplete. Enforcement is by review — no Deno lint plugin matches the house style, and none SHALL
-be added (design.md Decision 9).
+incomplete. Enforcement is automated: `scripts/docblock-scan.ts` (a dependency-free Node port of the
+wave-5 inventory scanner) runs in CI and through `pnpm run docs:check` / `make docs-check`, and fails
+with `file:line symbol` for every exported production symbol that lacks a `/** */` docblock. Biome has
+no rule matching the house style, so no lint plugin is added.
 
 **Reason:** The 2026-07-19 inventory measured 890/1059 exported symbols documented (84%);
 function-like coverage is near-total (1 undocumented true function repo-wide), so the entire
@@ -29,8 +36,8 @@ newcomers.
 #### Scenario: New exported symbol without a docblock is rejected
 
 - **WHEN** a PR adds `export const fooRouter = new Hono()...` with no preceding `/** */` block
-- **THEN** review flags it against this requirement — the symbol gains a house-style docblock before
-  merge
+- **THEN** the docblock scan fails in CI, naming the file and symbol, and the symbol gains a
+  house-style docblock before merge
 
 #### Scenario: Comment style is JSDoc, not line comments
 
@@ -40,8 +47,7 @@ newcomers.
 
 ### Requirement: Docblocks follow the captured house style
 
-Docblocks SHALL follow the house style captured in `audit/docblock-inventory.md` (five verified
-conventions — apply, do not invent):
+Docblocks SHALL follow the house style documented in `docs/architecture.md` § "Documentation comments" (five verified conventions captured by the wave-5 inventory, `openspec/changes/archive/2026-07-27-wave-5-debt-clearance/audit/docblock-inventory.md` — apply, do not invent):
 
 1. **API service functions** — imperative first sentence, then vertically aligned
    `@param name - desc` lines and `@returns` (the `collection/service.ts:91-96` idiom).
@@ -80,7 +86,7 @@ would create churn and review ambiguity. Prescribing the bulk-category one-liner
 
 ### Requirement: The 196-symbol docblock backfill is complete
 
-All 196 missing docblocks inventoried in `audit/docblock-inventory.md` SHALL be added, per its
+All 196 missing docblocks inventoried in the wave-5 `docblock-inventory.md` (archived under `openspec/changes/archive/2026-07-27-wave-5-debt-clearance/audit/`) SHALL be added, per its
 file-by-file tables: **apps/api/src 50** (the 22 `export default` Hono router consts in Section B,
 the `app`/`logger` locals in Section C, and 26 main-scan symbols — route consts, `AppEnv`/
 `AppVariables`, `config`, upload/storage interfaces, module `log`/`deps` singletons), **apps/web/src
@@ -94,13 +100,14 @@ flagged "upgrade" in the inventory SHALL become `/** */` blocks, preserving thei
 accurate. Docblock-only edits SHALL NOT change any runtime code.
 
 **Reason:** The inventory is exact (scanner-generated, spot-check-validated, one scanner bug fixed
-during validation), so "complete" is objectively checkable — re-running the scanner from
-`audit/docblock-scan.ts` yields zero missing.
+during validation), so "complete" is objectively checkable — running the ported scanner
+`scripts/docblock-scan.ts` yields zero missing, and exports added after wave 5 are held to the same
+bar.
 
 #### Scenario: Scanner reports zero missing
 
-- **WHEN** the inventory scanner (`audit/docblock-scan.ts`) is re-run over the four production roots
-  after the backfill
+- **WHEN** `node scripts/docblock-scan.ts` (also run by `pnpm run docs:check`) scans the four
+  production roots
 - **THEN** it reports 0 missing docblocks (all export forms: main scan, `export default`
   declarations, and local `export { X }` declarations)
 

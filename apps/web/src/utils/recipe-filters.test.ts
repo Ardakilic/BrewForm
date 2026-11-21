@@ -108,6 +108,26 @@ describe('extractListParams', () => {
     expect(params.dateFrom).toBe('2024-01-01');
   });
 
+  it('keeps a YYYY-MM-DD dateTo', () => {
+    const params = extractListParams(new URLSearchParams('dateTo=2026-11-21'));
+    expect(params.dateTo).toBe('2026-11-21');
+  });
+
+  it('drops a dateTo that is a timestamp, not a calendar day', () => {
+    const params = extractListParams(new URLSearchParams('dateTo=2026-11-21T10:00'));
+    expect(params.dateTo).toBeUndefined();
+  });
+
+  it('drops a dateTo that is not a date', () => {
+    const params = extractListParams(new URLSearchParams('dateTo=garbage'));
+    expect(params.dateTo).toBeUndefined();
+  });
+
+  it('drops a dateFrom that is not YYYY-MM-DD', () => {
+    const params = extractListParams(new URLSearchParams('dateFrom=2026-11-21T10:00:00Z'));
+    expect(params.dateFrom).toBeUndefined();
+  });
+
   it('preserves the minRating filter when provided', () => {
     const params = extractListParams(new URLSearchParams('minRating=7'));
     expect(params.minRating).toBe('7');

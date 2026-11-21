@@ -2,7 +2,10 @@ import { Link, Outlet } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 
-/** Admin shell: sidebar navigation to all admin sections around an `<Outlet />`. */
+/**
+ * Admin shell: sidebar navigation to all admin sections around an `<Outlet />`. The whole
+ * sidebar (title, navigation, "Back to Site", signed-in line) is `print-hidden`; the page prints.
+ */
 export function AdminLayout() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -10,7 +13,7 @@ export function AdminLayout() {
   return (
     <div className="flex min-h-screen">
       <aside
-        className="w-64 flex-shrink-0 p-4"
+        className="print-hidden w-64 flex-shrink-0 p-4"
         style={{
           backgroundColor: 'var(--bg-secondary)',
           borderRight: '1px solid var(--border-primary)',

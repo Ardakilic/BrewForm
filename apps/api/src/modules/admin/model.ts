@@ -28,17 +28,39 @@ import {
   vendors,
 } from '@brewform/db/schema';
 import { hashSync } from 'bcryptjs';
-import { and, asc, count, desc, eq, gte, isNull, like, ne, or, type SQL, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  getTableColumns,
+  gte,
+  ilike,
+  isNull,
+  or,
+  type SQL,
+} from 'drizzle-orm';
+import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
+import { userIdentifierConflict } from '../auth/model.ts';
 
-/** Fetch a paginated list of non-deleted users, optionally filtered by email, username, or display name. */
+/**
+ * Fetch a paginated list of non-deleted users, optionally filtered by a case-insensitive literal
+ * substring match on email, username or display name: the term is trimmed with
+ * `normalizeSearchTerm` and matched with `ilike(<col>, toContainsPattern(term))`, so letter case is
+ * ignored and `%`, `_` and `\` match literally. An empty or whitespace-only term applies no filter.
+ */
 export async function listUsers(page: number, perPage: number, query?: string) {
-  const where = query
+  const term = normalizeSearchTerm(query);
+  const pattern = term === '' ? null : toContainsPattern(term);
+  const where = pattern
     ? and(
         isNull(users.deletedAt),
         or(
-          like(users.email, `%${query}%`),
-          like(users.username, `%${query}%`),
-          like(users.displayName, `%${query}%`),
+          ilike(users.email, pattern),
+          ilike(users.username, pattern),
+          ilike(users.displayName, pattern),
         ),
       )
     : isNull(users.deletedAt);
@@ -62,30 +84,6 @@ export async function listUsers(page: number, perPage: number, query?: string) {
     db.select({ count: count() }).from(users).where(where),
   ]);
   return { users: data, total: totalResult[0].count };
-}
-
-/** Check whether an email is already taken by a non-deleted user, excluding an optional user ID. */
-export async function isEmailTaken(email: string, excludeId?: string) {
-  const conditions = [eq(users.email, email), isNull(users.deletedAt)];
-  if (excludeId) conditions.push(ne(users.id, excludeId));
-  const [result] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(and(...conditions))
-    .limit(1);
-  return !!result;
-}
-
-/** Check whether a username is already taken by a non-deleted user, excluding an optional user ID. */
-export async function isUsernameTaken(username: string, excludeId?: string) {
-  const conditions = [eq(users.username, username), isNull(users.deletedAt)];
-  if (excludeId) conditions.push(ne(users.id, excludeId));
-  const [result] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(and(...conditions))
-    .limit(1);
-  return !!result;
 }
 
 /** Fetch a single non-deleted user by ID. Returns null if not found. */
@@ -141,23 +139,19 @@ export async function setUserAdminRole(userId: string, isAdmin: boolean) {
 }
 
 /**
- * Translate a Postgres unique-violation (23505) into a domain error.
+ * Translate a Postgres unique violation (23505) on a user identifier into a
+ * domain error: any of `USER_EMAIL_CONSTRAINTS` → `EMAIL_ALREADY_EXISTS`, any of
+ * `USER_USERNAME_CONSTRAINTS` → `USERNAME_ALREADY_EXISTS` (exact and
+ * `_lower_unique` constraints alike). Detection uses the shared
+ * `isUniqueViolation` helper (via `userIdentifierConflict`), which walks the
+ * `cause` chain of Drizzle-wrapped errors. Returns without throwing when the
+ * error is not such a violation, so the caller re-throws the original.
  *
- * Drizzle wraps driver errors in a `DrizzleQueryError`; the underlying
- * postgres-js `PostgresError` (with `code` and `constraint_name`) lives on
- * `err.cause`. Re-throws the original error when it is not a recognized
- * unique violation.
+ * @param err - Any error thrown by a `user` insert or update.
  */
 export function throwIfUniqueViolation(err: unknown): void {
-  const wrapped = err as {
-    cause?: { name?: string; code?: string; constraint_name?: string };
-  };
-  const pgErr =
-    wrapped.cause ?? (err as { name?: string; code?: string; constraint_name?: string });
-  if (pgErr.name === 'PostgresError' && pgErr.code === '23505') {
-    if (pgErr.constraint_name?.includes('email')) throw new Error('EMAIL_ALREADY_EXISTS');
-    if (pgErr.constraint_name?.includes('username')) throw new Error('USERNAME_ALREADY_EXISTS');
-  }
+  const conflict = userIdentifierConflict(err);
+  if (conflict) throw new Error(conflict);
 }
 
 /**
@@ -254,7 +248,14 @@ function isValidVisibility(v: string): v is RecipeVisibility {
   return RECIPE_VISIBILITIES.includes(v);
 }
 
-/** List all non-deleted recipes with optional visibility filter, ordered by newest first. */
+/**
+ * List one page of non-deleted recipes for moderation, newest first, with an optional visibility
+ * filter. Each row is the full recipe row plus `author: { id, username, displayName }`, joined in
+ * the same bounded query. The join does not filter `users.deletedAt`, so a recipe of a soft-deleted
+ * account keeps its author's name here (admin pages keep names, E11); every recipe has an
+ * `author_id` (NOT NULL foreign key), so the inner join neither adds nor drops rows and the count
+ * query needs no join.
+ */
 export async function listAllRecipes(page: number, perPage: number, visibility?: string) {
   const where =
     visibility && isValidVisibility(visibility)
@@ -262,8 +263,12 @@ export async function listAllRecipes(page: number, perPage: number, visibility?:
       : isNull(recipes.deletedAt);
   const [data, totalResult] = await Promise.all([
     db
-      .select()
+      .select({
+        ...getTableColumns(recipes),
+        author: { id: users.id, username: users.username, displayName: users.displayName },
+      })
       .from(recipes)
+      .innerJoin(users, eq(recipes.authorId, users.id))
       .where(where)
       .orderBy(desc(recipes.createdAt), asc(recipes.id))
       .limit(perPage)
@@ -660,7 +665,12 @@ export async function getTopUsers(limit: number) {
 
 // --- Coffee Varieties ---
 
-/** List non-deleted coffee varieties with optional category filter and name/species/origin search, paginated alphabetically. */
+/**
+ * List non-deleted coffee varieties with an optional category filter and an optional
+ * case-insensitive literal substring match on name, species or origin
+ * (`ilike(<col>, toContainsPattern(term))`; an empty term applies no filter), paginated
+ * alphabetically.
+ */
 export async function listCoffeeVarieties(
   page: number,
   perPage: number,
@@ -674,13 +684,14 @@ export async function listCoffeeVarieties(
       eq(coffeeVarieties.category, category as typeof coffeeVarieties.category._.data),
     );
   }
-  if (search) {
-    const searchPattern = `%${search}%`;
+  const term = normalizeSearchTerm(search);
+  if (term !== '') {
+    const pattern = toContainsPattern(term);
     conditions.push(
       or(
-        like(coffeeVarieties.name, searchPattern),
-        like(coffeeVarieties.species, searchPattern),
-        like(coffeeVarieties.origin, searchPattern),
+        ilike(coffeeVarieties.name, pattern),
+        ilike(coffeeVarieties.species, pattern),
+        ilike(coffeeVarieties.origin, pattern),
       )!,
     );
   }
@@ -734,7 +745,7 @@ export async function deleteCoffeeVariety(id: string) {
 /** Count distinct non-deleted recipes whose current version uses the given coffee variety. */
 export async function getVarietyRecipeCount(varietyId: string) {
   const [result] = await db
-    .select({ count: sql<number>`count(distinct ${recipes.id})` })
+    .select({ count: countDistinct(recipes.id) })
     .from(recipes)
     .innerJoin(recipeVersions, eq(recipes.currentVersionId, recipeVersions.id))
     .where(and(eq(recipeVersions.coffeeVarietyId, varietyId), isNull(recipes.deletedAt)));

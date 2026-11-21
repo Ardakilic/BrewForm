@@ -1,11 +1,12 @@
 import { Select } from '@base-ui/react/select';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, NavLink } from 'react-router';
-import { authApi } from '../../api/index.ts';
+import { Link, NavLink, useRouteLoaderData } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
 import { useMediaQuery } from '../../hooks/useMediaQuery.ts';
+import { useSignOut } from '../../hooks/useSignOut.ts';
+import type { rootLoader } from '../../routes/root.ts';
 import { NotificationBell } from './NotificationBell.tsx';
 
 const FOCUSABLE_SELECTOR =
@@ -178,27 +179,23 @@ const NAV_ITEMS = [
 
 /**
  * Top navigation bar with auth-aware links, theme toggle, and a
- * focus-trapped mobile hamburger menu. Hides the register link when
- * registration is disabled server-side.
+ * focus-trapped mobile hamburger menu. Both Logout buttons sign out through `useSignOut`
+ * (land on `/` before the user is cleared). Hides the register link when
+ * registration is disabled server-side (read once by the root route loader
+ * via `useRouteLoaderData('root')`; outside the root route it defaults to shown).
  */
 export function Navbar() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const signOut = useSignOut();
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [registrationEnabled, setRegistrationEnabled] = useState(true);
+  const registrationEnabled =
+    useRouteLoaderData<typeof rootLoader>('root')?.registrationEnabled ?? true;
   // Tailwind `md` breakpoint (768px — default theme, not overridden in globals.css).
   // Coordinates which single NotificationBell instance is mounted (desktop nav vs
   // mobile drawer) so duplicate unread-count requests/listeners never occur.
   const isDesktop = useMediaQuery('(min-width: 768px)');
-
-  useEffect(() => {
-    if (user) return;
-    authApi
-      .registrationStatus()
-      .then(({ enabled }) => setRegistrationEnabled(enabled))
-      .catch(() => setRegistrationEnabled(true));
-  }, [user]);
 
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -252,7 +249,7 @@ export function Navbar() {
   }, []);
 
   return (
-    <header className="bg-[color:var(--bg-secondary)] border-b border-[color:var(--border-primary)]">
+    <header className="print-hidden bg-[color:var(--bg-secondary)] border-b border-[color:var(--border-primary)]">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
         {/* Brand / Logo */}
         <Link
@@ -289,7 +286,7 @@ export function Navbar() {
           {isAuthenticated ? (
             <button
               type="button"
-              onClick={logout}
+              onClick={() => void signOut()}
               className="btn-secondary text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]"
             >
               {t('nav.logout')}
@@ -460,8 +457,8 @@ export function Navbar() {
                 <button
                   type="button"
                   onClick={() => {
-                    logout();
                     setIsMenuOpen(false);
+                    void signOut();
                   }}
                   className="btn-secondary text-sm w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]"
                 >

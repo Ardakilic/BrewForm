@@ -8,14 +8,17 @@ import { Hono } from 'hono';
 import { describeRoute, resolver } from 'hono-openapi';
 import { z } from 'zod';
 import { config } from '../../config/index.ts';
-import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
+import { rateLimit } from '../../middleware/rateLimit.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { toLoggableMailError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { getTransporter } from '../../utils/notify/index.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { POLICIES } from '../../utils/rate-limit/policies.ts';
 import { error, success } from '../../utils/response/index.ts';
 
-const logger = createLogger('contact');
+/** Module logger (exported for test spies). Never logs the sender's or recipient's address. */
+export const logger = createLogger('contact');
 
 const contactSchema = z.object({
   name: z.string().min(1).max(100),
@@ -27,21 +30,15 @@ const contactSchema = z.object({
 /** Hono sub-router for contact endpoints, mounted at `/api/v1/contact`. */
 const contact = new Hono<AppEnv>();
 
-contact.use(
-  '*',
-  rateLimitMiddleware({
-    windowMs: 15 * 60_000,
-    maxRequests: 3,
-    keyPrefix: 'contact',
-  }),
-);
-
 contact.post(
   '/',
+  // IP-keyed policy `contact-ip` (3 per 15 min), before body validation.
+  rateLimit(POLICIES.contactIp),
   describeRoute({
     tags: ['Contact'],
     summary: 'Submit a contact message',
-    description: 'Submits a contact-form message. Rate-limited to 3 requests per 15 minutes.',
+    description:
+      'Submits a contact-form message. Rate-limited to 3 requests per 15 minutes per client IP.',
     requestBody: jsonRequestBody(contactSchema),
     responses: {
       200: {
@@ -55,7 +52,7 @@ contact.post(
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       429: {
-        description: 'Rate limit exceeded (3 requests per 15 minutes)',
+        description: 'Rate limit exceeded (3 requests per 15 minutes per client IP)',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
     },
@@ -81,7 +78,7 @@ contact.post(
 
       return success(c, { message: 'Thank you for your message. We will get back to you soon.' });
     } catch (err) {
-      logger.error({ err }, 'Failed to send contact email');
+      logger.error({ err: toLoggableMailError(err) }, 'Failed to send contact email');
       return error(c, 'INTERNAL_ERROR', 'Failed to send message. Please try again later.', 500);
     }
   },

@@ -1,5 +1,6 @@
-import { Navigate } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
+import { loginPathFor } from '../../utils/safe-next.ts';
 import { PageSkeleton } from '../ui/Skeleton.tsx';
 
 interface Props {
@@ -8,17 +9,21 @@ interface Props {
 }
 
 /**
- * Guards children behind authentication; redirects to `/login` when
- * unauthenticated and to `/` when `requireAdmin` is set but the user
- * is not an admin. Shows a page skeleton while auth state loads.
+ * Render-time guard for routes whose loaders call only public endpoints. Redirects a
+ * signed-out user to `/login?next=<encoded pathname+search>` and a non-admin on an admin
+ * route to `/`, both with `replace` so Back does not return to the guarded page. Shows a
+ * page skeleton while auth state loads.
  */
 export function RequireAuth({ children, requireAdmin }: Props) {
   const { isAuthenticated, user, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return <PageSkeleton />;
   }
-  if (!isAuthenticated) return <Navigate to="/login" />;
-  if (requireAdmin && !user?.isAdmin) return <Navigate to="/" />;
+  if (!isAuthenticated) {
+    return <Navigate to={loginPathFor(location.pathname, location.search)} replace />;
+  }
+  if (requireAdmin && !user?.isAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 }

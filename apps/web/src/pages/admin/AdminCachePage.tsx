@@ -1,16 +1,26 @@
-import { useEffect, useState } from 'react';
-import { api } from '../../api/client.ts';
+import { useEffect } from 'react';
+import { useFetcher } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action } from './AdminCachePage.data.ts';
 
 const log = createLogger('AdminCachePage');
 
-/** Admin page: single action to flush all server-side caches. */
+/**
+ * Admin page: single action to flush all server-side caches. The button submits to the
+ * `/admin/cache` route action (`AdminCachePage.data.ts`) through a fetcher; the result is
+ * toasted (`admin.cache.flushSuccess` / `admin.cache.flushError`).
+ */
 export function AdminCachePage() {
   const { t } = useTranslation();
-  const [flushing, setFlushing] = useState(false);
-  const [message, setMessage] = useState('');
-  const [status, setStatus] = useState<'success' | 'error' | ''>('');
+  const fetcher = useFetcher<typeof action>();
+  const flushing = fetcher.state !== 'idle';
+
+  useActionFeedback(fetcher, {
+    successKey: 'admin.cache.flushSuccess',
+    errorKey: 'admin.cache.flushError',
+  });
 
   useEffect(() => {
     log.debug({}, 'AdminCachePage mounted');
@@ -19,21 +29,9 @@ export function AdminCachePage() {
     };
   }, []);
 
-  async function flushAll() {
-    setFlushing(true);
-    setMessage('');
-    setStatus('');
-    try {
-      await api.post('/admin/cache/flush', {});
-      setMessage(t('admin.cache.flushSuccess'));
-      setStatus('success');
-    } catch (err) {
-      log.error({ err }, 'AdminCachePage flushAll failed');
-      setMessage(t('admin.cache.flushError'));
-      setStatus('error');
-    } finally {
-      setFlushing(false);
-    }
+  /** Submits the flush to the route action. */
+  function flushAll() {
+    fetcher.submit({}, { method: 'post' });
   }
 
   return (
@@ -52,14 +50,6 @@ export function AdminCachePage() {
         <button type="button" onClick={flushAll} className="btn-primary" disabled={flushing}>
           {flushing ? t('common.flushing') : t('admin.flushCache')}
         </button>
-        {message && (
-          <p
-            className="mt-3 text-sm"
-            style={{ color: status === 'error' ? 'var(--error)' : 'var(--success)' }}
-          >
-            {message}
-          </p>
-        )}
       </div>
 
       <div className="card mt-4">

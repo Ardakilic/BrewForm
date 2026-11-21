@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -41,7 +41,8 @@ vi.mock('@/utils/logger.ts', () => ({
 import type { PaginatedResponse, PublicCollectionListItemOutput } from '@brewform/shared/schemas';
 import { collectionApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { CollectionsBrowsePage, loader } from './CollectionsBrowsePage.tsx';
+import { loader } from './CollectionsBrowsePage.data.ts';
+import { CollectionsBrowsePage } from './CollectionsBrowsePage.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockListPublic = vi.mocked(collectionApi.listPublic);
@@ -202,5 +203,64 @@ describe('CollectionsBrowsePage', () => {
     const cardLink = screen.getByText('My List').closest('a');
     expect(cardLink).not.toBeNull();
     expect(cardLink!.getAttribute('href')).toBe('/collections/c-abc');
+  });
+});
+
+describe('CollectionsBrowsePage — URL pagination', () => {
+  it('Next writes ?page=2 and the loader requests page=2 from the API', async () => {
+    mockListPublic.mockImplementation(async (params?: Record<string, string>) => ({
+      ...makeEmptyResponse(),
+      data: [makePublicCollection()],
+      meta: {
+        requestId: 'test',
+        pagination: { page: Number(params?.page ?? 1), perPage: 20, total: 30, totalPages: 2 },
+      },
+    }));
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/collections/browse',
+          element: <CollectionsBrowsePage />,
+          loader,
+          HydrateFallback,
+        },
+      ],
+      { initialEntries: ['/collections/browse'] },
+    );
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'common.next' }));
+
+    await waitFor(() => expect(router.state.location.search).toBe('?page=2'));
+    await waitFor(() =>
+      expect(mockListPublic).toHaveBeenLastCalledWith(
+        { page: '2', perPage: '20' },
+        { signal: expect.any(AbortSignal) },
+      ),
+    );
+  });
+
+  it('the loader normalises an invalid page to 1', async () => {
+    await loader({
+      request: new Request('http://localhost/collections/browse?page=abc'),
+      params: {},
+      context: undefined,
+    } as never);
+    expect(mockListPublic).toHaveBeenLastCalledWith(
+      { page: '1', perPage: '20' },
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it('forwards the request signal to collectionApi.listPublic', async () => {
+    const controller = new AbortController();
+    await loader({
+      request: new Request('http://localhost/collections/browse', { signal: controller.signal }),
+      params: {},
+      context: undefined,
+    } as never);
+    const opts = mockListPublic.mock.calls[0][1];
+    controller.abort();
+    expect(opts?.signal?.aborted).toBe(true);
   });
 });

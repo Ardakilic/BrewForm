@@ -6,7 +6,22 @@ import {
   recipes,
   recipeVersions,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, isNull, like, or, type SQL, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  ilike,
+  isNull,
+  or,
+  type SQL,
+  sql,
+} from 'drizzle-orm';
+import { visibleIdentity } from '../../utils/public-identity/index.ts';
+import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
+import { listableRecipeCondition, maskUnlistableForkSources } from '../recipe/model.ts';
 
 /** Find an equipment item by ID. Returns null if deleted or not found. */
 export async function findById(id: string) {
@@ -37,18 +52,25 @@ export async function findMany(where: SQL | undefined, page: number, perPage: nu
   return { items, total: totalResult[0].count };
 }
 
-/** Search non-deleted equipment by name, brand, or model (LIKE match), limited to 10 results. */
-export function search(query: string) {
-  return db
+/**
+ * Search non-deleted equipment by name, brand, or model (case-insensitive literal substring
+ * match through `ilike(<col>, toContainsPattern(term))`), limited to 10 results. A term that is
+ * empty after trimming returns `[]` without querying.
+ */
+export async function search(query: string) {
+  const term = normalizeSearchTerm(query);
+  if (term === '') return [];
+  const pattern = toContainsPattern(term);
+  return await db
     .select()
     .from(equipment)
     .where(
       and(
         isNull(equipment.deletedAt),
         or(
-          like(equipment.name, `%${query}%`),
-          like(equipment.brand, `%${query}%`),
-          like(equipment.model, `%${query}%`),
+          ilike(equipment.name, pattern),
+          ilike(equipment.brand, pattern),
+          ilike(equipment.model, pattern),
         ),
       ),
     )
@@ -79,8 +101,9 @@ export async function softDelete(id: string) {
 }
 
 /**
- * List non-deleted equipment with optional type and name/brand/model search
- * filters, paginated and ordered by name, with total count.
+ * List non-deleted equipment with an optional type filter and an optional case-insensitive
+ * literal substring match on name, brand or model (`ilike(<col>, toContainsPattern(term))`; an
+ * empty term applies no filter), paginated and ordered by name, with total count.
  */
 export async function findManyWithFilters(params: {
   type?: string;
@@ -92,13 +115,14 @@ export async function findManyWithFilters(params: {
   if (params.type) {
     conditions.push(eq(equipment.type, params.type as typeof equipment.type._.data));
   }
-  if (params.search) {
-    const pattern = `%${params.search}%`;
+  const term = normalizeSearchTerm(params.search);
+  if (term !== '') {
+    const pattern = toContainsPattern(term);
     conditions.push(
       or(
-        like(equipment.name, pattern),
-        like(equipment.brand, pattern),
-        like(equipment.model, pattern),
+        ilike(equipment.name, pattern),
+        ilike(equipment.brand, pattern),
+        ilike(equipment.model, pattern),
       )!,
     );
   }
@@ -120,11 +144,19 @@ export async function findManyWithFilters(params: {
 /**
  * List public, non-deleted recipes whose current version uses the given
  * equipment item, paginated with total count and author relation joined.
+ *
+ * The equipment page is a discovery surface (capability `recipe-visibility`), so
+ * both the data and the count branch share one `recipeConditions =
+ * listableRecipeCondition(null)` from the recipe model: `unlisted`, `draft` and
+ * `private` recipes are never listed or counted, for any viewer. The rows pass
+ * through `maskUnlistableForkSources`, so a fork of a non-public source carries
+ * `forkedFromId: null`.
+ * The `author` of a deleted account is `null` (`visibleIdentity`); the recipe stays listed.
  */
 export async function getRecipesUsingEquipment(equipmentId: string, page: number, perPage: number) {
   const offset = (page - 1) * perPage;
-  const recipeConditions = and(eq(recipes.visibility, 'public'), isNull(recipes.deletedAt));
-  // NOTE: Drizzle's `exists()` combinator generates a subquery that references
+  const recipeConditions = listableRecipeCondition(null);
+  // D03 raw-SQL exception: Drizzle's `exists()` combinator generates a subquery that references
   // the physical table name ("recipe_equipment"."recipe_version_id"), but the
   // relational `db.query.recipes.findMany` API aliases the outer table as
   // `"recipe" "recipes"`. The correlation against `recipes.currentVersionId`
@@ -137,7 +169,9 @@ export async function getRecipesUsingEquipment(equipmentId: string, page: number
   const [data, countResult] = await Promise.all([
     db.query.recipes.findMany({
       with: {
-        author: { columns: { username: true, displayName: true, avatarUrl: true } },
+        author: {
+          columns: { username: true, displayName: true, avatarUrl: true, deletedAt: true },
+        },
       },
       where: and(recipeConditions, equipmentExists),
       orderBy: desc(recipes.createdAt),
@@ -145,13 +179,14 @@ export async function getRecipesUsingEquipment(equipmentId: string, page: number
       offset,
     }),
     db
-      .select({ count: sql<number>`count(distinct ${recipes.id})` })
+      .select({ count: countDistinct(recipes.id) })
       .from(recipes)
       .innerJoin(recipeVersions, eq(recipes.currentVersionId, recipeVersions.id))
       .innerJoin(recipeEquipment, eq(recipeVersions.id, recipeEquipment.recipeVersionId))
       .where(and(eq(recipeEquipment.equipmentId, equipmentId), recipeConditions)),
   ]);
-  return { data, total: Number(countResult[0]?.count ?? 0) };
+  const rows = data.map((row) => ({ ...row, author: visibleIdentity(row.author) }));
+  return { data: await maskUnlistableForkSources(rows), total: Number(countResult[0]?.count ?? 0) };
 }
 
 /** Insert an equipment delete request for admin review. */

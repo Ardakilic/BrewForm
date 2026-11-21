@@ -1,4 +1,8 @@
-import { ErrorEnvelopeSchema, QrCodeFilenameSchema } from '@brewform/shared/schemas';
+import {
+  ErrorEnvelopeSchema,
+  QR_CODE_FILENAME_PATTERN,
+  QrCodeFilenameSchema,
+} from '@brewform/shared/schemas';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { describeRoute, resolver } from 'hono-openapi';
@@ -21,8 +25,9 @@ qrcode.get(
     tags: ['QR Codes'],
     summary: 'Get a recipe QR code image',
     description:
-      'Generates a QR code image for a public recipe. The filename encodes the recipe slug and ' +
-      'desired format (`<slug>.png` or `<slug>.svg`); the response is the raw image, not a JSON envelope.',
+      'Generates a QR code image for a public or unlisted recipe. The filename encodes the recipe ' +
+      'slug and desired format (`<slug>.png` or `<slug>.svg`); the response is the raw image, not a ' +
+      'JSON envelope. Unknown, deleted, draft and private recipes all answer the same 404.',
     parameters: [
       {
         name: 'filename',
@@ -40,12 +45,8 @@ qrcode.get(
           'image/svg+xml': { schema: { type: 'string', format: 'binary' } },
         },
       },
-      403: {
-        description: 'Recipe is not publicly available',
-        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
-      },
       404: {
-        description: 'Recipe not found',
+        description: 'Recipe not found (unknown, deleted, draft or private)',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
     },
@@ -53,7 +54,7 @@ qrcode.get(
   zValidator('param', FilenameParamSchema, zodValidationHook),
   async (c) => {
     const { filename } = c.req.valid('param');
-    const match = filename.match(/^([a-z0-9]+(?:-[a-z0-9]+)*)\.(png|svg)$/i);
+    const match = filename.match(QR_CODE_FILENAME_PATTERN);
     const slug = match![1];
     const format = match![2].toLowerCase() as 'png' | 'svg';
 
@@ -65,9 +66,6 @@ qrcode.get(
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
-      if (message === 'RECIPE_NOT_AVAILABLE') {
-        return error(c, 'FORBIDDEN', 'Recipe is not publicly available', 403);
-      }
       throw err;
     }
   },

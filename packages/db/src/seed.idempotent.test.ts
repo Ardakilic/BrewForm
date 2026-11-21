@@ -31,16 +31,19 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { count } from 'drizzle-orm';
+import { and, count, eq, inArray } from 'drizzle-orm';
 import { getTableConfig } from 'drizzle-orm/pg-core';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { client, db } from './index.ts';
+import { recountCommentCounts } from './recount-comment-counts.ts';
 import {
   badges,
   beans,
+  brewLogs,
   brewMethodEquipmentRules,
   coffeeVarieties,
   collectionItems,
+  collections,
   comments,
   equipment,
   photos,
@@ -61,7 +64,7 @@ import {
   users,
   vendors,
 } from './schema.ts';
-import { seedBrewMethodCompatibility } from './seed.ts';
+import { normalizeAdminEmail, seedBrewMethodCompatibility } from './seed.ts';
 import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
 import { equipmentCatalogSeedData } from './seed-equipment-catalog.ts';
 import {
@@ -254,5 +257,175 @@ describe('Seed idempotency — collection sortOrder (D99.3)', () => {
       const expected = Array.from({ length: sorted.length }, (_, i) => i);
       expect(sorted).toEqual(expected);
     }
+  });
+});
+
+/**
+ * Re-running the seed on a database whose admin or demo accounts differ from the seed's
+ * identities only in letter case (an older install, or data written before the wave-6
+ * `user_email_lower_unique`/`user_username_lower_unique` expression indexes) must reuse those
+ * rows. `onConflictDoNothing({ target: users.email })` infers only the exact `user_email_unique`
+ * constraint, so such a row used to abort the seed transaction with a unique violation.
+ */
+describe('Seed idempotency — case-insensitive user identifiers', () => {
+  beforeAll(resetDatabase);
+
+  it('reuses accounts whose email or username differs only in case and seeds twice', async () => {
+    const [alice, bob] = userSeedData;
+    const legacy = [
+      {
+        email: normalizeAdminEmail(process.env.ADMIN_EMAIL).toUpperCase(),
+        username: 'legacy-admin',
+      },
+      { email: alice.email.toUpperCase(), username: `${alice.username}-legacy` },
+      { email: `legacy-${bob.email}`, username: bob.username.toUpperCase() },
+    ];
+    const preexisting = await db
+      .insert(users)
+      .values(legacy.map((identity) => ({ ...identity, passwordHash: 'legacy-hash' })))
+      .returning({ id: users.id });
+
+    const { main } = await import('./seed.ts');
+    await main();
+    await main();
+
+    expect((await db.select({ count: count() }).from(users))[0].count).toBe(
+      userSeedData.length + 1,
+    );
+    expect((await db.select({ count: count() }).from(userPreferences))[0].count).toBe(
+      userSeedData.length + 1,
+    );
+    const reused = await db
+      .select({ email: users.email, username: users.username })
+      .from(users)
+      .where(
+        inArray(
+          users.id,
+          preexisting.map((row) => row.id),
+        ),
+      );
+    // The seed never rewrites an existing account: the legacy identities are kept as they were.
+    expect(reused).toHaveLength(legacy.length);
+    expect(reused).toEqual(expect.arrayContaining(legacy));
+    const reusedPreferences = await db
+      .select({ count: count() })
+      .from(userPreferences)
+      .where(
+        inArray(
+          userPreferences.userId,
+          preexisting.map((row) => row.id),
+        ),
+      );
+    expect(reusedPreferences[0].count).toBe(legacy.length);
+  });
+});
+
+/**
+ * Finding #31: `setup_user_default_unique` is a partial unique index (one active default setup per
+ * user). A demo user who renames their default setup no longer matches the seed's
+ * `(userId, name)` existence check, so the re-run inserted a second default and aborted the
+ * whole seed transaction with `23505`.
+ */
+describe('Seed idempotency — renamed default setup (setup_user_default_unique)', () => {
+  beforeAll(resetDatabase);
+
+  it('keeps the renamed default setup and adds no second one on a re-run', async () => {
+    const { main } = await import('./seed.ts');
+    await main();
+
+    const [alice] = await db.select().from(users).where(eq(users.username, 'alice'));
+    await db
+      .update(setups)
+      .set({ name: 'Renamed default' })
+      .where(and(eq(setups.userId, alice.id), eq(setups.isDefault, true)));
+
+    await expect(main()).resolves.toBeUndefined();
+
+    const aliceSetups = await db
+      .select({ name: setups.name, isDefault: setups.isDefault })
+      .from(setups)
+      .where(eq(setups.userId, alice.id));
+    expect(aliceSetups).toEqual([{ name: 'Renamed default', isDefault: true }]);
+  });
+});
+
+/**
+ * Finding #12 (user decision 2): with `APP_ENV=production` the seed creates only the admin with its
+ * preferences and the reference data (brew-method rules, badges, the system equipment catalogue,
+ * the system coffee varieties, the real-roaster vendors and the SCAA taste notes). No demo account
+ * and none of their content. `afterAll` re-seeds in the default mode so the database ends fully
+ * seeded, like after the other describes.
+ */
+describe('Seed — production mode seeds no demo content', () => {
+  beforeAll(async () => {
+    await resetDatabase();
+    vi.stubEnv('APP_ENV', 'production');
+  });
+
+  afterAll(async () => {
+    vi.unstubAllEnvs();
+    await resetDatabase();
+    const { main } = await import('./seed.ts');
+    await main();
+  });
+
+  it('creates only the admin and the reference catalogues, twice without changes', async () => {
+    const { main } = await import('./seed.ts');
+    await main();
+    await main();
+
+    const allUsers = await db.select({ email: users.email, isAdmin: users.isAdmin }).from(users);
+    expect(allUsers).toHaveLength(1);
+    expect(allUsers[0].isAdmin).toBe(true);
+    expect(allUsers.filter((u) => u.email.endsWith('@example.com'))).toEqual([]);
+    expect((await db.select({ count: count() }).from(userPreferences))[0].count).toBe(1);
+
+    for (const table of [
+      recipes,
+      beans,
+      setups,
+      collections,
+      brewLogs,
+      comments,
+      userFollows,
+      userBadges,
+    ]) {
+      expect((await db.select({ count: count() }).from(table))[0].count).toBe(0);
+    }
+
+    expect((await db.select({ count: count() }).from(vendors))[0].count).toBe(
+      vendorSeedData.length,
+    );
+    expect((await db.select({ count: count() }).from(equipment))[0].count).toBe(
+      equipmentCatalogSeedData.length,
+    );
+    expect((await db.select({ count: count() }).from(coffeeVarieties))[0].count).toBe(
+      coffeeVarietySeedData.length,
+    );
+    expect((await db.select({ count: count() }).from(badges))[0].count).toBe(badgeSeedData.length);
+    expect((await db.select({ count: count() }).from(brewMethodEquipmentRules))[0].count).toBe(
+      brewMethodCompatibilityRules.length,
+    );
+    expect((await db.select({ count: count() }).from(tasteNotes))[0].count).toBeGreaterThanOrEqual(
+      scaaNames.size,
+    );
+  });
+});
+
+/**
+ * D99.67: the seed stores each demo recipe's `commentCount` as the number of comments the recount
+ * counts, so a fresh development install needs no repair.
+ */
+describe('Seed — comment counts', () => {
+  beforeAll(resetDatabase);
+
+  it('a fresh development seed needs no comment-count repair', async () => {
+    const { main } = await import('./seed.ts');
+    await main();
+
+    const result = await recountCommentCounts(db);
+
+    expect(result.repaired).toEqual([]);
+    expect(result.skipped).toEqual([]);
   });
 });

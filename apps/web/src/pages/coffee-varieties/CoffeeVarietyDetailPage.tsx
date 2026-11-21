@@ -1,14 +1,12 @@
-import type { CoffeeVarietyOutput, RecipeWithVersionsOutput } from '@brewform/shared/schemas';
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
-import { api } from '../../api/client.ts';
+import { useEffect } from 'react';
+import { useLoaderData } from 'react-router';
 import { TypeBadge } from '../../components/catalog/TypeBadge.tsx';
 import { RecipeCard } from '../../components/recipe-list/RecipeCard.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';
-import { Skeleton } from '../../components/ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './CoffeeVarietyDetailPage.data.ts';
 
 const log = createLogger('CoffeeVarietyDetailPage');
 
@@ -18,13 +16,13 @@ function joinArray(v: string[] | null): string | null {
   return v.join(', ');
 }
 
-/** Displays a single coffee variety's details, properties, and associated recipes. */
+/**
+ * Displays a single coffee variety's details, properties, and associated recipes. The data
+ * comes from the `/coffee-varieties/:id` route loader (`CoffeeVarietyDetailPage.data.ts`): an
+ * unknown id renders the not-found page and any other failure the route error state.
+ */
 export function CoffeeVarietyDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const [variety, setVariety] = useState<CoffeeVarietyOutput | null>(null);
-  const [recipes, setRecipes] = useState<RecipeWithVersionsOutput[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { variety, recipes } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -33,68 +31,6 @@ export function CoffeeVarietyDetailPage() {
       log.debug({}, 'CoffeeVarietyDetailPage unmounted');
     };
   }, []);
-
-  useEffect(() => {
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(false);
-
-    Promise.all([
-      api.get<CoffeeVarietyOutput>(`/coffee-varieties/${id}`),
-      api.get<{ data: RecipeWithVersionsOutput[] }>(`/coffee-varieties/${id}/recipes?perPage=6`),
-    ])
-      .then(([varietyData, recipesData]) => {
-        setVariety(varietyData);
-        const items = Array.isArray(recipesData?.data)
-          ? recipesData.data
-          : Array.isArray(recipesData)
-            ? recipesData
-            : [];
-        setRecipes(items);
-      })
-      .catch((err) => {
-        log.error({ err }, 'CoffeeVarietyDetailPage loadData failed');
-        setError(true);
-      })
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div className="mx-auto max-w-4xl px-6 py-8 space-y-6">
-        <Skeleton height="0.875rem" width="12rem" />
-        <Skeleton height="2rem" width="40%" />
-        <Skeleton height="1rem" width="20%" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Array.from({ length: 8 }, (_, i) => (
-            <div key={i} className="space-y-1">
-              <Skeleton height="0.75rem" width="6rem" />
-              <Skeleton height="1rem" width="80%" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !variety) {
-    return (
-      <div
-        className="mx-auto max-w-4xl px-6 py-12 text-center"
-        style={{ color: 'var(--text-tertiary)' }}
-      >
-        <h1 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
-          {t('coffeeVarieties.error.notFound')}
-        </h1>
-        <Link to="/coffee-varieties" className="btn-primary">
-          {t('coffeeVarieties.backToList')}
-        </Link>
-      </div>
-    );
-  }
 
   const fields: [string, string | null][] = (
     [

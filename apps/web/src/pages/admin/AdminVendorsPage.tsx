@@ -1,27 +1,34 @@
 import type { VendorOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { api } from '../../api/client.ts';
+import { useFetcher, useLoaderData } from 'react-router';
 import { Field } from '../../components/form/Field.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { useConfirm } from '../../components/ui/Modal.tsx';
-import { useToast } from '../../components/ui/Toast.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './AdminVendorsPage.data.ts';
 
 const log = createLogger('AdminVendorsPage');
 
-/** Admin page: vendor CRUD with inline form. */
+/**
+ * Admin page: vendor CRUD with an inline form. Vendors come from the `/admin/vendors` route
+ * loader; create, update and delete submit `intent`s to the route action
+ * (`AdminVendorsPage.data.ts`) and toast on `{ ok: false }`. The loader revalidates after
+ * each submission, so the table always shows the saved vendors.
+ */
 export function AdminVendorsPage() {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
-  const toast = useToast();
-  const [vendors, setVendors] = useState<VendorOutput[]>([]);
-  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
+  const { vendors } = useLoaderData<typeof loader>();
+  const saveFetcher = useFetcher<typeof action>();
+  const deleteFetcher = useFetcher<typeof action>();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', website: '', description: '' });
-  const [saving, setSaving] = useState(false);
+  const saving = saveFetcher.state !== 'idle';
+
+  useActionFeedback(saveFetcher, { errorKey: 'admin.vendors.saveError', onSuccess: resetForm });
+  useActionFeedback(deleteFetcher, { errorKey: 'admin.vendors.deleteFailed' });
 
   useEffect(() => {
     log.debug({}, 'AdminVendorsPage mounted');
@@ -30,48 +37,17 @@ export function AdminVendorsPage() {
     };
   }, []);
 
-  useEffect(() => {
-    api
-      .get<VendorOutput[]>('/admin/vendors')
-      .then((data) => {
-        setVendors(data);
-        setStatus('ready');
-      })
-      .catch((err) => {
-        log.error({ err }, 'vendor list fetch failed');
-        setStatus('error');
-      });
-  }, []);
-
-  async function handleSubmit(e: React.FormEvent) {
+  /** Submits the form as a `create` or (when editing) an `update` intent. */
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (saving) return;
-    setSaving(true);
-    try {
-      if (editId) {
-        const updated = await api.patch<VendorOutput>(`/admin/vendors/${editId}`, {
-          name: form.name.trim(),
-          website: form.website || undefined,
-          description: form.description || undefined,
-        });
-        setVendors((prev) => prev.map((v) => (v.id === editId ? updated : v)));
-      } else {
-        const created = await api.post<VendorOutput>('/admin/vendors', {
-          name: form.name.trim(),
-          website: form.website || undefined,
-          description: form.description || undefined,
-        });
-        setVendors((prev) => [...prev, created]);
-      }
-      resetForm();
-    } catch (err) {
-      log.error({ err, editId }, 'handleSubmit failed');
-      toast.error('admin.vendors.saveError');
-    } finally {
-      setSaving(false);
-    }
+    saveFetcher.submit(
+      editId ? { intent: 'update', id: editId, ...form } : { intent: 'create', ...form },
+      { method: 'post' },
+    );
   }
 
+  /** Asks for confirmation, then submits the `delete` intent. */
   async function handleDelete(id: string) {
     if (
       !(await confirm({
@@ -81,15 +57,10 @@ export function AdminVendorsPage() {
       }))
     )
       return;
-    try {
-      await api.delete(`/admin/vendors/${id}`);
-      setVendors((prev) => prev.filter((v) => v.id !== id));
-    } catch (err) {
-      log.error({ err, vendorId: id }, 'handleDelete failed');
-      toast.error('admin.vendors.deleteFailed');
-    }
+    deleteFetcher.submit({ intent: 'delete', id }, { method: 'post' });
   }
 
+  /** Opens the form pre-filled with `vendor` for editing. */
   function startEdit(vendor: VendorOutput) {
     setEditId(vendor.id);
     setForm({
@@ -100,6 +71,7 @@ export function AdminVendorsPage() {
     setShowForm(true);
   }
 
+  /** Clears and closes the form. */
   function resetForm() {
     setForm({ name: '', website: '', description: '' });
     setEditId(null);
@@ -162,58 +134,52 @@ export function AdminVendorsPage() {
         </form>
       )}
 
-      {status === 'loading' ? (
-        <LoadingState />
-      ) : status === 'error' ? (
-        <ErrorState message={t('admin.vendors.loadError')} />
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                  {t('common.name')}
-                </th>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                  {t('admin.vendors.website')}
-                </th>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                  {t('common.actions')}
-                </th>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
+              <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                {t('common.name')}
+              </th>
+              <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                {t('admin.vendors.website')}
+              </th>
+              <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                {t('common.actions')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {vendors.map((vendor) => (
+              <tr key={vendor.id} style={{ borderBottom: '1px solid var(--border-primary)' }}>
+                <td className="py-2 px-3" style={{ color: 'var(--text-primary)' }}>
+                  {vendor.name}
+                </td>
+                <td className="py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                  {vendor.website || '-'}
+                </td>
+                <td className="py-2 px-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(vendor)}
+                    className="text-xs"
+                    style={{ color: 'var(--accent-primary)' }}
+                  >
+                    {t('common.edit')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(vendor.id)}
+                    className="btn-danger-text text-xs"
+                  >
+                    {t('common.delete')}
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {vendors.map((vendor) => (
-                <tr key={vendor.id} style={{ borderBottom: '1px solid var(--border-primary)' }}>
-                  <td className="py-2 px-3" style={{ color: 'var(--text-primary)' }}>
-                    {vendor.name}
-                  </td>
-                  <td className="py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                    {vendor.website || '-'}
-                  </td>
-                  <td className="py-2 px-3 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(vendor)}
-                      className="text-xs"
-                      style={{ color: 'var(--accent-primary)' }}
-                    >
-                      {t('common.edit')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(vendor.id)}
-                      className="btn-danger-text text-xs"
-                    >
-                      {t('common.delete')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

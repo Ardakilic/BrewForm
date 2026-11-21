@@ -20,7 +20,9 @@ Verified against the codebase on 2026-06-13.
 | auth | `modules/auth/index.ts` | Yes | 9 routes |
 | recipe | `modules/recipe/index.ts` | Yes | 14 routes |
 | admin | `modules/admin/index.ts` | Yes | ~50 routes |
-| health | `routes/health.ts` | Yes | liveness/readiness |
+| health | `modules/health/index.ts` | Yes | liveness/readiness |
+
+> **Correction (2026-11-21):** the health routes moved out of their old standalone route file (since deleted) into the `modules/health/` module in wave 6 (`wave-6-audit-remediation`). The admin row overstated coverage: only 7 of the 44 admin routes carry `describeRoute()`, and the other 37 are tracked as [D99.36](D99-debts.md).
 
 ### Undocumented (this work)
 

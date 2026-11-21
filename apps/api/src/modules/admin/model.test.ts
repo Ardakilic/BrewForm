@@ -550,77 +550,40 @@ describe('listUsers', () => {
     const result = await model.listUsers(1, 50, `list-${userIds[2]}`);
     expect(result.total).toBe(0);
   });
-});
 
-describe('isEmailTaken', () => {
-  let userId: string;
+  /** Insert a user for the search cases and register it for cleanup. */
+  async function insertSearchUser(username: string, email: string): Promise<string> {
+    const id = crypto.randomUUID();
+    userIds.push(id);
+    await db.insert(users).values({ id, email, username, passwordHash: 'hash' });
+    return id;
+  }
 
-  beforeEach(async () => {
-    userId = crypto.randomUUID();
-    await db.insert(users).values({
-      id: userId,
-      email: `taken-${userId}@example.com`,
-      username: `takenuser-${userId}`,
-      passwordHash: 'hash',
-    });
+  it('should match username and email ignoring letter case and surrounding whitespace', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertSearchUser(`Arda${tag}`, `arda-${tag}@example.com`);
+
+    for (const q of [`ARDA${tag.toUpperCase()}`, `Arda-${tag}@Example.com`, `  arda${tag}  `]) {
+      const result = await model.listUsers(1, 50, q);
+      expect(result.users.map((u) => u.id)).toEqual([id]);
+      expect(result.total).toBe(1);
+    }
   });
 
-  afterEach(async () => {
-    await db.delete(users).where(eq(users.id, userId));
+  it('should match an underscore literally', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const underscoreId = await insertSearchUser(`a_c${tag}`, `us-${tag}@example.com`);
+    await insertSearchUser(`abc${tag}`, `plain-${tag}@example.com`);
+
+    const result = await model.listUsers(1, 50, `a_c${tag}`);
+    expect(result.users.map((u) => u.id)).toEqual([underscoreId]);
+    expect(result.total).toBe(1);
   });
 
-  it('should return true for an existing email', async () => {
-    const result = await model.isEmailTaken(`taken-${userId}@example.com`);
-    expect(result).toBe(true);
-  });
-
-  it('should return false for a non-existing email', async () => {
-    const result = await model.isEmailTaken(`nonexist-${userId}@example.com`);
-    expect(result).toBe(false);
-  });
-
-  it('should exclude the given user id', async () => {
-    const result = await model.isEmailTaken(`taken-${userId}@example.com`, userId);
-    expect(result).toBe(false);
-  });
-
-  it('should return false for a soft-deleted user email', async () => {
-    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
-    const result = await model.isEmailTaken(`taken-${userId}@example.com`);
-    expect(result).toBe(false);
-  });
-});
-
-describe('isUsernameTaken', () => {
-  let userId: string;
-
-  beforeEach(async () => {
-    userId = crypto.randomUUID();
-    await db.insert(users).values({
-      id: userId,
-      email: `uname-${userId}@example.com`,
-      username: `unameuser-${userId}`,
-      passwordHash: 'hash',
-    });
-  });
-
-  afterEach(async () => {
-    await db.delete(users).where(eq(users.id, userId));
-  });
-
-  it('should return true for an existing username', async () => {
-    const result = await model.isUsernameTaken(`unameuser-${userId}`);
-    expect(result).toBe(true);
-  });
-
-  it('should return false for a non-existing username', async () => {
-    const result = await model.isUsernameTaken(`nope-${userId}`);
-    expect(result).toBe(false);
-  });
-
-  it('should exclude the given user id', async () => {
-    const result = await model.isUsernameTaken(`unameuser-${userId}`, userId);
-    expect(result).toBe(false);
+  it('should treat a whitespace-only query as no query', async () => {
+    const all = await model.listUsers(1, 1);
+    const blank = await model.listUsers(1, 1, '   ');
+    expect(blank.total).toBe(all.total);
   });
 });
 
@@ -692,6 +655,28 @@ describe('throwIfUniqueViolation', () => {
   it('should handle direct PostgresError shape without cause wrapper', () => {
     const err = { name: 'PostgresError', code: '23505', constraint_name: 'user_email_unique' };
     expect(() => model.throwIfUniqueViolation(err)).toThrow('EMAIL_ALREADY_EXISTS');
+  });
+
+  it('should map the case-insensitive _lower_unique constraints too', () => {
+    const email = {
+      cause: { name: 'PostgresError', code: '23505', constraint_name: 'user_email_lower_unique' },
+    };
+    const username = {
+      cause: {
+        name: 'PostgresError',
+        code: '23505',
+        constraint_name: 'user_username_lower_unique',
+      },
+    };
+    expect(() => model.throwIfUniqueViolation(email)).toThrow('EMAIL_ALREADY_EXISTS');
+    expect(() => model.throwIfUniqueViolation(username)).toThrow('USERNAME_ALREADY_EXISTS');
+  });
+
+  it('should not throw for a unique violation on an unrelated constraint', () => {
+    const err = {
+      cause: { name: 'PostgresError', code: '23505', constraint_name: 'user_pkey' },
+    };
+    expect(() => model.throwIfUniqueViolation(err)).not.toThrow();
   });
 });
 
@@ -867,6 +852,7 @@ describe('softDeleteUser', () => {
 describe('listAllRecipes', () => {
   let userId: string;
   const recipeIds: string[] = [];
+  const extraUserIds: string[] = [];
 
   beforeEach(async () => {
     userId = crypto.randomUUID();
@@ -894,7 +880,48 @@ describe('listAllRecipes', () => {
       await db.delete(recipes).where(eq(recipes.id, id));
     }
     recipeIds.length = 0;
-    await db.delete(users).where(eq(users.id, userId));
+    for (const id of [userId, ...extraUserIds]) {
+      await db.delete(users).where(eq(users.id, id));
+    }
+    extraUserIds.length = 0;
+  });
+
+  it('returns the author { id, username, displayName } on every row, a soft-deleted author included (E11: admin keeps names)', async () => {
+    const goneId = crypto.randomUUID();
+    extraUserIds.push(goneId);
+    await db.insert(users).values({
+      id: goneId,
+      email: `lrec-gone-${goneId}@example.com`,
+      username: `lrecgone-${goneId}`,
+      displayName: 'Gone Barista',
+      passwordHash: 'hash',
+      deletedAt: new Date(),
+    });
+    const goneRecipeId = crypto.randomUUID();
+    recipeIds.push(goneRecipeId);
+    await db.insert(recipes).values({
+      id: goneRecipeId,
+      slug: `lrec-${goneRecipeId}`,
+      title: 'Recipe by a deleted account',
+      authorId: goneId,
+      visibility: 'public',
+    });
+
+    const result = await model.listAllRecipes(1, 50);
+    const byId = new Map(result.recipes.map((r) => [r.id, r]));
+
+    for (const id of recipeIds.slice(0, 3)) {
+      expect(byId.get(id)?.author).toEqual({
+        id: userId,
+        username: `lrecuser-${userId}`,
+        displayName: null,
+      });
+    }
+    expect(byId.get(goneRecipeId)?.author).toEqual({
+      id: goneId,
+      username: `lrecgone-${goneId}`,
+      displayName: 'Gone Barista',
+    });
   });
 
   it('should return paginated recipes', async () => {
@@ -1609,6 +1636,31 @@ describe('listCoffeeVarieties', () => {
       .where(eq(coffeeVarieties.id, varietyIds[0]));
     const result = await model.listCoffeeVarieties(1, 50, undefined, `Alpha${uniqueTag}`);
     expect(result.total).toBe(0);
+  });
+
+  /** Insert a variety for the search cases and register it for cleanup. */
+  async function insertVariety(name: string): Promise<string> {
+    const id = crypto.randomUUID();
+    varietyIds.push(id);
+    await db
+      .insert(coffeeVarieties)
+      .values({ id, name, category: 'variety', isSystem: false, createdBy: userId });
+    return id;
+  }
+
+  it('should match the search ignoring letter case', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertVariety(`Bourbon${tag}`);
+    const result = await model.listCoffeeVarieties(1, 50, undefined, `bourbon${tag}`);
+    expect(result.varieties.map((v) => v.id)).toEqual([id]);
+  });
+
+  it('should match an underscore in the search literally', async () => {
+    const tag = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const id = await insertVariety(`a_c${tag}`);
+    await insertVariety(`abc${tag}`);
+    const result = await model.listCoffeeVarieties(1, 50, undefined, `a_c${tag}`);
+    expect(result.varieties.map((v) => v.id)).toEqual([id]);
   });
 });
 

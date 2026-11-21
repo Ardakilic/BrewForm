@@ -1,40 +1,81 @@
 /**
  * Auth model — data access layer for authentication entities.
  *
- * All user queries filter soft-deletes (`deletedAt IS NULL`). Password
- * hashing uses bcryptjs (10 salt rounds). Email verification tokens are
- * SHA-256 hashed before storage to prevent plaintext token leaks.
+ * User queries filter soft-deletes (`deletedAt IS NULL`), with one documented
+ * exception: the availability checks {@link isEmailTaken} and
+ * {@link isUsernameTaken} also count soft-deleted accounts, because the unique
+ * indexes cover soft-deleted rows and a deleted account's username stays
+ * reserved (a new account must not inherit its profile links and mentions).
+ * Emails and usernames are compared case-insensitively with
+ * `eq(lower(col), lower(value))`: the database lowers both sides with the same
+ * rules as the `user_email_lower_unique` / `user_username_lower_unique`
+ * expression indexes, so lookups agree with them on any database locale and
+ * the indexes serve them. Password hashing uses
+ * bcryptjs (10 salt rounds). Email verification tokens are SHA-256 hashed
+ * before storage to prevent plaintext token leaks.
  */
 import { db } from '@brewform/db';
 import {
   emailVerificationTokens,
+  lower,
   passwordResets,
   userPreferences,
   users,
 } from '@brewform/db/schema';
 import { compareSync, hashSync } from 'bcryptjs';
 import { and, eq, isNull, ne } from 'drizzle-orm';
+import { isUniqueViolation } from '../../utils/errors.ts';
 
-/** Find a non-deleted user by email, including preferences. */
+/**
+ * Unique constraints that guard `user.email`: the exact-match constraint and the
+ * case-insensitive `lower(email)` expression index (created in wave-6 task 7.15).
+ */
+export const USER_EMAIL_CONSTRAINTS = ['user_email_unique', 'user_email_lower_unique'] as const;
+
+/**
+ * Unique constraints that guard `user.username`: the exact-match constraint and
+ * the case-insensitive `lower(username)` expression index (wave-6 task 7.15).
+ */
+export const USER_USERNAME_CONSTRAINTS = [
+  'user_username_unique',
+  'user_username_lower_unique',
+] as const;
+
+/**
+ * Translate a Postgres unique violation on a user identifier into its domain
+ * code. Detection goes through the shared {@link isUniqueViolation} helper, so
+ * bare and Drizzle-wrapped driver errors are both recognized.
+ *
+ * @param err - Any error thrown by a `user` insert or update.
+ * @returns `EMAIL_ALREADY_EXISTS`, `USERNAME_ALREADY_EXISTS`, or `null` when the
+ *          error is not a unique violation on one of those constraints.
+ */
+export function userIdentifierConflict(
+  err: unknown,
+): 'EMAIL_ALREADY_EXISTS' | 'USERNAME_ALREADY_EXISTS' | null {
+  if (USER_EMAIL_CONSTRAINTS.some((constraint) => isUniqueViolation(err, constraint))) {
+    return 'EMAIL_ALREADY_EXISTS';
+  }
+  if (USER_USERNAME_CONSTRAINTS.some((constraint) => isUniqueViolation(err, constraint))) {
+    return 'USERNAME_ALREADY_EXISTS';
+  }
+  return null;
+}
+
+/**
+ * Find a non-deleted user by email, including preferences. Both sides are
+ * lowered in SQL (`lower(email) = lower($1)`, served by
+ * `user_email_lower_unique`), so legacy mixed-case rows are found too.
+ */
 export async function findUserByEmail(email: string) {
   const result = await db
     .select()
     .from(users)
     .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
-    .where(and(eq(users.email, email), isNull(users.deletedAt)))
+    .where(and(eq(lower(users.email), lower(email)), isNull(users.deletedAt)))
     .limit(1);
   if (!result[0]) return null;
   return { ...result[0].user, preferences: result[0].user_preferences };
-}
-
-/** Find a non-deleted user by username. Preferences not included. */
-export async function findUserByUsername(username: string) {
-  const result = await db
-    .select()
-    .from(users)
-    .where(and(eq(users.username, username), isNull(users.deletedAt)))
-    .limit(1);
-  return result[0] ?? null;
 }
 
 /** Find a non-deleted user by UUID, including preferences. */
@@ -137,10 +178,16 @@ export async function markOnboardingComplete(userId: string) {
   return result ?? null;
 }
 
-/** Check whether an email is already taken by a non-deleted user.
- *  Pass `excludeId` to ignore a specific user (e.g. for profile updates). */
+/**
+ * Check whether an email is already taken, case-insensitively (both sides
+ * lowered in SQL, like `user_email_lower_unique`), by ANY user row,
+ * soft-deleted ones included. This deliberately skips the soft-delete filter:
+ * the unique indexes cover soft-deleted rows, so the check must agree with them
+ * for registration to answer 409 before the insert.
+ * Pass `excludeId` to ignore a specific user (e.g. for profile updates).
+ */
 export async function isEmailTaken(email: string, excludeId?: string) {
-  const conditions = [eq(users.email, email), isNull(users.deletedAt)];
+  const conditions = [eq(lower(users.email), lower(email))];
   if (excludeId) conditions.push(ne(users.id, excludeId));
   const [result] = await db
     .select({ id: users.id })
@@ -150,10 +197,16 @@ export async function isEmailTaken(email: string, excludeId?: string) {
   return !!result;
 }
 
-/** Check whether a username is already taken by a non-deleted user.
- *  Pass `excludeId` to ignore a specific user (e.g. for profile updates). */
+/**
+ * Check whether a username is already taken, case-insensitively (both sides
+ * lowered in SQL, like `user_username_lower_unique`), by ANY user row,
+ * soft-deleted ones included. This deliberately skips the soft-delete
+ * filter: the unique indexes cover soft-deleted rows, and a deleted account's
+ * username stays reserved so nobody inherits its profile links and mentions.
+ * Pass `excludeId` to ignore a specific user (e.g. for profile updates).
+ */
 export async function isUsernameTaken(username: string, excludeId?: string) {
-  const conditions = [eq(users.username, username), isNull(users.deletedAt)];
+  const conditions = [eq(lower(users.username), lower(username))];
   if (excludeId) conditions.push(ne(users.id, excludeId));
   const [result] = await db
     .select({ id: users.id })

@@ -414,7 +414,7 @@ GET /api/v1/recipes/brew-method/v60?limit=12
 
 ## References
 
-- [Drizzle ORM docs](/drizzle-team/drizzle-orm-docs) — joins, aggregates
-- [React docs](/reactjs/react.dev) — Helmet for SEO, lazy loading
+- [Drizzle ORM docs](https://orm.drizzle.team/docs) (Context7 `/drizzle-team/drizzle-orm-docs`) — joins, aggregates
+- [React docs](https://react.dev) (Context7 `/reactjs/react.dev`) — Helmet for SEO, lazy loading
 - Existing: `packages/db/src/schema.ts:33` — `brewMethodEnum` (11 brew methods)
 - Existing: `apps/api/src/modules/recipe/service.ts:469` — `listRecipes()` filtering pattern

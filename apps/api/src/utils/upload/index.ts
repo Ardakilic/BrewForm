@@ -1,114 +1,153 @@
+/**
+ * Upload helpers for recipe photos (ADR-019): server-generated storage keys,
+ * content-based validation of each multipart part, and thin wrappers over the
+ * configured storage driver that always pass an explicit content type.
+ *
+ * The client filename is never an input to anything here.
+ */
 import { config } from '../../config/index.ts';
-import { createStorageDriver } from '../storage/index.ts';
+import { createStorageDriver, type StorageDriver } from '../storage/index.ts';
+import { type UploadPartField, UploadValidationError } from './errors.ts';
+import {
+  MAX_IMAGE_PIXELS,
+  MAX_IMAGE_SIDE_PX,
+  THUMBNAIL_MAX_SIDE_PX,
+  THUMBNAIL_MAX_SIZE_BYTES,
+} from './limits.ts';
+import { MIME_TO_EXT, type SupportedImageMime } from './mime.ts';
+import { type DetectedImage, detectImage, matchImageSignature } from './sniff.ts';
 
-const ALLOWED_TYPES = config.UPLOAD_ALLOWED_TYPES.split(',');
-const MAX_SIZE = config.UPLOAD_MAX_SIZE_BYTES;
+export type { DetectedImage } from './sniff.ts';
 
-const driver = createStorageDriver();
+/** Mutable storage dependencies (module `deps` pattern): tests swap `driver` for a fake. */
+export const storageDeps: { driver: StorageDriver } = { driver: createStorageDriver() };
 
-/** Metadata for a file persisted to the storage driver. */
-export interface UploadedFile {
-  filename: string;
-  path: string;
-  url: string;
+/** One uploaded multipart part, as the controller passes it (no filename). */
+export interface UploadPart {
+  /** The client-declared Content-Type: an untrusted hint only. */
+  declaredType: string;
+  /** Size in bytes. */
   size: number;
-  mimeType: string;
+  /** The part's bytes. */
+  data: Uint8Array;
 }
-
-/** Resize options for a thumbnail variant; height defaults to width for a square crop. */
-export interface ThumbnailOptions {
-  width: number;
-  height?: number;
-  quality?: number;
-}
-
-const THUMBNAIL_SIZES: Record<string, ThumbnailOptions> = {
-  small: { width: 200, height: 200, quality: 80 },
-  medium: { width: 600, height: 600, quality: 85 },
-  large: { width: 1200, height: 1200, quality: 90 },
-};
 
 /**
- * Validates that an uploaded image file's type and size are within allowed limits.
+ * Generate a fresh storage key for an original photo: `<uuidv4>.<ext>`, with
+ * the extension looked up in the fixed {@link MIME_TO_EXT} table.
  *
- * Returns `null` if the file passes validation, or an error message string
- * describing why validation failed (unsupported type or file too large).
- *
- * `ALLOWED_TYPES` and `MAX_SIZE` are read from config at module load time.
- *
- * @param file - An object with `type` (MIME type string) and `size` (bytes).
- * @returns A human-readable error string on failure, or `null` on success.
+ * @param mime - The server-detected image type.
+ * @returns The UUID (`id`, reused by {@link thumbnailKey}) and the object key.
  */
-export function validateImageUpload(file: { type: string; size: number }): string | null {
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return `Unsupported file type: ${file.type}. Allowed: ${ALLOWED_TYPES.join(', ')}`;
+export function generateStorageKey(mime: SupportedImageMime): { id: string; key: string } {
+  const id = crypto.randomUUID();
+  return { id, key: `${id}.${MIME_TO_EXT[mime]}` };
+}
+
+/**
+ * Derive the thumbnail key for an original's id: `<id>_medium.<ext>`, where
+ * the extension comes from the thumbnail's own detected type.
+ *
+ * @param id - The UUID returned by {@link generateStorageKey}.
+ * @param mime - The thumbnail's server-detected image type.
+ */
+export function thumbnailKey(id: string, mime: SupportedImageMime): string {
+  return `${id}_medium.${MIME_TO_EXT[mime]}`;
+}
+
+/**
+ * Normalise a declared Content-Type for comparison: drop parameters, trim and
+ * lower-case (`'IMAGE/JPEG; x=y'` → `'image/jpeg'`).
+ */
+function normaliseDeclaredType(declaredType: string): string {
+  return (declaredType.split(';')[0] ?? '').trim().toLowerCase();
+}
+
+/**
+ * Validate one uploaded image part and return what its bytes really are.
+ *
+ * Checks, in order: (1) the part's size cap (`UPLOAD_MAX_SIZE_BYTES` for the
+ * original, {@link THUMBNAIL_MAX_SIZE_BYTES} for the thumbnail); (2) the
+ * declared type, an advisory hint that is rejected only when it is non-empty,
+ * not `application/octet-stream` and not allowed; (3) magic-byte detection;
+ * (4) the allowlist (detected type ∩ `UPLOAD_ALLOWED_TYPES`); (5) the
+ * dimension limits (non-zero; originals at most {@link MAX_IMAGE_SIDE_PX} per
+ * side and {@link MAX_IMAGE_PIXELS} in total; thumbnails at most
+ * {@link THUMBNAIL_MAX_SIDE_PX} per side).
+ *
+ * @param part - The part's declared type, size and bytes.
+ * @param kind - Which part this is; reported as the error `field`.
+ * @returns The detected image (its type decides the key extension and stored Content-Type).
+ * @throws {UploadValidationError} `FILE_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE` or
+ *   `INVALID_IMAGE`, with a fixed message that never echoes client input.
+ */
+export function validateImagePart(part: UploadPart, kind: UploadPartField): DetectedImage {
+  const allowed: readonly string[] = config.UPLOAD_ALLOWED_TYPES;
+  const maxBytes = kind === 'file' ? config.UPLOAD_MAX_SIZE_BYTES : THUMBNAIL_MAX_SIZE_BYTES;
+
+  if (part.size > maxBytes || part.data.byteLength > maxBytes) {
+    throw new UploadValidationError('FILE_TOO_LARGE', kind);
   }
-  if (file.size > MAX_SIZE) {
-    return `File too large. Maximum size: ${MAX_SIZE / (1024 * 1024)}MB`;
+
+  const declared = normaliseDeclaredType(part.declaredType);
+  if (declared !== '' && declared !== 'application/octet-stream' && !allowed.includes(declared)) {
+    throw new UploadValidationError('UNSUPPORTED_MEDIA_TYPE', kind);
   }
-  return null;
-}
 
-/** Generate a collision-resistant upload filename (`<timestamp>-<uuid8>.<ext>`), keeping the original extension. */
-export function generateFilename(originalName: string): string {
-  const ext = originalName.split('.').pop() || 'jpg';
-  const uniqueId = crypto.randomUUID().slice(0, 8);
-  const timestamp = Date.now();
-  return `${timestamp}-${uniqueId}.${ext}`;
-}
-
-/** Derive a thumbnail filename from the original by appending `_<size>` before the extension. */
-export function generateThumbnailFilename(
-  originalFilename: string,
-  size: string = 'medium',
-): string {
-  const ext = originalFilename.split('.').pop() || 'jpg';
-  const baseName = originalFilename.replace(`.${ext}`, '');
-  return `${baseName}_${size}.${ext}`;
-}
-
-/**
- * Build the public URL for a stored file: `/uploads/<name>` for the local
- * driver, otherwise `<S3_PUBLIC_URL>/<name>`.
- */
-export function getPublicUrl(filename: string): string {
-  if (config.STORAGE_DRIVER === 'local') {
-    return `/uploads/${filename}`;
+  const image = detectImage(part.data);
+  if (!image) {
+    // An allowed format's signature with an unreadable header is a broken
+    // image; anything else is content of an unsupported type.
+    const signature = matchImageSignature(part.data);
+    const malformed = signature !== null && allowed.includes(signature);
+    throw new UploadValidationError(malformed ? 'INVALID_IMAGE' : 'UNSUPPORTED_MEDIA_TYPE', kind);
   }
-  return `${config.S3_PUBLIC_URL}/${filename}`;
+
+  if (!allowed.includes(image.mime)) {
+    throw new UploadValidationError('UNSUPPORTED_MEDIA_TYPE', kind);
+  }
+
+  const { width, height } = image;
+  const maxSide = kind === 'file' ? MAX_IMAGE_SIDE_PX : THUMBNAIL_MAX_SIDE_PX;
+  if (
+    width <= 0 ||
+    height <= 0 ||
+    width > maxSide ||
+    height > maxSide ||
+    (kind === 'file' && width * height > MAX_IMAGE_PIXELS)
+  ) {
+    throw new UploadValidationError('INVALID_IMAGE', kind);
+  }
+
+  return image;
 }
 
 /**
- * Persist raw file bytes via the module-level storage driver (chosen from
- * config at load time) and return the file's public URL or path.
- */
-export function saveUploadedFile(data: Uint8Array, filename: string): Promise<string> {
-  return driver.save(data, filename);
-}
-
-/** Return a shallow copy of the preset thumbnail size definitions (small/medium/large). */
-export function getThumbnailSizes(): Record<string, ThumbnailOptions> {
-  return { ...THUMBNAIL_SIZES };
-}
-
-/**
- * Persists pre-resized thumbnail bytes to disk and returns the public URL.
+ * Persist an original photo or its client-produced thumbnail through {@link storageDeps}'
+ * driver. Thumbnails are produced client-side via `<canvas>` in PhotoUpload before upload
+ * (see apps/web/src/components/photos/PhotoUpload.tsx) and validated by
+ * {@link validateImagePart} like the original; the server only stores them.
  *
- * Thumbnails are produced client-side via `<canvas>` in PhotoUpload before
- * upload (see apps/web/src/components/photos/PhotoUpload.tsx). The server
- * only stores them. If no thumbnail bytes are provided the original file's
- * URL is returned so callers can always populate `Photo.thumbnailUrl`.
+ * @param data - The validated bytes.
+ * @param key - A key from {@link generateStorageKey} or {@link thumbnailKey} in the same request.
+ * @param contentType - The server-detected MIME type (never the client's).
+ * @returns The URL that is stored for the object, built by the driver: `/uploads/<key>` for the
+ *   local driver, `<S3_PUBLIC_URL>/<key>` for the S3 driver (the base has no trailing slash).
  */
-export async function saveThumbnail(
-  thumbnailBytes: Uint8Array | null,
-  originalFilename: string,
-  fallbackUrl: string,
-  size: string = 'medium',
+export function saveUploadedFile(
+  data: Uint8Array,
+  key: string,
+  contentType: SupportedImageMime,
 ): Promise<string> {
-  if (!thumbnailBytes || thumbnailBytes.length === 0) {
-    return fallbackUrl;
-  }
-  const filename = generateThumbnailFilename(originalFilename, size);
-  await driver.save(thumbnailBytes, filename);
-  return getPublicUrl(filename);
+  return storageDeps.driver.save(data, key, { contentType });
+}
+
+/**
+ * Delete a stored object through {@link storageDeps}' driver (used to clean up
+ * the objects of an upload that failed part-way).
+ *
+ * @param key - A key written earlier in the same request.
+ */
+export function deleteStoredFile(key: string): Promise<void> {
+  return storageDeps.driver.delete(key);
 }

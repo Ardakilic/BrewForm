@@ -1,13 +1,32 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '../../components/ui/Toast.tsx';
+import { qrcodeApi } from '../../api/index.ts';
+import { recipeQrLoader, shouldRevalidateRecipeQr } from '../../routes/resources/qrcode.ts';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 import { RecipeQRCode } from './RecipeQRCode.tsx';
 
+/**
+ * Renders the QR card inside the shared app providers (toast, confirm, router), next to the
+ * real `resources/qrcode/recipe/:slug` resource route its download fetcher loads.
+ */
 function renderQR(ui: ReactElement) {
-  return render(<ToastProvider>{ui}</ToastProvider>);
+  return renderWithAppProviders([
+    { path: '/', element: ui },
+    {
+      path: '/resources/qrcode/recipe/:slug',
+      loader: recipeQrLoader,
+      shouldRevalidate: shouldRevalidateRecipeQr,
+    },
+  ]);
 }
+
+vi.mock('../../api/index.ts', () => ({
+  qrcodeApi: { recipeSvg: vi.fn() },
+}));
+
+const mockRecipeSvg = vi.mocked(qrcodeApi.recipeSvg);
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({
@@ -23,10 +42,11 @@ vi.mock('@/utils/logger.ts', () => ({
 vi.mock('../../contexts/I18nContext.tsx', async () => {
   const { t: translate } = await import('@brewform/shared/i18n');
   return {
+    I18nProvider: ({ children }: { children: ReactNode }) => children,
     useTranslation: () => ({
       t: (key: string) => translate(key, 'en'),
       locale: 'en',
-      setLocale: () => {},
+      setLocale: () => undefined,
       availableLocales: ['en', 'tr'],
     }),
   };
@@ -51,67 +71,76 @@ describe('RecipeQRCode', () => {
     expect(screen.queryByText('QR Code')).not.toBeInTheDocument();
   });
 
-  it('renders the QR card with title and image when visibility is "public"', () => {
+  it('renders the QR card with title and image when visibility is "public"', async () => {
     renderQR(<RecipeQRCode slug="my-espresso" visibility="public" />);
-    expect(screen.getByText('QR Code')).toBeInTheDocument();
+    expect(await screen.findByText('QR Code')).toBeInTheDocument();
     const img = screen.getByAltText('Recipe QR Code') as HTMLImageElement;
     expect(img).toBeInTheDocument();
     expect(img.src).toContain('/api/v1/qrcode/recipe/my-espresso.svg');
   });
 
-  it('renders when visibility is "unlisted"', () => {
+  it('renders when visibility is "unlisted"', async () => {
     renderQR(<RecipeQRCode slug="my-espresso" visibility="unlisted" />);
-    expect(screen.getByText('QR Code')).toBeInTheDocument();
+    expect(await screen.findByText('QR Code')).toBeInTheDocument();
   });
 
-  it('builds the image src from the slug prop', () => {
+  it('builds the image src from the slug prop', async () => {
     renderQR(<RecipeQRCode slug="cold-brew-42" visibility="public" />);
-    const img = screen.getByAltText('Recipe QR Code') as HTMLImageElement;
+    const img = (await screen.findByAltText('Recipe QR Code')) as HTMLImageElement;
     expect(img.src).toContain('/api/v1/qrcode/recipe/cold-brew-42.svg');
   });
 
-  it('shows a "Download QR Code" button that is enabled initially', () => {
+  it('shows a "Download QR Code" button that is enabled initially', async () => {
     renderQR(<RecipeQRCode slug="my-espresso" visibility="public" />);
-    const button = screen.getByRole('button', { name: /Download QR Code/i });
+    const button = await screen.findByRole('button', { name: /Download QR Code/i });
     expect(button).toBeInTheDocument();
     expect(button).not.toBeDisabled();
   });
 
-  it('updates button label to "Downloading..." while the fetch is in-flight', async () => {
-    let resolveFetch: (value: Blob) => void = () => {};
-    const blobPromise = new Promise<Blob>((resolve) => {
-      resolveFetch = resolve;
-    });
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockReturnValue(
-      Promise.resolve({
-        blob: () => blobPromise,
-      } as unknown as Response),
+  it('updates the button label to "Downloading..." while the resource route loads the SVG', async () => {
+    let resolveSvg: (svg: string) => void = () => undefined;
+    mockRecipeSvg.mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveSvg = resolve;
+        }),
     );
-    // jsdom: URL.createObjectURL must exist
-    const createObjectURL = vi.fn(() => 'blob:fake');
-    const revokeObjectURL = vi.fn();
     Object.defineProperty(globalThis.URL, 'createObjectURL', {
-      value: createObjectURL,
+      value: vi.fn(() => 'blob:fake'),
       configurable: true,
     });
     Object.defineProperty(globalThis.URL, 'revokeObjectURL', {
-      value: revokeObjectURL,
+      value: vi.fn(),
       configurable: true,
     });
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
 
     try {
       const user = userEvent.setup();
       renderQR(<RecipeQRCode slug="my-espresso" visibility="public" />);
-      const button = screen.getByRole('button', { name: /Download QR Code/i });
-      await user.click(button);
+      await user.click(await screen.findByRole('button', { name: /Download QR Code/i }));
       expect(await screen.findByRole('button', { name: /Downloading/i })).toBeDisabled();
-      expect(fetchSpy).toHaveBeenCalledWith('/api/v1/qrcode/recipe/my-espresso.svg');
+      expect(mockRecipeSvg).toHaveBeenCalledWith('my-espresso', {
+        signal: expect.any(AbortSignal),
+      });
 
-      // Resolve to settle pending state and avoid dangling promise
-      resolveFetch(new Blob(['<svg/>'], { type: 'image/svg+xml' }));
+      resolveSvg('<svg/>');
       await screen.findByRole('button', { name: /Download QR Code/i });
+      expect(clickSpy).toHaveBeenCalledTimes(1);
     } finally {
-      fetchSpy.mockRestore();
+      clickSpy.mockRestore();
     }
+  });
+
+  it('shows the download-failed toast when the SVG cannot be loaded', async () => {
+    mockRecipeSvg.mockRejectedValue(new Error('down'));
+    const user = userEvent.setup();
+    renderQR(<RecipeQRCode slug="my-espresso" visibility="public" />);
+
+    await user.click(await screen.findByRole('button', { name: /Download QR Code/i }));
+
+    expect(await screen.findByText('Failed to download QR code.')).toBeInTheDocument();
   });
 });

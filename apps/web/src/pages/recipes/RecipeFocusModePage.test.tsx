@@ -1,62 +1,44 @@
 /**
- * Tests for RecipeFocusModePage
+ * Tests for RecipeFocusModePage and its `/recipes/:slug/focus` loader.
  *
  * Feature: recipe-detail-redesign
  * **Validates: Requirements 16.8**
  *
  * Covers:
- *  - Loading state
+ *  - Loader: request.signal forwarding, the cached taste-note lookup, 404 and failure states
+ *  - A superseded navigation never renders the previous recipe under the new URL
  *  - Recipe title (h1) and author byline rendering
  *  - "Back to Recipe" navigation link
  *  - StatCards always rendered
- *  - BeanSection conditional rendering
- *  - TastingNotesSection conditional rendering
+ *  - BeanSection / TastingNotesSection conditional rendering
  *  - SEO canonical + noIndex
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { t } from '@brewform/shared/i18n';
+import type { RecipeDetailOutput, TasteNoteOutput } from '@brewform/shared/schemas';
+import { act, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockLogger } = vi.hoisted(() => ({
-  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  mockLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  },
 }));
-
-vi.mock('@/utils/logger.ts', () => ({
-  createLogger: () => mockLogger,
-}));
-
-import { RecipeFocusModePage } from './RecipeFocusModePage.tsx';
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
-vi.mock('react-router', () => ({
-  Link: ({
-    to,
-    children,
-    ...props
-  }: {
-    to: string;
-    children: React.ReactNode;
-    [key: string]: unknown;
-  }) => (
-    <a href={to} {...props}>
-      {children}
-    </a>
-  ),
-  useParams: vi.fn(),
-}));
-
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: vi.fn(),
-}));
-
 vi.mock('../../api/index.ts', () => ({
   recipeApi: { get: vi.fn() },
-  tasteApi: { flat: vi.fn().mockResolvedValue([]) },
 }));
 
-vi.mock('../../components/seo/SEOHead.tsx', () => ({
-  SEOHead: vi.fn(() => null),
+vi.mock('../../api/static-cache.ts', () => ({
+  getTasteNotesCached: vi.fn(),
 }));
 
 vi.mock('../../components/recipe/StatCards.tsx', () => ({
@@ -76,49 +58,21 @@ vi.mock('../../components/recipe/EquipmentSection.tsx', () => ({
 }));
 
 vi.mock('../../components/recipe/TastingNotesSection.tsx', () => ({
-  TastingNotesSection: () => <div data-testid="tasting-notes-section" />,
+  TastingNotesSection: ({ allTasteNotes }: { allTasteNotes: TasteNoteOutput[] }) => (
+    <div data-testid="tasting-notes-section" data-lookup-size={allTasteNotes.length} />
+  ),
 }));
 
-import type { RecipeDetailOutput } from '@brewform/shared/schemas';
-import { useParams } from 'react-router';
-import { recipeApi, tasteApi } from '../../api/index.ts';
-import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { ApiError } from '../../api/errors.ts';
+import { recipeApi } from '../../api/index.ts';
+import { getTasteNotesCached } from '../../api/static-cache.ts';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { loader } from './RecipeFocusModePage.data.ts';
+import { RecipeFocusModePage } from './RecipeFocusModePage.tsx';
 
-const mockUseParams = vi.mocked(useParams);
-const mockUseTranslation = vi.mocked(useTranslation);
 const mockRecipeApi = vi.mocked(recipeApi);
-const mockTasteApi = vi.mocked(tasteApi);
-const mockSEOHead = vi.mocked(SEOHead);
-
-// ── Translation helpers ────────────────────────────────────────────────────
-
-const enT = (key: string) => {
-  const map: Record<string, string> = {
-    'common.loading': 'Loading...',
-    'recipe.focusMode.backToRecipe': 'Back to Recipe',
-    'recipe.focusMode.by': 'By',
-    'recipe.focusMode.loadError': 'Failed to load recipe',
-  };
-  return map[key] ?? key;
-};
-
-const trT = (key: string) => {
-  const map: Record<string, string> = {
-    'common.loading': 'Yükleniyor...',
-    'recipe.focusMode.backToRecipe': 'Tarife Dön',
-    'recipe.focusMode.by': 'Yazan',
-    'recipe.focusMode.loadError': 'Tarif yüklenemedi',
-  };
-  return map[key] ?? key;
-};
-
-const defaultTranslation = {
-  locale: 'en' as const,
-  setLocale: vi.fn(),
-  t: enT,
-  availableLocales: ['en', 'tr'],
-};
+const mockTasteNotes = vi.mocked(getTasteNotesCached);
 
 // ── Sample data ────────────────────────────────────────────────────────────
 
@@ -127,6 +81,7 @@ const sampleRecipe = {
   slug: 'my-espresso',
   author: { username: 'alice', displayName: 'Alice' },
   tasteNotes: [{ id: 'tn-1', name: 'Chocolate', intensity: 2 }],
+  equipment: [],
   currentVersion: {
     brewMethod: 'ESPRESSO',
     drinkType: 'ESPRESSO',
@@ -141,288 +96,220 @@ const sampleRecipe = {
   },
 };
 
+/** The sample recipe with `overrides` applied (cast: only the fields the page reads). */
+function recipeWith(overrides: Record<string, unknown> = {}): RecipeDetailOutput {
+  return { ...sampleRecipe, ...overrides } as unknown as RecipeDetailOutput;
+}
+
+/** Renders `/recipes/:slug/focus` through the real loader. */
+function renderPage(locale: 'en' | 'tr' = 'en', url = '/recipes/my-espresso/focus') {
+  return renderWithAppProviders(
+    [
+      {
+        path: '/recipes/:slug/focus',
+        loader,
+        Component: RecipeFocusModePage,
+        errorElement: <RouteErrorState />,
+      },
+    ],
+    { initialEntries: [url], locale },
+  );
+}
+
 // ── Setup ──────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockUseParams.mockReturnValue({ slug: 'my-espresso' });
-  mockUseTranslation.mockReturnValue(defaultTranslation);
-  mockRecipeApi.get.mockResolvedValue(sampleRecipe as unknown as RecipeDetailOutput);
+  localStorage.clear();
+  mockRecipeApi.get.mockResolvedValue(recipeWith());
+  mockTasteNotes.mockResolvedValue([{ id: 'tn-1', name: 'Chocolate' } as TasteNoteOutput]);
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
-describe('RecipeFocusModePage — loading state', () => {
-  it('shows "Loading..." while fetching — English', () => {
-    mockRecipeApi.get.mockReturnValue(new Promise(() => {}));
-    mockTasteApi.flat.mockReturnValue(new Promise(() => {}));
-    render(<RecipeFocusModePage />);
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+describe('/recipes/:slug/focus loader', () => {
+  it('loads the recipe and the cached taste-note lookup with request.signal', async () => {
+    renderPage();
+
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('My Espresso');
+    expect(mockRecipeApi.get).toHaveBeenCalledWith('my-espresso', {
+      signal: expect.any(AbortSignal),
+    });
+    expect(mockTasteNotes).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
+    expect(screen.getByTestId('tasting-notes-section')).toHaveAttribute('data-lookup-size', '1');
   });
 
-  it('shows "Yükleniyor..." while fetching — Turkish', () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockRecipeApi.get.mockReturnValue(new Promise(() => {}));
-    mockTasteApi.flat.mockReturnValue(new Promise(() => {}));
-    render(<RecipeFocusModePage />);
-    expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
+  it('still renders the recipe when the taste-note lookup fails, and logs it', async () => {
+    mockTasteNotes.mockRejectedValue(new Error('lookup down'));
+    renderPage();
+
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('My Espresso');
+    expect(screen.getByTestId('tasting-notes-section')).toHaveAttribute('data-lookup-size', '0');
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(Error) }),
+      'RecipeFocusModePage loadTasteNotes failed',
+    );
+  });
+
+  it('renders the route error state when the recipe fails to load', async () => {
+    mockRecipeApi.get.mockRejectedValue(new Error('down'));
+    renderPage('tr');
+
+    expect(await screen.findByText(t('error.route.loadFailed', 'tr'))).toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: 'my-espresso' }),
+      'RecipeFocusModePage loadRecipe failed',
+    );
+  });
+
+  it('renders the not-found page for an unknown recipe', async () => {
+    mockRecipeApi.get.mockRejectedValue(new ApiError('NOT_FOUND', 'missing', undefined, 404));
+    renderPage();
+
+    expect(await screen.findByText(t('error.404'))).toBeInTheDocument();
+  });
+
+  it('aborts a superseded load and never renders recipe A under recipe B’s URL', async () => {
+    let signalA: AbortSignal | undefined;
+    let resolveB: (r: RecipeDetailOutput) => void = () => undefined;
+    mockRecipeApi.get.mockImplementation((slug: string, opts?: { signal?: AbortSignal }) => {
+      if (slug === 'a') {
+        signalA = opts?.signal;
+        return new Promise(() => undefined);
+      }
+      return new Promise((resolve) => {
+        resolveB = resolve;
+      });
+    });
+    const { router } = renderPage('en', '/recipes/a/focus');
+    await waitFor(() => expect(signalA).toBeDefined());
+
+    // Not awaited: the navigation settles only once B's loader resolves below.
+    act(() => {
+      void router.navigate('/recipes/b/focus');
+    });
+    await waitFor(() => expect(signalA?.aborted).toBe(true));
+
+    await act(() => {
+      resolveB(recipeWith({ title: 'Recipe B', slug: 'b' }));
+    });
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Recipe B');
+    expect(screen.queryByText('My Espresso')).not.toBeInTheDocument();
   });
 });
 
 describe('RecipeFocusModePage — recipe title and author', () => {
-  it('renders recipe title in h1', async () => {
-    render(<RecipeFocusModePage />);
+  it('renders the recipe title in h1 and the "By" byline — English', async () => {
+    renderPage();
 
-    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument());
-
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My Espresso');
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('My Espresso');
+    expect(screen.getByText(new RegExp(`^${t('recipe.focusMode.by')} Alice`))).toBeInTheDocument();
   });
 
-  it('renders author byline', async () => {
-    render(<RecipeFocusModePage />);
+  it('renders the byline with the Turkish prefix', async () => {
+    renderPage('tr');
 
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.getByText(/Alice/)).toBeInTheDocument();
-  });
-
-  it('renders author byline with "By" prefix — English', async () => {
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.getByText(/^By Alice/)).toBeInTheDocument();
-  });
-
-  it('renders author byline with "Yazan" prefix — Turkish', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.getByText(/^Yazan Alice/)).toBeInTheDocument();
+    await screen.findByText('My Espresso');
+    expect(
+      screen.getByText(new RegExp(`^${t('recipe.focusMode.by', 'tr')} Alice`)),
+    ).toBeInTheDocument();
   });
 });
 
 describe('RecipeFocusModePage — Back to Recipe link', () => {
-  it('renders Back to Recipe link', async () => {
-    render(<RecipeFocusModePage />);
+  it('points to /recipes/:slug without a double arrow', async () => {
+    renderPage();
 
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.getByRole('link', { name: /Back to Recipe/i })).toBeInTheDocument();
-  });
-
-  it('back link href points to /recipes/:slug', async () => {
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.getByRole('link', { name: /Back to Recipe/i })).toHaveAttribute(
-      'href',
-      '/recipes/my-espresso',
-    );
-  });
-
-  it('back link does NOT contain double arrow', async () => {
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    const link = screen.getByRole('link', { name: /Back to Recipe/i });
+    const link = await screen.findByRole('link', { name: t('recipe.focusMode.backToRecipe') });
+    expect(link).toHaveAttribute('href', '/recipes/my-espresso');
     expect(link.textContent).not.toMatch(/←\s*←/);
   });
 });
 
-describe('RecipeFocusModePage — StatCards', () => {
+describe('RecipeFocusModePage — sections', () => {
   it('renders StatCards', async () => {
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
+    renderPage();
+    expect(await screen.findByTestId('stat-cards')).toBeInTheDocument();
   });
-});
 
-describe('RecipeFocusModePage — BeanSection conditional rendering', () => {
   it('shows BeanSection when bean data is present', async () => {
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.getByTestId('bean-section')).toBeInTheDocument();
+    renderPage();
+    expect(await screen.findByTestId('bean-section')).toBeInTheDocument();
   });
 
   it('hides BeanSection when no bean data', async () => {
-    mockRecipeApi.get.mockResolvedValue({
-      ...sampleRecipe,
-      currentVersion: {
-        ...sampleRecipe.currentVersion,
-        productName: null,
-        coffeeBrand: null,
-        coffeeProcessing: null,
-        roastDate: null,
-        packageOpenDate: null,
-        grindDate: null,
-        bean: null,
-      },
-    } as unknown as RecipeDetailOutput);
+    mockRecipeApi.get.mockResolvedValue(
+      recipeWith({
+        currentVersion: {
+          ...sampleRecipe.currentVersion,
+          productName: null,
+          coffeeBrand: null,
+          coffeeProcessing: null,
+          roastDate: null,
+          packageOpenDate: null,
+          grindDate: null,
+          bean: null,
+        },
+      }),
+    );
+    renderPage();
 
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
+    await screen.findByText('My Espresso');
     expect(screen.queryByTestId('bean-section')).not.toBeInTheDocument();
   });
-});
 
-describe('RecipeFocusModePage — TastingNotesSection conditional rendering', () => {
-  it('shows TastingNotesSection when taste notes are present', async () => {
-    render(<RecipeFocusModePage />);
+  it('shows TastingNotesSection when only personalNotes is present', async () => {
+    mockRecipeApi.get.mockResolvedValue(recipeWith({ tasteNotes: [] }));
+    renderPage();
 
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.getByTestId('tasting-notes-section')).toBeInTheDocument();
+    expect(await screen.findByTestId('tasting-notes-section')).toBeInTheDocument();
   });
 
-  it('shows TastingNotesSection when personalNotes is present but tasteNotes is empty', async () => {
-    mockRecipeApi.get.mockResolvedValue({
-      ...sampleRecipe,
-      tasteNotes: [],
-      currentVersion: {
-        ...sampleRecipe.currentVersion,
-        personalNotes: 'Great shot today.',
-      },
-    } as unknown as RecipeDetailOutput);
+  it.each([null, ''])(
+    'hides TastingNotesSection with no taste notes and personalNotes=%j',
+    async (personalNotes) => {
+      mockRecipeApi.get.mockResolvedValue(
+        recipeWith({
+          tasteNotes: [],
+          currentVersion: { ...sampleRecipe.currentVersion, personalNotes },
+        }),
+      );
+      renderPage();
 
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.getByTestId('tasting-notes-section')).toBeInTheDocument();
-  });
-
-  it('hides TastingNotesSection when no taste notes and no personalNotes', async () => {
-    mockRecipeApi.get.mockResolvedValue({
-      ...sampleRecipe,
-      tasteNotes: [],
-      currentVersion: {
-        ...sampleRecipe.currentVersion,
-        personalNotes: null,
-      },
-    } as unknown as RecipeDetailOutput);
-
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.queryByTestId('tasting-notes-section')).not.toBeInTheDocument();
-  });
-
-  it('hides TastingNotesSection when personalNotes is empty string and no taste notes', async () => {
-    mockRecipeApi.get.mockResolvedValue({
-      ...sampleRecipe,
-      tasteNotes: [],
-      currentVersion: {
-        ...sampleRecipe.currentVersion,
-        personalNotes: '',
-      },
-    } as unknown as RecipeDetailOutput);
-
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.queryByTestId('tasting-notes-section')).not.toBeInTheDocument();
-  });
+      await screen.findByText('My Espresso');
+      expect(screen.queryByTestId('tasting-notes-section')).not.toBeInTheDocument();
+    },
+  );
 });
 
 describe('RecipeFocusModePage — canonical + noIndex SEO', () => {
-  it('passes noIndex=true to SEOHead', async () => {
-    render(<RecipeFocusModePage />);
+  it('sets robots noindex and a canonical link to the recipe page (not the focus URL)', async () => {
+    renderPage();
+    await screen.findByText('My Espresso');
 
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    const calls = mockSEOHead.mock.calls;
-    const lastProps = calls[calls.length - 1][0] as { noIndex?: boolean; canonical?: string };
-    expect(lastProps.noIndex).toBe(true);
-  });
-
-  it('passes canonical pointing to /recipes/:slug', async () => {
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    const calls = mockSEOHead.mock.calls;
-    const lastProps = calls[calls.length - 1][0] as { noIndex?: boolean; canonical?: string };
-    expect(lastProps.canonical).toMatch(/\/recipes\/my-espresso$/);
-  });
-
-  it('canonical does NOT point to the focus URL', async () => {
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    const calls = mockSEOHead.mock.calls;
-    const lastProps = calls[calls.length - 1][0] as { canonical?: string };
-    expect(lastProps.canonical).not.toContain('/focus');
-  });
-});
-
-describe('RecipeFocusModePage — error state', () => {
-  it('shows error message when recipeApi.get fails', async () => {
-    mockRecipeApi.get.mockRejectedValue(new Error('Not found'));
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('Failed to load recipe')).toBeInTheDocument());
-
-    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-  });
-
-  it('shows Turkish error message when recipeApi.get fails and locale is tr', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockRecipeApi.get.mockRejectedValue(new Error('Not found'));
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('Tarif yüklenemedi')).toBeInTheDocument());
-  });
-
-  it('error state does not appear when recipe fetch succeeds', async () => {
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.queryByText('Failed to load recipe')).not.toBeInTheDocument();
-  });
-
-  it('error div uses error color variable', async () => {
-    mockRecipeApi.get.mockRejectedValue(new Error('Not found'));
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('Failed to load recipe')).toBeInTheDocument());
-
-    const errorDiv = screen.getByText('Failed to load recipe').closest('div');
-    // NOTE: jsdom 31 no longer echoes var() through computed style, so assert
-    // the inline style the component sets instead of toHaveStyle().
-    expect(errorDiv?.style.color).toBe('var(--error)');
+    await waitFor(() =>
+      expect(document.head.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe(
+        'noindex, nofollow',
+      ),
+    );
+    const canonical = document.head.querySelector('link[rel="canonical"]')?.getAttribute('href');
+    expect(canonical).toMatch(/\/recipes\/my-espresso$/);
+    expect(canonical).not.toContain('/focus');
   });
 });
 
 describe('RecipeFocusModePage — mount/unmount logging', () => {
-  beforeEach(() => {
-    mockLogger.debug.mockClear();
-  });
+  it('logs mount and unmount', async () => {
+    const { unmount } = renderPage();
+    await screen.findByText('My Espresso');
+    // The mount effect runs after the commit that renders the loader data.
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeFocusModePage mounted'),
+    );
 
-  it('logs mount message on render', () => {
-    render(<RecipeFocusModePage />);
-    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeFocusModePage mounted');
-  });
-
-  it('logs unmount message on cleanup', () => {
-    const { unmount } = render(<RecipeFocusModePage />);
-    mockLogger.debug.mockClear();
     unmount();
-    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeFocusModePage unmounted');
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeFocusModePage unmounted'),
+    );
   });
 });

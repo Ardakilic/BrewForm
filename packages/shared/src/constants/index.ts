@@ -28,6 +28,7 @@ export {
   type BrewMethodOption,
 } from './brew-methods.ts';
 export { COFFEE_VARIETY_CATEGORY_VALUES } from './coffee-variety.ts';
+export { MAX_REPLIES_PER_COMMENT } from './comments.ts';
 export {
   DRINK_TYPE_VALUES,
   DRINK_TYPES,

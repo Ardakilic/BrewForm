@@ -18,18 +18,25 @@ import type {
 } from '@brewform/shared/schemas';
 import type { z } from 'zod';
 import type { CacheProvider } from '../../utils/cache/index.ts';
+import { toLoggableError, toLoggableMailError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { sendWelcomeEmail } from '../auth/email.ts';
 import * as model from './model.ts';
 
-const logger = createLogger('admin-service');
+/** Module logger of the admin service (exported so tests can spy on it). */
+export const logger = createLogger('admin-service');
 
 // --- Users ---
 
-/** Pass-through: fetch a paginated list of non-deleted users with optional search. */
+/**
+ * Pass-through: fetch a paginated list of non-deleted users with an optional case-insensitive
+ * literal substring search on email, username and display name. Only the trimmed query's length
+ * is logged (`queryLength`), never the query, because admins search by email.
+ */
 export async function listUsers(page: number, perPage: number, query?: string, requestId?: string) {
   const start = Date.now();
-  logger.debug({ page, perPage, query, requestId }, 'listUsers started');
+  const queryLength = query?.trim().length ?? 0;
+  logger.debug({ page, perPage, queryLength, requestId }, 'listUsers started');
   const result = await model.listUsers(page, perPage, query);
   logger.debug(
     { page, perPage, total: result.total, requestId, durationMs: Date.now() - start },
@@ -116,7 +123,7 @@ export async function adminCreateUser(
   try {
     await sendWelcomeEmail(data.email, data.username);
   } catch (err) {
-    logger.warn({ err }, 'Failed to send welcome email on admin create');
+    logger.warn({ err: toLoggableMailError(err) }, 'Failed to send welcome email on admin create');
   }
 
   logger.debug({ adminId }, 'adminCreateUser completed');
@@ -182,7 +189,10 @@ export async function softDeleteUser(adminId: string, userId: string) {
 
 // --- Recipes ---
 
-/** Pass-through: list all non-deleted recipes with optional visibility filter. */
+/**
+ * Pass-through: one page of non-deleted recipes with an optional visibility filter, each with its
+ * author `{ id, username, displayName }` (kept for a deleted account; see `model.listAllRecipes`).
+ */
 export async function listAllRecipes(
   page: number,
   perPage: number,
@@ -533,7 +543,7 @@ export async function flushCache(cache: CacheProvider, keys: string[]) {
       keys.length > 0 ? keys.join(',') : 'ALL',
     );
   } catch (err) {
-    logger.warn({ err }, 'Failed to write FLUSH_CACHE audit log');
+    logger.warn({ err: toLoggableError(err) }, 'Failed to write FLUSH_CACHE audit log');
   }
   logger.debug({}, 'flushCache completed');
 }

@@ -9,7 +9,7 @@
  * soft-delete aware (`isNull(deletedAt)`).
  */
 import { db } from '@brewform/db';
-import { notifications, userPreferences, users } from '@brewform/db/schema';
+import { lower, notifications, userPreferences, users } from '@brewform/db/schema';
 import { and, count, desc, eq, inArray, isNull } from 'drizzle-orm';
 
 /**
@@ -164,7 +164,9 @@ export async function findById(id: string) {
 /**
  * Resolve @mention usernames to active users with their preference row joined.
  *
- * Matching is exact (case-sensitive, mirroring registration usernames);
+ * Matching is case-insensitive: both sides are lowered in SQL
+ * (`lower(username) IN (lower($1), …)`, served by the
+ * `user_username_lower_unique` index; usernames are unique ignoring case);
  * soft-deleted (`isNull(deletedAt)`) and banned (`isBanned = false`) users are
  * excluded so neither receives a mention notification or email. Users without a
  * preferences row get `prefs: null` (callers treat missing prefs as "enabled" —
@@ -188,7 +190,14 @@ export async function findMentionTargets(usernames: string[]) {
     .from(users)
     .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
     .where(
-      and(inArray(users.username, usernames), isNull(users.deletedAt), eq(users.isBanned, false)),
+      and(
+        inArray(
+          lower(users.username),
+          usernames.map((u) => lower(u)),
+        ),
+        isNull(users.deletedAt),
+        eq(users.isBanned, false),
+      ),
     );
 }
 

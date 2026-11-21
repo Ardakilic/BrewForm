@@ -7,8 +7,8 @@
  * SHA-256 hashed email-verification-token lifecycle.
  *
  * Follows the established model-test pattern: test-setup first import,
- * inline `crypto.randomUUID()` fixtures, hard-delete teardown, and
- * `{ sanitizeOps: false, sanitizeResources: false }`.
+ * inline `crypto.randomUUID()` fixtures and hard-delete teardown; the
+ * workspace runs DB-backed files serially (`fileParallelism: false`).
  */
 
 import '../../test-setup.ts';
@@ -146,26 +146,6 @@ describe('Auth model', () => {
     });
   });
 
-  describe('findUserByUsername', () => {
-    it('should return the user when found', async () => {
-      const user = await insertUser('by-username');
-      const found = await model.findUserByUsername(user.username);
-      expect(found).not.toBeNull();
-      expect(found!.id).toBe(user.id);
-    });
-
-    it('should return null when the username does not exist', async () => {
-      const found = await model.findUserByUsername('no-such-user');
-      expect(found).toBeNull();
-    });
-
-    it('should return null for a soft-deleted user', async () => {
-      const user = await insertUser('by-username-del', { deletedAt: new Date() });
-      const found = await model.findUserByUsername(user.username);
-      expect(found).toBeNull();
-    });
-  });
-
   describe('findUserById', () => {
     it('should return the user with preferences when found', async () => {
       const user = await insertUser('by-id');
@@ -281,9 +261,14 @@ describe('Auth model', () => {
       expect(await model.isEmailTaken(user.email, user.id)).toBe(false);
     });
 
-    it('should not count a soft-deleted user as taken', async () => {
+    it('should count a soft-deleted user as taken (identifiers stay reserved)', async () => {
       const user = await insertUser('email-deleted', { deletedAt: new Date() });
-      expect(await model.isEmailTaken(user.email)).toBe(false);
+      expect(await model.isEmailTaken(user.email)).toBe(true);
+    });
+
+    it('should compare case-insensitively', async () => {
+      const user = await insertUser('email-case');
+      expect(await model.isEmailTaken(user.email.toUpperCase())).toBe(true);
     });
   });
 
@@ -302,9 +287,14 @@ describe('Auth model', () => {
       expect(await model.isUsernameTaken(user.username, user.id)).toBe(false);
     });
 
-    it('should not count a soft-deleted user as taken', async () => {
+    it('should count a soft-deleted user as taken (usernames stay reserved)', async () => {
       const user = await insertUser('username-deleted', { deletedAt: new Date() });
-      expect(await model.isUsernameTaken(user.username)).toBe(false);
+      expect(await model.isUsernameTaken(user.username)).toBe(true);
+    });
+
+    it('should compare case-insensitively', async () => {
+      const user = await insertUser('username-case');
+      expect(await model.isUsernameTaken(user.username.toUpperCase())).toBe(true);
     });
   });
 
@@ -381,5 +371,46 @@ describe('Auth model', () => {
         'TOKEN_ALREADY_USED',
       );
     });
+  });
+});
+
+/**
+ * userIdentifierConflict — maps a unique violation on any user-identifier
+ * constraint (exact or `_lower_unique`) to its domain code, through the shared
+ * cause-chain helper, and ignores everything else.
+ */
+describe('userIdentifierConflict', () => {
+  /** A Drizzle-style wrapper around a postgres-js unique violation. */
+  function uniqueViolation(constraint: string) {
+    return {
+      message: 'Failed query: insert into "user" ...',
+      cause: { name: 'PostgresError', code: '23505', constraint_name: constraint },
+    };
+  }
+
+  it('should map every email constraint to EMAIL_ALREADY_EXISTS', () => {
+    for (const constraint of model.USER_EMAIL_CONSTRAINTS) {
+      expect(model.userIdentifierConflict(uniqueViolation(constraint))).toBe(
+        'EMAIL_ALREADY_EXISTS',
+      );
+    }
+  });
+
+  it('should map every username constraint to USERNAME_ALREADY_EXISTS', () => {
+    for (const constraint of model.USER_USERNAME_CONSTRAINTS) {
+      expect(model.userIdentifierConflict(uniqueViolation(constraint))).toBe(
+        'USERNAME_ALREADY_EXISTS',
+      );
+    }
+  });
+
+  it('should return null for other constraints, other SQLSTATEs and non-database errors', () => {
+    expect(model.userIdentifierConflict(uniqueViolation('user_pkey'))).toBeNull();
+    expect(
+      model.userIdentifierConflict({
+        cause: { name: 'PostgresError', code: '23503', constraint_name: 'user_email_unique' },
+      }),
+    ).toBeNull();
+    expect(model.userIdentifierConflict(new Error('EMAIL_ALREADY_EXISTS'))).toBeNull();
   });
 });
