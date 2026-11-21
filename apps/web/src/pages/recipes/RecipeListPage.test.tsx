@@ -407,7 +407,7 @@ describe('RecipeListPage — i18n', () => {
     });
   });
 
-  it('does not show Visibility filter for non-admin users', async () => {
+  it('does not show Visibility filter for non-admin users', () => {
     renderRecipeListPage();
 
     expect(screen.queryByText('Visibility (Admins only)')).not.toBeInTheDocument();
@@ -553,7 +553,7 @@ describe('RecipeListPage — taste note filter', () => {
     await waitFor(() => expect(screen.getByText('Taste Notes')).toBeInTheDocument());
   });
 
-  it('does NOT render taste note dropdown when no taste notes are loaded', async () => {
+  it('does NOT render taste note dropdown when no taste notes are loaded', () => {
     renderRecipeListPage();
 
     expect(screen.queryByText('Taste Notes')).not.toBeInTheDocument();

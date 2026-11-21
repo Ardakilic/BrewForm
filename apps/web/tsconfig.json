@@ -38,6 +38,7 @@
     // Node-API source scans (node:fs/node:path; the web tsconfig has no Node types).
     "src/architecture.test.ts",
     "src/data-loading.enforcement.test.ts",
+    "src/robots.test.ts",
     "src/router.reserved-slugs.test.ts",
     "src/test-utils/source-scan.ts"
   ]

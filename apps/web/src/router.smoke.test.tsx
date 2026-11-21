@@ -175,24 +175,32 @@ function emptyEnvelope(): Response {
 function stubFetch(signedIn: boolean): void {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (input: RequestInfo | URL) => {
-      const url = new URL(String(input), 'http://localhost');
-      const path = url.pathname.replace(/^\/api\/v1/, '');
-      if (path === '/users/me' || path === '/auth/refresh') {
-        return signedIn
-          ? json({ success: true, data: ADMIN })
-          : json({ success: false, error: { code: 'UNAUTHORIZED', message: 'no session' } }, 401);
-      }
-      if (path in OBJECT_FIXTURES) return json({ success: true, data: OBJECT_FIXTURES[path] });
-      const isFixtureDetail =
-        path.split('/').some((segment) => Object.values(PARAM_FIXTURES).includes(segment)) &&
-        !path.endsWith('/collections');
-      if (isFixtureDetail) {
-        return json({ success: false, error: { code: 'NOT_FOUND', message: 'missing' } }, 404);
-      }
-      return emptyEnvelope();
-    }),
+    vi.fn((input: RequestInfo | URL) => Promise.resolve(respond(input, signedIn))),
   );
+}
+
+/**
+ * Answers one stubbed API request synchronously (see {@link stubFetch}).
+ *
+ * @param input - The requested URL.
+ * @param signedIn - Whether `/users/me` and `/auth/refresh` report a session.
+ */
+function respond(input: RequestInfo | URL, signedIn: boolean): Response {
+  const url = new URL(String(input), 'http://localhost');
+  const path = url.pathname.replace(/^\/api\/v1/, '');
+  if (path === '/users/me' || path === '/auth/refresh') {
+    return signedIn
+      ? json({ success: true, data: ADMIN })
+      : json({ success: false, error: { code: 'UNAUTHORIZED', message: 'no session' } }, 401);
+  }
+  if (path in OBJECT_FIXTURES) return json({ success: true, data: OBJECT_FIXTURES[path] });
+  const isFixtureDetail =
+    path.split('/').some((segment) => Object.values(PARAM_FIXTURES).includes(segment)) &&
+    !path.endsWith('/collections');
+  if (isFixtureDetail) {
+    return json({ success: false, error: { code: 'NOT_FOUND', message: 'missing' } }, 404);
+  }
+  return emptyEnvelope();
 }
 
 beforeEach(() => {

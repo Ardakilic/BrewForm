@@ -190,7 +190,7 @@ describe('/recipes/:slug/focus loader', () => {
     });
     await waitFor(() => expect(signalA?.aborted).toBe(true));
 
-    await act(async () => {
+    await act(() => {
       resolveB(recipeWith({ title: 'Recipe B', slug: 'b' }));
     });
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Recipe B');

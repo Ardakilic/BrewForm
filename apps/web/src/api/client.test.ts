@@ -128,14 +128,16 @@ describe('api client', () => {
     const attempts = new Map<string, number>();
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (input: string) => {
+      vi.fn((input: string) => {
         if (input.endsWith('/auth/refresh')) {
           refreshes++;
-          return json({ data: {} });
+          return Promise.resolve(json({ data: {} }));
         }
         const n = (attempts.get(input) ?? 0) + 1;
         attempts.set(input, n);
-        return n === 1 ? json({ error: { code: 'UNAUTHORIZED' } }, 401) : json({ data: 'ok' });
+        return Promise.resolve(
+          n === 1 ? json({ error: { code: 'UNAUTHORIZED' } }, 401) : json({ data: 'ok' }),
+        );
       }),
     );
 
@@ -223,12 +225,14 @@ describe('api.getText', () => {
     let attempts = 0;
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (input: string) => {
-        if (input.endsWith('/auth/refresh')) return json({ data: {} });
+      vi.fn((input: string) => {
+        if (input.endsWith('/auth/refresh')) return Promise.resolve(json({ data: {} }));
         attempts++;
-        return attempts === 1
-          ? json({ error: { code: 'UNAUTHORIZED', message: 'expired' } }, 401)
-          : new Response('<svg/>');
+        return Promise.resolve(
+          attempts === 1
+            ? json({ error: { code: 'UNAUTHORIZED', message: 'expired' } }, 401)
+            : new Response('<svg/>'),
+        );
       }),
     );
 

@@ -104,7 +104,7 @@ describe('NotificationBell', () => {
     expect(mockUnreadCount).toHaveBeenCalledTimes(1);
 
     mockUnreadCount.mockResolvedValue({ count: 5 });
-    await act(async () => {
+    await act(() => {
       globalThis.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
     });
 
@@ -116,7 +116,7 @@ describe('NotificationBell', () => {
     await screen.findByText('3');
 
     mockUnreadCount.mockResolvedValue({ count: 7 });
-    await act(async () => {
+    await act(() => {
       globalThis.dispatchEvent(new Event('focus'));
     });
 
@@ -129,7 +129,7 @@ describe('NotificationBell', () => {
     await screen.findByText('3');
 
     mockUnreadCount.mockRejectedValue(new Error('down'));
-    await act(async () => {
+    await act(() => {
       globalThis.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
     });
 

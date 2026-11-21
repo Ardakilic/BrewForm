@@ -41,9 +41,9 @@ describe('requireAuth', () => {
   });
 
   it('turns a final 401 into a redirect to /login with the encoded path and search', async () => {
-    const loader = requireAuth(async () => {
-      throw new ApiError('UNAUTHORIZED', 'no session', undefined, 401);
-    });
+    const loader = requireAuth(() =>
+      Promise.reject(new ApiError('UNAUTHORIZED', 'no session', undefined, 401)),
+    );
 
     const thrown = await thrownBy(() => loader(args('http://localhost/collections?page=2')));
 
@@ -62,32 +62,26 @@ describe('requireAuth', () => {
     const forbidden = new ApiError('FORBIDDEN', 'nope', undefined, 403);
     const boom = new Error('boom');
     await expect(
-      requireAuth(async () => {
-        throw forbidden;
-      })(args('http://localhost/x')),
+      requireAuth(() => Promise.reject(forbidden))(args('http://localhost/x')),
     ).rejects.toBe(forbidden);
-    await expect(
-      requireAuth(async () => {
-        throw boom;
-      })(args('http://localhost/x')),
-    ).rejects.toBe(boom);
+    await expect(requireAuth(() => Promise.reject(boom))(args('http://localhost/x'))).rejects.toBe(
+      boom,
+    );
   });
 
   it('rethrows a Response thrown by the wrapped loader (e.g. a 404 or a redirect)', async () => {
     const notFound = new Response('Not Found', { status: 404 });
     await expect(
-      requireAuth(async () => {
-        throw notFound;
-      })(args('http://localhost/x')),
+      requireAuth(() => Promise.reject(notFound))(args('http://localhost/x')),
     ).rejects.toBe(notFound);
   });
 });
 
 describe('requireAdmin', () => {
   it('redirects a 401 to /login with the return path', async () => {
-    const loader = requireAdmin(async () => {
-      throw new ApiError('UNAUTHORIZED', 'no session', undefined, 401);
-    });
+    const loader = requireAdmin(() =>
+      Promise.reject(new ApiError('UNAUTHORIZED', 'no session', undefined, 401)),
+    );
 
     const thrown = await thrownBy(() => loader(args('http://localhost/admin/audit-log?page=2')));
 
@@ -97,9 +91,9 @@ describe('requireAdmin', () => {
   });
 
   it('redirects a 403 to /', async () => {
-    const loader = requireAdmin(async () => {
-      throw new ApiError('FORBIDDEN', 'not an admin', undefined, 403);
-    });
+    const loader = requireAdmin(() =>
+      Promise.reject(new ApiError('FORBIDDEN', 'not an admin', undefined, 403)),
+    );
 
     const thrown = await thrownBy(() => loader(args('http://localhost/admin/audit-log')));
 
@@ -110,9 +104,7 @@ describe('requireAdmin', () => {
   it('rethrows other errors', async () => {
     const boom = new ApiError('INTERNAL', 'boom', undefined, 500);
     await expect(
-      requireAdmin(async () => {
-        throw boom;
-      })(args('http://localhost/admin')),
+      requireAdmin(() => Promise.reject(boom))(args('http://localhost/admin')),
     ).rejects.toBe(boom);
   });
 });

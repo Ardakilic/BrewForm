@@ -28,9 +28,7 @@ describe('withDataLog', () => {
     const log = makeLog();
     const err = new Error('boom');
     await expect(
-      withDataLog(log as never, 'Page load', { id: 'x' }, async () => {
-        throw err;
-      }),
+      withDataLog(log as never, 'Page load', { id: 'x' }, () => Promise.reject(err)),
     ).rejects.toBe(err);
     expect(log.error).toHaveBeenCalledWith({ err, id: 'x' }, 'Page load failed');
   });
@@ -38,15 +36,13 @@ describe('withDataLog', () => {
   it('does not log thrown Responses or aborts as failures', async () => {
     const log = makeLog();
     const notFound = new Response('', { status: 404 });
+    await expect(withDataLog(log as never, 'L', {}, () => Promise.reject(notFound))).rejects.toBe(
+      notFound,
+    );
     await expect(
-      withDataLog(log as never, 'L', {}, async () => {
-        throw notFound;
-      }),
-    ).rejects.toBe(notFound);
-    await expect(
-      withDataLog(log as never, 'L', {}, async () => {
-        throw new DOMException('aborted', 'AbortError');
-      }),
+      withDataLog(log as never, 'L', {}, () =>
+        Promise.reject(new DOMException('aborted', 'AbortError')),
+      ),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(log.error).not.toHaveBeenCalled();
   });

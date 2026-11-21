@@ -36,7 +36,7 @@ export const listCommentsLoader = async ({ params, request }: LoaderFunctionArgs
   const pageParam = url.searchParams.get('page');
   const parsed = pageParam ? parseInt(pageParam, 10) : 1;
   const page = Number.isNaN(parsed) ? 1 : parsed;
-  return withDataLog(logger, 'listCommentsLoader', { recipeId, page }, () =>
+  return await withDataLog(logger, 'listCommentsLoader', { recipeId, page }, () =>
     commentApi.list(recipeId, page, { signal: request.signal }),
   );
 };

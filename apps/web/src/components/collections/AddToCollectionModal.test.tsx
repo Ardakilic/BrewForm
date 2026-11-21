@@ -107,60 +107,63 @@ function listRow(c: StoredCollection, recipeId: string | null): CollectionListIt
 function stubApi(): void {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = new URL(String(input), 'http://localhost');
-      const path = url.pathname.replace(/^\/api\/v1/, '');
-      const method = init?.method ?? 'GET';
-      const body = typeof init?.body === 'string' ? init.body : null;
-      requests.push({ line: `${method} ${path}${url.search}`, body });
-
-      if (method === 'GET' && path === '/collections') {
-        if (listStatus !== 200) return apiError(listStatus);
-        const recipeId = url.searchParams.get('recipeId');
-        const data = stored.map((c) => listRow(c, recipeId));
-        return json(200, {
-          success: true,
-          data,
-          meta: {
-            requestId: 'test',
-            pagination: { page: 1, perPage: 20, total: data.length, totalPages: 1 },
-          },
-        });
-      }
-      if (method === 'POST' && path === '/collections') {
-        if (createStatus !== 201) return apiError(createStatus);
-        const { name, visibility } = JSON.parse(body ?? '{}') as {
-          name: string;
-          visibility: StoredCollection['visibility'];
-        };
-        const created = makeStored({ id: 'c-new', name, visibility });
-        stored.push(created);
-        return json(201, {
-          success: true,
-          data: {
-            ...listRow(created, null),
-            author: { username: 'tester', displayName: null, avatarUrl: null },
-            items: [],
-          },
-        });
-      }
-      const add = /^\/collections\/([^/]+)\/recipes$/.exec(path);
-      if (method === 'POST' && add) {
-        if (addStatus !== 201) return apiError(addStatus);
-        const { recipeId } = JSON.parse(body ?? '{}') as { recipeId: string };
-        stored.find((c) => c.id === add[1])?.recipeIds.push(recipeId);
-        return json(201, { success: true, data: { message: 'Recipe added' } });
-      }
-      const remove = /^\/collections\/([^/]+)\/recipes\/([^/]+)$/.exec(path);
-      if (method === 'DELETE' && remove) {
-        if (removeStatus !== 200) return apiError(removeStatus);
-        const target = stored.find((c) => c.id === remove[1]);
-        if (target) target.recipeIds = target.recipeIds.filter((id) => id !== remove[2]);
-        return json(200, { success: true, data: { message: 'Recipe removed' } });
-      }
-      return apiError(404);
-    }),
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) => Promise.resolve(respond(input, init))),
   );
+}
+
+/** Answers one stubbed collection API request synchronously and records it. */
+function respond(input: RequestInfo | URL, init?: RequestInit): Response {
+  const url = new URL(String(input), 'http://localhost');
+  const path = url.pathname.replace(/^\/api\/v1/, '');
+  const method = init?.method ?? 'GET';
+  const body = typeof init?.body === 'string' ? init.body : null;
+  requests.push({ line: `${method} ${path}${url.search}`, body });
+
+  if (method === 'GET' && path === '/collections') {
+    if (listStatus !== 200) return apiError(listStatus);
+    const recipeId = url.searchParams.get('recipeId');
+    const data = stored.map((c) => listRow(c, recipeId));
+    return json(200, {
+      success: true,
+      data,
+      meta: {
+        requestId: 'test',
+        pagination: { page: 1, perPage: 20, total: data.length, totalPages: 1 },
+      },
+    });
+  }
+  if (method === 'POST' && path === '/collections') {
+    if (createStatus !== 201) return apiError(createStatus);
+    const { name, visibility } = JSON.parse(body ?? '{}') as {
+      name: string;
+      visibility: StoredCollection['visibility'];
+    };
+    const created = makeStored({ id: 'c-new', name, visibility });
+    stored.push(created);
+    return json(201, {
+      success: true,
+      data: {
+        ...listRow(created, null),
+        author: { username: 'tester', displayName: null, avatarUrl: null },
+        items: [],
+      },
+    });
+  }
+  const add = /^\/collections\/([^/]+)\/recipes$/.exec(path);
+  if (method === 'POST' && add) {
+    if (addStatus !== 201) return apiError(addStatus);
+    const { recipeId } = JSON.parse(body ?? '{}') as { recipeId: string };
+    stored.find((c) => c.id === add[1])?.recipeIds.push(recipeId);
+    return json(201, { success: true, data: { message: 'Recipe added' } });
+  }
+  const remove = /^\/collections\/([^/]+)\/recipes\/([^/]+)$/.exec(path);
+  if (method === 'DELETE' && remove) {
+    if (removeStatus !== 200) return apiError(removeStatus);
+    const target = stored.find((c) => c.id === remove[1]);
+    if (target) target.recipeIds = target.recipeIds.filter((id) => id !== remove[2]);
+    return json(200, { success: true, data: { message: 'Recipe removed' } });
+  }
+  return apiError(404);
 }
 
 /** Props the page renders the modal with (reset before each test). */

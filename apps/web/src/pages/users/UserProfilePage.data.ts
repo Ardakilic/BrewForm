@@ -89,7 +89,7 @@ export async function loader({
   const url = new URL(request.url);
   const tab = url.searchParams.get('tab') ?? 'recipes';
   const opts = { signal: request.signal };
-  return withDataLog(log, 'UserProfilePage loadProfile', { tab }, async () => {
+  return await withDataLog(log, 'UserProfilePage loadProfile', { tab }, async () => {
     const profile = await getProfileOrNotFound(username, opts);
     let followData: FollowRecord[] | null = null;
     let collectionsData: PaginatedResponse<CollectionListItemOutput> | null = null;

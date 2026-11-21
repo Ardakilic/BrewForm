@@ -62,7 +62,7 @@ export async function loader({ params, request }: LoaderFunctionArgs): Promise<D
   if (!slug) throw new Response('Not Found', { status: 404 });
   const fromQr = new URL(request.url).searchParams.get('from') === 'qr';
   const opts = { signal: request.signal };
-  return withDataLog(log, 'RecipeDetailPage loadRecipe', { slug }, async () => {
+  return await withDataLog(log, 'RecipeDetailPage loadRecipe', { slug }, async () => {
     const recipe = await getRecipeOrNotFound(slug, fromQr, request.signal);
     const [tasteNotes, comments, collections] = await Promise.all([
       getTasteNotesCached(opts),

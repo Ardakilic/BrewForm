@@ -116,33 +116,36 @@ function ok(data: unknown, meta?: unknown): Response {
 function stubApi(): void {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = new URL(String(input), 'http://localhost');
-      const path = url.pathname.replace(/^\/api\/v1/, '');
-      const method = init?.method ?? 'GET';
-      requests.push(`${method} ${path}${url.search}`);
-      if (method === 'GET' && path === `/recipes/${SLUG}`) return ok(RECIPE);
-      if (method === 'GET' && path === '/taste-notes/flat') return ok([]);
-      if (method === 'GET' && path === `/recipes/${RECIPE_ID}/collections`) return ok([]);
-      if (method === 'GET' && path === `/comments/recipe/${RECIPE_ID}`) {
-        const page = url.searchParams.get('page') === '2' ? 2 : 1;
-        return ok(page === 1 ? PAGE_1 : PAGE_2, {
-          pagination: { page, perPage: 10, total: 15, totalPages: 2 },
-        });
-      }
-      if (method === 'POST' && path === `/recipes/${RECIPE_ID}/like`) return ok({ liked: true });
-      if (method === 'POST' && path === `/recipes/${RECIPE_ID}/favourite`) {
-        return ok({ favourited: true });
-      }
-      if (method === 'POST' && path === `/recipes/${RECIPE_ID}/rate`) {
-        return ok({ rating: 8, avgRating: 8, ratingCount: 1 });
-      }
-      return new Response(JSON.stringify({ success: false, error: { code: 'NOT_FOUND' } }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }),
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) => Promise.resolve(respond(input, init))),
   );
+}
+
+/** Answers one stubbed API request synchronously and records it. */
+function respond(input: RequestInfo | URL, init?: RequestInit): Response {
+  const url = new URL(String(input), 'http://localhost');
+  const path = url.pathname.replace(/^\/api\/v1/, '');
+  const method = init?.method ?? 'GET';
+  requests.push(`${method} ${path}${url.search}`);
+  if (method === 'GET' && path === `/recipes/${SLUG}`) return ok(RECIPE);
+  if (method === 'GET' && path === '/taste-notes/flat') return ok([]);
+  if (method === 'GET' && path === `/recipes/${RECIPE_ID}/collections`) return ok([]);
+  if (method === 'GET' && path === `/comments/recipe/${RECIPE_ID}`) {
+    const page = url.searchParams.get('page') === '2' ? 2 : 1;
+    return ok(page === 1 ? PAGE_1 : PAGE_2, {
+      pagination: { page, perPage: 10, total: 15, totalPages: 2 },
+    });
+  }
+  if (method === 'POST' && path === `/recipes/${RECIPE_ID}/like`) return ok({ liked: true });
+  if (method === 'POST' && path === `/recipes/${RECIPE_ID}/favourite`) {
+    return ok({ favourited: true });
+  }
+  if (method === 'POST' && path === `/recipes/${RECIPE_ID}/rate`) {
+    return ok({ rating: 8, avgRating: 8, ratingCount: 1 });
+  }
+  return new Response(JSON.stringify({ success: false, error: { code: 'NOT_FOUND' } }), {
+    status: 404,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 /** The detail route with its real loader and `shouldRevalidate`, plus the action routes it posts to. */

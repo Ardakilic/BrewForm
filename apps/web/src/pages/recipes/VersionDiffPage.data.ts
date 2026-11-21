@@ -19,7 +19,7 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
   const v1 = search.get('v1') ?? '';
   const v2 = search.get('v2') ?? '';
   if (!v1 || !v2) throw new Response('Not Found', { status: 404 });
-  return withDataLog(log, 'VersionDiffPage loadDiff', { slug, v1, v2 }, async () => {
+  return await withDataLog(log, 'VersionDiffPage loadDiff', { slug, v1, v2 }, async () => {
     try {
       const diff = await recipeApi.diffVersions(slug, v1, v2, { signal: request.signal });
       return { slug, diff };
