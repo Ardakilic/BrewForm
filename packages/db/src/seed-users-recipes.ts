@@ -694,7 +694,7 @@ export const recipeSeedData = [
     coffeeVarietyName: 'Caturra',
     visibility: 'public',
     likeCount: 7,
-    commentCount: 1,
+    commentCount: 0,
     forkCount: 0,
     featured: false,
     version: {
@@ -1446,7 +1446,7 @@ export const recipeSeedData = [
     coffeeVarietyName: 'Catuaí',
     visibility: 'public',
     likeCount: 5,
-    commentCount: 1,
+    commentCount: 2,
     forkCount: 0,
     featured: true,
     version: {

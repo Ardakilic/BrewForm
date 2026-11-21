@@ -147,8 +147,9 @@ test-specific: up ## Run specific test (use filter=)
 
 # --- Database ---
 
-db-migrate: up ## Run database migrations
-	docker compose run --rm app pnpm --filter @brewform/db run migrate
+db-migrate: up ## Run database migrations, then recount recipe comment counts
+	docker compose run --rm app sh -c "pnpm --filter @brewform/db run migrate && \
+	  pnpm --filter @brewform/db run recount-comment-counts"
 
 db-generate: up ## Generate database migrations
 	docker compose run --rm app pnpm --filter @brewform/db run generate
@@ -161,6 +162,9 @@ db-seed: up ## Seed the database
 
 db-check-identifiers: up ## Report data that breaks the wave-6 identifier indexes (args=--fix-deleted-duplicates|--fix-setup-defaults|--fix-empty-slugs)
 	docker compose run --rm app pnpm --filter @brewform/db run check-identifiers -- $(args)
+
+db-recount-comments: up ## Recount recipe comment counts (also run by db-migrate and the image entrypoint)
+	docker compose run --rm app pnpm --filter @brewform/db run recount-comment-counts
 
 db-studio: up ## Open Drizzle Studio
 	docker compose run --rm -p 5555:5555 app pnpm --filter @brewform/db run studio
@@ -309,4 +313,4 @@ prod-fix-uploads-owner: prod-env-check ## Give the uploads volume or host folder
 prod-smoke: images ## Build the images and run the CI compose smoke test against them
 	IMAGE_TAG=local API_IMAGE=brewform-api WEB_IMAGE=brewform-web scripts/ci/smoke-compose.sh
 
-.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test-db-provision test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-check-identifiers db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons images prod-up prod-down prod-env-check prod-logs prod-ps prod-pull prod-backup prod-backup-export prod-restore prod-check-identifiers prod-fix-uploads-owner prod-smoke
+.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test-db-provision test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-check-identifiers db-recount-comments db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons images prod-up prod-down prod-env-check prod-logs prod-ps prod-pull prod-backup prod-backup-export prod-restore prod-check-identifiers prod-fix-uploads-owner prod-smoke

@@ -35,6 +35,7 @@ import { and, count, eq, inArray } from 'drizzle-orm';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { client, db } from './index.ts';
+import { recountCommentCounts } from './recount-comment-counts.ts';
 import {
   badges,
   beans,
@@ -408,5 +409,23 @@ describe('Seed — production mode seeds no demo content', () => {
     expect((await db.select({ count: count() }).from(tasteNotes))[0].count).toBeGreaterThanOrEqual(
       scaaNames.size,
     );
+  });
+});
+
+/**
+ * D99.67: the seed stores each demo recipe's `commentCount` as the number of comments the recount
+ * counts, so a fresh development install needs no repair.
+ */
+describe('Seed — comment counts', () => {
+  beforeAll(resetDatabase);
+
+  it('a fresh development seed needs no comment-count repair', async () => {
+    const { main } = await import('./seed.ts');
+    await main();
+
+    const result = await recountCommentCounts(db);
+
+    expect(result.repaired).toEqual([]);
+    expect(result.skipped).toEqual([]);
   });
 });

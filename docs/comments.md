@@ -160,6 +160,24 @@ Authorization logic:
 If the target comment does not exist or has already been soft-deleted, the service throws
 `COMMENT_NOT_FOUND` (answered as `404 NOT_FOUND`) for both admin and non-admin callers.
 
+## Stored Comment Count
+
+`recipe.commentCount` (shown on recipe cards and the detail page) counts the recipe's live comments
+that are top-level or reply to a live comment on the same recipe. Comments of deleted accounts
+count (they stay listed), and so do replies past the 20-reply display cap (they stay stored). A
+live reply whose parent was deleted before the thread delete existed, or a reply stored under
+another recipe's comment, does not count. Creating a comment adds 1; deleting one subtracts the
+comments that delete removed.
+
+Every migration run repairs drifted values: the API image entrypoint runs
+`node /app/packages/db/src/recount-comment-counts.ts` right after `Migrations complete.` (a failure
+only prints a warning, and the next start retries), and `make db-migrate` runs it after the
+migrator. In development, `make db-recount-comments` runs it alone. It prints one line per
+repaired recipe (`Comment count recount: repaired recipe <id> (<stored> -> <counted>)`) and a final
+`Comment count recount: complete (scanned …, repaired …, skipped …)`; a second run reports
+`repaired 0`. Repairs use a compare-and-set update, so a counter that changed during the run is
+skipped and repaired by the next run.
+
 ## Reply-on-Reply UX
 
 The UI renders a **Reply** button on each reply as well as on each top-level comment. Clicking

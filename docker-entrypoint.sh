@@ -15,6 +15,12 @@
 #   - Migrations: `node /app/packages/db/src/migrate.ts` (Drizzle migrator on the committed
 #     packages/db/drizzle folder, default drizzle.__drizzle_migrations table, with the
 #     pg_trgm pre-flight). A failure exits non-zero and, with `set -e`, the API never starts.
+#   - Comment counts: `node /app/packages/db/src/recount-comment-counts.ts` repairs drifted
+#     `recipe.comment_count` values right after every migration run (so in the compose
+#     `migrate` one-shot and on every start that migrates; RUN_MIGRATIONS=false skips it with
+#     the migrations). A failed recount only prints a warning and the boot continues: the
+#     counter is a display value, failing here would keep the API down, and the next start
+#     repeats the recount.
 #   - First boot: `node src/check-users-empty.ts` (cwd /app/packages/db) prints the bare
 #     `users` row count; `0` runs the seed with `node src/seed.ts`.
 #   - Serve: `cd /app/apps/api && exec node src/main.ts`, so the API is the one Node
@@ -43,11 +49,19 @@ esac
 
 echo "Entrypoint mode: $MODE"
 
-# Apply pending migrations, then seed a database that has never been seeded.
+# Apply pending migrations, recount the stored comment counts, then seed a database that
+# has never been seeded.
 run_migrations() {
   echo "Running database migrations..."
   node /app/packages/db/src/migrate.ts
   echo "Migrations complete."
+
+  # Repair drifted stored comment counts. Not fatal: a failure warns and the boot goes on
+  # (the `if` keeps `set -e` from aborting); the next start retries.
+  echo "Recounting comment counts..."
+  if ! node /app/packages/db/src/recount-comment-counts.ts; then
+    echo "WARNING: comment count recount failed; continuing (the next start retries)." >&2
+  fi
 
   # First-boot sentinel: count rows in the `users` table with the standalone,
   # @brewform/db-backed check script. The admin account is the first row the seed
