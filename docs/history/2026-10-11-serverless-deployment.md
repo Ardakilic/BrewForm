@@ -1,10 +1,12 @@
 # Deployment
 
-> **Superseded.** This document describes the retired **Deno Deploy** target (two Deploy
-> projects, `deno.json` deploy configs, Deno KV quotas). Production now deploys via GHCR
-> images to self-hosted **Coolify** — see [`deployment_coolify.md`](deployment_coolify.md) (as-built)
-> and [`../coolify_deployment_plan.md`](../coolify_deployment_plan.md) (long-form). Retained for
-> historical reference; the `deno task` command blocks below are stale (use `pnpm run …`).
+> **Historical snapshot (2026-10-11), superseded — do not use as a deployment guide.** It
+> describes the retired serverless hosting target (two hosted projects, per-app deploy configs,
+> hosted KV quotas) that was removed when the runtime moved to Node and pnpm. Production now runs
+> the GHCR images: see [`deployment_compose.md`](../deployment_compose.md) (Docker Compose),
+> [`deployment_coolify.md`](../deployment_coolify.md) (Coolify) and
+> [`coolify_deployment_plan.md`](../../coolify_deployment_plan.md) (long-form). The command blocks
+> below are stale and kept verbatim.
 
 ## Architecture Overview
 

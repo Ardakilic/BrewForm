@@ -1,5 +1,10 @@
 # BrewForm Requirements Audit Report
 
+> **Historical snapshot (2026-05-03), superseded — do not use as a work list.** It audits the
+> stack as it was in May 2026 against a plan file that no longer exists. Current status lives in
+> [`plans/ROADMAP.md`](../../plans/ROADMAP.md); current documentation is indexed in
+> [`docs/README.md`](../README.md).
+
 **Date:** 2026-05-03\
 **Auditor:** OpenCode Agent\
 **Plan Reference:** `brewform-plan.md` (all sections §1–§11)\
