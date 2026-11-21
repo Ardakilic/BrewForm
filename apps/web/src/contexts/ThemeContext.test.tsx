@@ -49,10 +49,10 @@ function stubMatchMedia(prefersDark = false) {
     matches: prefersDark && query.includes('dark'),
     media: query,
     onchange: null,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
     dispatchEvent: () => false,
   });
   Object.defineProperty(globalThis, 'matchMedia', {
@@ -142,7 +142,7 @@ describe('ThemeContext', () => {
   });
 
   it('throws when useTheme is called outside a ThemeProvider', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     expect(() => render(<TestConsumer />)).toThrow('useTheme must be used within ThemeProvider');
     spy.mockRestore();
   });

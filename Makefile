@@ -66,13 +66,17 @@ fmt: ## Format all code
 fmt-check: ## Check formatting without changes
 	docker compose run --rm --no-deps app pnpm run fmt-check
 
+docs-check: ## Check docs/specs for drift (doc-drift-check.ts) and exports for docblocks (docblock-scan.ts)
+	docker compose run --rm --no-deps app pnpm run docs:check
+.PHONY: docs-check
+
 check: ## Type-check all workspaces (api, web, db, shared)
 	docker compose run --rm --no-deps app pnpm run check
 
 check-api: ## Type-check API only
 	docker compose run --rm --no-deps app pnpm run check:api
 
-check-web: ## Lint web frontend
+check-web: ## Type-check web frontend (tsc)
 	docker compose run --rm --no-deps app pnpm run check:web
 
 check-db: ## Type-check database package
@@ -94,7 +98,7 @@ build-shared: ## Type-check shared package as build artifact
 
 # --- Testing ---
 
-# Dedicated test database (mirrors .github/workflows/pr.yml:63-113 — CI uses
+# Dedicated test database (mirrors the `test` job of .github/workflows/ci.yml — CI uses
 # postgresql://brewform:brewform@localhost:5432/brewform_test; inside the compose
 # network the host is `postgres`, not `localhost`). API tests MUST NOT run against
 # the dev `brewform` database — they mutate seeded rows (see wave-5 task 8.2).
@@ -107,7 +111,7 @@ check-tests: ## Type-check test files
 # Create + migrate + seed the brewform_test database (safe to re-run; the seed is
 # idempotent via on-conflict handling — but note it cannot remove stray rows left
 # by API tests; drop and recreate the DB for a fully clean slate, see wave-5 task 8.2).
-# Mirrors the CI provisioning steps in .github/workflows/pr.yml:63-113.
+# Mirrors the CI provisioning steps in the `test` job of .github/workflows/ci.yml.
 test-db-provision: up ## Provision the brewform_test database (create + migrate + seed)
 	@docker compose exec -T postgres psql -U brewform -d postgres -tc \
 	  "SELECT 1 FROM pg_database WHERE datname='brewform_test'" | grep -q 1 || \
@@ -155,6 +159,9 @@ db-push: up ## Push schema changes
 db-seed: up ## Seed the database
 	docker compose run --rm app pnpm --filter @brewform/db run seed
 
+db-check-identifiers: up ## Report data that breaks the wave-6 identifier indexes (args=--fix-deleted-duplicates|--fix-setup-defaults|--fix-empty-slugs)
+	docker compose run --rm app pnpm --filter @brewform/db run check-identifiers -- $(args)
+
 db-studio: up ## Open Drizzle Studio
 	docker compose run --rm -p 5555:5555 app pnpm --filter @brewform/db run studio
 
@@ -171,6 +178,8 @@ db-reset: ## Full reset: recreate DB, push schema, seed, flush cache
 	@until docker compose exec postgres pg_isready -U brewform > /dev/null 2>&1; do sleep 1; done
 	-docker compose exec -T postgres psql -U brewform -d postgres -c "DROP DATABASE IF EXISTS brewform WITH (FORCE);"
 	-docker compose exec -T postgres psql -U brewform -d postgres -c "CREATE DATABASE brewform;"
+	# drizzle-kit push does not manage extensions; the trigram indexes need pg_trgm (ADR-017).
+	docker compose exec -T postgres psql -U brewform -d brewform -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 	$(MAKE) db-push
 	$(MAKE) db-seed
 	$(MAKE) flush-cache
@@ -214,7 +223,7 @@ preview: build-web up ## Build + preview production build
 
 # --- CI ---
 
-ci: fmt-check lint check build-web check-tests test-coverage test-web ## Run full CI pipeline (fmt, lint, check, build, test)
+ci: fmt-check lint check build-web check-tests test-coverage test-web docs-check ## Run full CI pipeline (fmt, lint, check, build, test, docs)
 
 # ── Icons ──────────────────────────────────────────────────────────────
 
@@ -223,27 +232,81 @@ generate-icons: ## Generate PNG icons from favicon.svg
 	  pnpm --filter @brewform/api exec tsx /app/scripts/generate-icons.ts
 
 # --- Production Images & Deploy ---
+# `images` builds local, non-registry tags for tests and `make prod-smoke`. No target here
+# pushes to a registry: the published images come only from the `publish` job of
+# .github/workflows/ci.yml, after every CI job passed. The prod-* targets wrap the single
+# production definition, compose.production.yml, always with --env-file .env.production
+# (Compose would otherwise auto-load the development .env); every target that reads it
+# first runs prod-env-check. Guide: docs/deployment_compose.md.
 
-images: ## Build both Docker images locally (API + Web)
-	docker build -t ghcr.io/ardakilic/brewform-api:latest -f Dockerfile .
-	docker build -t ghcr.io/ardakilic/brewform-web:latest -f Dockerfile.web \
+PROD_ENV_FILE := .env.production
+PROD_COMPOSE := docker compose --env-file $(PROD_ENV_FILE) -f compose.production.yml
+# Destination folder of `make prod-backup-export`.
+DEST ?= ./backup-export
+
+images: ## Build both Docker images locally as brewform-api:local and brewform-web:local
+	docker build -t brewform-api:local -f Dockerfile .
+	docker build -t brewform-web:local -f Dockerfile.web \
 	  --build-arg VITE_API_URL=$${VITE_API_URL:-/api/v1} \
 	  --build-arg VITE_PUBLIC_APP_URL=$${VITE_PUBLIC_APP_URL:-http://localhost:8080} \
 	  .
 
-images-push: ## Push both images to GHCR (requires: docker login ghcr.io)
-	docker push ghcr.io/ardakilic/brewform-api:latest
-	docker push ghcr.io/ardakilic/brewform-web:latest
+prod-env-check: ## Fail unless .env.production exists (prerequisite of the prod-* targets)
+	@if [ ! -f "$(PROD_ENV_FILE)" ]; then \
+	  echo "error: $(PROD_ENV_FILE) not found; no docker compose command was run." >&2; \
+	  echo "Create it from the template and fill in the required values:" >&2; \
+	  echo "  cp .env.production.example $(PROD_ENV_FILE)" >&2; \
+	  echo "See docs/deployment_compose.md (First install)." >&2; \
+	  exit 1; \
+	fi
 
-prod-up: ## Start production profile (pulls published images from GHCR)
-	docker compose --profile prod up -d
+prod-up: prod-env-check ## Start or update the production stack (compose.production.yml)
+	$(PROD_COMPOSE) up -d
 
-prod-up-build: ## Start production profile (builds images locally)
-	docker compose --profile prod up -d --build
+prod-down: prod-env-check ## Stop the production stack (named volumes are kept)
+	$(PROD_COMPOSE) down
 
-prod-down: ## Stop production profile
-	docker compose --profile prod down
+prod-logs: prod-env-check ## Follow the production stack logs
+	$(PROD_COMPOSE) logs -f
 
-release: images images-push ## Build and push both images (local CI equivalent)
+prod-ps: prod-env-check ## Show the production containers and their health
+	$(PROD_COMPOSE) ps
 
-.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test-db-provision test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons images images-push prod-up prod-up-build prod-down release
+prod-pull: prod-env-check ## Pull the production images for IMAGE_TAG (default latest)
+	$(PROD_COMPOSE) pull
+
+# --no-deps: a manual backup never (re)runs migrate, so a backup taken after `make prod-pull`
+# still holds the old schema. The stack (postgres) must be running.
+prod-backup: prod-env-check ## Run one database (and uploads) backup now
+	$(PROD_COMPOSE) run --rm --no-deps -e BACKUP_ONESHOT=1 backup
+
+prod-backup-export: prod-env-check ## Copy every backup to a host folder (DEST=./backup-export)
+	mkdir -p $(DEST) && $(PROD_COMPOSE) cp backup:/backups/. $(DEST)
+
+# Stops api and web, restores with the profile-gated `restore` service, starts the stack.
+# DUMP and UPLOADS are file names in the backups target (either may be omitted).
+prod-restore: prod-env-check ## Restore backups (DUMP=db-<ts>.dump UPLOADS=uploads-<ts>.tar.gz)
+	@if [ -z "$(DUMP)$(UPLOADS)" ]; then \
+	  echo "usage: make prod-restore DUMP=db-<ts>.dump UPLOADS=uploads-<ts>.tar.gz (either may be omitted)" >&2; \
+	  exit 2; \
+	fi
+	$(PROD_COMPOSE) stop api web
+	$(PROD_COMPOSE) --profile restore run --rm -e 'RESTORE_DB_DUMP=$(DUMP)' -e 'RESTORE_UPLOADS_ARCHIVE=$(UPLOADS)' restore || { \
+	  echo "restore failed: api and web are still stopped. Fix the error and re-run, or run 'make prod-up'." >&2; \
+	  exit 1; \
+	}
+	$(PROD_COMPOSE) up -d
+
+# Upgrade step: run after `make prod-pull` and before `make prod-up`, while the database
+# is running. Pass args=--fix-deleted-duplicates|--fix-setup-defaults|--fix-empty-slugs.
+prod-check-identifiers: prod-env-check ## Report production data that breaks the wave-6 identifier indexes (args=...)
+	$(PROD_COMPOSE) run --rm --no-deps --entrypoint node api /app/packages/db/src/check-identifiers.ts $(args)
+
+prod-fix-uploads-owner: prod-env-check ## Give the uploads volume or host folder to the API user (1000:1000)
+	$(PROD_COMPOSE) run --rm --no-deps --user 0:0 --entrypoint chown api -R 1000:1000 /app/uploads
+
+# Uses scripts/ci/compose-smoke.env (placeholder values), never .env.production.
+prod-smoke: images ## Build the images and run the CI compose smoke test against them
+	IMAGE_TAG=local API_IMAGE=brewform-api WEB_IMAGE=brewform-web scripts/ci/smoke-compose.sh
+
+.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test-db-provision test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-check-identifiers db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons images prod-up prod-down prod-env-check prod-logs prod-ps prod-pull prod-backup prod-backup-export prod-restore prod-check-identifiers prod-fix-uploads-owner prod-smoke

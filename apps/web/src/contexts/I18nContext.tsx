@@ -13,6 +13,7 @@ interface I18nContextType {
   availableLocales: string[];
 }
 
+/** React context holding the active locale, its setter and the locale-bound `t()`; provided by {@link I18nProvider}, read through {@link useTranslation}. */
 export const I18nContext = createContext<I18nContextType | null>(null);
 
 const LOCALE_DIR: Record<Locale, 'ltr' | 'rtl'> = {

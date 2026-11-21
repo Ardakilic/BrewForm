@@ -1,11 +1,15 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import { closeTestCaches, testCache } from '../../utils/cache/test-helpers.ts';
+
+// Close every provider created with testCache() so no sweep timer leaks.
+afterEach(closeTestCaches);
 
 describe('Taste Model — Cache Provider Integration', () => {
   let cache: InMemoryCacheProvider;
 
   beforeEach(() => {
-    cache = new InMemoryCacheProvider();
+    cache = testCache();
   });
 
   it('should store and retrieve cached taste hierarchy', async () => {

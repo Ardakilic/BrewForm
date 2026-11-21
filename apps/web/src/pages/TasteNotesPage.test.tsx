@@ -1,30 +1,46 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { RouteErrorState } from '../components/RouteErrorState.tsx';
+import { loader, shouldRevalidate } from './TasteNotesPage.data.ts';
 import { TasteNotesPage } from './TasteNotesPage.tsx';
+
+/** Hydration fallback shown while the `/taste-notes` loader runs. */
+function Hydrating() {
+  return <p>hydrating</p>;
+}
+
+/**
+ * Renders `/taste-notes` at `entry` through its real loader inside a memory router (the page
+ * reads and writes `?q=`).
+ */
+function renderPage(entry = '/taste-notes') {
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/taste-notes',
+        loader,
+        shouldRevalidate,
+        element: <TasteNotesPage />,
+        errorElement: <RouteErrorState />,
+        HydrateFallback: Hydrating,
+      },
+    ],
+    { initialEntries: ['/start', entry], initialIndex: 1 },
+  );
+  return { ...render(<RouterProvider router={router} />), router };
+}
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
-vi.mock('react-router', () => ({
-  Link: ({
-    to,
-    children,
-    ...props
-  }: {
-    to: string;
-    children: React.ReactNode;
-    [key: string]: unknown;
-  }) => (
-    <a href={to} {...props}>
-      {children}
-    </a>
-  ),
-}));
-
 vi.mock('@base-ui/react/popover', () => {
+  /** The `displayName` of an element's component type (`undefined` for host elements). */
+  const displayNameOf = (type: unknown): unknown =>
+    typeof type === 'function' && 'displayName' in type ? type.displayName : undefined;
   const PopoverRoot = ({ children }: { children: React.ReactNode }) => {
     const [open, setOpen] = React.useState(false);
     return (
@@ -34,19 +50,14 @@ vi.mock('@base-ui/react/popover', () => {
         onMouseLeave={() => setOpen(false)}
       >
         {React.Children.map(children, (child) => {
-          if (
-            // biome-ignore lint/suspicious/noExplicitAny: test cast
-            React.isValidElement(child) &&
-            (child.type as any)?.displayName === 'PopoverTrigger'
-          ) {
+          if (React.isValidElement(child) && displayNameOf(child.type) === 'PopoverTrigger') {
             // biome-ignore lint/suspicious/noExplicitAny: test any usage
             return React.cloneElement(child as React.ReactElement<any>, {
               onClick: () => setOpen((prev: boolean) => !prev),
               'data-open': open,
             });
           }
-          // biome-ignore lint/suspicious/noExplicitAny: test cast
-          if (React.isValidElement(child) && (child.type as any)?.displayName === 'PopoverPortal') {
+          if (React.isValidElement(child) && displayNameOf(child.type) === 'PopoverPortal') {
             return open ? child : null;
           }
           return child;
@@ -244,7 +255,7 @@ beforeEach(() => {
 describe('TasteNotesPage — logging', () => {
   it('logs mount and unmount', async () => {
     mockHierarchyFn.mockResolvedValue(mockHierarchy);
-    const { unmount } = render(<TasteNotesPage />);
+    const { unmount } = renderPage();
     await waitFor(() =>
       expect(mockLogger.debug).toHaveBeenCalledWith({}, 'TasteNotesPage mounted'),
     );
@@ -255,19 +266,46 @@ describe('TasteNotesPage — logging', () => {
   });
 });
 
-describe('TasteNotesPage — loading state', () => {
-  it('renders loading text when data has not loaded yet', () => {
-    mockHierarchyFn.mockReturnValue(new Promise(() => {}));
+describe('TasteNotesPage — loader', () => {
+  it('loads the hierarchy with request.signal', async () => {
+    const request = new Request('http://localhost/taste-notes?q=berry');
+    await expect(loader({ request, params: {}, context: undefined } as never)).resolves.toEqual({
+      hierarchy: mockHierarchy,
+    });
+    expect(mockHierarchyFn).toHaveBeenCalledWith({ signal: request.signal });
+  });
 
-    render(<TasteNotesPage />);
+  it('shows the hydrate fallback, not the page, while the loader runs', () => {
+    mockHierarchyFn.mockReturnValue(new Promise(() => undefined));
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    renderPage();
+
+    expect(screen.getByText('hydrating')).toBeInTheDocument();
+    expect(screen.queryByText('Taste Notes')).not.toBeInTheDocument();
+  });
+
+  it('does not re-run the loader when only the search changes', () => {
+    const at = (url: string) => new URL(`http://localhost${url}`);
+    expect(
+      shouldRevalidate({
+        currentUrl: at('/taste-notes'),
+        nextUrl: at('/taste-notes?q=berry'),
+        defaultShouldRevalidate: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldRevalidate({
+        currentUrl: at('/taste-notes?q=berry'),
+        nextUrl: at('/taste-notes?q=berry'),
+        defaultShouldRevalidate: true,
+      }),
+    ).toBe(true);
   });
 });
 
 describe('TasteNotesPage — rendered hierarchy', () => {
   it('renders root categories with their names after data loads', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Fruity')).toBeInTheDocument();
@@ -276,7 +314,7 @@ describe('TasteNotesPage — rendered hierarchy', () => {
   });
 
   it('renders child categories nested under their parents', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Berry')).toBeInTheDocument();
@@ -285,7 +323,7 @@ describe('TasteNotesPage — rendered hierarchy', () => {
   });
 
   it('renders leaf notes like Raspberry, Blueberry, Lemon', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Raspberry')).toBeInTheDocument();
@@ -297,7 +335,7 @@ describe('TasteNotesPage — rendered hierarchy', () => {
 
 describe('TasteNotesPage — color swatches', () => {
   it('renders color swatches on category cards using the color from API data', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       const swatches = document.querySelectorAll('[data-color-swatch]');
@@ -312,7 +350,7 @@ describe('TasteNotesPage — color swatches', () => {
 
 describe('TasteNotesPage — search filter', () => {
   it('filters displayed categories when typing in the search input', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Fruity')).toBeInTheDocument();
@@ -321,15 +359,16 @@ describe('TasteNotesPage — search filter', () => {
     const searchInput = screen.getByPlaceholderText('Search taste notes...');
     fireEvent.change(searchInput, { target: { value: 'Berry' } });
 
+    // The filter applies once the text is committed to the URL (after the typing pause).
+    await waitFor(() => expect(screen.queryByText('Roasted')).not.toBeInTheDocument());
     expect(screen.getByText('Berry')).toBeInTheDocument();
-    expect(screen.queryByText('Roasted')).not.toBeInTheDocument();
     expect(screen.queryByText('Citrus Fruit')).not.toBeInTheDocument();
   });
 });
 
 describe('TasteNotesPage — no results', () => {
   it('shows no-results message when search matches nothing', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Fruity')).toBeInTheDocument();
@@ -338,13 +377,13 @@ describe('TasteNotesPage — no results', () => {
     const searchInput = screen.getByPlaceholderText('Search taste notes...');
     fireEvent.change(searchInput, { target: { value: 'zzzzz' } });
 
-    expect(screen.getByText('No taste notes match your search.')).toBeInTheDocument();
+    expect(await screen.findByText('No taste notes match your search.')).toBeInTheDocument();
   });
 });
 
 describe('TasteNotesPage — i18n', () => {
   it('renders page heading and description in English', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Taste Notes')).toBeInTheDocument();
@@ -356,7 +395,7 @@ describe('TasteNotesPage — i18n', () => {
   it('renders Turkish text when locale is tr', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
 
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Tadım Notları')).toBeInTheDocument();
@@ -367,7 +406,7 @@ describe('TasteNotesPage — i18n', () => {
   });
 
   it('renders info icon hint in English', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Taste Notes')).toBeInTheDocument();
@@ -379,7 +418,7 @@ describe('TasteNotesPage — i18n', () => {
   it('renders info icon hint in Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
 
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Tadım Notları')).toBeInTheDocument();
@@ -391,7 +430,7 @@ describe('TasteNotesPage — i18n', () => {
 
 describe('TasteNotesPage — SEOHead', () => {
   it('includes SEOHead component with correct title and description', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('seo-head')).toBeInTheDocument();
@@ -408,7 +447,7 @@ describe('TasteNotesPage — SEOHead', () => {
 
 describe('TasteNotesPage — leaf note chips', () => {
   it('renders leaf notes as clickable link elements', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Raspberry')).toBeInTheDocument();
@@ -420,7 +459,7 @@ describe('TasteNotesPage — leaf note chips', () => {
   });
 
   it('parent categories link with comma-separated child leaf IDs', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Berry')).toBeInTheDocument();
@@ -431,7 +470,7 @@ describe('TasteNotesPage — leaf note chips', () => {
   });
 
   it('root category includes all descendant leaf IDs', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Fruity')).toBeInTheDocument();
@@ -443,28 +482,22 @@ describe('TasteNotesPage — leaf note chips', () => {
 });
 
 describe('TasteNotesPage — empty/error state', () => {
-  it('renders empty state when API returns an empty array', async () => {
+  it('renders the no-results state when the API returns an empty array', async () => {
     mockHierarchyFn.mockResolvedValue([]);
 
-    render(<TasteNotesPage />);
+    renderPage();
 
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-    });
-
+    expect(await screen.findByText('No taste notes match your search.')).toBeInTheDocument();
     expect(screen.queryByText('Fruity')).not.toBeInTheDocument();
   });
 
-  it('handles API failure gracefully without crashing', async () => {
+  it('renders the route error state, not taste.noResults, when the load fails', async () => {
     mockHierarchyFn.mockRejectedValue(new Error('Network error'));
 
-    render(<TasteNotesPage />);
+    renderPage();
 
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-    });
-
-    expect(screen.getByText('Taste Notes')).toBeInTheDocument();
+    expect(await screen.findByText('error.route.loadFailed')).toBeInTheDocument();
+    expect(screen.queryByText('No taste notes match your search.')).not.toBeInTheDocument();
     expect(mockLogger.error).toHaveBeenCalledWith(
       { err: expect.any(Error) },
       'TasteNotesPage loadData failed',
@@ -474,7 +507,7 @@ describe('TasteNotesPage — empty/error state', () => {
 
 describe('TasteNotesPage — info icons for definitions', () => {
   it('renders info icon next to leaf notes that have definitions', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText('Raspberry')).toBeInTheDocument();
     });
@@ -489,7 +522,7 @@ describe('TasteNotesPage — info icons for definitions', () => {
   });
 
   it('renders info icon next to subcategories that have definitions', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText('Berry')).toBeInTheDocument();
     });
@@ -507,7 +540,7 @@ describe('TasteNotesPage — info icons for definitions', () => {
   });
 
   it('renders the correct number of info icons (one per root, subcategory, and leaf with definition)', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText('Raspberry')).toBeInTheDocument();
     });
@@ -518,7 +551,7 @@ describe('TasteNotesPage — info icons for definitions', () => {
   });
 
   it('root categories now have info icons instead of toggle buttons', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText('Fruity')).toBeInTheDocument();
     });
@@ -532,7 +565,7 @@ describe('TasteNotesPage — info icons for definitions', () => {
 
 describe('TasteNotesPage — definition popover interaction', () => {
   it('shows definition text when hovering the info icon', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText('Raspberry')).toBeInTheDocument();
     });
@@ -551,7 +584,7 @@ describe('TasteNotesPage — definition popover interaction', () => {
   });
 
   it('shows definition text on click (mobile tap simulation)', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText('Raspberry')).toBeInTheDocument();
     });
@@ -569,7 +602,7 @@ describe('TasteNotesPage — definition popover interaction', () => {
   });
 
   it('link still navigates — clicking chip name does not trigger popover', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText('Raspberry')).toBeInTheDocument();
     });
@@ -581,7 +614,7 @@ describe('TasteNotesPage — definition popover interaction', () => {
   });
 
   it('subcategory popover shows correct definition text', async () => {
-    render(<TasteNotesPage />);
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText('Berry')).toBeInTheDocument();
     });
@@ -600,5 +633,31 @@ describe('TasteNotesPage — definition popover interaction', () => {
         ),
       ).toBeInTheDocument();
     });
+  });
+});
+
+describe('TasteNotesPage — shareable search (?q=)', () => {
+  it('typing commits ?q= with replace after the pause', async () => {
+    const { router } = renderPage();
+    await screen.findByText('Fruity');
+
+    fireEvent.change(screen.getByPlaceholderText('Search taste notes...'), {
+      target: { value: 'berry' },
+    });
+
+    await waitFor(() => expect(router.state.location.search).toBe('?q=berry'));
+    expect(router.state.historyAction).toBe('REPLACE');
+    // The filter is client-side: committing ?q= does not refetch the hierarchy.
+    expect(mockHierarchyFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('a shared ?q= link shows the filtered hierarchy and fills the box', async () => {
+    renderPage('/taste-notes?q=Berry');
+
+    await screen.findByText('Berry');
+    expect(screen.queryByText('Roasted')).not.toBeInTheDocument();
+    expect((screen.getByPlaceholderText('Search taste notes...') as HTMLInputElement).value).toBe(
+      'Berry',
+    );
   });
 });

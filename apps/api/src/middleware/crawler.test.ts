@@ -92,9 +92,7 @@ describe('Crawler Middleware', () => {
   it('falls through when getRecipeMeta throws', async () => {
     const orig = deps.getRecipeMeta;
     try {
-      deps.getRecipeMeta = async () => {
-        throw new Error('RECIPE_NOT_FOUND');
-      };
+      deps.getRecipeMeta = () => Promise.reject(new Error('RECIPE_NOT_FOUND'));
       const res = await app.request('/recipes/missing', {
         headers: { 'User-Agent': 'Discordbot/1.0' },
       });
@@ -173,5 +171,48 @@ describe('Crawler Middleware', () => {
     } finally {
       deps.getRecipeMeta = orig;
     }
+  });
+
+  /**
+   * recipe-visibility: a crawler fall-through on a recipe path (missing, not public, or the
+   * lookup failed) is marked `noindex, nofollow` after the next handler ran; public recipes
+   * and non-recipe paths carry no header.
+   */
+  describe('X-Robots-Tag (recipe-visibility)', () => {
+    const googlebot = { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' };
+
+    it('marks the fall-through for an unlisted recipe', async () => {
+      deps.getRecipeMeta = async () => ({ ...publicMeta, visibility: 'unlisted' as const });
+      const res = await app.request('/recipes/unlisted-u', { headers: googlebot });
+      expect(await res.text()).toBe('SPA fallback');
+      expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+    });
+
+    it('marks the fall-through for an unknown recipe', async () => {
+      deps.getRecipeMeta = () => Promise.reject(new Error('RECIPE_NOT_FOUND'));
+      const res = await app.request('/recipes/no-such-recipe', { headers: googlebot });
+      expect(await res.text()).toBe('SPA fallback');
+      expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+    });
+
+    it('marks the fall-through when the lookup fails with a generic error', async () => {
+      deps.getRecipeMeta = () => Promise.reject(new Error('connection reset'));
+      const res = await app.request('/recipes/v60-ethiopian', { headers: googlebot });
+      expect(await res.text()).toBe('SPA fallback');
+      expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+    });
+
+    it('serves OG HTML for a public recipe without the header', async () => {
+      deps.getRecipeMeta = async () => publicMeta;
+      const res = await app.request('/recipes/v60-ethiopian', { headers: googlebot });
+      expect(await res.text()).toContain('<meta property="og:title"');
+      expect(res.headers.get('X-Robots-Tag')).toBeNull();
+    });
+
+    it('adds no header on a non-recipe path', async () => {
+      const res = await app.request('/login', { headers: googlebot });
+      expect(await res.text()).toBe('SPA fallback');
+      expect(res.headers.get('X-Robots-Tag')).toBeNull();
+    });
   });
 });

@@ -18,7 +18,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { AppEnv } from '../../types/hono.ts';
 import { type CacheProvider, InMemoryCacheProvider } from '../../utils/cache/index.ts';
 import { cacheProvider, setCacheProvider } from '../../utils/cache/singleton.ts';
-import collectionRouter, { deps } from './index.ts';
+import recipeRouter, { deps as recipeDeps } from '../recipe/index.ts';
+import collectionRouter, { deps, userCollections } from './index.ts';
 import { logger } from './service.ts';
 
 const stubAuth: typeof deps.authMiddleware = async (_c: Context, next: Next) => {
@@ -938,5 +939,233 @@ describe('GET /api/v1/collections/:id — cache behaviour', () => {
     expect(warm.status).toBe(200);
     const after = await anonApp.request(`/api/v1/collections/${col.id}`);
     expect(after.status).toBe(403);
+  });
+});
+
+describe('GET /api/v1/collections/:id — hidden items never reach the JSON body', () => {
+  let owner: typeof users.$inferSelect;
+  let author: typeof users.$inferSelect;
+  let originalCache: CacheProvider;
+  const colIds: string[] = [];
+
+  beforeEach(async () => {
+    originalCache = cacheProvider;
+    setCacheProvider(new InMemoryCacheProvider());
+    owner = await createUser('route-hidden-owner');
+    author = await createUser('route-hidden-author');
+  });
+
+  afterEach(async () => {
+    setCacheProvider(originalCache);
+    deps.authMiddleware = originalAuthMiddleware;
+    deps.optionalAuthMiddleware = originalOptionalAuthMiddleware;
+    await cleanupCollections(colIds);
+    colIds.length = 0;
+    await cleanupUsers([owner.id, author.id]);
+  });
+
+  it("omits the title and slug of a private recipe and of another author's unlisted recipe for an anonymous caller", async () => {
+    const col = await createCollectionRow(owner.id, 'Leak check', 'public');
+    colIds.push(col.id);
+    const visible = await createRecipe(author.id, 'public');
+    const madePrivate = await createRecipe(author.id, 'public');
+    const madeUnlisted = await createRecipe(author.id, 'public');
+    const privateTitle = `Hidden private ${crypto.randomUUID()}`;
+    const unlistedTitle = `Hidden unlisted ${crypto.randomUUID()}`;
+    await db
+      .update(recipes)
+      .set({ title: privateTitle, visibility: 'private' })
+      .where(eq(recipes.id, madePrivate.id));
+    await db
+      .update(recipes)
+      .set({ title: unlistedTitle, visibility: 'unlisted' })
+      .where(eq(recipes.id, madeUnlisted.id));
+    await db.insert(collectionItems).values([
+      { collectionId: col.id, recipeId: visible.id, sortOrder: 0 },
+      { collectionId: col.id, recipeId: madePrivate.id, sortOrder: 1 },
+      { collectionId: col.id, recipeId: madeUnlisted.id, sortOrder: 2 },
+    ]);
+
+    const res = await createTestApp(null).request(`/api/v1/collections/${col.id}`);
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain(visible.slug);
+    expect(text).not.toContain(privateTitle);
+    expect(text).not.toContain(madePrivate.slug);
+    expect(text).not.toContain(unlistedTitle);
+    expect(text).not.toContain(madeUnlisted.slug);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    const body = JSON.parse(text) as any;
+    expect(body.data.recipeCount).toBe(1);
+    expect(body.data.items).toHaveLength(1);
+  });
+});
+
+describe('unlisted collections — listing rule regression locks', () => {
+  let ownerA: typeof users.$inferSelect;
+  let userB: typeof users.$inferSelect;
+  let unlistedK: typeof collections.$inferSelect;
+  let publicP: typeof collections.$inferSelect;
+  let publicRecipe: typeof recipes.$inferSelect;
+  let ownUnlistedRecipe: typeof recipes.$inferSelect;
+  let originalCache: CacheProvider;
+  const originalRecipeAuth = recipeDeps.authMiddleware;
+  const originalRecipeOptionalAuth = recipeDeps.optionalAuthMiddleware;
+
+  /**
+   * Test app with the collection router, the user-scoped collections router and
+   * the recipe router (for `GET /api/v1/recipes/:slugOrId/collections`), all
+   * with stubbed auth so the caller is whatever `userId` the stub sets.
+   */
+  function createFullTestApp(userId: string | null) {
+    const app = createTestApp(userId);
+    recipeDeps.authMiddleware = stubAuth;
+    recipeDeps.optionalAuthMiddleware = stubOptionalAuth;
+    app.route('/api/v1/users', userCollections);
+    app.route('/api/v1/recipes', recipeRouter);
+    return app;
+  }
+
+  /** GET a JSON route as `userId` and return status + parsed body. */
+  async function getJson(userId: string | null, path: string) {
+    const res = await createFullTestApp(userId).request(path);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    return { status: res.status, body: (await res.json()) as any };
+  }
+
+  /** Ids of a list response's `data` rows. */
+  // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+  const ids = (body: any): string[] => body.data.map((c: { id: string }) => c.id);
+
+  beforeEach(async () => {
+    originalCache = cacheProvider;
+    setCacheProvider(new InMemoryCacheProvider());
+    ownerA = await createUser('route-unlisted-a');
+    userB = await createUser('route-unlisted-b');
+    unlistedK = await createCollectionRow(ownerA.id, 'Unlisted K', 'unlisted');
+    publicP = await createCollectionRow(ownerA.id, 'Public P', 'public');
+    publicRecipe = await createRecipe(ownerA.id, 'public');
+    ownUnlistedRecipe = await createRecipe(ownerA.id, 'unlisted');
+    await db.insert(collectionItems).values([
+      { collectionId: unlistedK.id, recipeId: publicRecipe.id, sortOrder: 0 },
+      { collectionId: unlistedK.id, recipeId: ownUnlistedRecipe.id, sortOrder: 1 },
+      { collectionId: publicP.id, recipeId: publicRecipe.id, sortOrder: 0 },
+    ]);
+  });
+
+  afterEach(async () => {
+    setCacheProvider(originalCache);
+    deps.authMiddleware = originalAuthMiddleware;
+    deps.optionalAuthMiddleware = originalOptionalAuthMiddleware;
+    recipeDeps.authMiddleware = originalRecipeAuth;
+    recipeDeps.optionalAuthMiddleware = originalRecipeOptionalAuth;
+    await cleanupUsers([ownerA.id, userB.id]);
+  });
+
+  it('keeps an unlisted collection out of GET /api/v1/collections/public', async () => {
+    const { status, body } = await getJson(null, '/api/v1/collections/public?perPage=100');
+    expect(status).toBe(200);
+    expect(ids(body)).toContain(publicP.id);
+    expect(ids(body)).not.toContain(unlistedK.id);
+  });
+
+  it('lists an unlisted collection on GET /api/v1/users/:userId/collections only for its owner', async () => {
+    const path = `/api/v1/users/${ownerA.id}/collections`;
+    for (const viewer of [null, userB.id]) {
+      const { status, body } = await getJson(viewer, path);
+      expect(status).toBe(200);
+      expect(ids(body)).toContain(publicP.id);
+      expect(ids(body)).not.toContain(unlistedK.id);
+    }
+    const asOwner = await getJson(ownerA.id, path);
+    expect(asOwner.status).toBe(200);
+    expect(ids(asOwner.body)).toContain(unlistedK.id);
+  });
+
+  it('keeps an unlisted collection out of GET /api/v1/recipes/:slug/collections for a non-owner', async () => {
+    const { status, body } = await getJson(
+      userB.id,
+      `/api/v1/recipes/${publicRecipe.slug}/collections`,
+    );
+    expect(status).toBe(200);
+    expect(ids(body)).toContain(publicP.id);
+    expect(ids(body)).not.toContain(unlistedK.id);
+  });
+
+  it('opens an unlisted collection by direct link for an anonymous caller with only its public items', async () => {
+    const { status, body } = await getJson(null, `/api/v1/collections/${unlistedK.id}`);
+    expect(status).toBe(200);
+    expect(body.data.items.map((i: { recipeId: string }) => i.recipeId)).toEqual([publicRecipe.id]);
+    expect(body.data.recipeCount).toBe(1);
+  });
+
+  it("rejects adding another author's unlisted recipe with 403", async () => {
+    const ownCol = await createCollectionRow(userB.id, 'B col', 'public');
+    const res = await createFullTestApp(userB.id).request(
+      `/api/v1/collections/${ownCol.id}/recipes`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipeId: ownUnlistedRecipe.id }),
+      },
+    );
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    const body = (await res.json()) as any;
+    expect(res.status).toBe(403);
+    expect(body.error.code).toBe('FORBIDDEN');
+  });
+});
+
+/**
+ * Non-public collection responses are never indexed (capability `recipe-visibility`, task
+ * 11.8): `GET /api/v1/collections/:id` carries `X-Robots-Tag: noindex, nofollow` unless the
+ * collection is public, including for its owner.
+ */
+describe('GET /api/v1/collections/:id — X-Robots-Tag (recipe-visibility)', () => {
+  let ownerA: typeof users.$inferSelect;
+  let unlistedK: typeof collections.$inferSelect;
+  let publicCol: typeof collections.$inferSelect;
+  let privateCol: typeof collections.$inferSelect;
+  let originalCache: CacheProvider;
+
+  beforeEach(async () => {
+    originalCache = cacheProvider;
+    setCacheProvider(new InMemoryCacheProvider());
+    ownerA = await createUser('route-robots-a');
+    unlistedK = await createCollectionRow(ownerA.id, 'Unlisted K', 'unlisted');
+    publicCol = await createCollectionRow(ownerA.id, 'Public', 'public');
+    privateCol = await createCollectionRow(ownerA.id, 'Private', 'private');
+  });
+
+  afterEach(async () => {
+    setCacheProvider(originalCache);
+    deps.authMiddleware = originalAuthMiddleware;
+    deps.optionalAuthMiddleware = originalOptionalAuthMiddleware;
+    await cleanupUsers([ownerA.id]);
+  });
+
+  it("marks the unlisted collection's detail for an anonymous viewer", async () => {
+    const res = await createTestApp(null).request(`/api/v1/collections/${unlistedK.id}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+  });
+
+  it("leaves the public collection's detail unmarked", async () => {
+    const res = await createTestApp(null).request(`/api/v1/collections/${publicCol.id}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-Robots-Tag')).toBeNull();
+  });
+
+  it("marks the owner's own private collection detail", async () => {
+    const res = await createTestApp(ownerA.id).request(`/api/v1/collections/${privateCol.id}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+  });
+
+  it('marks a cached unlisted detail too', async () => {
+    await createTestApp(null).request(`/api/v1/collections/${unlistedK.id}`);
+    const res = await createTestApp(null).request(`/api/v1/collections/${unlistedK.id}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
   });
 });

@@ -1,190 +1,231 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useBanUser } from './useBanUser.ts';
 
-vi.mock('@/utils/logger.ts', () => ({
-  createLogger: () => ({
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     trace: vi.fn(),
     fatal: vi.fn(),
-  }),
-}));
-
-vi.mock('../api/index.ts', () => ({
-  adminApi: {
-    banUser: vi.fn(),
-    unbanUser: vi.fn(),
   },
 }));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
-import { adminApi } from '../api/index.ts';
-
-const mockBanUser = vi.mocked(adminApi.banUser);
-const mockUnbanUser = vi.mocked(adminApi.unbanUser);
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+import { renderWithAppProviders } from '../test-utils/render.tsx';
+import { useBanUser } from './useBanUser.ts';
 
 const testUser = { id: 'u1', username: 'alice', displayName: 'Alice' };
 
+/** The latest hook result rendered by {@link Harness} (reset before each test). */
+let hook: ReturnType<typeof useBanUser>;
+const onSuccess = vi.fn();
+
+/** Renders the hook under a route so it can submit to the `/admin/users/:id` action. */
+function Harness() {
+  hook = useBanUser(onSuccess);
+  return null;
+}
+
+/** What the mocked route action received: the user id param and the submitted fields. */
+let submissions: Array<{ id: string | undefined; intent: string; reason: string | null }> = [];
+const routeAction = vi.fn();
+const listLoader = vi.fn(() => null);
+
+/**
+ * Renders the hook at `/admin/users` (whose loader counts revalidations) next to a
+ * `/admin/users/:id` route whose action is a `vi.fn()` returning `result`.
+ */
+function renderHarness(result: () => unknown) {
+  routeAction.mockImplementation(
+    async ({ request, params }: { request: Request; params: { id?: string } }) => {
+      const form = await request.formData();
+      submissions.push({
+        id: params.id,
+        intent: String(form.get('intent')),
+        reason: form.get('reason') as string | null,
+      });
+      return result();
+    },
+  );
+  return renderWithAppProviders(
+    [
+      { path: '/admin/users', Component: Harness, loader: listLoader },
+      { path: '/admin/users/:id', action: routeAction },
+    ],
+    { initialEntries: ['/admin/users'], auth: 'admin' },
+  );
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  submissions = [];
+  // A stale hook from the previous test would satisfy `waitFor(() => expect(hook).toBeDefined())`
+  // before this test's router has rendered, sending the submission to an unmounted harness.
+  hook = undefined as unknown as ReturnType<typeof useBanUser>;
+});
+
 describe('useBanUser', () => {
-  it('openBanDialog sets banDialogUser and clears state', () => {
-    const { result } = renderHook(() => useBanUser(vi.fn()));
-    act(() => {
-      result.current.openBanDialog(testUser);
-    });
-    expect(result.current.banDialogUser).toEqual(testUser);
-    expect(result.current.processing).toBe(false);
-    expect(result.current.error).toBeNull();
+  it('openBanDialog sets banDialogUser and clears state', async () => {
+    renderHarness(() => ({ ok: true, intent: 'ban' }));
+    await waitFor(() => expect(hook).toBeDefined());
+    act(() => hook.openBanDialog(testUser));
+    expect(hook.banDialogUser).toEqual(testUser);
+    expect(hook.processing).toBe(false);
+    expect(hook.error).toBeNull();
   });
 
-  it('confirmBan success: calls onSuccess with (userId, true), closes dialog, clears error', async () => {
-    mockBanUser.mockResolvedValue({} as never);
-    const onSuccess = vi.fn();
-    const { result } = renderHook(() => useBanUser(onSuccess));
-    act(() => {
-      result.current.openBanDialog(testUser);
-    });
+  it('confirmBan success: submits intent=ban to /admin/users/:id, calls onSuccess(userId, true), closes the dialog', async () => {
+    renderHarness(() => ({ ok: true, intent: 'ban' }));
+    await waitFor(() => expect(listLoader).toHaveBeenCalledTimes(1));
+    act(() => hook.openBanDialog(testUser));
+
     await act(async () => {
-      await result.current.confirmBan('Spam');
+      await hook.confirmBan('Spam');
     });
-    await waitFor(() => {
-      expect(onSuccess).toHaveBeenCalledWith('u1', true);
-    });
-    await waitFor(() => {
-      expect(result.current.banDialogUser).toBeNull();
-    });
-    expect(result.current.processing).toBe(false);
-    expect(result.current.error).toBeNull();
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledWith('u1', true));
+    expect(submissions).toEqual([{ id: 'u1', intent: 'ban', reason: 'Spam' }]);
+    await waitFor(() => expect(hook.banDialogUser).toBeNull());
+    expect(hook.processing).toBe(false);
+    expect(hook.error).toBeNull();
+    expect(mockLogger.debug).toHaveBeenCalledWith(
+      { userId: 'u1' },
+      'useBanUser confirmBan started',
+    );
+    expect(mockLogger.debug).toHaveBeenCalledWith(
+      { userId: 'u1' },
+      'useBanUser confirmBan completed',
+    );
   });
 
-  it('confirmBan failure: sets error (key, not server text), resets processing, keeps dialog open', async () => {
-    mockBanUser.mockRejectedValue(new Error('Network error'));
-    const onSuccess = vi.fn();
-    const { result } = renderHook(() => useBanUser(onSuccess));
-    act(() => {
-      result.current.openBanDialog(testUser);
-    });
+  it('submits with defaultShouldRevalidate: false (no loader re-fetch after a ban)', async () => {
+    renderHarness(() => ({ ok: true, intent: 'ban' }));
+    await waitFor(() => expect(listLoader).toHaveBeenCalledTimes(1));
+    act(() => hook.openBanDialog(testUser));
+
     await act(async () => {
-      await result.current.confirmBan('Spam');
+      await hook.confirmBan('Spam');
     });
-    await waitFor(() => {
-      expect(result.current.error).toBe('admin.users.banError');
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+
+    expect(routeAction).toHaveBeenCalledTimes(1);
+    expect(listLoader).toHaveBeenCalledTimes(1);
+  });
+
+  it('confirmBan failure: sets error (key, not server text), resets processing, keeps dialog open, logs', async () => {
+    renderHarness(() => ({ ok: false, intent: 'ban', error: 'Network error' }));
+    await waitFor(() => expect(hook).toBeDefined());
+    act(() => hook.openBanDialog(testUser));
+
+    await act(async () => {
+      await hook.confirmBan('Spam');
     });
-    expect(result.current.processing).toBe(false);
-    expect(result.current.banDialogUser).toEqual(testUser);
+
+    await waitFor(() => expect(hook.error).toBe('admin.users.banError'));
+    expect(hook.processing).toBe(false);
+    expect(hook.banDialogUser).toEqual(testUser);
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: 'Network error', userId: 'u1' },
+      'useBanUser confirmBan failed',
+    );
+  });
+
+  it('confirmBan with an empty reason returns early without submitting', async () => {
+    renderHarness(() => ({ ok: true, intent: 'ban' }));
+    await waitFor(() => expect(hook).toBeDefined());
+    act(() => hook.openBanDialog(testUser));
+
+    await act(async () => {
+      await hook.confirmBan('   ');
+    });
+
+    expect(routeAction).not.toHaveBeenCalled();
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
-  it('confirmBan with empty reason returns early', async () => {
-    const onSuccess = vi.fn();
-    const { result } = renderHook(() => useBanUser(onSuccess));
+  it('unban success: submits intent=unban and calls onSuccess(userId, false)', async () => {
+    renderHarness(() => ({ ok: true, intent: 'unban' }));
+    await waitFor(() => expect(hook).toBeDefined());
+
+    await act(async () => {
+      await hook.unban('u1');
+    });
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledWith('u1', false));
+    expect(submissions).toEqual([{ id: 'u1', intent: 'unban', reason: null }]);
+    expect(hook.error).toBeNull();
+    expect(hook.processing).toBe(false);
+  });
+
+  it('unban failure: sets error (key, not server text) and logs', async () => {
+    renderHarness(() => ({ ok: false, intent: 'unban', error: 'Server error' }));
+    await waitFor(() => expect(hook).toBeDefined());
+
+    await act(async () => {
+      await hook.unban('u1');
+    });
+
+    await waitFor(() => expect(hook.error).toBe('admin.users.unbanError'));
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: 'Server error', userId: 'u1' },
+      'useBanUser unban failed',
+    );
+  });
+
+  it('unban rejects duplicate calls while a submission is in flight', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    renderHarness(async () => {
+      await gate;
+      return { ok: true, intent: 'unban' };
+    });
+    await waitFor(() => expect(hook).toBeDefined());
+
+    let first!: Promise<void>;
     act(() => {
-      result.current.openBanDialog(testUser);
+      first = hook.unban('u1');
     });
+    await waitFor(() => expect(hook.processing).toBe(true));
     await act(async () => {
-      await result.current.confirmBan('');
+      await hook.unban('u1');
     });
-    expect(mockBanUser).not.toHaveBeenCalled();
-    expect(onSuccess).not.toHaveBeenCalled();
-  });
-
-  it('unban success: calls onSuccess with (userId, false), clears error', async () => {
-    mockUnbanUser.mockResolvedValue({} as never);
-    const onSuccess = vi.fn();
-    const { result } = renderHook(() => useBanUser(onSuccess));
+    release();
     await act(async () => {
-      await result.current.unban('u1');
+      await first;
     });
-    await waitFor(() => {
-      expect(onSuccess).toHaveBeenCalledWith('u1', false);
-    });
-    expect(result.current.error).toBeNull();
-  });
 
-  it('unban failure: sets error (key, not server text)', async () => {
-    mockUnbanUser.mockRejectedValue(new Error('Server error'));
-    const { result } = renderHook(() => useBanUser(vi.fn()));
-    await act(async () => {
-      await result.current.unban('u1');
-    });
-    await waitFor(() => {
-      expect(result.current.error).toBe('admin.users.unbanError');
-    });
-  });
-
-  it('unban success: sets processing during request', async () => {
-    let resolvePromise!: (value: unknown) => void;
-    mockUnbanUser.mockReturnValue(
-      new Promise((resolve) => {
-        resolvePromise = resolve;
-      }) as never,
-    );
-    const { result } = renderHook(() => useBanUser(vi.fn()));
-    const unbanPromise = result.current.unban('u1');
-    await waitFor(() => {
-      expect(result.current.processing).toBe(true);
-    });
-    resolvePromise(undefined);
-    await unbanPromise;
-    await waitFor(() => {
-      expect(result.current.processing).toBe(false);
-    });
-  });
-
-  it('unban: rejects duplicate calls while processing', async () => {
-    let resolvePromise!: (value: unknown) => void;
-    mockUnbanUser.mockReturnValue(
-      new Promise((resolve) => {
-        resolvePromise = resolve;
-      }) as never,
-    );
-    const { result } = renderHook(() => useBanUser(vi.fn()));
-    const firstUnban = result.current.unban('u1');
-    await waitFor(() => {
-      expect(mockUnbanUser).toHaveBeenCalledTimes(1);
-      expect(result.current.processing).toBe(true);
-    });
-    // Second call must early-return because the first is still in flight;
-    // it should not call unbanUser again and should resolve immediately.
-    await result.current.unban('u1');
-    expect(mockUnbanUser).toHaveBeenCalledTimes(1);
-    // Release the in-flight promise and let the first call settle so no
-    // dangling state update leaks into the next test.
-    resolvePromise(undefined);
-    await firstUnban;
+    await waitFor(() => expect(hook.processing).toBe(false));
+    expect(routeAction).toHaveBeenCalledTimes(1);
   });
 
   it('clearError clears error', async () => {
-    mockUnbanUser.mockRejectedValue(new Error('Server error'));
-    const { result } = renderHook(() => useBanUser(vi.fn()));
+    renderHarness(() => ({ ok: false, intent: 'unban', error: 'Server error' }));
+    await waitFor(() => expect(hook).toBeDefined());
     await act(async () => {
-      await result.current.unban('u1');
+      await hook.unban('u1');
     });
-    await waitFor(() => {
-      expect(result.current.error).toBe('admin.users.unbanError');
-    });
-    act(() => {
-      result.current.clearError();
-    });
-    expect(result.current.error).toBeNull();
+    await waitFor(() => expect(hook.error).toBe('admin.users.unbanError'));
+
+    act(() => hook.clearError());
+
+    expect(hook.error).toBeNull();
   });
 
-  it('closeDialog clears banDialogUser, error, and processing', () => {
-    const { result } = renderHook(() => useBanUser(vi.fn()));
-    act(() => {
-      result.current.openBanDialog(testUser);
-    });
-    expect(result.current.banDialogUser).toEqual(testUser);
-    act(() => {
-      result.current.closeDialog();
-    });
-    expect(result.current.banDialogUser).toBeNull();
-    expect(result.current.error).toBeNull();
-    expect(result.current.processing).toBe(false);
+  it('closeDialog clears banDialogUser, error, and processing', async () => {
+    renderHarness(() => ({ ok: true, intent: 'ban' }));
+    await waitFor(() => expect(hook).toBeDefined());
+    act(() => hook.openBanDialog(testUser));
+    expect(hook.banDialogUser).toEqual(testUser);
+
+    act(() => hook.closeDialog());
+
+    expect(hook.banDialogUser).toBeNull();
+    expect(hook.error).toBeNull();
+    expect(hook.processing).toBe(false);
   });
 });

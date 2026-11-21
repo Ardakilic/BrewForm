@@ -2,6 +2,7 @@ import {
   AuthLoginSchema,
   AuthRefreshSchema,
   AuthRegisterSchema,
+  ErrorEnvelopeSchema,
   PasswordResetConfirmSchema,
   PasswordResetSchema,
 } from '@brewform/shared/schemas';
@@ -10,21 +11,49 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
-import { describeRoute } from 'hono-openapi';
+import { describeRoute, resolver } from 'hono-openapi';
 import { z } from 'zod';
 import { config } from '../../config/env.ts';
 import { authMiddleware } from '../../middleware/auth.ts';
-import { authRateLimitMiddleware } from '../../middleware/rateLimit.ts';
+import {
+  emailIpKey,
+  emailKey,
+  rateLimit,
+  rateLimitFailures,
+  validatedEmailIpKey,
+  validatedEmailKey,
+} from '../../middleware/rateLimit.ts';
 import type { AppEnv } from '../../types/hono.ts';
 import { createLogger } from '../../utils/logger/index.ts';
+import { POLICIES } from '../../utils/rate-limit/policies.ts';
+import { deleteRateLimitCounter } from '../../utils/rate-limit/registry.ts';
 import { error, success } from '../../utils/response/index.ts';
 import * as authService from './service.ts';
 
-const log = createLogger('auth');
+/** Module-scoped structured logger for the auth routes (exported for test spies). */
+export const log = createLogger('auth');
 
-/** Hono sub-router for auth endpoints, mounted at `/api/v1/auth`. */
+/**
+ * Hono sub-router for auth endpoints, mounted at `/api/v1/auth`.
+ *
+ * Rate limits (named policies in `utils/rate-limit/policies.ts`): IP-keyed
+ * policies run before body validation and auth, email-keyed ones after
+ * `zValidator`, user-keyed ones after `authMiddleware`.
+ */
 const auth = new Hono<AppEnv>();
-const authRateLimit = authRateLimitMiddleware({ windowMs: 15 * 60_000, maxAttempts: 5 });
+
+/**
+ * OpenAPI `429` response for a rate-limited auth route.
+ *
+ * @param limits - Human-readable limits, e.g. "5 per hour per IP".
+ * @returns The `responses[429]` entry (standard error envelope).
+ */
+function rateLimited(limits: string) {
+  return {
+    description: `Rate limit exceeded (${limits}); see the Retry-After header`,
+    content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+  };
+}
 
 function setAuthCookies(c: Context, accessToken: string, refreshToken: string, rememberMe = false) {
   const isProduction = config.APP_ENV === 'production';
@@ -62,17 +91,22 @@ function clearAuthCookies(c: Context) {
 
 auth.post(
   '/register',
-  authRateLimit,
+  rateLimit(POLICIES.authRegisterIp),
   describeRoute({
     tags: ['Auth'],
     summary: 'Register a new account',
     description:
       'Creates a new user account and returns access + refresh tokens. ' +
-      'Email and username are checked for uniqueness.',
+      'Email and username are checked for uniqueness. ' +
+      'Rate-limited to 5 requests per hour per client IP.',
     responses: {
       201: { description: 'Account created; tokens issued' },
       403: { description: 'Registration disabled' },
-      409: { description: 'Email or username already in use' },
+      409: {
+        description: 'Email or username already in use (envelope code CONFLICT)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      429: rateLimited('5 requests per hour per client IP'),
     },
   }),
   zValidator('json', AuthRegisterSchema),
@@ -91,10 +125,7 @@ auth.post(
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'REGISTRATION_DISABLED') {
-        log.warn(
-          { ip: c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown' },
-          'Registration attempt while disabled',
-        );
+        log.warn({}, 'Registration attempt while disabled');
         return error(
           c,
           'REGISTRATION_DISABLED',
@@ -115,20 +146,33 @@ auth.post(
 
 auth.post(
   '/login',
-  authRateLimit,
+  rateLimit(POLICIES.authLoginIp),
+  rateLimitFailures(POLICIES.authLoginFailIp),
   describeRoute({
     tags: ['Auth'],
     summary: 'Log in with email and password',
     description:
       'Returns access + refresh tokens on success. ' +
-      'Set rememberMe to true for a long-lived refresh token (6 months by default).',
+      'Set rememberMe to true for a long-lived refresh token (6 months by default). ' +
+      'Rate-limited to 20 attempts per 15 minutes per client IP, 100 failed attempts per day ' +
+      'per client IP, 5 consecutive failed attempts per 15 minutes per account and IP (reset ' +
+      'by a successful login or password reset) and 20 failed attempts per hour per account. ' +
+      'Unknown emails are counted exactly like existing accounts.',
     responses: {
       200: { description: 'Login succeeded; tokens issued' },
       401: { description: 'Invalid credentials' },
       403: { description: 'Account banned' },
+      429: rateLimited(
+        '20 per 15 min per IP; 100 failures per day per IP; 5 failures per 15 min per account and IP; 20 failures per hour per account',
+      ),
     },
   }),
   zValidator('json', AuthLoginSchema),
+  rateLimitFailures(POLICIES.authLoginFailAccountIp, {
+    key: validatedEmailIpKey,
+    resetOnSuccess: true,
+  }),
+  rateLimitFailures(POLICIES.authLoginFailAccount, { key: validatedEmailKey }),
   async (c) => {
     const body = c.req.valid('json');
     try {
@@ -199,18 +243,21 @@ auth.post(
 
 auth.post(
   '/forgot-password',
-  authRateLimit,
+  rateLimit(POLICIES.authForgotIp),
   describeRoute({
     tags: ['Auth'],
     summary: 'Request a password reset email',
     description:
-      'Always returns 200 to avoid leaking which emails are registered. ' +
-      'A token is emailed if the address matches an account.',
+      'Always returns 200 (when not rate-limited) to avoid leaking which emails are registered. ' +
+      'A token is emailed if the address matches an account. ' +
+      'Rate-limited to 5 requests per 15 minutes per client IP and 3 per hour per email address.',
     responses: {
       200: { description: 'Acknowledged (a reset email was sent if the account exists)' },
+      429: rateLimited('5 per 15 min per IP; 3 per hour per email address'),
     },
   }),
   zValidator('json', PasswordResetSchema),
+  rateLimit(POLICIES.authForgotAccount, { key: validatedEmailKey }),
   async (c) => {
     const body = c.req.valid('json');
     await authService.requestPasswordReset(body.email);
@@ -222,20 +269,32 @@ auth.post(
 
 auth.post(
   '/reset-password',
+  rateLimit(POLICIES.authTokenIp),
   describeRoute({
     tags: ['Auth'],
     summary: 'Confirm a password reset',
-    description: 'Consumes a token from the reset email and sets a new password.',
+    description:
+      'Consumes a token from the reset email and sets a new password. A successful reset ' +
+      "clears the account's login-failure limits. " +
+      'Rate-limited to 10 requests per 15 minutes per client IP (shared with verify-email).',
     responses: {
       200: { description: 'Password updated' },
       400: { description: 'Token invalid, used, or expired' },
+      429: rateLimited('10 per 15 min per IP, shared with verify-email'),
     },
   }),
   zValidator('json', PasswordResetConfirmSchema),
   async (c) => {
     const body = c.req.valid('json');
     try {
-      await authService.confirmPasswordReset(body.token, body.newPassword);
+      const email = await authService.confirmPasswordReset(body.token, body.newPassword);
+      if (email !== null) {
+        // Give a locked-out owner a way back in (api-rate-limiting spec).
+        await Promise.all([
+          deleteRateLimitCounter(POLICIES.authLoginFailAccount, emailKey(email)),
+          deleteRateLimitCounter(POLICIES.authLoginFailAccountIp, emailIpKey(c, email)),
+        ]);
+      }
       return success(c, { message: 'Password has been reset successfully.' });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -272,13 +331,24 @@ auth.get(
 
 auth.post(
   '/send-verification',
+  rateLimit(POLICIES.authVerifySendIp),
   authMiddleware,
+  rateLimit(POLICIES.authVerifySendUserBurst),
+  rateLimit(POLICIES.authVerifySendUserDaily),
   describeRoute({
     tags: ['Auth'],
     summary: 'Resend email verification link',
+    description:
+      'Sends a new verification email to the authenticated, unverified user. ' +
+      'Rate-limited to 10 requests per hour per client IP, and 1 per minute and 5 per day per user.',
+    security: [{ bearerAuth: [] }],
     responses: {
       200: { description: 'Verification email sent (if account is unverified)' },
-      401: { description: 'Authentication required' },
+      401: {
+        description: 'Authentication required',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      429: rateLimited('10 per hour per IP; 1 per minute and 5 per day per user'),
     },
   }),
   async (c) => {
@@ -298,12 +368,17 @@ auth.post(
 
 auth.post(
   '/verify-email',
+  rateLimit(POLICIES.authTokenIp),
   describeRoute({
     tags: ['Auth'],
     summary: 'Verify email address with token',
+    description:
+      'Consumes an email verification token. ' +
+      'Rate-limited to 10 requests per 15 minutes per client IP (shared with reset-password).',
     responses: {
       200: { description: 'Email verified' },
       400: { description: 'Invalid or expired token' },
+      429: rateLimited('10 per 15 min per IP, shared with reset-password'),
     },
   }),
   zValidator('json', z.object({ token: z.string().min(1) })),

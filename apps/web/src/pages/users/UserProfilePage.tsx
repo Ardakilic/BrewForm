@@ -1,14 +1,5 @@
-import type {
-  BrewLogListItemOutput,
-  CollectionListItemOutput,
-  FollowerListItemOutput,
-  FollowingListItemOutput,
-  PaginatedResponse,
-  PublicUserOutput,
-} from '@brewform/shared/schemas';
-import { useEffect } from 'react';
-import { Link, useLoaderData, useParams, useSearchParams } from 'react-router';
-import { brewLogApi, collectionApi, followApi, userApi } from '../../api/index.ts';
+import { useEffect, useState } from 'react';
+import { Link, useLoaderData, useSearchParams } from 'react-router';
 import { BrewLogCard } from '../../components/brew-log/BrewLogCard.tsx';
 import { CollectionCard } from '../../components/collections/CollectionCard.tsx';
 import { RecipeCard } from '../../components/recipe-list/RecipeCard.tsx';
@@ -17,69 +8,15 @@ import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { FollowButton } from '../../components/user/FollowButton.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { withParams } from '../../utils/list-params.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { FollowRecord, loader } from './UserProfilePage.data.ts';
 
 const log = createLogger('UserProfilePage');
 
 type Tab = 'recipes' | 'badges' | 'followers' | 'following' | 'collections' | 'brews';
 
-type FollowRecord = FollowerListItemOutput | FollowingListItemOutput;
-
-/** Loader data for the user profile page — public profile plus tab-specific follow/collection/brew data. */
-export interface ProfileLoaderData {
-  profile: PublicUserOutput;
-  followData: FollowRecord[] | null;
-  collectionsData: PaginatedResponse<CollectionListItemOutput> | null;
-  brewsData: PaginatedResponse<BrewLogListItemOutput> | null;
-}
-
-/**
- * Fetches the profile for `:username`, plus the follower/following list
- * when `?tab=` selects one; returns `{ profile, followData }` with
- * `followData` null on other tabs. The `brews` tab fetches the VIEWER's own
- * brew journal for the requested `?brewsPage`, but only after establishing
- * that the viewer IS the profile being viewed (a URL-forced `?tab=brews` on
- * another profile, or while logged out, skips the request and leaves
- * `brewsData` null). Once ownership is established, list errors propagate to
- * the error boundary rather than rendering a misleading empty journal.
- */
-export const loader = async ({
-  params,
-  request,
-}: {
-  params: Record<string, string | undefined>;
-  request: Request;
-}): Promise<ProfileLoaderData> => {
-  const username = params.username;
-  if (!username) throw new Response('Not Found', { status: 404 });
-  const profile = await userApi.getProfile(username);
-  const url = new URL(request.url);
-  const tab = url.searchParams.get('tab') ?? 'recipes';
-  let followData: FollowRecord[] | null = null;
-  let collectionsData: PaginatedResponse<CollectionListItemOutput> | null = null;
-  let brewsData: PaginatedResponse<BrewLogListItemOutput> | null = null;
-  if (tab === 'followers') {
-    followData = await followApi.followers(profile.id);
-  } else if (tab === 'following') {
-    followData = await followApi.following(profile.id);
-  } else if (tab === 'collections') {
-    collectionsData = await collectionApi.listByUser(profile.id);
-  } else if (tab === 'brews') {
-    // The brew journal is owner-private: fetch it only when the viewer IS the
-    // profile being viewed. A URL-forced `?tab=brews` on another user's
-    // profile (or while logged out) skips the request and leaves
-    // `brewsData` null. Once ownership is established the list errors
-    // propagate to the error boundary instead of rendering an empty journal.
-    const viewer = await userApi.me().catch(() => null);
-    if (viewer?.username === username) {
-      const rawPage = Number(url.searchParams.get('brewsPage'));
-      const brewsPage = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
-      brewsData = await brewLogApi.list({ page: brewsPage });
-    }
-  }
-  return { profile, followData, collectionsData, brewsData };
-};
-
+/** Renders a follower or following list, or `emptyMsg` when it is empty. */
 function FollowList({ data, emptyMsg }: { data: FollowRecord[]; emptyMsg: string }) {
   return (
     <div className="flex flex-col gap-2">
@@ -109,18 +46,33 @@ function FollowList({ data, emptyMsg }: { data: FollowRecord[]; emptyMsg: string
 }
 
 /**
- * Public profile page with recipes/badges/followers/following tabs
- * (driven by `?tab=`), follow button for other users, and profile
- * header from loader data.
+ * Public profile page with recipes/badges/followers/following/collections tabs (driven by
+ * `?tab=`, plus the brew journal on the viewer's own profile), a follow button for other
+ * users, and the profile header, all from the `/u/:username` route loader
+ * (`UserProfilePage.data.ts`). Own-profile checks compare ids, never usernames. A follow or
+ * unfollow does not revalidate the loader, so the follower count shown is the loaded count
+ * plus the toggles made since that load.
  */
 export function UserProfilePage() {
-  const { username } = useParams();
   const { user } = useAuth();
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { profile, followData, collectionsData, brewsData } = useLoaderData() as ProfileLoaderData;
+  const { profile, followData, collectionsData, brewsData } = useLoaderData<typeof loader>();
+  // Follower-count adjustment for follows made since this profile was loaded; tied to the
+  // loaded profile object, so a fresh load (which already counts them) starts from zero.
+  const [followDelta, setFollowDelta] = useState({ base: profile, delta: 0 });
+  const followerDelta = followDelta.base === profile ? followDelta.delta : 0;
 
-  const isSelf = user?.username === username;
+  /** Adjusts the shown follower count after a successful follow (`true`) or unfollow. */
+  function handleFollowToggle(next: boolean) {
+    setFollowDelta((d) => ({
+      base: profile,
+      delta: (d.base === profile ? d.delta : 0) + (next ? 1 : -1),
+    }));
+  }
+
+  // Compare ids: the URL username may differ in case from the stored one (`/u/arda` → `Arda`).
+  const isSelf = user != null && user.id === profile?.id;
   const ALLOWED_TABS: readonly Tab[] = [
     'recipes',
     'badges',
@@ -130,6 +82,9 @@ export function UserProfilePage() {
   ];
   // The brew journal is private — its tab is only valid on the viewer's own profile.
   const validTabs: readonly Tab[] = isSelf ? [...ALLOWED_TABS, 'brews'] : ALLOWED_TABS;
+  /** Sets a per-tab page param (`collectionsPage`, `brewsPage`), keeping the rest; page 1 is omitted. */
+  const setPageParam = (key: string, nextPage: number) =>
+    setSearchParams((prev) => withParams(prev, { [key]: nextPage > 1 ? nextPage : null }));
   const rawTab = searchParams.get('tab') ?? 'recipes';
   const tab: Tab = (validTabs as readonly string[]).includes(rawTab) ? (rawTab as Tab) : 'recipes';
 
@@ -206,7 +161,8 @@ export function UserProfilePage() {
                 <strong>{profile.recipeCount}</strong> {t('user.recipes').toLowerCase()}
               </span>
               <span>
-                <strong>{profile.followerCount}</strong> {t('user.followers').toLowerCase()}
+                <strong>{profile.followerCount + followerDelta}</strong>{' '}
+                {t('user.followers').toLowerCase()}
               </span>
               <span>
                 <strong>{profile.followingCount}</strong> {t('user.following').toLowerCase()}
@@ -219,7 +175,13 @@ export function UserProfilePage() {
                 {t('user.editProfile')}
               </Link>
             ) : (
-              user && <FollowButton userId={profile.id} initialFollowing={profile.isFollowing} />
+              user && (
+                <FollowButton
+                  userId={profile.id}
+                  initialFollowing={profile.isFollowing}
+                  onToggle={handleFollowToggle}
+                />
+              )
             )}
           </div>
         </div>
@@ -230,7 +192,7 @@ export function UserProfilePage() {
           <button
             key={key}
             type="button"
-            onClick={() => setSearchParams({ tab: key })}
+            onClick={() => setSearchParams(key === 'recipes' ? {} : { tab: key })}
             className="text-sm px-4 py-2 rounded"
             style={{
               backgroundColor: tab === key ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
@@ -253,11 +215,20 @@ export function UserProfilePage() {
       )}
 
       {tab === 'collections' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {!collectionsData || collectionsData.data.length === 0 ? (
-            <p style={{ color: 'var(--text-tertiary)' }}>{t('user.noCollections')}</p>
-          ) : (
-            collectionsData.data.map((c) => <CollectionCard key={c.id} collection={c} />)
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {!collectionsData || collectionsData.data.length === 0 ? (
+              <p style={{ color: 'var(--text-tertiary)' }}>{t('user.noCollections')}</p>
+            ) : (
+              collectionsData.data.map((c) => <CollectionCard key={c.id} collection={c} />)
+            )}
+          </div>
+          {collectionsData && collectionsData.meta.pagination.totalPages > 1 && (
+            <PaginationControls
+              page={collectionsData.meta.pagination.page}
+              totalPages={collectionsData.meta.pagination.totalPages}
+              onPageChange={(nextPage) => setPageParam('collectionsPage', nextPage)}
+            />
           )}
         </div>
       )}
@@ -273,11 +244,7 @@ export function UserProfilePage() {
             <PaginationControls
               page={brewsData.meta.pagination.page}
               totalPages={brewsData.meta.pagination.totalPages}
-              onPageChange={(nextPage) => {
-                const next = new URLSearchParams(searchParams);
-                next.set('brewsPage', String(nextPage));
-                setSearchParams(next);
-              }}
+              onPageChange={(nextPage) => setPageParam('brewsPage', nextPage)}
             />
           )}
         </div>

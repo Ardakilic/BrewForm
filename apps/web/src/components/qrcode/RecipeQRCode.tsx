@@ -1,10 +1,7 @@
-import { useState } from 'react';
-import { useToast } from '../../components/ui/Toast.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { createLogger } from '../../utils/logger.ts';
+import { useRecipeQrDownload } from './useRecipeQrDownload.ts';
 
-const log = createLogger('RecipeQRCode');
-
+/** Props for {@link RecipeQRCode}. */
 interface Props {
   slug: string;
   visibility: string;
@@ -12,38 +9,21 @@ interface Props {
 
 /**
  * QR-code card with preview image and SVG download button for a recipe's
- * share URL. Hidden for private/draft recipes.
+ * share URL. Hidden for private/draft recipes. The download goes through
+ * {@link useRecipeQrDownload} (a fetcher against the `resources/qrcode/recipe/:slug` resource
+ * route, with an error toast on failure); the `<img>` preview keeps its plain `src` URL.
  */
 export function RecipeQRCode({ slug, visibility }: Props) {
-  const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
-  const toast = useToast();
+  const { download, downloading } = useRecipeQrDownload(slug);
 
   if (visibility === 'private' || visibility === 'draft') {
     return null;
   }
 
+  /** The QR-code image URL used by the preview `<img>`. */
   function getQRUrl() {
     return `/api/v1/qrcode/recipe/${slug}.svg`;
-  }
-
-  async function download() {
-    setLoading(true);
-    try {
-      const url = getQRUrl();
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `brewform-${slug}-qr.svg`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-    } catch (err) {
-      log.error({ err, slug }, 'QR code download failed');
-      toast.error('qrcode.downloadFailed');
-    } finally {
-      setLoading(false);
-    }
   }
 
   return (
@@ -52,8 +32,13 @@ export function RecipeQRCode({ slug, visibility }: Props) {
         QR Code
       </h4>
       <div className="flex items-center gap-3">
-        <button type="button" onClick={download} className="btn-primary text-sm" disabled={loading}>
-          {loading ? t('qrcode.downloading') : t('qrcode.download')}
+        <button
+          type="button"
+          onClick={download}
+          className="btn-primary text-sm"
+          disabled={downloading}
+        >
+          {downloading ? t('qrcode.downloading') : t('qrcode.download')}
         </button>
       </div>
       <div className="mt-3">

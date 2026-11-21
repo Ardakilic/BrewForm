@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import '../../test-setup.ts';
+import { Readable } from 'node:stream';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { FailSoftCacheProvider } from './failSoft.ts';
 import { createCacheProvider, InMemoryCacheProvider, NullCacheProvider } from './index.ts';
 import { RedisCacheProvider } from './redis.ts';
 
@@ -6,9 +9,14 @@ import { RedisCacheProvider } from './redis.ts';
 vi.mock('ioredis', () => {
   class MockRedis {
     static lastUrl: string | undefined;
+    static lastOptions: Record<string, unknown> | undefined;
     disconnected = false;
-    constructor(url?: string) {
+    constructor(url?: string, options?: Record<string, unknown>) {
       MockRedis.lastUrl = url;
+      MockRedis.lastOptions = options;
+    }
+    on(): this {
+      return this;
     }
     disconnect(): void {
       this.disconnected = true;
@@ -76,11 +84,10 @@ function createFakeRedisClient(): RedisClient & { store: Map<string, string> } {
     scanStream: ({ match }: { match: string; count: number }) => {
       const pattern = globToRegExp(match);
       const keys = [...store.keys()].filter((k) => pattern.test(k));
-      return (async function* () {
-        if (keys.length > 0) yield keys;
-      })();
+      // A Readable stream is an AsyncIterable, like ioredis's real scanStream.
+      return Readable.from(keys.length > 0 ? [keys] : []);
     },
-    disconnect: () => {},
+    disconnect: () => undefined,
   };
 }
 
@@ -89,6 +96,11 @@ describe('CacheProvider', () => {
 
   beforeEach(() => {
     cache = new InMemoryCacheProvider();
+  });
+
+  afterEach(async () => {
+    // Stop the sweep timer so no provider leaks an interval between tests.
+    await cache.close();
   });
 
   describe('InMemoryCacheProvider', () => {
@@ -160,6 +172,81 @@ describe('CacheProvider', () => {
   });
 });
 
+describe('InMemoryCacheProvider bounds (LRU cap and expiry sweep)', () => {
+  const providers: InMemoryCacheProvider[] = [];
+
+  /** Create a provider that is closed again in afterEach. */
+  function provider(options?: ConstructorParameters<typeof InMemoryCacheProvider>[0]) {
+    const p = new InMemoryCacheProvider(options);
+    providers.push(p);
+    return p;
+  }
+
+  afterEach(async () => {
+    for (const p of providers.splice(0)) await p.close();
+    vi.useRealTimers();
+  });
+
+  it('evicts the least-recently-used key, with recency refreshed on get', async () => {
+    const cache = provider({ maxEntries: 3 });
+    await cache.set(['a'], 1);
+    await cache.set(['b'], 2);
+    await cache.set(['c'], 3);
+    expect(await cache.get(['a'])).toBe(1);
+    await cache.set(['d'], 4);
+    expect(await cache.get(['b'])).toBeNull();
+    expect(await cache.get(['a'])).toBe(1);
+    expect(await cache.get(['c'])).toBe(3);
+    expect(await cache.get(['d'])).toBe(4);
+    expect(cache.size).toBe(3);
+  });
+
+  it('does not evict when an existing key is overwritten', async () => {
+    const cache = provider({ maxEntries: 3 });
+    await cache.set(['a'], 1);
+    await cache.set(['b'], 2);
+    await cache.set(['c'], 3);
+    await cache.set(['b'], 20);
+    expect(cache.size).toBe(3);
+    expect(await cache.get(['a'])).toBe(1);
+    expect(await cache.get(['b'])).toBe(20);
+    expect(await cache.get(['c'])).toBe(3);
+  });
+
+  it('sweeps 1 000 expired entries that are never read again', async () => {
+    vi.useFakeTimers();
+    const cache = provider();
+    for (let i = 0; i < 1000; i++) await cache.set(['ttl', String(i)], i, { ttlMs: 1000 });
+    expect(cache.size).toBe(1000);
+    vi.advanceTimersByTime(61_000);
+    expect(cache.size).toBe(0);
+  });
+
+  it('holds at most 10 000 entries after 50 000 distinct writes with the default cap', async () => {
+    const cache = provider();
+    for (let i = 0; i < 50_000; i++) await cache.set(['k', String(i)], i);
+    expect(cache.size).toBeLessThanOrEqual(10_000);
+    expect(await cache.get(['k', '49999'])).toBe(49_999);
+    expect(await cache.get(['k', '0'])).toBeNull();
+  });
+
+  it('clears the sweep interval and empties the store on close()', async () => {
+    vi.useFakeTimers();
+    const baseline = vi.getTimerCount();
+    const cache = new InMemoryCacheProvider();
+    expect(vi.getTimerCount()).toBe(baseline + 1);
+    await cache.set(['a'], 1);
+    await cache.close();
+    expect(vi.getTimerCount()).toBe(baseline);
+    expect(cache.size).toBe(0);
+    expect(await cache.get(['a'])).toBeNull();
+  });
+
+  it('reports the memory status', () => {
+    expect(provider().status()).toBe('memory');
+  });
+});
+
 describe('RedisCacheProvider', () => {
   it('should set and get values via JSON round-trip', async () => {
     const cache = new RedisCacheProvider(createFakeRedisClient());
@@ -210,6 +297,27 @@ describe('RedisCacheProvider', () => {
     expect(await client.get('other-app:key')).toBe('"foreign"');
   });
 
+  it('should scan only brewform:* for an empty prefix, leaving rate-limit keys intact', async () => {
+    const client = createFakeRedisClient();
+    const patterns: string[] = [];
+    const spying = {
+      ...client,
+      scanStream: (options: { match: string; count: number }) => {
+        patterns.push(options.match);
+        return client.scanStream(options);
+      },
+    };
+    await client.set('brewform:x', '1');
+    await client.set('brewform-rl:global:1.2.3.4', '7');
+    await client.set('other:y', '"foreign"');
+    const cache = new RedisCacheProvider(spying);
+    await cache.deleteByPrefix([]);
+    expect(patterns).toEqual(['brewform:*']);
+    expect(client.store.has('brewform:x')).toBe(false);
+    expect(client.store.get('brewform-rl:global:1.2.3.4')).toBe('7');
+    expect(client.store.get('other:y')).toBe('"foreign"');
+  });
+
   it('should match bracket-containing prefixes literally, not as a glob class', async () => {
     const client = createFakeRedisClient();
     const cache = new RedisCacheProvider(client);
@@ -222,6 +330,10 @@ describe('RedisCacheProvider', () => {
 });
 
 describe('NullCacheProvider', () => {
+  it('should report the disabled status', () => {
+    expect(new NullCacheProvider().status()).toBe('disabled');
+  });
+
   it('should always miss and drop writes', async () => {
     const cache = new NullCacheProvider();
     await cache.set(['a'], 1);
@@ -237,6 +349,7 @@ describe('createCacheProvider', () => {
     const { createCacheProvider } = await import('./index.ts');
     const provider = createCacheProvider('memory');
     expect(provider).toBeInstanceOf(InMemoryCacheProvider);
+    await provider.close?.();
   });
 
   it('should throw for unknown driver', async () => {
@@ -244,11 +357,15 @@ describe('createCacheProvider', () => {
     expect(() => createCacheProvider('memcached')).toThrow('Unknown cache driver');
   });
 
-  it('should create RedisCacheProvider when a URL is given', async () => {
+  it('should create a fail-soft RedisCacheProvider with fast-fail options when a URL is given', async () => {
     const { Redis } = await import('ioredis');
     const provider = createCacheProvider('redis', { redisUrl: 'redis://localhost:6379' });
-    expect(provider).toBeInstanceOf(RedisCacheProvider);
+    expect(provider).toBeInstanceOf(FailSoftCacheProvider);
+    expect((provider as FailSoftCacheProvider).inner).toBeInstanceOf(RedisCacheProvider);
     expect((Redis as unknown as { lastUrl: string }).lastUrl).toBe('redis://localhost:6379');
+    expect(
+      (Redis as unknown as { lastOptions: Record<string, unknown> }).lastOptions,
+    ).toMatchObject({ enableOfflineQueue: false, maxRetriesPerRequest: 1, commandTimeout: 500 });
     await provider.close?.();
   });
 
@@ -256,12 +373,12 @@ describe('createCacheProvider', () => {
     const { Redis } = await import('ioredis');
     const url = 'redis://:s3cret@valkey:6379';
     const provider = createCacheProvider('redis', { redisUrl: url });
-    expect(provider).toBeInstanceOf(RedisCacheProvider);
+    expect(provider).toBeInstanceOf(FailSoftCacheProvider);
     expect((Redis as unknown as { lastUrl: string }).lastUrl).toBe(url);
     await provider.close?.();
   });
 
-  it('should throw for redis driver without a URL', async () => {
+  it('should throw for redis driver without a URL', () => {
     expect(() => createCacheProvider('redis')).toThrow('REDIS_URL is required');
   });
 

@@ -25,7 +25,7 @@ function renderWithRouter(ui: React.ReactElement) {
         children: [
           {
             path: 'recipes/:id/like',
-            action: () => new Promise(() => {}),
+            action: () => new Promise(() => undefined),
             element: null,
           },
         ],
@@ -124,9 +124,9 @@ describe('LikeButton — action failure rollback', () => {
     expect(action).toHaveBeenCalled();
   });
 
-  it('completes normally when action returns ok', async () => {
+  it('keeps the liked state and count after { ok: true, liked } (no revalidation)', async () => {
     const user = userEvent.setup();
-    const action = vi.fn().mockResolvedValue({ ok: true });
+    const action = vi.fn().mockResolvedValue({ ok: true, liked: true });
     const router = createMemoryRouter(
       [
         {
@@ -150,7 +150,7 @@ describe('LikeButton — action failure rollback', () => {
 
     await waitFor(() => {
       expect(button).not.toBeDisabled();
-      expect(button.textContent).toContain('3');
+      expect(button.textContent).toContain('4');
     });
     expect(action).toHaveBeenCalled();
   });

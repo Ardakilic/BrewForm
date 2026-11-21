@@ -1,13 +1,14 @@
 import { Popover } from '@base-ui/react/popover';
 import type { TasteNoteNodeOutput } from '@brewform/shared/schemas';
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router';
-import { tasteApi } from '../api/index.ts';
+import { useEffect, useMemo } from 'react';
+import { Link, useLoaderData } from 'react-router';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { EmptyState } from '../components/ui/EmptyState.tsx';
-import { LoadingState } from '../components/ui/LoadingState.tsx';
 import { useTranslation } from '../contexts/I18nContext.tsx';
+import { useDebouncedUrlText, useListUrlState } from '../hooks/useListUrlState.ts';
+import { parseTasteNotesParams } from '../utils/list-parsers.ts';
 import { createLogger } from '../utils/logger.ts';
+import type { loader } from './TasteNotesPage.data.ts';
 
 const log = createLogger('TasteNotesPage');
 
@@ -197,14 +198,20 @@ function DefinitionPopover({ definition, label }: { definition: string | null; l
 }
 
 /**
- * Browsable SCAA flavor-wheel explorer: fetches the taste-note
- * hierarchy, supports search filtering, and shows definitions in
- * info popovers.
+ * Browsable SCAA flavor-wheel explorer: renders the taste-note hierarchy from
+ * the `/taste-notes` route loader (`TasteNotesPage.data.ts`), supports search
+ * filtering, and shows definitions in info popovers. The search filter is
+ * shareable: the box commits `?q=` to the URL after a 300 ms pause (replacing
+ * the history entry), and the hierarchy is filtered by the committed URL value.
+ * A failed load renders the route error state, so "no results" only ever means
+ * the search matched nothing.
  */
 export function TasteNotesPage() {
-  const [hierarchy, setHierarchy] = useState<TasteCategory[]>([]);
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  const { hierarchy } = useLoaderData<typeof loader>();
+  const {
+    state: { q: search },
+  } = useListUrlState(parseTasteNotesParams);
+  const searchInput = useDebouncedUrlText('q');
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -212,18 +219,6 @@ export function TasteNotesPage() {
     return () => {
       log.debug({}, 'TasteNotesPage unmounted');
     };
-  }, []);
-
-  useEffect(() => {
-    tasteApi
-      .hierarchy()
-      .then((data: TasteNoteNodeOutput[] | null) => {
-        setHierarchy(data ?? []);
-      })
-      .catch((err) => {
-        log.error({ err }, 'TasteNotesPage loadData failed');
-      })
-      .finally(() => setLoading(false));
   }, []);
 
   const filteredHierarchy = search ? filterHierarchy(hierarchy, search) : hierarchy;
@@ -274,15 +269,13 @@ export function TasteNotesPage() {
             type="text"
             className="input-field pl-10"
             placeholder={t('taste.searchPlaceholder')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput.value}
+            onChange={(e) => searchInput.setValue(e.target.value)}
           />
         </div>
       </div>
 
-      {loading ? (
-        <LoadingState />
-      ) : filteredHierarchy.length === 0 ? (
+      {filteredHierarchy.length === 0 ? (
         <EmptyState message={t('taste.noResults')} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

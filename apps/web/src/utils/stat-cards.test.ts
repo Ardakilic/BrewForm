@@ -8,6 +8,7 @@
  */
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { estimateTextWidth } from './chart/index.ts';
 import { buildStatCards } from './stat-cards.ts';
 
 // ─── Unit Tests ───────────────────────────────────────────────────────────────
@@ -293,5 +294,88 @@ describe('buildStatCards — TDS / extraction yield (M6)', () => {
       tds: '1.35',
     });
     expect(cards).toHaveLength(5);
+  });
+});
+
+// ─── Locale-aware time / ratio / extraction yield (wave-6 t6, task 19.22) ────
+
+/** Replaces no-break spaces so values compare against plain-space strings. */
+const plain = (value: string) => value.replaceAll('\u00A0', ' ');
+
+describe('buildStatCards — locale-aware formatting (wave-6 t6)', () => {
+  it('formats a 12-hour brew time as 12h (en) / 12 sa (tr), not 43200s', () => {
+    expect(buildStatCards({ extractionTimeSeconds: 43200 }, 'metric', 'en')[2].value).toBe('12h');
+    expect(plain(buildStatCards({ extractionTimeSeconds: 43200 }, 'metric', 'tr')[2].value)).toBe(
+      '12 sa',
+    );
+  });
+
+  it('formats two-unit times with a no-break space inside each number+unit pair', () => {
+    expect(buildStatCards({ extractionTimeSeconds: 270 }, 'metric', 'en')[2].value).toBe('4m 30s');
+    const tr = buildStatCards({ extractionTimeSeconds: 270 }, 'metric', 'tr')[2].value;
+    expect(tr).toBe('4\u00A0dk 30\u00A0sn');
+    expect(plain(tr)).toBe('4 dk 30 sn');
+  });
+
+  it('rounds the ratio to one decimal with the locale separator (1:2.2 / 1:2,2)', () => {
+    expect(buildStatCards({ brewRatio: 2.2222223 }, 'metric', 'en')[3].value).toBe('1:2.2');
+    expect(buildStatCards({ brewRatio: 2.2222223 }, 'metric', 'tr')[3].value).toBe('1:2,2');
+  });
+
+  it('localizes the extraction yield decimal (tr 22,5%)', () => {
+    const cards = buildStatCards(
+      { groundWeightGrams: 15, extractionVolumeMl: 250, tds: '1.35' },
+      'metric',
+      'tr',
+    );
+    expect(cards[5].value).toBe('22,5%');
+  });
+
+  it('localizes the missing-time placeholder unit (en —s, tr — sn)', () => {
+    expect(buildStatCards({}, 'metric', 'en')[2].value).toBe('—s');
+    expect(buildStatCards({}, 'metric', 'tr')[2].value).toBe('— sn');
+  });
+
+  it('defaults to the en locale', () => {
+    expect(buildStatCards({ extractionTimeSeconds: 43200, brewRatio: 2.2222223 })[2].value).toBe(
+      '12h',
+    );
+  });
+});
+
+describe('buildStatCards — stat value geometry (md card ≈ 100px)', () => {
+  // The md 5-column grid leaves ≈ 100px inside a card (134.4px − 32px padding − 2px border).
+  // The values this change formats (time, ratio, extraction yield) must never overflow it:
+  // each run that cannot wrap (split at regular spaces only; number+unit pairs use a
+  // no-break space) must estimate ≤ 100px at 24px bold. Seeded values plus edge cases.
+  const MD_CARD_INNER_PX = 100;
+  const TIMES = [25, 26, 27, 28, 100, 150, 180, 195, 200, 210, 240, 270, 300, 3599, 5400, 43200];
+  const RATIOS = [2, 2.2222223, 5, 6, 14, 14.71, 15, 15.63, 16, 16.25, 16.67];
+
+  it.each(['en', 'tr'])('every formatted time/ratio/yield run fits at 24px bold (%s)', (locale) => {
+    const values: string[] = [];
+    for (const extractionTimeSeconds of TIMES) {
+      values.push(buildStatCards({ extractionTimeSeconds }, 'metric', locale)[2].value);
+    }
+    for (const brewRatio of RATIOS) {
+      values.push(buildStatCards({ brewRatio }, 'metric', locale)[3].value);
+    }
+    for (const tds of ['1.35', '1.2', '9.99']) {
+      const cards = buildStatCards(
+        { groundWeightGrams: 15, extractionVolumeMl: 250, tds },
+        'metric',
+        locale,
+      );
+      values.push(cards[5].value);
+    }
+    for (const value of values) {
+      for (const run of value.split(' ')) {
+        const width = estimateTextWidth(run, 24, { bold: true });
+        expect(
+          width,
+          `"${plain(run)}" (from "${plain(value)}") is ${width.toFixed(1)}px`,
+        ).toBeLessThanOrEqual(MD_CARD_INNER_PX);
+      }
+    }
   });
 });

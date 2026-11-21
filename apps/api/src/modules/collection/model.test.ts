@@ -550,6 +550,16 @@ describe('collection model — reorderItems', () => {
     expect(items[2].id).toBe(itemIds[0]);
     expect(items[2].sortOrder).toBe(2);
   });
+
+  it('gives trailing ids the sortOrder values after the ordered ids, keeping their order', async () => {
+    await model.reorderItems(col.id, [itemIds[2]], [itemIds[0], itemIds[1]]);
+    const items = await model.getItems(col.id);
+    expect(items.map((i) => [i.id, i.sortOrder])).toEqual([
+      [itemIds[2], 0],
+      [itemIds[0], 1],
+      [itemIds[1], 2],
+    ]);
+  });
 });
 
 describe('collection model — getItems', () => {
@@ -677,5 +687,103 @@ describe('collection model — getCollectionsForRecipe', () => {
     expect(ownerRows.map((r) => r.id)).not.toContain(publicCol.id);
     // Restore so later test runs on a re-seeded DB stay order-independent.
     await db.update(collections).set({ deletedAt: null }).where(eq(collections.id, publicCol.id));
+  });
+});
+
+describe('collection model — getRecipeVisibilityStates', () => {
+  let user: typeof users.$inferSelect;
+  const recipeIds: string[] = [];
+
+  beforeAll(async () => {
+    user = await createUser('col-visStates');
+  });
+
+  afterAll(async () => {
+    await cleanupRecipes(recipeIds);
+    await cleanupUsers([user.id]);
+  });
+
+  it('returns the state of each recipe, soft-deleted rows included', async () => {
+    const pub = await createRecipe(user.id, 'public');
+    const deleted = await createRecipe(user.id, 'unlisted');
+    recipeIds.push(pub.id, deleted.id);
+    await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, deleted.id));
+
+    const states = await model.getRecipeVisibilityStates([pub.id, deleted.id, crypto.randomUUID()]);
+    const byId = new Map(states.map((s) => [s.id, s]));
+    expect(states).toHaveLength(2);
+    expect(byId.get(pub.id)).toEqual({
+      id: pub.id,
+      visibility: 'public',
+      authorId: user.id,
+      deletedAt: null,
+    });
+    expect(byId.get(deleted.id)?.visibility).toBe('unlisted');
+    expect(byId.get(deleted.id)?.deletedAt).toBeInstanceOf(Date);
+  });
+
+  it('returns one row per recipe when an id repeats', async () => {
+    const r = await createRecipe(user.id, 'private');
+    recipeIds.push(r.id);
+    const states = await model.getRecipeVisibilityStates([r.id, r.id]);
+    expect(states).toHaveLength(1);
+  });
+
+  it('returns [] for an empty input', async () => {
+    expect(await model.getRecipeVisibilityStates([])).toEqual([]);
+  });
+});
+
+describe('collection model — list recipeCount by audience', () => {
+  let owner: typeof users.$inferSelect;
+  let other: typeof users.$inferSelect;
+  let col: typeof collections.$inferSelect;
+
+  beforeAll(async () => {
+    owner = await createUser('col-countAud-owner');
+    other = await createUser('col-countAud-other');
+    col = await createCollectionRow(owner.id, 'Audience counts', 'public');
+    const items = [
+      await createRecipe(other.id, 'public'),
+      await createRecipe(owner.id, 'draft'),
+      await createRecipe(owner.id, 'unlisted'),
+      await createRecipe(other.id, 'unlisted'),
+      await createRecipe(other.id, 'private'),
+      await createRecipe(owner.id, 'public'),
+    ];
+    // The last one is soft-deleted (the owner's own public recipe).
+    await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, items[5].id));
+    await db
+      .insert(collectionItems)
+      .values(items.map((r, i) => ({ collectionId: col.id, recipeId: r.id, sortOrder: i })));
+  });
+
+  afterAll(async () => {
+    await cleanupCollections([col.id]);
+    await cleanupUsers([owner.id, other.id]);
+  });
+
+  /** Find the fixture collection's row in a list result. */
+  function countOf(result: { collections: Record<string, unknown>[] }) {
+    return result.collections.find((c) => c.id === col.id)?.recipeCount;
+  }
+
+  it("counts the owner's own non-public recipes on the owner's list (findByUserId)", async () => {
+    expect(countOf(await model.findByUserId(owner.id, 1, 20))).toBe(3);
+  });
+
+  it('counts only public recipes on the public user list (findPublicByUserId)', async () => {
+    expect(countOf(await model.findPublicByUserId(owner.id, 1, 20))).toBe(1);
+  });
+
+  it('counts only public recipes on the global public list (findAllPublic)', async () => {
+    const result = await model.findAllPublic(1, 100);
+    expect(result.collections.find((c) => c.id === col.id)?.recipeCount).toBe(1);
+  });
+
+  it('counts as anonymous when findByUserId is asked to', async () => {
+    expect(
+      countOf(await model.findByUserId(owner.id, 1, 20, undefined, undefined, 'anonymous')),
+    ).toBe(1);
   });
 });

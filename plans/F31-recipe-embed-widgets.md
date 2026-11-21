@@ -1,5 +1,34 @@
 # F31 — Embeddable Recipe Widgets
 
+> **Refresh (2026-11-21): the API forbids framing globally — the embed route needs an explicit override**
+>
+> - `apps/api/src/main.ts:75-100` applies Hono's `secureHeaders` to every API response (`app.use('*', …)`)
+>   with `contentSecurityPolicy.frameAncestors: ["'none'"]` (`:86`) and `xFrameOptions: 'DENY'`
+>   (`:92`). An iframe of `/api/v1/recipes/:slug/embed` is therefore refused by every browser
+>   today; the "nothing currently blocks framing" line below was wrong for the API.
+> - `secureHeaders` writes its headers after `await next()` (Hono middleware order; the
+>   `poweredBy` ordering note in the Hono secure-headers docs), so the global middleware runs its
+>   header write after the route handler and overwrites a plain `c.header(...)` set in the embed
+>   handler. The override must be explicit and per route: wrap the global middleware so it skips
+>   exactly the embed path (e.g. `app.use('*', (c, next) => isEmbedPath(c.req.path) ? next() :
+>   globalSecureHeaders(c, next))`) and register a route-level
+>   `secureHeaders({ xFrameOptions: false, contentSecurityPolicy: { frameAncestors: ['*'],
+>   defaultSrc: ["'none'"], imgSrc: ["'self'", 'data:', 'https:'], styleSrc: ["'unsafe-inline'"] } })`
+>   on `/:slug/embed` only. Every other header of the global set (HSTS, nosniff, referrer policy,
+>   permissions policy) stays on the embed response.
+> - A test pins both sides: the embed response carries `frame-ancestors *` and no
+>   `X-Frame-Options`, and any other recipe route (e.g. `GET /api/v1/recipes/:slugOrId`) still
+>   carries `frame-ancestors 'none'` and `X-Frame-Options: DENY`.
+> - Web edge (group 21): the web image's Caddy (`apps/web/Caddyfile`) sets no frame or CSP headers
+>   today; in the same-origin topology its `api-proxy.caddy` snippet (written by
+>   `docker-web-entrypoint.sh`) proxies `/api/*` with request-side `header_up` only, so it passes
+>   the API's per-route headers through unchanged. The "web edge security headers" follow-up in
+>   the debt ledger must scope any `X-Frame-Options`/`frame-ancestors` it adds to the static SPA
+>   handle, never to the proxied embed path.
+> - Route order: the `/:slugOrId` catch-all now sits at `recipe/index.ts:584` (the `:300`/`:301`
+>   references below are stale); register `/:slug/embed` before it with `describeRoute()`
+>   documenting `text/html`. Public recipes only, which matches wave 6's unlisted rule.
+
 > **Validation status (2026-07-13): ✅ Valid**
 >
 > - Verified. `share.ts` serves `GET /:slug` mounted at `/share` (`routes/index.ts:41`, cited :40), returns `RECIPE_NOT_FOUND_HTML` unless `visibility === 'public'`, exports `OG_TEMPLATE`, and uses `escapeHtml`/`escapeHtmlAttr` + `config.PUBLIC_APP_URL || config.APP_URL`. `getRecipeMeta` returns exactly the documented shape (`recipe/service.ts:625-644`).
@@ -21,7 +50,7 @@ Coffee content lives on blogs, forums, and newsletters. Today sharing a BrewForm
 - HTML escaping helpers `escapeHtml` / `escapeHtmlAttr` from `@brewform/shared/utils` are already used by share.ts; base URL via `config.PUBLIC_APP_URL || config.APP_URL`.
 - Recipe module route order (`apps/api/src/modules/recipe/index.ts`): GET `/`, `/starred`, `/meta/:slug`, `/:slug/versions`, then the **`/:slugOrId` catch-all at line 301**. New literal GET routes must be registered before it.
 - `ShareSection` (`apps/web/src/components/recipe/ShareSection.tsx`): props `{ slug, title, visibility }`; returns `null` for `private`/`draft`; has copy-URL (clipboard + 3s state), QR download (`/api/v1/qrcode/recipe/:slug.svg`), and 4 social buttons. Visibility values are `draft | private | unlisted | public` (`packages/shared/src/constants/visibility.ts`).
-- Caddy: neither `apps/web/Caddyfile` (SPA on `:80`) nor the root `Caddyfile` (`:8080`) sets `X-Frame-Options` or `Content-Security-Policy` today — nothing currently blocks framing, but the embed route must set its own explicit policy so a future hardening pass can't break it silently.
+- Framing: the API's global `secureHeaders` (`apps/api/src/main.ts:75-100`) sends `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` on every response, so the embed route is unframeable until it gets the explicit per-route override above. Caddy: neither `apps/web/Caddyfile` (SPA on `:80`) nor the root `Caddyfile` (`:8080`) sets `X-Frame-Options` or `Content-Security-Policy` today.
 
 ## Proposed design
 
@@ -41,9 +70,9 @@ Coffee content lives on blogs, forums, and newsletters. Today sharing a BrewForm
 - Service: `getRecipeEmbedData(slug)` in `recipe/service.ts` — reuses `model.findBySlug`, throws `RECIPE_NOT_FOUND`; returns meta + latest-version brew parameters (`brewMethod`, `groundWeightGrams`, `extractionTimeSeconds`, `temperatureCelsius`, `brewRatio`, `rating`).
 - Template: `EMBED_TEMPLATE` exported from a small `apps/api/src/routes/embed-template.ts` (mirroring `OG_TEMPLATE` in `share.ts`): inline CSS only, no scripts, no external requests except the recipe photo (same origin), every interpolation through `escapeHtml`/`escapeHtmlAttr`. Footer: "View on BrewForm →" anchor with `target="_top"` and `rel="noopener"` to `${baseUrl}/recipes/{slug}` — the SEO backlink.
 - Non-public (`draft`/`private`/`unlisted` — unlisted excluded deliberately, matching share.ts's public-only rule) or missing recipe → 404 HTML (reuse `RECIPE_NOT_FOUND_HTML` pattern).
-- Response headers set **on this route only**:
-  - `Content-Security-Policy: frame-ancestors *; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'` — explicitly allow framing while locking the document down.
-  - No `X-Frame-Options` (it cannot express "allow all"; CSP `frame-ancestors` supersedes it).
+- Response headers set **on this route only**, through the explicit override of the global `secureHeaders` (skip the embed path in the global middleware, apply a route-level `secureHeaders` here; a handler-level `c.header()` alone is overwritten by the global middleware):
+  - `Content-Security-Policy: frame-ancestors *; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'` — explicitly allow framing while locking the document down (replaces the global `frame-ancestors 'none'`).
+  - No `X-Frame-Options` (the global `DENY` is turned off for this route; the header cannot express "allow all" and CSP `frame-ancestors` supersedes it).
   - `Cache-Control: public, max-age=300` — embeds are hot, anonymous, and tolerate 5-minute staleness.
 
 **oEmbed** — new `apps/api/src/routes/oembed.ts` mounted in `apps/api/src/routes/index.ts` as `routes.route('/api/v1/oembed', oembed);`:
@@ -89,7 +118,8 @@ URL parsing: extract slug only from paths matching `/recipes/:slug` on our own o
 
 ### Deployment / security notes (Caddy)
 
-- The SPA Caddyfiles (`apps/web/Caddyfile`, root `Caddyfile`) currently set no frame-related headers. If a hardening pass later adds `X-Frame-Options: DENY` or a CSP to the **web** app, embeds are unaffected (they are served by the **API**, which sets its own per-route CSP above). Document in the Caddyfile comment that `/api/v1/recipes/*/embed` must remain frameable if a reverse proxy ever adds global headers in front of the API.
+- The SPA Caddyfiles (`apps/web/Caddyfile`, root `Caddyfile`) currently set no frame-related headers, and the same-origin `api-proxy.caddy` snippet only rewrites request headers. If a hardening pass later adds `X-Frame-Options: DENY` or a CSP to the **web** edge, it must stay inside the static SPA `handle` so the proxied `/api/v1/recipes/*/embed` keeps the API's per-route headers. Document in the Caddyfile comment that `/api/v1/recipes/*/embed` must remain frameable if a reverse proxy ever adds global headers in front of the API.
+- On the API side the only thing that can break embeds is the global `secureHeaders` in `apps/api/src/main.ts`; the per-route override and its test (above) are the guard.
 - Embed page contains zero scripts and no cookies-dependent content; it is safe cross-origin. `credentials` are irrelevant (route is unauthenticated).
 
 ### i18n & logging
@@ -101,7 +131,7 @@ URL parsing: extract slug only from paths matching `/recipes/:slug` on our own o
 ## Test plan
 
 - `apps/api/src/routes/oembed.test.ts`: valid public recipe URL → spec-shaped JSON with iframe html; foreign-origin URL → 404; non-public recipe → 404; `format=xml` → 501; maxwidth clamps returned width.
-- Recipe module `index.test.ts` (extend): `/:slug/embed` returns `text/html` with `frame-ancestors *` CSP and `Cache-Control`; draft/private/unlisted → 404; output contains escaped title (fixture with `<script>` in title must render escaped); backlink present with `target="_top"`.
+- Recipe module `index.test.ts` (extend), built on the real `main.ts` middleware stack so the global `secureHeaders` runs: `/:slug/embed` returns `text/html` with `frame-ancestors *` CSP, no `X-Frame-Options`, and `Cache-Control`, while `GET /api/v1/recipes/:slugOrId` still returns `frame-ancestors 'none'` and `X-Frame-Options: DENY`; draft/private/unlisted → 404; output contains escaped title (fixture with `<script>` in title must render escaped); backlink present with `target="_top"`.
 - Template unit test (pattern: share.ts exports `OG_TEMPLATE` for testing): `EMBED_TEMPLATE` escapes every field, no `<script>` tags in output.
 - Web: `ShareSection.test.tsx` (extend): embed button copies iframe snippet, shows copied state, hidden for `unlisted`/`private`/`draft`.
 
@@ -109,7 +139,7 @@ URL parsing: extract slug only from paths matching `/recipes/:slug` on our own o
 
 - [ ] `GET /api/v1/recipes/:slug/embed` renders a script-free, fully escaped HTML card for public recipes; 404 otherwise
 - [ ] Route registered before the `/:slugOrId` catch-all; oEmbed mounted via `routes.route(...)` in `apps/api/src/routes/index.ts`
-- [ ] Embed route sets `frame-ancestors *` CSP + cache headers; no `X-Frame-Options`
+- [ ] Embed route overrides the global `secureHeaders` explicitly: `frame-ancestors *` CSP + cache headers, no `X-Frame-Options`; every other API route keeps `X-Frame-Options: DENY` and `frame-ancestors 'none'`
 - [ ] oEmbed endpoint spec-compliant (`version`, `type: rich`, `html`, provider fields) and rejects foreign URLs
 - [ ] oEmbed discovery `<link>` on share page and recipe detail SEO head
 - [ ] "Copy embed code" in ShareSection with i18n'd labels (en + tr)

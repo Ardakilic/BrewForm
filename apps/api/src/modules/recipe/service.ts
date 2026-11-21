@@ -9,21 +9,29 @@
  * All DB access is delegated to `model.ts` — no Drizzle calls from this module.
  */
 
-import type {
-  RecipeCreateSchema,
-  RecipeFilterSchema,
-  RecipeMerge,
-  RecipeUpdateSchema,
+import {
+  type RecipeCreateSchema,
+  type RecipeFilterSchema,
+  type RecipeMerge,
+  type RecipeUpdateSchema,
+  recipeCrossFieldIssues,
 } from '@brewform/shared/schemas';
 import type { BrewMethod } from '@brewform/shared/types';
 import {
   computeBrewRatio,
   computeFlowRate,
   decodeCursor,
-  ensureUniqueSlug,
-  generateSlug,
+  randomSlugSuffix,
+  SLUG_SUFFIX_ATTEMPTS,
+  slugCandidates,
 } from '@brewform/shared/utils';
 import type { z } from 'zod';
+import {
+  ConflictError,
+  type ErrorDetail,
+  isStatementTimeout,
+  ValidationError,
+} from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyFollowersOfNewRecipe } from '../../utils/notify/index.ts';
 import { sanitizeText } from '../../utils/sanitize.ts';
@@ -45,21 +53,211 @@ type RecipeCreateInput = z.infer<typeof RecipeCreateSchema> & {
 
 /**
  * Augmented recipe-update input. Extends the Zod-inferred `RecipeUpdateSchema`
- * shape (which is partial + `bumpVersion`) with the same `photoIds` field
- * the create path supports.
+ * shape (every field optional, clearable fields nullable, plus `bumpVersion`)
+ * with the same `photoIds` field the create path supports. An `undefined` key
+ * means "keep", `null` means "clear", `[]` means "remove all".
  */
 type RecipeUpdateInput = z.infer<typeof RecipeUpdateSchema> & {
   photoIds?: string[];
 };
 
-const logger = createLogger('recipe-service');
+/** Module-scoped structured logger (exported for test spies). */
+export const logger = createLogger('recipe-service');
 
-/** Generate a URL-safe slug from the title, ensuring uniqueness against existing recipes. */
-async function generateUniqueSlug(title: string): Promise<string> {
-  const slug = generateSlug(title);
-  const existing = await model.findBySlug(slug);
-  if (!existing) return slug;
-  return ensureUniqueSlug(slug, []);
+/**
+ * Build the ordered slug candidates for a (sanitized) title: the bare base when it is usable,
+ * then `<base>-<suffix>` for {@link SLUG_SUFFIX_ATTEMPTS} fresh random suffixes. No pre-check
+ * query runs; the model claims the first free candidate inside the creation transaction.
+ * `randomSlugSuffix` is imported from `@brewform/shared/utils` so tests can replace it via `vi.mock`.
+ *
+ * @param title - The sanitized recipe title.
+ * @returns At most `1 + SLUG_SUFFIX_ATTEMPTS` distinct candidates.
+ */
+function buildRecipeSlugCandidates(title: string): string[] {
+  return slugCandidates(
+    title,
+    Array.from({ length: SLUG_SUFFIX_ATTEMPTS }, () => randomSlugSuffix()),
+  );
+}
+
+/**
+ * Log and build the `409 SLUG_CONFLICT` error for a create/fork whose slug candidates were all
+ * taken (practically unreachable with 27^6 suffixes; reached by tests that pin the suffix).
+ *
+ * @param authorId - The author whose create/fork failed.
+ * @param attempts - How many candidates were tried.
+ */
+function slugExhausted(authorId: string, attempts: number): ConflictError {
+  logger.warn(
+    { authorId, attempts, constraint: 'recipe_slug_unique' },
+    'recipe slug candidates exhausted',
+  );
+  return new ConflictError('SLUG_CONFLICT', 'Could not allocate a unique recipe slug');
+}
+
+/** The `400 VALIDATION_ERROR` thrown when a title is empty after sanitization. */
+function emptyTitleError(): ValidationError {
+  return new ValidationError('Title cannot be empty', [
+    { field: 'title', message: 'Title cannot be empty' },
+  ]);
+}
+
+/** Referenced ids of a recipe write that must exist before anything is written. */
+interface RecipeReferences {
+  /** Taste notes to link (checked when provided). */
+  tasteNoteIds?: string[];
+  /** Equipment to link (checked when provided). */
+  equipmentIds?: string[];
+  /** Vendor to link (checked when non-null). */
+  vendorId?: string | null;
+  /** Coffee variety to link (checked when non-null; its name is resolved). */
+  coffeeVarietyId?: string | null;
+  /** Bean to link: a NEWLY set bean (checked against the author when non-null). */
+  newBeanId?: string | null;
+}
+
+/**
+ * Check that every referenced record exists (soft-deleted rows excluded) and that a newly set
+ * bean belongs to the author, collecting one detail per failing field. Runs before any write,
+ * so a bad reference is a field-level 400 instead of a foreign-key violation; the global
+ * `23503 → 400` mapping stays the backstop.
+ *
+ * @param authorId - The recipe author (owner check for the bean).
+ * @param refs - The ids to check.
+ * @returns The resolved coffee-variety name (`null` when no variety is set).
+ * @throws {ValidationError} `400 VALIDATION_ERROR` with a detail per invalid field.
+ */
+async function validateReferences(
+  authorId: string,
+  refs: RecipeReferences,
+): Promise<{ coffeeVarietyName: string | null }> {
+  const details: ErrorDetail[] = [];
+
+  if (refs.tasteNoteIds?.length) {
+    const existing = new Set(await model.findExistingTasteNoteIds(refs.tasteNoteIds));
+    const missing = refs.tasteNoteIds.filter((id) => !existing.has(id));
+    if (missing.length) {
+      details.push({
+        field: 'tasteNoteIds',
+        message: `Unknown taste notes: ${missing.join(', ')}`,
+      });
+    }
+  }
+  if (refs.equipmentIds?.length) {
+    const existing = new Set(await model.findExistingEquipmentIds(refs.equipmentIds));
+    const missing = refs.equipmentIds.filter((id) => !existing.has(id));
+    if (missing.length) {
+      details.push({ field: 'equipmentIds', message: `Unknown equipment: ${missing.join(', ')}` });
+    }
+  }
+  if (refs.vendorId && !(await model.findVendor(refs.vendorId))) {
+    details.push({ field: 'vendorId', message: 'Vendor does not exist' });
+  }
+  let coffeeVarietyName: string | null = null;
+  if (refs.coffeeVarietyId) {
+    const variety = await model.findCoffeeVariety(refs.coffeeVarietyId);
+    if (variety) coffeeVarietyName = variety.name;
+    else details.push({ field: 'coffeeVarietyId', message: 'Coffee variety does not exist' });
+  }
+  if (refs.newBeanId && !(await model.findOwnedBean(refs.newBeanId, authorId))) {
+    details.push({ field: 'beanId', message: 'Bean does not exist or is not yours' });
+  }
+
+  if (details.length) {
+    logger.debug(
+      { authorId, fields: details.map((d) => d.field) },
+      'recipe write rejected: invalid references',
+    );
+    throw new ValidationError('Invalid references', details);
+  }
+  return { coffeeVarietyName };
+}
+
+/**
+ * Throw a `400 VALIDATION_ERROR` when the values break a cross-field rule (date order,
+ * pre-infusion vs extraction), with the same `field`/`message` details as the schemas.
+ *
+ * @param values - Complete values (a create payload or an update merged over the stored version).
+ * @throws {ValidationError} When at least one rule is broken.
+ */
+function assertCrossFieldRules(values: Parameters<typeof recipeCrossFieldIssues>[0]): void {
+  const issues = recipeCrossFieldIssues(values);
+  if (issues.length) throw new ValidationError('Validation failed', issues);
+}
+
+/**
+ * Format a stored timestamp as the `YYYY-MM-DD` day the payload schemas use (UTC), so stored
+ * and submitted dates compare consistently in {@link recipeCrossFieldIssues}.
+ *
+ * @param date - A stored date, or `null`.
+ */
+function toIsoDay(date: Date | null): string | null {
+  return date ? date.toISOString().slice(0, 10) : null;
+}
+
+/**
+ * Merge one update value over the stored value: `undefined` (absent key) keeps the stored
+ * value, anything else (including `null`, which clears) replaces it.
+ *
+ * @param value - The payload value.
+ * @param stored - The stored value.
+ */
+function mergeValue<T>(value: T | null | undefined, stored: T | null): T | null {
+  return value === undefined ? stored : value;
+}
+
+/**
+ * Merge an update date (`YYYY-MM-DD`) over a stored timestamp: absent keeps, `null` clears,
+ * a string replaces.
+ *
+ * @param value - The payload date.
+ * @param stored - The stored timestamp.
+ */
+function mergeDate(value: string | null | undefined, stored: Date | null): Date | null {
+  if (value === undefined) return stored;
+  return value === null ? null : new Date(value);
+}
+
+/**
+ * Store a TDS reading as the decimal string Drizzle's `numeric` column expects; Postgres rounds
+ * it to two decimals.
+ *
+ * @param tds - The submitted reading.
+ */
+function tdsToDecimal(tds: number | null | undefined): string | null {
+  return tds == null ? null : String(tds);
+}
+
+/**
+ * Sanitize brewer notes (`recipe_version.personal_notes`); notes that are empty after
+ * sanitization are stored as `NULL`.
+ *
+ * @param notes - The submitted notes.
+ */
+function sanitizeBrewerNotes(notes: string | null | undefined): string | null {
+  return sanitizeText(notes) || null;
+}
+
+/**
+ * Compute the derived `brewRatio`/`flowRate` from measurements (never accepted from clients).
+ *
+ * @param m - Ground weight, extraction volume and extraction time (any may be missing).
+ */
+function derivedMetrics(m: {
+  groundWeightGrams?: number | null;
+  extractionVolumeMl?: number | null;
+  extractionTimeSeconds?: number | null;
+}): { brewRatio: number | null; flowRate: number | null } {
+  return {
+    brewRatio:
+      m.groundWeightGrams && m.extractionVolumeMl
+        ? computeBrewRatio(m.groundWeightGrams, m.extractionVolumeMl)
+        : null,
+    flowRate:
+      m.extractionVolumeMl && m.extractionTimeSeconds
+        ? computeFlowRate(m.extractionVolumeMl, m.extractionTimeSeconds)
+        : null,
+  };
 }
 
 /** Retrieve a recipe by slug or UUID. Throws `RECIPE_NOT_FOUND` if neither matches. */
@@ -149,28 +347,44 @@ async function validateEquipmentCompatibility(
 /**
  * Create a new recipe with its first version and all related entities.
  *
- * Orchestration steps:
- * 1. Validate equipment compatibility against the selected brew method
- * 2. Generate a unique slug from the sanitized title
- * 3. Inherit `grinder` and `brewerDetails` from the user's setup when `setupId`
+ * Orchestration steps (every validation runs before the first write, so a rejected request
+ * writes nothing):
+ * 1. Validate referenced records (taste notes, equipment, vendor, coffee variety, and the
+ *    author's own bean) and resolve the coffee-variety name server-side
+ * 2. Validate equipment compatibility against the selected brew method
+ * 3. Sanitize the title and build the slug candidates (bare base, then random
+ *    suffixes; reserved, UUID-shaped and non-Latin bases are always suffixed)
+ * 4. Inherit `grinder` and `brewerDetails` from the user's setup when `setupId`
  *    is provided (falling back to explicitly supplied values)
- * 4. Compute derived metrics (`brewRatio`, `flowRate`) from raw measurements
- * 5. Insert recipe, version, taste notes, equipment, additional preparations,
- *    and version photos inside a single transaction
- * 6. If visibility is `'public'`, asynchronously notify the author's followers
- * 7. Asynchronously evaluate badge eligibility for the author
+ * 5. Compute derived metrics (`brewRatio`, `flowRate`) from raw measurements, store `tds` as a
+ *    decimal string and empty brewer notes as `NULL`
+ * 6. Claim the first free slug and insert recipe, version, taste notes,
+ *    equipment, additional preparations, and version photos inside a single
+ *    transaction (concurrent creates with the same title get distinct slugs)
+ * 7. If visibility is `'public'`, asynchronously notify the author's followers
+ * 8. Asynchronously evaluate badge eligibility for the author
  *
  * @param authorId - UUID of the authenticated user creating the recipe.
  * @param data     - Creation payload (validated Zod schema from `@brewform/shared`).
  * @returns The complete recipe object with version, relations, and author summary.
+ * @throws {ValidationError} `400 VALIDATION_ERROR` when the title is empty after sanitization
+ *   or a referenced record does not exist.
+ * @throws {ConflictError} `409 SLUG_CONFLICT` when every slug candidate is taken.
  */
 export async function createRecipe(authorId: string, data: RecipeCreateInput) {
   logger.debug({ authorId }, 'createRecipe started');
+  const { coffeeVarietyName } = await validateReferences(authorId, {
+    tasteNoteIds: data.tasteNoteIds,
+    equipmentIds: data.equipmentIds,
+    vendorId: data.vendorId,
+    coffeeVarietyId: data.coffeeVarietyId,
+    newBeanId: data.beanId,
+  });
   await validateEquipmentCompatibility(data.brewMethod, data.equipmentIds ?? []);
 
   const safeTitle = sanitizeText(data.title);
-  if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
-  const slug = await generateUniqueSlug(safeTitle);
+  if (!safeTitle.trim()) throw emptyTitleError();
+  const candidates = buildRecipeSlugCandidates(safeTitle);
 
   let grinder: string | null | undefined = data.grinder;
   let brewerDetails: string | null | undefined = data.brewerDetails;
@@ -182,52 +396,46 @@ export async function createRecipe(authorId: string, data: RecipeCreateInput) {
     }
   }
 
-  const brewRatio =
-    data.groundWeightGrams && data.extractionVolumeMl
-      ? computeBrewRatio(data.groundWeightGrams, data.extractionVolumeMl)
-      : null;
-  const flowRate =
-    data.extractionVolumeMl && data.extractionTimeSeconds
-      ? computeFlowRate(data.extractionVolumeMl, data.extractionTimeSeconds)
-      : null;
-
   const finalRecipe = await model.createRecipeWithRelations({
     authorId,
-    slug,
+    slugCandidates: candidates,
     title: safeTitle,
     visibility: data.visibility || 'draft',
-    productName: data.productName,
-    coffeeBrand: data.coffeeBrand,
-    coffeeProcessing: data.coffeeProcessing,
-    vendorId: data.vendorId,
+    productName: data.productName ?? null,
+    coffeeBrand: data.coffeeBrand ?? null,
+    coffeeProcessing: data.coffeeProcessing ?? null,
+    vendorId: data.vendorId ?? null,
     roastDate: data.roastDate ? new Date(data.roastDate) : null,
     packageOpenDate: data.packageOpenDate ? new Date(data.packageOpenDate) : null,
     grindDate: data.grindDate ? new Date(data.grindDate) : null,
     brewDate: data.brewDate ? new Date(data.brewDate) : new Date(),
     brewMethod: data.brewMethod,
     drinkType: data.drinkType,
-    brewerDetails,
-    grinder,
-    grindSize: data.grindSize,
-    groundWeightGrams: data.groundWeightGrams,
-    extractionTimeSeconds: data.extractionTimeSeconds,
-    extractionVolumeMl: data.extractionVolumeMl,
-    temperatureCelsius: data.temperatureCelsius,
-    brewRatio,
-    flowRate,
-    personalNotes: sanitizeText(data.personalNotes),
-    preparationNotes: sanitizeText(data.preparationNotes),
-    isFavourite: data.isFavourite || false,
-    rating: data.rating,
-    emojiTag: data.emojiTag,
+    brewerDetails: brewerDetails ?? null,
+    grinder: grinder ?? null,
+    grindSize: data.grindSize ?? null,
+    groundWeightGrams: data.groundWeightGrams ?? null,
+    extractionTimeSeconds: data.extractionTimeSeconds ?? null,
+    extractionVolumeMl: data.extractionVolumeMl ?? null,
+    temperatureCelsius: data.temperatureCelsius ?? null,
+    tds: tdsToDecimal(data.tds),
+    ...derivedMetrics(data),
     preInfusionTimeSeconds: data.preInfusionTimeSeconds ?? null,
     beanId: data.beanId ?? null,
+    coffeeVarietyId: data.coffeeVarietyId ?? null,
+    coffeeVarietyName,
+    personalNotes: sanitizeBrewerNotes(data.personalNotes),
+    preparationNotes: sanitizeText(data.preparationNotes),
+    isFavourite: data.isFavourite || false,
+    rating: data.rating ?? null,
+    emojiTag: data.emojiTag ?? null,
     tasteNoteIds: data.tasteNoteIds,
     tasteNoteIntensities: data.tasteNoteIntensities,
     equipmentIds: data.equipmentIds,
     additionalPreparations: data.additionalPreparations,
     photoIds: data.photoIds,
   });
+  if (finalRecipe === null) throw slugExhausted(authorId, candidates.length);
 
   if (finalRecipe?.visibility === 'public') {
     (async () => {
@@ -249,117 +457,160 @@ export async function createRecipe(authorId: string, data: RecipeCreateInput) {
 }
 
 /**
- * Update an existing recipe, optionally creating a new version.
+ * Update a recipe: amend its current version in place (`bumpVersion: false`) or create a new
+ * version (`bumpVersion: true`). Earlier versions are never modified.
  *
- * When `data.bumpVersion` is truthy, a new version row is created with any
- * supplied fields merged over the latest version's values. Derived metrics
- * (`brewRatio`, `flowRate`) are recomputed when raw measurements change.
- * The recipe's `currentVersionId` is updated to point to the new version.
+ * Payload semantics (decided by key presence, never by comparing with a schema default): an
+ * absent key keeps the stored value, `null` clears it, and a relation array replaces the rows
+ * (`[]` removes them all). On a bump, every value and relation the payload does not provide is
+ * carried forward from the current version (`isFavourite`, `tds`, the coffee variety, taste
+ * notes with intensities, equipment, preparations and photos included), and `brewDate` is the
+ * payload value or now; on an amend `brewDate` changes only when provided. An omitted
+ * `visibility` keeps the recipe's visibility.
  *
- * When `bumpVersion` is falsy, only top-level recipe fields (title, visibility)
- * are updated — no new version is created.
+ * Steps:
+ * 1. Load the recipe and check the author.
+ * 2. Merge the payload over the current version and recompute `brewRatio`/`flowRate`;
+ *    `setupId` fills `grinder`/`brewerDetails` from the author's setup only when those keys
+ *    are absent from the payload.
+ * 3. Validate before any write: the cross-field rules on the merged values, the referenced
+ *    records (a bean only when newly set), equipment compatibility on the merged brew method
+ *    and equipment set (when either changes), and the sanitized title; normalize `tds` to a
+ *    decimal string, store empty brewer notes as `NULL` and resolve `coffeeVarietyName`.
+ * 4. Write everything in one transaction through {@link model.updateRecipeWithVersion}.
  *
+ * Sends no notification (unchanged).
+ *
+ * @param recipeId - The recipe to update.
+ * @param authorId - The authenticated caller (must be the author).
+ * @param data - The validated update payload.
+ * @returns The updated recipe in the `findById` shape.
  * @throws `RECIPE_NOT_FOUND` if the recipe does not exist.
  * @throws `FORBIDDEN` if the requesting user is not the recipe author.
+ * @throws {ValidationError} `400 VALIDATION_ERROR` (with details) for an empty title, a
+ *   cross-field violation on the merged values or an invalid reference.
+ * @throws `EQUIPMENT_INCOMPATIBLE` (422) when the merged equipment does not fit the brew method.
  */
 export async function updateRecipe(recipeId: string, authorId: string, data: RecipeUpdateInput) {
-  logger.debug({ recipeId, authorId }, 'updateRecipe started');
+  const mode: model.RecipeWriteMode = data.bumpVersion ? 'bump' : 'amend';
+  logger.debug({ recipeId, authorId, mode }, 'updateRecipe started');
   const recipe = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   if (recipe.authorId !== authorId) throw new Error('FORBIDDEN');
+  const current =
+    recipe.versions.find((v) => v.id === recipe.currentVersionId) ?? recipe.versions[0];
+  if (!current) throw new Error('RECIPE_NO_VERSIONS');
 
-  if (data.bumpVersion) {
-    const latestVersion = recipe.versions?.[0];
-    if (!latestVersion) throw new Error('RECIPE_NO_VERSIONS');
-    const newVersionNumber = latestVersion.versionNumber + 1;
-
-    if (data.brewMethod || data.equipmentIds) {
-      const existingEquipmentIds = latestVersion.equipment?.map((e) => e.equipmentId) ?? [];
-      await validateEquipmentCompatibility(
-        data.brewMethod ?? latestVersion.brewMethod,
-        data.equipmentIds ?? existingEquipmentIds,
-      );
-    }
-
-    const brewRatio =
-      data.groundWeightGrams || data.extractionVolumeMl
-        ? computeBrewRatio(
-            data.groundWeightGrams ?? latestVersion.groundWeightGrams ?? 0,
-            data.extractionVolumeMl ?? latestVersion.extractionVolumeMl ?? 0,
-          )
-        : latestVersion.brewRatio;
-    const flowRate =
-      data.extractionVolumeMl || data.extractionTimeSeconds
-        ? computeFlowRate(
-            data.extractionVolumeMl ?? latestVersion.extractionVolumeMl ?? 0,
-            data.extractionTimeSeconds ?? latestVersion.extractionTimeSeconds ?? 0,
-          )
-        : latestVersion.flowRate;
-
-    const version = await model.createVersion({
-      recipeId: recipe.id,
-      versionNumber: newVersionNumber,
-      productName: data.productName ?? latestVersion.productName,
-      coffeeBrand: data.coffeeBrand ?? latestVersion.coffeeBrand,
-      coffeeProcessing: data.coffeeProcessing ?? latestVersion.coffeeProcessing,
-      vendorId: data.vendorId ?? latestVersion.vendorId,
-      roastDate: data.roastDate ? new Date(data.roastDate) : latestVersion.roastDate,
-      packageOpenDate: data.packageOpenDate
-        ? new Date(data.packageOpenDate)
-        : latestVersion.packageOpenDate,
-      grindDate: data.grindDate ? new Date(data.grindDate) : latestVersion.grindDate,
-      brewDate: new Date(),
-      brewMethod: data.brewMethod ?? latestVersion.brewMethod,
-      drinkType: data.drinkType ?? latestVersion.drinkType,
-      brewerDetails: data.brewerDetails ?? latestVersion.brewerDetails,
-      grinder: data.grinder ?? latestVersion.grinder,
-      grindSize: data.grindSize ?? latestVersion.grindSize,
-      groundWeightGrams: data.groundWeightGrams ?? latestVersion.groundWeightGrams,
-      extractionTimeSeconds: data.extractionTimeSeconds ?? latestVersion.extractionTimeSeconds,
-      extractionVolumeMl: data.extractionVolumeMl ?? latestVersion.extractionVolumeMl,
-      temperatureCelsius: data.temperatureCelsius ?? latestVersion.temperatureCelsius,
-      brewRatio,
-      flowRate,
-      personalNotes: sanitizeText(data.personalNotes ?? latestVersion.personalNotes),
-      preparationNotes: sanitizeText(data.preparationNotes ?? latestVersion.preparationNotes),
-      isFavourite: data.isFavourite ?? latestVersion.isFavourite,
-      rating: data.rating ?? latestVersion.rating,
-      emojiTag: data.emojiTag ?? latestVersion.emojiTag,
-      preInfusionTimeSeconds: data.preInfusionTimeSeconds ?? latestVersion.preInfusionTimeSeconds,
-      beanId: data.beanId ?? latestVersion.beanId,
-    });
-
-    const safeTitle = sanitizeText(data.title ?? recipe.title);
-    if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
-
-    if (data.photoIds?.length) {
-      await model.insertVersionPhotos(version.id, data.photoIds);
-    } else {
-      const previousPhotos = await model.getVersionPhotos(latestVersion.id);
-      if (previousPhotos.length) {
-        await model.insertVersionPhotos(
-          version.id,
-          previousPhotos.map((vp) => vp.photoId),
-        );
+  // 2. Merge (absent keeps, null clears).
+  let grinder = mergeValue(data.grinder, current.grinder);
+  let brewerDetails = mergeValue(data.brewerDetails, current.brewerDetails);
+  if (data.setupId) {
+    const setup = await model.getUserSetup(data.setupId, authorId);
+    if (setup) {
+      if (data.grinder === undefined && setup.grinder) grinder = setup.grinder;
+      if (data.brewerDetails === undefined && setup.brewerDetails) {
+        brewerDetails = setup.brewerDetails;
       }
     }
-
-    await model.update(recipe.id, {
-      title: safeTitle,
-      visibility: data.visibility ?? recipe.visibility,
-      currentVersionId: version.id,
-    });
-  } else {
-    const safeTitle = sanitizeText(data.title ?? recipe.title);
-    if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
-    await model.update(recipe.id, {
-      title: safeTitle,
-      visibility: data.visibility ?? recipe.visibility,
-    });
   }
+  const measurements = {
+    groundWeightGrams: mergeValue(data.groundWeightGrams, current.groundWeightGrams),
+    extractionTimeSeconds: mergeValue(data.extractionTimeSeconds, current.extractionTimeSeconds),
+    extractionVolumeMl: mergeValue(data.extractionVolumeMl, current.extractionVolumeMl),
+  };
+  const roastDate = mergeDate(data.roastDate, current.roastDate);
+  const packageOpenDate = mergeDate(data.packageOpenDate, current.packageOpenDate);
+  const grindDate = mergeDate(data.grindDate, current.grindDate);
+  const preInfusionTimeSeconds = mergeValue(
+    data.preInfusionTimeSeconds,
+    current.preInfusionTimeSeconds,
+  );
+  const brewMethod = data.brewMethod ?? current.brewMethod;
+  const beanId = mergeValue(data.beanId, current.beanId);
+  const coffeeVarietyId = mergeValue(data.coffeeVarietyId, current.coffeeVarietyId);
 
-  logger.debug({ recipeId, authorId }, 'updateRecipe completed');
-  return model.findById(recipeId);
+  // 3. Validate everything before the first write.
+  assertCrossFieldRules({
+    roastDate: toIsoDay(roastDate),
+    packageOpenDate: toIsoDay(packageOpenDate),
+    grindDate: toIsoDay(grindDate),
+    preInfusionTimeSeconds,
+    extractionTimeSeconds: measurements.extractionTimeSeconds,
+  });
+  const references = await validateReferences(authorId, {
+    tasteNoteIds: data.tasteNoteIds,
+    equipmentIds: data.equipmentIds,
+    vendorId: data.vendorId,
+    coffeeVarietyId: data.coffeeVarietyId,
+    newBeanId: data.beanId !== undefined && data.beanId !== current.beanId ? data.beanId : null,
+  });
+  if (data.brewMethod !== undefined || data.equipmentIds !== undefined) {
+    await validateEquipmentCompatibility(
+      brewMethod,
+      data.equipmentIds ?? current.equipment.map((e) => e.equipmentId),
+    );
+  }
+  const title = data.title !== undefined ? sanitizeText(data.title) : recipe.title;
+  if (!title.trim()) throw emptyTitleError();
+  const coffeeVarietyName =
+    data.coffeeVarietyId === undefined ? current.coffeeVarietyName : references.coffeeVarietyName;
+
+  // 4. One transactional write.
+  // A bump records a new brew (payload date or now); an amend keeps the stored date unless given.
+  let brewDate = mode === 'bump' ? new Date() : current.brewDate;
+  if (data.brewDate) brewDate = new Date(data.brewDate);
+  const updated = await model.updateRecipeWithVersion({
+    recipeId,
+    authorId,
+    mode,
+    title,
+    visibility: data.visibility ?? recipe.visibility,
+    version: {
+      productName: mergeValue(data.productName, current.productName),
+      coffeeBrand: mergeValue(data.coffeeBrand, current.coffeeBrand),
+      coffeeProcessing: mergeValue(data.coffeeProcessing, current.coffeeProcessing),
+      vendorId: mergeValue(data.vendorId, current.vendorId),
+      roastDate,
+      packageOpenDate,
+      grindDate,
+      brewDate,
+      brewMethod,
+      drinkType: data.drinkType ?? current.drinkType,
+      brewerDetails,
+      grinder,
+      grindSize: mergeValue(data.grindSize, current.grindSize),
+      ...measurements,
+      temperatureCelsius: mergeValue(data.temperatureCelsius, current.temperatureCelsius),
+      tds: data.tds === undefined ? current.tds : tdsToDecimal(data.tds),
+      ...derivedMetrics(measurements),
+      preInfusionTimeSeconds,
+      beanId,
+      coffeeVarietyId,
+      coffeeVarietyName: coffeeVarietyId === null ? null : coffeeVarietyName,
+      personalNotes:
+        data.personalNotes === undefined
+          ? current.personalNotes
+          : sanitizeBrewerNotes(data.personalNotes),
+      preparationNotes:
+        data.preparationNotes === undefined
+          ? current.preparationNotes
+          : sanitizeText(data.preparationNotes),
+      isFavourite: data.isFavourite ?? current.isFavourite,
+      rating: mergeValue(data.rating, current.rating),
+      emojiTag: mergeValue(data.emojiTag, current.emojiTag),
+    },
+    tasteNoteIds: data.tasteNoteIds,
+    tasteNoteIntensities: data.tasteNoteIntensities,
+    equipmentIds: data.equipmentIds,
+    additionalPreparations: data.additionalPreparations,
+    photoIds: data.photoIds,
+  });
+
+  const versionNumber = updated?.versions.find(
+    (v) => v.id === updated.currentVersionId,
+  )?.versionNumber;
+  logger.debug({ recipeId, authorId, mode, versionNumber }, 'updateRecipe completed');
+  return updated;
 }
 
 /** Soft-delete a recipe. Throws `RECIPE_NOT_FOUND` or `FORBIDDEN` on failure. */
@@ -376,14 +627,18 @@ export async function deleteRecipe(recipeId: string, authorId: string) {
  * Fork an existing recipe into the caller's account.
  *
  * Only public/unlisted recipes can be freely forked; draft/private recipes
- * require the caller to be the original author. A unique slug is generated
- * from the fork title (defaults to `"Fork of <original title>"`).
+ * require the caller to be the original author. The supplied title is
+ * sanitized with `sanitizeText` (like `createRecipe`) and falls back to
+ * `"Fork of <original title>"` when absent or empty after sanitization. The
+ * fork's slug goes through the same pipeline as creation (candidates claimed
+ * inside the fork transaction), so a recipe can be forked any number of times.
  * Badge eligibility is re-evaluated for the forking user after creation.
  *
  * @param sourceId - UUID of the recipe to fork.
  * @param authorId - UUID of the user performing the fork.
  * @param title    - Optional custom title for the forked recipe.
  * @returns The newly created forked recipe.
+ * @throws {ConflictError} `409 SLUG_CONFLICT` when every slug candidate is taken.
  */
 export async function forkRecipe(sourceId: string, authorId: string, title?: string) {
   logger.debug({ sourceId, authorId }, 'forkRecipe started');
@@ -393,11 +648,11 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
     if (source.authorId !== authorId) throw new Error('FORBIDDEN');
   }
 
-  const forkTitle = title || `Fork of ${source.title}`;
-  const slug = generateSlug(forkTitle);
-  const uniqueSlug = await ensureUniqueSlug(slug, []);
+  const forkTitle = sanitizeText(title) || `Fork of ${source.title}`;
+  const candidates = buildRecipeSlugCandidates(forkTitle);
 
-  const forked = await model.forkRecipe(sourceId, authorId, forkTitle, uniqueSlug);
+  const forked = await model.forkRecipe(sourceId, authorId, forkTitle, candidates);
+  if (forked === null) throw slugExhausted(authorId, candidates.length);
 
   evaluateBadges(authorId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
 
@@ -405,63 +660,34 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
   return forked;
 }
 
-/** Minimal shape required by {@link rankRecipes} — title, current version pointer, and version fields. */
-interface RankableRecipe {
-  title: string | null;
-  currentVersionId: string | null;
-  versions?: { id: string; productName: string | null; personalNotes: string | null }[];
-}
-
 /**
- * Rank recipes by weighted relevance score against a search term.
+ * Run one recipe list query, replacing a statement timeout with a sanitized error.
  *
- * Score weights:
- * - title match: 3 (highest — title is the most prominent field)
- * - productName match: 2 (coffee name is the second most visible)
- * - personalNotes match: 1 (lowest — free-text notes are least prominent)
+ * A query cancelled by the pool's `statement_timeout` (SQLSTATE `57014`, on the error
+ * or on the Drizzle error's `cause`) is logged at `warn` with ids and the term's length
+ * only, then rethrown as `new Error('QUERY_TIMEOUT')` WITHOUT a cause, so the SQL text,
+ * bound parameters and search term never reach a log line; the global error handler
+ * maps it to 503 `QUERY_TIMEOUT`. Any other error is rethrown unchanged.
  *
- * The search term is sanitized (stripping `%` and `_` wildcards) and
- * lowercased once before scoring, matching the sanitization applied in
- * `buildRecipeFilters` for the DB-level `ilike` conditions.
- *
- * The DB search matches ANY version's productName/personalNotes (via the
- * `inArray` subquery in `buildRecipeFilters`), not just the current version.
- * To keep ranking consistent with filtering, this function scores each version
- * independently (productName=2 + personalNotes=1 on the SAME version) and adds
- * the maximum per-version score to the title score.
- *
- * The sort is STABLE: recipes with equal scores preserve their original
- * DB-query order (sortBy/sortOrder from the model query). This ensures
- * ranking does not re-shuffle equally-relevant items.
- *
- * Ranking SHALL NOT be applied when `search` is absent — the DB-level
- * `sortBy` / `sortOrder` ordering is the sole ordering in that case.
- *
- * @param recipes - Fetched recipe rows with their version fields.
- * @param searchTerm - The raw search string (sanitized + lowercased internally).
- * @returns A new array sorted by rank DESC (original order preserved for ties).
+ * @param query - Starts the model query.
+ * @param requestId - The request id for the log line.
+ * @param searchLength - Length of the normalized search term (0 without search).
+ * @returns The query result.
  */
-export function rankRecipes<T extends RankableRecipe>(recipes: T[], searchTerm: string): T[] {
-  const searchLower = searchTerm.replace(/[%_]/g, '').toLowerCase();
-  const scored = recipes.map((recipe, index) => {
-    let score = 0;
-    if (recipe.title?.toLowerCase().includes(searchLower)) score += 3;
-    // Score the best matching version: compute per-version weighted score
-    // (productName=2 + personalNotes=1 on the SAME version), then add the max.
-    // This prevents combining matches across different versions.
-    const versions = recipe.versions ?? [];
-    const maxVersionScore = versions.reduce((max, v) => {
-      let vScore = 0;
-      if (v.productName?.toLowerCase().includes(searchLower)) vScore += 2;
-      if (v.personalNotes?.toLowerCase().includes(searchLower)) vScore += 1;
-      return Math.max(max, vScore);
-    }, 0);
-    score += maxVersionScore;
-    return { recipe, score, index };
-  });
-  // Stable sort: by score DESC, then by original index ASC (preserves DB order for ties)
-  scored.sort((a, b) => b.score - a.score || a.index - b.index);
-  return scored.map((s) => s.recipe);
+async function runListQuery<T>(
+  query: () => Promise<T>,
+  requestId: string | undefined,
+  searchLength: number,
+): Promise<T> {
+  try {
+    return await query();
+  } catch (err) {
+    if (isStatementTimeout(err)) {
+      logger.warn({ requestId, searchLength, pgCode: '57014' }, 'Recipe list query timed out');
+      throw new Error('QUERY_TIMEOUT');
+    }
+    throw err;
+  }
 }
 
 /**
@@ -478,11 +704,20 @@ export function rankRecipes<T extends RankableRecipe>(recipes: T[], searchTerm: 
  * When both `page` and `cursor` are provided, cursor wins and `page` is
  * silently ignored.
  *
+ * When `search` is non-empty after {@link model.normalizeSearchTerm}, the request
+ * uses offset pagination (a cursor is ignored) and {@link model.findListPage}
+ * ranks, orders and pages the matches in SQL: one bounded page query plus one
+ * `COUNT`, never the full result set. A statement timeout becomes
+ * `QUERY_TIMEOUT` (503) with a sanitized log line.
+ *
  * @param filters           - Filter criteria (see controller for accepted keys).
  * @param page              - Page number (1-based) for offset mode.
  * @param perPage           - Items per page.
  * @param _requestingUserId - Unused; reserved for future scoped queries.
- * @param isAdmin           - Whether the requester is an admin (bypasses visibility restrictions).
+ * @param isAdmin           - Whether the requester is an admin: only an admin's `visibility` filter
+ *                            is honoured; everyone else gets the public discovery list
+ *                            (`listableRecipeCondition(null)`, capability `recipe-visibility`).
+ * @param requestId         - The request id for log lines.
  * @returns Either `{ recipes, total }` for offset mode or
  *          `{ recipes, hasMore, nextCursor, total? }` for cursor mode.
  */
@@ -498,8 +733,9 @@ export async function listRecipes(
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
 
-  // F11: search-active detection — non-empty after sanitization
-  const hasSearch = filters.search != null && filters.search.replace(/[%_]/g, '').length > 0;
+  // Search-active detection uses the same normalized term as the filter and the score.
+  const search = model.normalizeSearchTerm(filters.search);
+  const hasSearch = search.length > 0;
 
   logger.debug(
     { userId: _requestingUserId, page, perPage, requestId, hasSearch },
@@ -520,7 +756,8 @@ export async function listRecipes(
       ? { ...result, deprecations }
       : (result as T & { deprecations?: { tasteNoteId?: boolean } });
 
-  // F11: search active → skip cursor path (ranking reorders, keyset cursor non-deterministic)
+  // F11: search active → skip cursor path (the SQL relevance score orders the results, so a
+  // (createdAt, id) keyset cursor does not follow the result order)
   if (filters.cursor && !hasSearch) {
     if (page > 1) {
       logger.debug(
@@ -536,7 +773,11 @@ export async function listRecipes(
 
     if (sortBy !== 'createdAt') {
       logger.warn({ sortBy }, 'Cursor pagination incompatible with sortBy, falling back to offset');
-      const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
+      const result = await runListQuery(
+        () => model.findMany(where, page, perPage, sortBy, sortOrder),
+        requestId,
+        0,
+      );
       logger.debug(
         { userId: _requestingUserId, page, perPage, resultCount: result.total },
         'listRecipes completed',
@@ -554,7 +795,11 @@ export async function listRecipes(
 
     let result: Awaited<ReturnType<typeof model.findCursor>>;
     try {
-      result = await model.findCursor(where, cursor, perPage, sortOrder, filters.includeTotal);
+      result = await runListQuery(
+        () => model.findCursor(where, cursor, perPage, sortOrder, filters.includeTotal),
+        requestId,
+        0,
+      );
     } catch (err) {
       // findCursor throws VALIDATION_ERROR: INVALID_CURSOR when the decoded
       // cursor's createdAt is not a valid date — surface it as a 400, not 500.
@@ -575,7 +820,8 @@ export async function listRecipes(
     return withDeprecations(result);
   }
 
-  // F11: search + cursor → offset fallback (ranking reorders, keyset cursor non-deterministic)
+  // F11: search + cursor → offset fallback (the SQL relevance score reorders, keyset cursor
+  // non-deterministic)
   if (filters.cursor && hasSearch) {
     logger.debug(
       { requestId, hasSearch: true, searchLength: filters.search?.length ?? 0 },
@@ -583,26 +829,13 @@ export async function listRecipes(
     );
   }
 
-  // F11: global ranking — fetch ALL matching recipes, rank in JS, then slice for the page.
-  // This ensures relevance ranking is global, not page-local: a high-scoring title match
-  // on page 2 is returned before a lower-scoring productName match on page 1.
-  if (hasSearch) {
-    const allResults = await model.findAllForRanking(where, sortBy, sortOrder);
-    const ranked = rankRecipes(
-      allResults.recipes as unknown as RankableRecipe[],
-      filters.search!,
-    ) as unknown as typeof allResults.recipes;
-    const start = (page - 1) * perPage;
-    const paged = ranked.slice(start, start + perPage);
-    const result = { recipes: paged, total: allResults.total };
-    logger.debug(
-      { userId: _requestingUserId, page, perPage, resultCount: result.total },
-      'listRecipes completed',
-    );
-    return withDeprecations(result);
-  }
-
-  const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
+  // Search or not, ranking, ordering and paging happen in SQL (one bounded page query
+  // plus one COUNT); the normalized term drives the relevance score.
+  const result = await runListQuery(
+    () => model.findListPage({ where, page, perPage, sortBy, sortOrder, search }),
+    requestId,
+    search.length,
+  );
   logger.debug(
     { userId: _requestingUserId, page, perPage, resultCount: result.total },
     'listRecipes completed',
@@ -613,14 +846,22 @@ export async function listRecipes(
 /**
  * List starred recipes, always using offset pagination.
  *
+ * Starred is a viewer-only record (capability `recipe-visibility`): it lists the
+ * caller's favourites that the caller can open (`viewableRecipeCondition(userId)` in
+ * {@link model.findStarred}), so favourited `unlisted` recipes appear and another
+ * author's recipe that became `private`/`draft` or was deleted drops out.
+ *
  * Starred queries (`/recipes/starred`) involve a favourites subquery JOIN that
  * is not yet compatible with cursor pagination; a cursor parameter is silently
- * ignored with a debug log.
+ * ignored with a debug log. The normalized `search` is passed through, so a starred
+ * search is relevance-ranked in SQL by the same bounded query as `/recipes`; a
+ * statement timeout becomes `QUERY_TIMEOUT` (503).
  *
  * @param filters - Filter criteria, including ignored `cursor`.
  * @param page    - Page number (1-based).
  * @param perPage - Items per page.
  * @param userId  - UUID of the authenticated user whose favourites to query.
+ * @param requestId - The request id for log lines.
  * @returns Paginated recipe list with total count.
  */
 export async function listStarredRecipes(
@@ -641,7 +882,13 @@ export async function listStarredRecipes(
     logger.warn({ filter: 'tasteNoteId', userId, requestId }, 'Deprecated query parameter used');
   }
 
-  const result = await model.findStarred(userId, filters, page, perPage);
+  // The normalized term drives the starred filter and its SQL relevance ranking.
+  const search = model.normalizeSearchTerm(filters.search);
+  const result = await runListQuery(
+    () => model.findStarred(userId, { ...filters, search }, page, perPage),
+    requestId,
+    search.length,
+  );
   logger.debug({ userId }, 'listStarredRecipes completed');
   return {
     ...result,
@@ -707,16 +954,6 @@ export async function toggleFeature(recipeId: string, authorId: string) {
   return result;
 }
 
-/** Save custom notes on the current version of a recipe. Throws `RECIPE_NOT_FOUND` if there is no current version. */
-export async function saveNotes(recipeId: string, notes: string) {
-  logger.debug({ recipeId }, 'saveNotes started');
-  const recipe = await model.findById(recipeId);
-  if (!recipe) throw new Error('RECIPE_NOT_FOUND');
-  if (!recipe.currentVersionId) throw new Error('RECIPE_NOT_FOUND');
-  await model.updateVersionNotes(recipe.currentVersionId, notes);
-  logger.debug({ recipeId }, 'saveNotes completed');
-}
-
 /**
  * Return lightweight metadata for a recipe by slug.
  *
@@ -775,6 +1012,84 @@ export function canViewRecipe(
   return true;
 }
 
+/**
+ * Pure predicate: may the viewer see this recipe in a LIST? (capability
+ * `recipe-visibility`, "One shared listing condition and predicate pair decides
+ * visibility"). True exactly when the recipe is not soft-deleted (`deletedAt`
+ * null or absent) AND it is `public` or the viewer is its author. `unlisted`
+ * recipes open by link ({@link canViewRecipe}) but are never listed to anyone
+ * but their author. The pure twin of `listableRecipeCondition` in `model.ts`.
+ *
+ * There is no admin parameter: admin surfaces do not use this predicate, and
+ * collection items deliberately ignore the admin flag. Callers such as the
+ * collection service use it to filter items and to mask fork sources
+ * (`canListRecipe(source, null)`).
+ *
+ * Pure function with no I/O — intentionally has no entry/exit debug logging,
+ * the same deliberate deviation as {@link canViewRecipe}; the callers log.
+ *
+ * @param recipe - Minimal recipe shape: visibility, authorId and optional deletedAt
+ * @param viewerId - The viewer's user id, or null/undefined when anonymous
+ * @returns true when the recipe may appear in a listing shown to the viewer
+ */
+export function canListRecipe(
+  recipe: { visibility: string; authorId: string; deletedAt?: Date | string | null },
+  viewerId?: string | null,
+): boolean {
+  if (recipe.deletedAt !== null && recipe.deletedAt !== undefined) return false;
+  if (recipe.visibility === 'public') return true;
+  return viewerId !== null && viewerId !== undefined && viewerId === recipe.authorId;
+}
+
+/** The fork fields of a recipe response (capability `recipe-visibility`). */
+export interface ForkAttribution {
+  /** The source's public identity, or `null` when the viewer may not list the source. */
+  forkedFrom: { id: string; slug: string; title: string } | null;
+  /** The source's id, or `null` when masked (or not a fork). */
+  forkedFromId: string | null;
+  /** The source's slug, or `null` when masked (or not a fork). */
+  forkedFromSlug: string | null;
+}
+
+/** The fork source as loaded by `findById`/`findBySlug`: identity plus visibility state. */
+export interface ForkSourceState {
+  id: string;
+  slug: string;
+  title: string;
+  visibility: string;
+  authorId: string;
+  deletedAt: Date | string | null;
+}
+
+/**
+ * Decide the fork fields a viewer may see on a recipe detail (capability
+ * `recipe-visibility`, "Fork attribution never reveals a recipe the viewer could not
+ * list"). An `unlisted` recipe's id works as its link, so the source is kept only when
+ * {@link canListRecipe}`(source, viewerId)` is true: it is not soft-deleted and is `public`,
+ * or the viewer is the source's author. Otherwise all three fields are `null`.
+ *
+ * The returned `forkedFrom` carries only `{ id, slug, title }`, never the source's
+ * `visibility`, `authorId` or `deletedAt`. Callers spread the result over the loaded recipe,
+ * so the raw `forkedFromId` and `forkedFrom` are overwritten.
+ *
+ * @param forkedFrom - The loaded fork source, or `null`/`undefined` when the recipe is not a fork.
+ * @param viewerId - The viewer's user id, or `null`/`undefined` when anonymous.
+ * @returns `{ forkedFrom, forkedFromId, forkedFromSlug }` for the response.
+ */
+export function resolveForkAttribution(
+  forkedFrom: ForkSourceState | null | undefined,
+  viewerId?: string | null,
+): ForkAttribution {
+  logger.debug({ viewerId }, 'resolveForkAttribution started');
+  if (!forkedFrom || !canListRecipe(forkedFrom, viewerId)) {
+    logger.debug({ viewerId, masked: Boolean(forkedFrom) }, 'resolveForkAttribution completed');
+    return { forkedFrom: null, forkedFromId: null, forkedFromSlug: null };
+  }
+  const { id, slug, title } = forkedFrom;
+  logger.debug({ viewerId, masked: false }, 'resolveForkAttribution completed');
+  return { forkedFrom: { id, slug, title }, forkedFromId: id, forkedFromSlug: slug };
+}
+
 // ponytail: no entry/exit debug logs on these 6 passthroughs — deliberate deviation,
 // same precedent as canViewRecipe above. Add logging if these gain business logic.
 
@@ -808,6 +1123,14 @@ export function upsertUserRating(userId: string, recipeId: string, rating: numbe
   return model.upsertUserRating(userId, recipeId, rating);
 }
 
+/**
+ * Resolve one relation id list of a merge from a per-field selection.
+ * @param list1    - Relation rows of the first version (may be absent).
+ * @param list2    - Relation rows of the second version (may be absent).
+ * @param choice   - `v1`, `v2`, `both` (deduplicated union in first-seen order), or `none`/absent.
+ * @param idField  - Key holding the related id on each row (e.g. `tasteNoteId`).
+ * @returns The ids to attach to the merged recipe; empty for `none` or no selection.
+ */
 export function getMergedIds(
   list1: { [key: string]: unknown }[] | undefined,
   list2: { [key: string]: unknown }[] | undefined,
@@ -827,6 +1150,13 @@ export function getMergedIds(
   return Array.from(ids);
 }
 
+/**
+ * Resolve the additional preparations of a merge from the per-field selection.
+ * @param v1     - First source version.
+ * @param v2     - Second source version.
+ * @param choice - `v1`, `v2`, `both` (v1's preparations followed by v2's), or `none`/absent.
+ * @returns The preparations to copy into the merged recipe; empty for `none` or no selection.
+ */
 export function getMergedPreparations(
   v1: { additionalPreparations?: unknown[] },
   v2: { additionalPreparations?: unknown[] },
@@ -840,6 +1170,16 @@ export function getMergedPreparations(
 
 /**
  * Merge two recipe versions into a new draft recipe.
+ *
+ * Both sources must exist and their recipes must not be soft-deleted (`RECIPE_NOT_FOUND`), and
+ * the caller must be allowed to view both under {@link canViewRecipe} (`FORBIDDEN`): another
+ * user's public or unlisted recipe can be merged, their draft or private recipe cannot.
+ *
+ * Delegates the write to {@link createRecipe}, so the merged recipe gets its
+ * slug from the same pipeline (sanitized title, candidates claimed in the
+ * creation transaction): merging twice with the same title yields distinct
+ * slugs, and exhausted candidates surface as `409 SLUG_CONFLICT`.
+ *
  * @param authorId - UUID of the user performing the merge.
  * @param data - Validated merge selection payload.
  * @returns The newly created draft recipe.
@@ -850,11 +1190,16 @@ export async function mergeRecipes(authorId: string, data: RecipeMerge) {
   const v1 = await model.fetchRecipeVersionWithRelations(data.recipeVersionId1);
   const v2 = await model.fetchRecipeVersionWithRelations(data.recipeVersionId2);
 
-  if (!v1 || !v2) throw new Error('RECIPE_NOT_FOUND');
+  // A soft-deleted source recipe counts as missing, even for its author.
+  if (!v1 || !v2 || v1.recipe.deletedAt != null || v2.recipe.deletedAt != null) {
+    throw new Error('RECIPE_NOT_FOUND');
+  }
 
-  const canAccess = (v: typeof v1) =>
-    v.recipe.authorId === authorId || v.recipe.visibility === 'public';
-  if (!canAccess(v1) || !canAccess(v2)) throw new Error('FORBIDDEN');
+  // Same rule as opening the recipe by link: public and unlisted for anyone, draft and private
+  // only for the author (capability `recipe-visibility`).
+  if (!canViewRecipe(v1.recipe, authorId) || !canViewRecipe(v2.recipe, authorId)) {
+    throw new Error('FORBIDDEN');
+  }
 
   const sel = data.selections;
   const pick = <K extends keyof typeof v1>(field: K) => {

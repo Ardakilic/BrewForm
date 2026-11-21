@@ -15,7 +15,7 @@
 > - **bodyLimit already enforced (D24 shipped):** global 1MB JSON limit via apps/api/src/middleware/bodyLimit.ts, registered in apps/api/src/main.ts:74 — covers the import body; nothing to add.
 > - **Print button already exists** in the header action row (RecipeDetailPage.tsx:202-209, i18n key `recipe.print`), and the sidebar is marked `no-print` (:318). Don't add a second print button to the export card — it only needs "Download JSON".
 > - **Stale line numbers in the 2026-07-13 banner:** `recipesRelations` is now at packages/db/src/schema.ts:1057 (was :997; still only `versions: many()` at :1062 plus the `currentVersionId` column at :138); GET /:slugOrId composes `currentVersion = versions[0]` at index.ts:551 (was :326); RecipeDetailPage `const v = recipe.currentVersion` at :121 (was :115) and ShareSection at :320 (was :314); `ApiError.details` at client.ts:99 (was :85).
-> - Conventions unchanged and still binding: no raw SQL / no Postgres-specific operators, soft deletes, `*.test.ts` with jsr:@std/testing/bdd + @std/expect, structured logging (module logger `createLogger('recipe-service')` already exists at service.ts:50), and `make check && make lint && make test` plus `make fmt` before commit.
+> - Conventions unchanged and still binding: no raw SQL / no Postgres-specific operators, soft deletes, `*.test.ts` with Vitest (`describe`/`it`/`expect` from `vitest`), structured logging (module logger `createLogger('recipe-service')` already exists at service.ts:50), and `make check && make lint && make test` plus `make fmt` before commit.
 
 > **Validation status (2026-07-13): ⚠️ Outdated — corrections below**
 >

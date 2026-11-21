@@ -1,38 +1,42 @@
-import type { EquipmentOutput } from '@brewform/shared/schemas';
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
-import { api } from '../../api/client.ts';
+import { useEffect } from 'react';
+import { useLoaderData, useLocation, useNavigation } from 'react-router';
 import { CatalogEntityCard } from '../../components/catalog/CatalogEntityCard.tsx';
 import { CategoryTabs } from '../../components/catalog/CategoryTabs.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { CardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { useDebounce } from '../../hooks/useDebounce.ts';
+import { useDebouncedUrlText, useListUrlState } from '../../hooks/useListUrlState.ts';
+import { parseEquipmentCatalogParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './EquipmentCatalogPage.data.ts';
 
 const log = createLogger('EquipmentCatalogPage');
 
 /**
  * Public equipment catalog with URL-driven pagination, type-category
- * tabs, and debounced search; cards link to equipment detail pages.
+ * tabs, and debounced search; cards link to equipment detail pages. All
+ * selections live in the URL (`page`, `type`, `q`; a legacy `search` link is
+ * still read): tabs push history, the search box commits after a 300 ms pause
+ * with `replace`, and page 1 is never written. The cards come from the
+ * `/equipments` route loader (`EquipmentCatalogPage.data.ts`); a skeleton shows
+ * while a new URL state loads, and a failed load renders the route error state.
  */
 export function EquipmentCatalogPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [equipment, setEquipment] = useState<EquipmentOutput[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [retryCounter, setRetryCounter] = useState(0);
+  const {
+    state: { page, type, q: search },
+    setFilter,
+    setPage,
+    clearAll,
+  } = useListUrlState(parseEquipmentCatalogParams);
+  const searchInput = useDebouncedUrlText('q', { legacyKeys: ['search'] });
+  const { equipment, totalPages } = useLoaderData<typeof loader>();
+  const navigation = useNavigation();
+  const location = useLocation();
+  const loading =
+    navigation.state === 'loading' && navigation.location.pathname === location.pathname;
   const { t } = useTranslation();
-
-  const raw = Number(searchParams.get('page'));
-  const page = Number.isFinite(raw) ? Math.max(1, Math.floor(raw)) : 1;
-  const type = searchParams.get('type') || '';
-  const search = searchParams.get('search') || '';
-  const debouncedSearch = useDebounce(search, 300);
 
   useEffect(() => {
     log.debug({}, 'EquipmentCatalogPage mounted');
@@ -53,49 +57,6 @@ export function EquipmentCatalogPage() {
     { value: 'roaster', label: t('equipment.category.roaster') },
   ];
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    const params = new URLSearchParams();
-    params.set('page', String(page));
-    params.set('perPage', '12');
-    if (type) params.set('type', type);
-    if (debouncedSearch) params.set('search', debouncedSearch);
-
-    api
-      .getWithMeta<{
-        data: EquipmentOutput[];
-        meta?: { pagination?: { total?: number; totalPages?: number } };
-      }>(`/equipment?${params.toString()}`)
-      .then((data) => {
-        const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-        setEquipment(items);
-        setTotalPages(
-          data?.meta?.pagination?.totalPages ||
-            Math.ceil((data?.meta?.pagination?.total ?? items.length) / 12) ||
-            1,
-        );
-      })
-      .catch((err) => {
-        log.error({ err }, 'EquipmentCatalogPage loadData failed');
-        setError(t('equipment.catalog.error.load'));
-      })
-      .finally(() => setLoading(false));
-  }, [page, type, debouncedSearch, retryCounter]);
-
-  function updateFilter(key: string, value: string) {
-    const params = new URLSearchParams(searchParams);
-    if (value) {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
-    if (key !== 'page') {
-      params.delete('page');
-    }
-    setSearchParams(params, { preventScrollReset: true });
-  }
-
   const hasActiveFilters = !!(type || search);
 
   return (
@@ -110,19 +71,15 @@ export function EquipmentCatalogPage() {
       </p>
 
       {/* Category tabs */}
-      <CategoryTabs
-        tabs={categoryButtons}
-        active={type}
-        onSelect={(v) => updateFilter('type', v)}
-      />
+      <CategoryTabs tabs={categoryButtons} active={type} onSelect={(v) => setFilter('type', v)} />
 
       {/* Search */}
       <div className="mb-6">
         <input
           type="text"
           placeholder={t('equipment.catalog.searchPlaceholder')}
-          value={search}
-          onChange={(e) => updateFilter('search', e.target.value)}
+          value={searchInput.value}
+          onChange={(e) => searchInput.setValue(e.target.value)}
           className="input-field text-sm max-w-md"
         />
       </div>
@@ -133,11 +90,7 @@ export function EquipmentCatalogPage() {
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {t('common.activeFilters')}
           </span>
-          <button
-            type="button"
-            onClick={() => setSearchParams({})}
-            className="btn-secondary text-sm"
-          >
+          <button type="button" onClick={clearAll} className="btn-secondary text-sm">
             {t('common.clearAll')}
           </button>
         </div>
@@ -146,34 +99,12 @@ export function EquipmentCatalogPage() {
       {/* Content */}
       {loading ? (
         <CardSkeletonGrid variant="catalog" />
-      ) : error ? (
-        <div className="text-center py-12">
-          <ErrorState message={error} className="mb-4" />
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setLoading(true);
-              const params = new URLSearchParams(searchParams);
-              params.delete('page');
-              setSearchParams(params, { preventScrollReset: true });
-              setRetryCounter((c) => c + 1);
-            }}
-            className="btn-primary"
-          >
-            {t('common.retry')}
-          </button>
-        </div>
       ) : equipment.length === 0 ? (
         <EmptyState
           message={t('equipment.catalog.empty')}
           action={
             hasActiveFilters ? (
-              <button
-                type="button"
-                onClick={() => setSearchParams({})}
-                className="btn-secondary text-sm"
-              >
+              <button type="button" onClick={clearAll} className="btn-secondary text-sm">
                 {t('common.clearSearch')}
               </button>
             ) : undefined
@@ -195,11 +126,7 @@ export function EquipmentCatalogPage() {
           </div>
 
           {/* Pagination */}
-          <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            onPageChange={(p) => updateFilter('page', String(p))}
-          />
+          <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
     </div>

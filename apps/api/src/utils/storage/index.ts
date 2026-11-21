@@ -17,4 +17,15 @@ export function createStorageDriver(): StorageDriver {
   }
 }
 
+export {
+  checkStorageHealth,
+  resetStorageStartupStateForTests,
+  type StorageFsDeps,
+  type StorageHealth,
+  type StorageLogger,
+  type StorageStartupConfig,
+  StorageStartupError,
+  type StorageStartupResult,
+  verifyStorage,
+} from './startup.ts';
 export type { StorageDriver };

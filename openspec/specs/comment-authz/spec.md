@@ -1,7 +1,12 @@
 # comment-authz Specification
 
 ## Purpose
-TBD - created by archiving change wave-5-debt-clearance. Update Purpose after archive.
+
+Defines who may create and list comments on a recipe. Both operations are gated by the shared
+recipe-visibility predicate, a recipe the caller may not view answers 404 rather than 403, and
+@mention side effects never fire for a rejected comment. A test matrix pins every role and
+visibility combination.
+
 ## Requirements
 ### Requirement: Shared recipe-visibility predicate
 

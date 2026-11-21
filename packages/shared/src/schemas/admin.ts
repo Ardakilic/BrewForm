@@ -1,16 +1,18 @@
 import { z } from 'zod';
-import { UuidSchema } from './common.ts';
+import { EmailSchema, UuidSchema } from './common.ts';
 
 const usernameRegex = /^[a-zA-Z0-9_-]+$/;
 
 /**
- * Validates admin user-creation payloads.
+ * Validates admin user-creation payloads. The email is trimmed and lower-cased
+ * ({@link EmailSchema}); the username is trimmed. Reserved usernames are allowed here.
  * Used by POST /api/v1/admin/users.
  */
 export const AdminCreateUserSchema = z.object({
-  email: z.email(),
+  email: EmailSchema,
   username: z
     .string()
+    .trim()
     .min(3)
     .max(30)
     .regex(usernameRegex, 'Username must be alphanumeric with _ and -'),
@@ -22,14 +24,16 @@ export const AdminCreateUserSchema = z.object({
 });
 
 /**
- * Validates admin user-update payloads (at least one field required).
+ * Validates admin user-update payloads (at least one field required). A supplied email is trimmed
+ * and lower-cased ({@link EmailSchema}); a supplied username is trimmed.
  * Used by PATCH /api/v1/admin/users/:id.
  */
 export const AdminUpdateUserSchema = z
   .object({
-    email: z.email().optional(),
+    email: EmailSchema.optional(),
     username: z
       .string()
+      .trim()
       .min(3)
       .max(30)
       .regex(usernameRegex, 'Username must be alphanumeric with _ and -')

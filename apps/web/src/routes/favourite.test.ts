@@ -31,12 +31,12 @@ describe('favouriteAction', () => {
     vi.clearAllMocks();
   });
 
-  it('toggles the favourite state and returns { ok: true } on success', async () => {
+  it('toggles the favourite state and returns { ok: true, favourited } on success', async () => {
     mockFavourite.mockResolvedValue({ favourited: true });
 
     const result = await favouriteAction(makeArgs('recipe-1'));
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, favourited: true });
     expect(mockFavourite).toHaveBeenCalledWith('recipe-1');
   });
 

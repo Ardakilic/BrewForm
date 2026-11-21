@@ -8,13 +8,17 @@ const log = createLogger('AddToCollectionButton');
 /** Props for {@link AddToCollectionButton}. */
 interface AddToCollectionButtonProps {
   recipeId: string;
+  /** The recipe's visibility, passed to the modal for its hidden-recipe note. */
+  recipeVisibility?: string;
 }
 
 /**
  * Button that opens the "Add to Collection" modal. Gated on authentication
- * by the parent (only rendered when `isAuthenticated` is true).
+ * by the parent (only rendered when `isAuthenticated` is true). Forwards
+ * `recipeVisibility` so the modal can explain that a `draft`, `private` or
+ * `unlisted` recipe stays hidden from other viewers of the collection.
  */
-export function AddToCollectionButton({ recipeId }: AddToCollectionButtonProps) {
+export function AddToCollectionButton({ recipeId, recipeVisibility }: AddToCollectionButtonProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
@@ -30,7 +34,12 @@ export function AddToCollectionButton({ recipeId }: AddToCollectionButtonProps) 
       >
         {t('collection.modal.add')}
       </button>
-      <AddToCollectionModal recipeId={recipeId} open={open} onClose={() => setOpen(false)} />
+      <AddToCollectionModal
+        recipeId={recipeId}
+        recipeVisibility={recipeVisibility}
+        open={open}
+        onClose={() => setOpen(false)}
+      />
     </>
   );
 }

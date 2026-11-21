@@ -1,40 +1,65 @@
 import { type AdminUpdateUser, AdminUpdateUserSchema } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
-import { type AdminUserDetail, adminApi } from '../../api/index.ts';
+import { Link, useFetcher, useLoaderData, useNavigate } from 'react-router';
+import type { AdminUserDetail } from '../../api/types.ts';
 import { Field } from '../../components/form/Field.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
-import { Skeleton } from '../../components/ui/Skeleton.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { AdminUserEditSubmission, action, loader } from './AdminUserEditPage.data.ts';
 
 const log = createLogger('AdminUserEditPage');
 
-/** Admin page: edit-user form validated with `AdminUpdateUserSchema`; self-editing is redirected away. */
+/** The edit form's field values, initialised from the loaded user. */
+function formFromUser(user: AdminUserDetail) {
+  return {
+    email: user.email,
+    username: user.username,
+    password: '',
+    displayName: user.displayName || '',
+    bio: user.bio || '',
+    isAdmin: user.isAdmin,
+    isBanned: user.isBanned,
+  };
+}
+
+/**
+ * Admin page: edit-user form validated with `AdminUpdateUserSchema`; self-editing is
+ * redirected away. The user comes from the `/admin/users/:id/edit` route loader (a missing
+ * user renders the not-found page); the changed fields are submitted as the `update` intent
+ * to the route action, and success redirects to the user detail after a short confirmation.
+ */
 export function AdminUserEditPage() {
-  const { id } = useParams<{ id: string }>();
+  const { user } = useLoaderData<typeof loader>();
+  const id = user.id;
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const { t } = useTranslation();
+  const fetcher = useFetcher<typeof action>();
+  const saving = fetcher.state !== 'idle';
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [user, setUser] = useState<AdminUserDetail | null>(null);
-  const [notFound, setNotFound] = useState(false);
   const [serverError, setServerError] = useState('');
   const [success, setSuccess] = useState(false);
-
-  const [form, setForm] = useState({
-    email: '',
-    username: '',
-    password: '',
-    displayName: '',
-    bio: '',
-    isAdmin: false,
-    isBanned: false,
-  });
+  const [form, setForm] = useState(() => formFromUser(user));
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useActionFeedback(fetcher, {
+    onSuccess: () => {
+      setSuccess(true);
+      setTimeout(() => navigate(`/admin/users/${id}`), 1500);
+    },
+    onError: (data) => {
+      if (data.ok) return;
+      setServerError(
+        data.error ||
+          (data.code === 'CONFLICT'
+            ? t('admin.users.conflictError')
+            : t('admin.users.updateError')),
+      );
+    },
+  });
 
   useEffect(() => {
     log.debug({}, 'AdminUserEditPage mounted');
@@ -43,43 +68,23 @@ export function AdminUserEditPage() {
     };
   }, []);
 
+  // Admins edit their own account in Settings, not here.
   useEffect(() => {
-    if (!id) return;
     if (currentUser && id === currentUser.id) {
       navigate('/admin/users', {
         state: {
           message: t('admin.users.selfEditRedirect'),
         },
       });
-      return;
     }
-    adminApi
-      .getUserDetail(id)
-      .then((data) => {
-        setUser(data);
-        setForm({
-          email: data.email,
-          username: data.username,
-          password: '',
-          displayName: data.displayName || '',
-          bio: data.bio || '',
-          isAdmin: data.isAdmin,
-          isBanned: data.isBanned,
-        });
-      })
-      .catch((err) => {
-        log.error({ err }, 'AdminUserEditPage loadData failed');
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status === 404) {
-          setNotFound(true);
-        } else {
-          setServerError(
-            (err as { message?: string })?.message || t('admin.users.loadDetailError'),
-          );
-        }
-      })
-      .finally(() => setLoading(false));
   }, [id, currentUser, navigate, t]);
+
+  // A different user loaded under the same mounted page: reset the form.
+  useEffect(() => {
+    setForm(formFromUser(user));
+    setErrors({});
+    setServerError('');
+  }, [user]);
 
   function getDiff(): AdminUpdateUser | null {
     if (!user) return null;
@@ -112,55 +117,20 @@ export function AdminUserEditPage() {
     return errs;
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  /** Validates the changed fields and submits them as the `update` intent. */
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
     if (errs === null) return;
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    setSaving(true);
     setServerError('');
-    try {
-      const diff = getDiff()!;
-      await adminApi.updateUser(id!, diff);
-      setSuccess(true);
-      setTimeout(() => navigate(`/admin/users/${id}`), 1500);
-    } catch (err: unknown) {
-      const apiErr = err as { code?: string; message?: string };
-      if (apiErr.code === 'CONFLICT') {
-        setServerError(apiErr.message || t('admin.users.conflictError'));
-      } else {
-        setServerError(apiErr.message || t('admin.users.updateError'));
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton height="2rem" width="12rem" />
-        <Skeleton height="16rem" />
-      </div>
-    );
-  }
-
-  if (notFound) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          {t('admin.users.notFoundTitle')}
-        </h2>
-        <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
-          {t('admin.users.notFoundMessage')}
-        </p>
-        <Link to="/admin/users" className="btn-primary mt-4 inline-block">
-          {t('admin.users.backToUsers')}
-        </Link>
-      </div>
-    );
+    const submission: AdminUserEditSubmission = { intent: 'update', data: getDiff() ?? {} };
+    fetcher.submit(JSON.parse(JSON.stringify(submission)), {
+      method: 'post',
+      encType: 'application/json',
+    });
   }
 
   if (success) {
@@ -186,7 +156,7 @@ export function AdminUserEditPage() {
           {t('admin.users.backToUser')}
         </Link>
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-          {t('admin.users.editUserTitle')} {user?.displayName || user?.username}
+          {t('admin.users.editUserTitle')} {user.displayName || user.username}
         </h1>
       </div>
 

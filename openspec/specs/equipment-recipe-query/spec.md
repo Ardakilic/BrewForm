@@ -3,9 +3,7 @@
 ## Purpose
 
 Replaces the sole raw-SQL violation in the codebase — the `getRecipesUsingEquipment` function in `apps/api/src/modules/equipment/model.ts` — with a Drizzle `exists()` correlated subquery, folds the duplicated visibility/`deletedAt` predicates into a single shared condition set referenced by both the data and count branches, and preserves the response shape. Establishes that the equipment recipe query uses the Drizzle query builder exclusively, is fully type-safe and refactor-safe, and remains query-equivalent to the prior raw-SQL implementation.
-
 ## Requirements
-
 ### Requirement: Equipment recipe query uses the Drizzle query builder exclusively
 
 The `getRecipesUsingEquipment` function in `apps/api/src/modules/equipment/model.ts` SHALL use the Drizzle query builder exclusively for all subqueries. The raw `sql\`\`` template-tag subquery (`sql\`${recipes.currentVersionId} IN (SELECT re.recipe_version_id FROM recipe_equipment re WHERE re.equipment_id = ${equipmentId})\`` at L120-123) SHALL be replaced with Drizzle's `exists()` correlated subquery.
@@ -60,14 +58,33 @@ The `recipeEquipment`, `recipeVersions`, and `recipes` tables are already import
 
 ### Requirement: getRecipesUsingEquipment folds duplicated predicates into one shared condition set
 
-The visibility and `deletedAt` predicates (`eq(recipes.visibility, 'public')` and `isNull(recipes.deletedAt)`) currently appear in BOTH the data branch (L118-119) and the count branch (L136-137) as duplicated literals. They SHALL be extracted into a single shared `const recipeConditions = and(eq(recipes.visibility, 'public'), isNull(recipes.deletedAt));` referenced by both branches.
+The visibility and `deletedAt` predicates of `getRecipesUsingEquipment` SHALL come from one shared `const recipeConditions = listableRecipeCondition(null);`, imported from `apps/api/src/modules/recipe/model.ts` (capability `recipe-visibility`) and referenced by both the data branch and the count branch.
 
-**Reason:** Duplicated predicates drift. If a future change adds a third condition (e.g. `isNotNull(recipes.currentVersionId)`), it must be added in one place, not two. The D03 plan explicitly calls this out: "fold the count branch's duplicated visibility/deletedAt predicates into one shared condition set."
+`listableRecipeCondition(null)` is `and(isNull(recipes.deletedAt), eq(recipes.visibility, 'public'))`,
+so the result set is unchanged: only non-deleted `public` recipes are listed and counted. `draft`,
+`private` and `unlisted` recipes never appear on an equipment page, for any viewer including their
+author. The function SHALL NOT compare `recipes.visibility` inline. The `recipe-visibility`
+enforcement test (`apps/api/src/modules/recipe/visibility.enforcement.test.ts`) fails if it does.
+Before returning, the data rows SHALL pass through `maskUnlistableForkSources(rows)` from
+`recipe/model.ts`. It sets `forkedFromId` to `null` when a row's fork source is not public. The
+response shape is unchanged.
+
+**Reason:** Duplicated predicates drift. If a future change adds a third condition (e.g. `isNotNull(recipes.currentVersionId)`), it must be added in one place, not two. The D03 plan explicitly calls this out: "fold the count branch's duplicated visibility/deletedAt predicates into one shared condition set." Wave 6 moves the shared set into the recipe module so every discovery surface uses the same "unlisted is never listed" rule (user decision OQ1, 2026-11-19).
 
 #### Scenario: Shared recipeConditions is referenced by both branches
 
 - **WHEN** the source of `apps/api/src/modules/equipment/model.ts` is inspected at `getRecipesUsingEquipment`
-- **THEN** a single `recipeConditions` constant is defined once and referenced in both the `db.query.recipes.findMany` `where` clause and the `db.select().from(recipes).innerJoin(...).where(...)` count query
+- **THEN** a single `recipeConditions = listableRecipeCondition(null)` constant is defined once and referenced in both the `db.query.recipes.findMany` `where` clause and the `db.select().from(recipes).innerJoin(...).where(...)` count query
+
+#### Scenario: Unlisted recipe is not listed on the equipment page
+
+- **WHEN** `getRecipesUsingEquipment(equipmentId, 1, 10)` is called for equipment used by the current version of a public recipe and of an `unlisted` recipe
+- **THEN** only the public recipe is in `data`, and `total` is `1`
+
+#### Scenario: Fork source is masked on the equipment page
+
+- **WHEN** a public recipe on the equipment page is a fork of an `unlisted` recipe
+- **THEN** its row has `forkedFromId: null`
 
 ### Requirement: getRecipesUsingEquipment preserves the response shape
 
@@ -107,7 +124,7 @@ The file `apps/api/src/modules/equipment/model.test.ts` SHALL exist and SHALL co
 
 **Fixture insert shapes:** Use the exact shapes documented in design Appendix A. The `recipeVersions` insert MUST include `preparationNotes: ''` (NOT NULL, no default — the trap column). The `getRecipesUsingEquipment` fixtures require the 3-step circular-FK dance: insert recipe (omit `currentVersionId`) → insert version → update recipe to set `currentVersionId` → insert `recipeEquipment` link.
 
-Tests SHALL follow the `admin/model.test.ts` pattern: `// deno-lint-ignore-file no-explicit-any require-await` header, `import '../../test-setup.ts'`, `jsr:@std/testing/bdd` (`describe`/`it`/`beforeEach`/`afterEach`), `jsr:@std/expect`, real `db` from `@brewform/db`, inline `crypto.randomUUID()` fixtures, hard-delete `afterEach` (child tables first, then parent), `{ sanitizeOps: false, sanitizeResources: false }` on every `describe`.
+Tests SHALL follow the `admin/model.test.ts` pattern: no file-level suppression header (a line-level `// biome-ignore lint/<group>/<rule>: <justification>` only where a typed fix is impractical), `import '../../test-setup.ts'` as the first import, `describe`/`it`/`expect`/`beforeEach`/`afterEach` from `vitest`, real `db` from `@brewform/db`, inline `crypto.randomUUID()` fixtures, and hard-delete `afterEach` (child tables first, then parent), with DB isolation provided by the API Vitest config's serial file execution (`fileParallelism: false`).
 
 The `getRecipesUsingEquipment` tests SHALL be written against the pre-refactor (raw-SQL) code and SHALL pass unchanged after the D03 refactor — this is the query-equivalence verification.
 
@@ -189,3 +206,4 @@ The D39 plan lists four explicit acceptance criteria for Tier 1. This change SHA
 
 - **WHEN** the `describe('findMany', ...)` block in `vendor/model.test.ts` is inspected
 - **THEN** the test asserts on `result.vendors` (not `result.items`) — `vendor/model.ts:32` returns `{ vendors: data, total: ... }`, distinct from `equipment/model.ts:30` which returns `{ items: data, total: ... }`
+

@@ -4,6 +4,8 @@ import { describeRoute } from 'hono-openapi';
 import { config } from '../config/index.ts';
 import { getRecipeMeta } from '../modules/recipe/service.ts';
 import type { AppEnv } from '../types/hono.ts';
+import { ROBOTS_TAG_RESPONSE_HEADERS } from '../utils/openapi/index.ts';
+import { NOINDEX_NOFOLLOW, ROBOTS_TAG_HEADER } from '../utils/response/index.ts';
 
 /** Hono router for recipe share/OG preview pages, mounted at `/share` in `routes/index.ts`. */
 const share = new Hono<AppEnv>();
@@ -11,7 +13,10 @@ const share = new Hono<AppEnv>();
 /** Dependency-injection proxy for test stubbing (recipe meta lookup). */
 export const deps = { getRecipeMeta };
 
-/** Static 404 HTML returned when a shared recipe is missing or not public. */
+/**
+ * Static 404 HTML returned when a shared recipe is missing or not public. Both cases also
+ * carry `X-Robots-Tag: noindex, nofollow` (capability `recipe-visibility`).
+ */
 export const RECIPE_NOT_FOUND_HTML =
   '<!DOCTYPE html><html><head><title>Not Found</title></head><body><h1>404 — Recipe not found</h1></body></html>';
 
@@ -66,7 +71,9 @@ share.get(
         content: { 'text/html': {} },
       },
       404: {
-        description: 'Recipe not found or not public',
+        description:
+          'Recipe not found or not public (identical for both cases, marked `noindex, nofollow`)',
+        headers: ROBOTS_TAG_RESPONSE_HEADERS,
         content: { 'text/html': {} },
       },
     },
@@ -76,6 +83,8 @@ share.get(
     try {
       const meta = await deps.getRecipeMeta(slug);
       if (meta.visibility !== 'public') {
+        // Same status, body and header as an unknown slug: no existence oracle.
+        c.header(ROBOTS_TAG_HEADER, NOINDEX_NOFOLLOW);
         return c.html(RECIPE_NOT_FOUND_HTML, 404);
       }
 
@@ -99,6 +108,7 @@ share.get(
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') {
+        c.header(ROBOTS_TAG_HEADER, NOINDEX_NOFOLLOW);
         return c.html(RECIPE_NOT_FOUND_HTML, 404);
       }
       throw err;

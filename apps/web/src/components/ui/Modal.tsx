@@ -84,6 +84,7 @@ export function Modal({ open, onClose, children, ariaLabel, panelClassName }: Mo
   );
 }
 
+/** Translation keys and styling for one {@link ConfirmProvider} dialog (`danger` styles the confirm button as destructive). */
 export interface ConfirmOptions {
   titleKey: string;
   bodyKey: string;
@@ -157,14 +158,13 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** Accesses the confirm context; falls back to native confirm outside {@link ConfirmProvider}. */
+/**
+ * Accesses the confirm context; throws outside {@link ConfirmProvider} (mirroring
+ * `useToast()`), so a missing provider fails loudly instead of falling back to a native
+ * `confirm()` that would show a raw i18n key. The provider is mounted once in `AppProviders`.
+ */
 export function useConfirm(): ConfirmContextValue {
   const ctx = useContext(ConfirmContext);
-  if (!ctx) {
-    return {
-      // Native confirm is the documented fallback when used outside a ConfirmProvider (e.g. unit tests).
-      confirm: (opts: ConfirmOptions) => Promise.resolve(window.confirm(opts.bodyKey)),
-    };
-  }
+  if (!ctx) throw new Error('useConfirm must be used within ConfirmProvider');
   return ctx;
 }

@@ -1,5 +1,6 @@
 import type { EquipmentOutput, RecipeListItemOutput } from '@brewform/shared/schemas';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -313,6 +314,13 @@ describe('RecipeListView', () => {
     expect(screen.getByPlaceholderText('Search by author...')).toBeInTheDocument();
   });
 
+  // advanced-search (wave 6): the UI cannot produce the API's 400 for over-long values.
+  it('caps the search input at 200 and the author input at 100 characters', () => {
+    renderView({ recipesResponse: { data: [], meta: {} } });
+    expect(screen.getByPlaceholderText('Search recipes...')).toHaveAttribute('maxLength', '200');
+    expect(screen.getByPlaceholderText('Search by author...')).toHaveAttribute('maxLength', '100');
+  });
+
   it('should render the date range filter inputs', () => {
     renderView({ recipesResponse: { data: [], meta: {} } });
     expect(screen.getByLabelText('From date')).toBeInTheDocument();
@@ -325,20 +333,6 @@ describe('RecipeListView', () => {
     expect(screen.getByLabelText('Max rating')).toBeInTheDocument();
   });
 
-  it('should update the URL when typing in the author input', () => {
-    const setSearchParams = vi.fn();
-    mockUseSearchParams.mockReturnValue([new URLSearchParams(), setSearchParams] as ReturnType<
-      typeof useSearchParams
-    >);
-    renderView({ recipesResponse: { data: [], meta: {} } });
-    fireEvent.change(screen.getByPlaceholderText('Search by author...'), {
-      target: { value: 'alice' },
-    });
-    expect(setSearchParams).toHaveBeenCalledTimes(1);
-    const passed = setSearchParams.mock.calls[0][0] as URLSearchParams;
-    expect(passed.get('author')).toBe('alice');
-  });
-
   it('should render and clear an active author filter badge', () => {
     const setSearchParams = vi.fn();
     mockUseSearchParams.mockReturnValue([
@@ -349,7 +343,161 @@ describe('RecipeListView', () => {
     expect(screen.getByText('Alice')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Remove Author filter' }));
     expect(setSearchParams).toHaveBeenCalledTimes(1);
-    const passed = setSearchParams.mock.calls[0][0] as URLSearchParams;
+    // useListUrlState updates through a functional updater applied to the current params.
+    const updater = setSearchParams.mock.calls[0][0] as (prev: URLSearchParams) => URLSearchParams;
+    const passed = updater(new URLSearchParams({ author: 'Alice' }));
     expect(passed.get('author')).toBeNull();
+  });
+});
+
+/** Data-router hydrate fallback for the real-router pagination test (renders nothing). */
+const HydrateFallback = () => null;
+
+describe('RecipeListView — pagination under a real router (regression)', () => {
+  it('clicking Next on a 2-page result sets page=2 and the loader receives it with filters intact', async () => {
+    const actualRouter = await vi.importActual<typeof import('react-router')>('react-router');
+    // Use the real URL-backed hook for this test instead of the module-level stub.
+    mockUseSearchParams.mockImplementation(actualRouter.useSearchParams);
+    const { extractListParams } = await import('../../utils/recipe-filters.ts');
+    const loaderCalls: Record<string, string>[] = [];
+    const loader = vi.fn(({ request }: { request: Request }) => {
+      loaderCalls.push(extractListParams(new URL(request.url).searchParams));
+      return null;
+    });
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/recipes',
+          loader,
+          HydrateFallback,
+          element: (
+            <RecipeListView
+              source="all"
+              recipesResponse={{ data: [makeRecipe()], meta: { pagination: { total: 20 } } }}
+              equipment={[]}
+              tasteNotes={[]}
+              pageTitle="Recipes"
+              seoDescription="Browse recipes"
+            />
+          ),
+        },
+      ],
+      { initialEntries: ['/recipes?brewMethod=v60&sortBy=rating'] },
+    );
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(await screen.findByText('Next'));
+
+    await waitFor(() => {
+      expect(router.state.location.search).toBe('?brewMethod=v60&sortBy=rating&page=2');
+    });
+    await waitFor(() => expect(loaderCalls).toHaveLength(2));
+    expect(loaderCalls[1]).toMatchObject({ page: '2', brewMethod: 'v60', sortBy: 'rating' });
+  });
+});
+
+describe('RecipeListView — debounced search and author inputs under a real router', () => {
+  /** Renders the view at `entry` (after an `/elsewhere` entry) with a recording loader. */
+  async function renderAt(entry: string) {
+    const actualRouter = await vi.importActual<typeof import('react-router')>('react-router');
+    mockUseSearchParams.mockImplementation(actualRouter.useSearchParams);
+    const { extractListParams } = await import('../../utils/recipe-filters.ts');
+    const loaderCalls: Record<string, string>[] = [];
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/recipes',
+          loader: ({ request }: { request: Request }) => {
+            loaderCalls.push(extractListParams(new URL(request.url).searchParams));
+            return null;
+          },
+          HydrateFallback,
+          element: (
+            <RecipeListView
+              source="all"
+              recipesResponse={{ data: [], meta: {} }}
+              equipment={[]}
+              tasteNotes={[]}
+              pageTitle="Recipes"
+              seoDescription="Browse recipes"
+            />
+          ),
+        },
+        { path: '/elsewhere', element: <p>elsewhere</p> },
+      ],
+      { initialEntries: ['/elsewhere', entry], initialIndex: 1 },
+    );
+    render(<RouterProvider router={router} />);
+    await waitFor(() => expect(router.state.navigation.state).toBe('idle'));
+    await screen.findByPlaceholderText('Search recipes...');
+    return { router, loaderCalls };
+  }
+
+  /** The search box. */
+  const searchBox = () => screen.getByPlaceholderText('Search recipes...') as HTMLInputElement;
+  /** The author box. */
+  const authorBox = () => screen.getByPlaceholderText('Search by author...') as HTMLInputElement;
+
+  it('typing in the search box runs the loader once per pause and replaces history', async () => {
+    const { router, loaderCalls } = await renderAt('/recipes?brewMethod=v60&page=2');
+    const before = loaderCalls.length;
+
+    await userEvent.type(searchBox(), 'kenya');
+
+    await waitFor(() => expect(router.state.location.search).toBe('?brewMethod=v60&search=kenya'), {
+      timeout: 2000,
+    });
+    await waitFor(() => expect(router.state.navigation.state).toBe('idle'));
+    expect(loaderCalls.length - before).toBe(1);
+    expect(loaderCalls.at(-1)).toMatchObject({ search: 'kenya', brewMethod: 'v60', page: '1' });
+    expect(router.state.historyAction).toBe('REPLACE');
+
+    await act(() => router.navigate(-1));
+    expect(router.state.location.pathname).toBe('/elsewhere');
+  });
+
+  it('typing in the author box commits author after the pause', async () => {
+    const { router } = await renderAt('/recipes');
+
+    await userEvent.type(authorBox(), 'alice');
+
+    await waitFor(() => expect(router.state.location.search).toBe('?author=alice'), {
+      timeout: 2000,
+    });
+  });
+
+  it('the search box re-syncs on Back', async () => {
+    const { router } = await renderAt('/recipes?search=kenya');
+    const brewMethodSelect = screen.getByRole('option', { name: 'V60' }).closest('select');
+    fireEvent.change(brewMethodSelect as HTMLSelectElement, { target: { value: 'v60' } });
+    await waitFor(() => expect(router.state.location.search).toBe('?search=kenya&brewMethod=v60'));
+
+    await act(() => router.navigate('/recipes'));
+    await waitFor(() => expect(searchBox().value).toBe(''));
+
+    await act(() => router.navigate(-1));
+    await waitFor(() => expect(searchBox().value).toBe('kenya'));
+  });
+
+  it('Clear Filters empties the search and author boxes', async () => {
+    await renderAt('/recipes?search=kenya&author=alice');
+    expect(searchBox().value).toBe('kenya');
+    expect(authorBox().value).toBe('alice');
+
+    fireEvent.click(screen.getByText('Clear Filters'));
+
+    await waitFor(() => {
+      expect(searchBox().value).toBe('');
+      expect(authorBox().value).toBe('');
+    });
+  });
+
+  it('removing the author badge empties the author box', async () => {
+    const { router } = await renderAt('/recipes?author=alice&sortBy=rating');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Author filter' }));
+
+    await waitFor(() => expect(router.state.location.search).toBe('?sortBy=rating'));
+    await waitFor(() => expect(authorBox().value).toBe(''));
   });
 });

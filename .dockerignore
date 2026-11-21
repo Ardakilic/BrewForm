@@ -1,7 +1,39 @@
-node_modules
+# Build context filter for Dockerfile (API) and Dockerfile.web.
+#
+# Docker matches these patterns from the context root, so a bare `node_modules` only
+# excludes the root folder: nested folders need `**/`.
+#
+# KEEP INCLUDED (the images read them): `files/` (SCAA flavour wheel data),
+# `packages/db/drizzle/` (committed migrations + journal), `apps/web/public/` (static
+# assets), `apps/api/src/templates/` (email templates) and every workspace manifest.
+
+# Dependencies and build or test output, at any depth.
+**/node_modules
+**/coverage
+**/dist
+**/.turbo
+
+# VCS, CI and editor or agent tooling.
 .git
-.turbo
-coverage
+.github
+.claude
+.kiro
+.opencode
+.vscode
+.idea
+
+# Local data: uploaded photos and database backups never belong in an image.
+uploads
+**/uploads
+backups
+
+# Documentation and planning (no build step reads them).
+plans
+openspec
+docs
+
+# Local Garage config (holds secrets; garage.toml.example stays).
+garage.toml
 
 # Keep local env / secret files out of the published images.
 # Both Dockerfile and Dockerfile.web use `COPY . .`, so without these exclusions

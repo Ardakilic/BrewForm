@@ -11,6 +11,11 @@ interface CatalogEntityCardProps {
   children?: ReactNode;
 }
 
+/**
+ * Linked card for a public catalog entry (equipment, coffee variety): optional brand line above
+ * the title, an optional {@link TypeBadge}, caller-supplied `children`, and a description clamped
+ * to two lines. The whole card navigates to `to`.
+ */
 export function CatalogEntityCard({
   to,
   title,

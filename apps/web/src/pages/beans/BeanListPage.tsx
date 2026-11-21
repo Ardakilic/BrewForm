@@ -1,35 +1,44 @@
-import type { BeanOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { beanApi } from '../../api/index.ts';
+import { useFetcher, useLoaderData } from 'react-router';
 import { Field } from '../../components/form/Field.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { useConfirm } from '../../components/ui/Modal.tsx';
 import { OwnedItemCard } from '../../components/ui/OwnedItemCard.tsx';
-import { useToast } from '../../components/ui/Toast.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './BeanListPage.data.ts';
 
 const log = createLogger('BeanListPage');
 
-/** The user's saved beans: list plus inline create/delete form. */
+/** The empty create-form state. */
+const EMPTY_FORM = { name: '', brand: '', origin: '', processing: '', roastLevel: '' };
+
+/**
+ * The user's saved beans: list plus inline create/delete form. Beans come from the `/beans`
+ * route loader (`BeanListPage.data.ts`); create and delete submit `intent`s to the route
+ * action, which revalidates the list, and a failure shows an error toast (the create form
+ * keeps its input). A failed load renders the route error state.
+ */
 export function BeanListPage() {
-  const [beans, setBeans] = useState<BeanOutput[]>([]);
-  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
+  const { beans } = useLoaderData<typeof loader>();
+  const createFetcher = useFetcher<typeof action>();
+  const deleteFetcher = useFetcher<typeof action>();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
-    name: '',
-    brand: '',
-    origin: '',
-    processing: '',
-    roastLevel: '',
-  });
-  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const saving = createFetcher.state !== 'idle';
   const { t } = useTranslation();
   const { confirm } = useConfirm();
-  const toast = useToast();
+
+  useActionFeedback(createFetcher, {
+    errorKey: 'bean.error.createFailed',
+    onSuccess: () => {
+      setForm(EMPTY_FORM);
+      setShowForm(false);
+    },
+  });
+  useActionFeedback(deleteFetcher, { errorKey: 'bean.error.deleteFailed' });
 
   useEffect(() => {
     log.debug({}, 'BeanListPage mounted');
@@ -38,42 +47,14 @@ export function BeanListPage() {
     };
   }, []);
 
-  useEffect(() => {
-    beanApi
-      .list()
-      .then((data) => {
-        setBeans(data);
-        setStatus('ready');
-      })
-      .catch((err) => {
-        log.error({ err }, 'bean list fetch failed');
-        setStatus('error');
-      });
-  }, []);
-
-  async function handleCreate(e: React.FormEvent) {
+  /** Submits the create form as a `create` intent. */
+  function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (saving) return;
-    setSaving(true);
-    try {
-      const newBean = await beanApi.create({
-        name: form.name,
-        brand: form.brand || undefined,
-        origin: form.origin || undefined,
-        processing: form.processing || undefined,
-        roastLevel: form.roastLevel || undefined,
-      });
-      setBeans((prev) => [...prev, newBean]);
-      setForm({ name: '', brand: '', origin: '', processing: '', roastLevel: '' });
-      setShowForm(false);
-    } catch (err) {
-      log.error({ err }, 'handleCreate failed');
-      toast.error('bean.error.createFailed');
-    } finally {
-      setSaving(false);
-    }
+    createFetcher.submit({ intent: 'create', ...form }, { method: 'post' });
   }
 
+  /** Asks for confirmation, then submits the `delete` intent. */
   async function handleDelete(id: string) {
     if (
       !(await confirm({
@@ -83,17 +64,7 @@ export function BeanListPage() {
       }))
     )
       return;
-    try {
-      await beanApi.delete(id);
-      setBeans((prev) => prev.filter((b) => b.id !== id));
-    } catch (err) {
-      log.error({ err, beanId: id }, 'handleDelete failed');
-      toast.error('bean.error.deleteFailed');
-    }
-  }
-
-  if (status === 'loading') {
-    return <LoadingState className="mx-auto max-w-4xl px-6" />;
+    deleteFetcher.submit({ intent: 'delete', id }, { method: 'post' });
   }
 
   return (
@@ -164,9 +135,7 @@ export function BeanListPage() {
         </form>
       )}
 
-      {status === 'error' ? (
-        <ErrorState message={t('bean.error.loadFailed')} />
-      ) : beans.length === 0 ? (
+      {beans.length === 0 ? (
         <EmptyState message={t('bean.noBeansYet')} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

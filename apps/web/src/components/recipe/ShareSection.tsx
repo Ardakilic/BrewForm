@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useRecipeQrDownload } from '../qrcode/useRecipeQrDownload.ts';
 
+/** Props for {@link ShareSection}. */
 interface ShareSectionProps {
   slug: string;
   title: string;
@@ -9,11 +11,14 @@ interface ShareSectionProps {
 
 /**
  * Share card with copy-link, QR download, and social share buttons
- * (Twitter/Facebook/WhatsApp/Reddit). Hidden for private/draft recipes.
+ * (Twitter/Facebook/WhatsApp/Reddit). Hidden for private/draft recipes. The QR download goes
+ * through {@link useRecipeQrDownload} (a fetcher against the `resources/qrcode/recipe/:slug`
+ * resource route), which shows an error toast when it fails.
  */
 export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
   const { t } = useTranslation();
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
+  const { download: downloadQr, downloading: downloadingQr } = useRecipeQrDownload(slug);
 
   // Hidden when private or draft (Requirement 9.9)
   if (visibility === 'private' || visibility === 'draft') {
@@ -40,23 +45,6 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
     } catch {
       setCopyState('error');
       setTimeout(() => setCopyState('idle'), 3000);
-    }
-  }
-
-  async function handleDownloadQr() {
-    try {
-      const response = await fetch(`/api/v1/qrcode/recipe/${slug}.svg`);
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = objectUrl;
-      anchor.download = `brewform-${slug}-qr.svg`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      // Silently fail
     }
   }
 
@@ -92,7 +80,8 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
 
           <button
             type="button"
-            onClick={handleDownloadQr}
+            onClick={downloadQr}
+            disabled={downloadingQr}
             className="btn-secondary text-sm flex-1 min-h-11"
             aria-label={t('a11y.share.downloadQr')}
           >

@@ -31,12 +31,12 @@ describe('likeAction', () => {
     vi.clearAllMocks();
   });
 
-  it('toggles the like state and returns { ok: true } on success', async () => {
+  it('toggles the like state and returns { ok: true, liked } on success', async () => {
     mockLike.mockResolvedValue({ liked: true });
 
     const result = await likeAction(makeArgs('recipe-1'));
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, liked: true });
     expect(mockLike).toHaveBeenCalledWith('recipe-1');
   });
 

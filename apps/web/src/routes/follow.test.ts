@@ -40,22 +40,22 @@ describe('followAction', () => {
     vi.clearAllMocks();
   });
 
-  it('follows on POST and returns { ok: true }', async () => {
+  it('follows on POST and returns { ok: true, following: true }', async () => {
     mockFollow.mockResolvedValue({ id: 'f1' });
 
     const result = await followAction(makeArgs('user-1', makeRequest('POST')));
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, following: true });
     expect(mockFollow).toHaveBeenCalledWith('user-1');
     expect(mockUnfollow).not.toHaveBeenCalled();
   });
 
-  it('unfollows on DELETE and returns { ok: true }', async () => {
+  it('unfollows on DELETE and returns { ok: true, following: false }', async () => {
     mockUnfollow.mockResolvedValue({ message: 'ok' });
 
     const result = await followAction(makeArgs('user-1', makeRequest('DELETE')));
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, following: false });
     expect(mockUnfollow).toHaveBeenCalledWith('user-1');
     expect(mockFollow).not.toHaveBeenCalled();
   });

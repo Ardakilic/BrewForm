@@ -1,7 +1,12 @@
 # api-service-logging Specification
 
 ## Purpose
-TBD - created by archiving change d26-expand-logging. Update Purpose after archive.
+
+Defines how API service modules log: one module-scoped logger, entry and exit debug logs on public
+functions, an error log before every throw, and logs for cache interactions, moderation actions and
+async side effects. Logs carry traceable ids only and never the request payload, so service
+behaviour can be followed in production without exposing user data.
+
 ## Requirements
 ### Requirement: Standard service functions log entry and exit at debug level
 

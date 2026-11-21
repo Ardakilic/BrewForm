@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useFetcher } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
+import type { favouriteAction } from '../../routes/favourite.ts';
 
 interface Props {
   recipeId: string;
@@ -11,22 +12,27 @@ interface Props {
 const log = createLogger('FavouriteButton');
 
 /**
- * Optimistic star/unstar toggle with count, submitted via fetcher form
- * to `/recipes/:id/favourite`; the UI reflects pending form data until
- * the action settles.
+ * Optimistic star/unstar toggle with count, submitted via a fetcher form to
+ * `/recipes/:id/favourite` with `defaultShouldRevalidate={false}`, so starring never re-runs
+ * the recipe detail loader. While pending the UI shows the submitted value; once settled it
+ * shows the `favourited` state the action returned (`{ ok: true, favourited }`), and on
+ * `{ ok: false }` it falls back to the loader's values. The fetcher is keyed by recipe.
  */
 export function FavouriteButton({ recipeId, initialFavourited, initialCount }: Props) {
-  const fetcher = useFetcher();
+  const fetcher = useFetcher<typeof favouriteAction>({ key: `favourite-${recipeId}` });
+  const baseCount = initialCount ?? 0;
+
   const optimisticFavourited = fetcher.formData
     ? fetcher.formData.get('favourited') === 'true'
     : null;
-  const favourited = optimisticFavourited ?? initialFavourited;
-  const pendingDelta = fetcher.formData
-    ? fetcher.formData.get('favourited') === 'true'
-      ? 1
-      : -1
-    : 0;
-  const count = (initialCount ?? 0) + pendingDelta;
+  const settled = fetcher.data;
+  const settledFavourited =
+    settled?.ok && typeof settled.favourited === 'boolean' ? settled.favourited : null;
+  const favourited = optimisticFavourited ?? settledFavourited ?? initialFavourited;
+
+  // The loader's count already includes `initialFavourited`; adjust it only when the shown
+  // state differs from it.
+  const count = baseCount + (favourited === initialFavourited ? 0 : favourited ? 1 : -1);
 
   useEffect(() => {
     log.debug({ recipeId, state: fetcher.state }, 'fetcher state change');
@@ -36,6 +42,7 @@ export function FavouriteButton({ recipeId, initialFavourited, initialCount }: P
     <fetcher.Form
       method="post"
       action={`/recipes/${recipeId}/favourite`}
+      defaultShouldRevalidate={false}
       onSubmit={() => log.debug({ recipeId }, 'submit started')}
     >
       <input type="hidden" name="favourited" value={String(!favourited)} />

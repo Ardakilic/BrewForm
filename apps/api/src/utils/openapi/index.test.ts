@@ -1,7 +1,7 @@
 import '../../test-setup.ts';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { jsonRequestBody } from './index.ts';
+import { jsonRequestBody, ROBOTS_TAG_RESPONSE_HEADERS } from './index.ts';
 
 describe('jsonRequestBody', () => {
   it('should convert a Zod schema to a JSON Schema in an OpenAPI requestBody', () => {
@@ -54,5 +54,16 @@ describe('jsonRequestBody', () => {
     const properties = schema.properties as Record<string, Record<string, unknown>>;
     expect(properties.user.type).toBe('object');
     expect(properties.tags.type).toBe('array');
+  });
+});
+
+describe('ROBOTS_TAG_RESPONSE_HEADERS', () => {
+  it('documents X-Robots-Tag as a string response header', () => {
+    expect(ROBOTS_TAG_RESPONSE_HEADERS).toEqual({
+      'X-Robots-Tag': {
+        schema: { type: 'string' },
+        description: 'noindex, nofollow for non-public items',
+      },
+    });
   });
 });

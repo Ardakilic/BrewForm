@@ -1,5 +1,13 @@
 # D10 — Server State Layer via React Router 7 Data Loading
 
+> **Status (2026-11-21): Superseded** by the OpenSpec change `wave-6-audit-remediation` (track
+> t5, the `web-data-loading` capability) and recorded as ADR-018 in `docs/decisions.md`. Wave 6
+> finishes what this pilot started: every route read is a loader in a `<Page>.data.ts` module that
+> passes `request.signal`, every write is an action returning `{ ok, error }`, component reads use
+> fetchers against `resources/*` routes, and two guard tests plus a Biome rule keep `useEffect`
+> fetching and direct client imports out of pages and components. The plan below is kept for
+> history only; do not implement from it.
+
 > **Status (2026-07-04): ✅ Done (pilot scope)** — 6 pages export loaders, 4 components use `useFetcher`; `static-cache.ts`, `recipe-filters.ts`, and `routes/{like,favourite,rate,follow,comments}.ts` all exist.
 
 > **Plan revised after codebase analysis — June 2026**

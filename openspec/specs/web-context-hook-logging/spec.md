@@ -1,7 +1,11 @@
 # web-context-hook-logging Specification
 
 ## Purpose
-TBD - created by archiving change d26-expand-logging. Update Purpose after archive.
+
+Defines logging for the web contexts and hooks: theme and locale changes, the `useDebounce` and
+`useUnitSystem` hooks at trace level, and the `useStaticCacheSync` lifecycle and cache-bust events.
+Loggers use the exported symbol names, and logging never changes the existing theme or locale state.
+
 ## Requirements
 ### Requirement: Theme context logs theme changes
 

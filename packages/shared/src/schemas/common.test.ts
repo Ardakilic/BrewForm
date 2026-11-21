@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { PaginationSchema, QrCodeFilenameSchema, SearchQuerySchema, SlugSchema } from './common.ts';
+import {
+  EmailSchema,
+  PaginationSchema,
+  QrCodeFilenameSchema,
+  SearchQuerySchema,
+  SlugSchema,
+} from './common.ts';
 
 describe('QrCodeFilenameSchema', () => {
   it('should validate valid slug.png', () => {
@@ -50,6 +56,17 @@ describe('QrCodeFilenameSchema', () => {
   it('should reject empty string', () => {
     const result = QrCodeFilenameSchema.safeParse('');
     expect(result.success).toBe(false);
+  });
+
+  it('should accept legacy underscore slugs', () => {
+    expect(QrCodeFilenameSchema.safeParse('cold_brew.png').success).toBe(true);
+    expect(QrCodeFilenameSchema.safeParse('cold-brew.svg').success).toBe(true);
+  });
+
+  it('should reject unsafe or malformed filenames', () => {
+    for (const filename of ['../x.png', 'a--b.png', '-a.png', 'a.gif']) {
+      expect(QrCodeFilenameSchema.safeParse(filename).success).toBe(false);
+    }
   });
 });
 
@@ -126,5 +143,19 @@ describe('SlugSchema', () => {
   it('should reject slug starting with dash', () => {
     const result = SlugSchema.safeParse('-brew');
     expect(result.success).toBe(false);
+  });
+});
+
+describe('EmailSchema', () => {
+  it('trims and lower-cases before validating', () => {
+    expect(EmailSchema.parse('  Mixed.Case@Example.COM ')).toBe('mixed.case@example.com');
+  });
+
+  it('rejects a non-email', () => {
+    expect(EmailSchema.safeParse('not-an-email').success).toBe(false);
+  });
+
+  it('rejects an email longer than 255 characters', () => {
+    expect(EmailSchema.safeParse(`${'a'.repeat(251)}@x.io`).success).toBe(false);
   });
 });

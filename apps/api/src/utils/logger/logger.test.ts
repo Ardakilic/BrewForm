@@ -20,7 +20,9 @@ function captureOutput() {
         chunks.push(typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk));
         return true;
       },
-      end(): void {},
+      end(): void {
+        // Nothing buffered: every write lands in `chunks` immediately.
+      },
     },
     getOutput: () => chunks.join(''),
   };

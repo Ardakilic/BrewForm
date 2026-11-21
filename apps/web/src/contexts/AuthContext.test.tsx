@@ -27,25 +27,10 @@ vi.mock('../api/index', () => ({
     delete: vi.fn(),
     upload: vi.fn(),
   },
-  ApiError: class extends Error {
-    code: string;
-    status: number;
-    details?: Array<{ field: string; message: string }>;
-    constructor(
-      code: string,
-      message: string,
-      details?: Array<{ field: string; message: string }>,
-      status: number = 500,
-    ) {
-      super(message);
-      this.code = code;
-      this.status = status;
-      this.details = details;
-    }
-  },
 }));
 
-import { ApiError, userApi } from '../api/index.ts';
+import { ApiError } from '../api/errors.ts';
+import { userApi } from '../api/index.ts';
 
 const VALID_USER: AuthUser = {
   id: 'u1',
@@ -151,5 +136,42 @@ describe('AuthContext refreshUser error handling', () => {
     expect(screen.getByTestId('session-error').textContent).toBe('none');
     expect(mockLogger.warn).not.toHaveBeenCalled();
     expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthContext session bootstrap abort', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('passes an AbortSignal to userApi.me and aborts it on unmount without logging an error', async () => {
+    let captured: AbortSignal | undefined;
+    vi.mocked(userApi.me).mockImplementation(
+      (opts?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          captured = opts?.signal;
+          opts?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
+        }),
+    );
+    const { unmount } = render(
+      <MemoryRouter>
+        <I18nProvider>
+          <AuthProvider>
+            <TestConsumer />
+          </AuthProvider>
+        </I18nProvider>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(captured).toBeInstanceOf(AbortSignal));
+    expect(captured?.aborted).toBe(false);
+
+    unmount();
+
+    expect(captured?.aborted).toBe(true);
+    await Promise.resolve();
+    expect(mockLogger.error).not.toHaveBeenCalled();
+    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'AuthContext token refresh aborted');
   });
 });

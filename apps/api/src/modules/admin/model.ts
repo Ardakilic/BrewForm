@@ -19,6 +19,7 @@ import {
   equipment,
   equipmentDeleteRequests,
   equipmentTypeEnum,
+  lower,
   type RecipeVisibility,
   recipes,
   recipeVersions,
@@ -29,6 +30,7 @@ import {
 } from '@brewform/db/schema';
 import { hashSync } from 'bcryptjs';
 import { and, asc, count, desc, eq, gte, isNull, like, ne, or, type SQL, sql } from 'drizzle-orm';
+import { userIdentifierConflict } from '../auth/model.ts';
 
 /** Fetch a paginated list of non-deleted users, optionally filtered by email, username, or display name. */
 export async function listUsers(page: number, perPage: number, query?: string) {
@@ -64,9 +66,13 @@ export async function listUsers(page: number, perPage: number, query?: string) {
   return { users: data, total: totalResult[0].count };
 }
 
-/** Check whether an email is already taken by a non-deleted user, excluding an optional user ID. */
+/**
+ * Check whether an email is already taken, case-insensitively, by any user row
+ * (soft-deleted ones included, matching the unique indexes), excluding an
+ * optional user ID. Deliberately skips the soft-delete filter.
+ */
 export async function isEmailTaken(email: string, excludeId?: string) {
-  const conditions = [eq(users.email, email), isNull(users.deletedAt)];
+  const conditions = [eq(lower(users.email), email.toLowerCase())];
   if (excludeId) conditions.push(ne(users.id, excludeId));
   const [result] = await db
     .select({ id: users.id })
@@ -76,9 +82,13 @@ export async function isEmailTaken(email: string, excludeId?: string) {
   return !!result;
 }
 
-/** Check whether a username is already taken by a non-deleted user, excluding an optional user ID. */
+/**
+ * Check whether a username is already taken, case-insensitively, by any user
+ * row (soft-deleted ones included, so deleted usernames stay reserved),
+ * excluding an optional user ID. Deliberately skips the soft-delete filter.
+ */
 export async function isUsernameTaken(username: string, excludeId?: string) {
-  const conditions = [eq(users.username, username), isNull(users.deletedAt)];
+  const conditions = [eq(lower(users.username), username.toLowerCase())];
   if (excludeId) conditions.push(ne(users.id, excludeId));
   const [result] = await db
     .select({ id: users.id })
@@ -141,23 +151,19 @@ export async function setUserAdminRole(userId: string, isAdmin: boolean) {
 }
 
 /**
- * Translate a Postgres unique-violation (23505) into a domain error.
+ * Translate a Postgres unique violation (23505) on a user identifier into a
+ * domain error: any of `USER_EMAIL_CONSTRAINTS` → `EMAIL_ALREADY_EXISTS`, any of
+ * `USER_USERNAME_CONSTRAINTS` → `USERNAME_ALREADY_EXISTS` (exact and
+ * `_lower_unique` constraints alike). Detection uses the shared
+ * `isUniqueViolation` helper (via `userIdentifierConflict`), which walks the
+ * `cause` chain of Drizzle-wrapped errors. Returns without throwing when the
+ * error is not such a violation, so the caller re-throws the original.
  *
- * Drizzle wraps driver errors in a `DrizzleQueryError`; the underlying
- * postgres-js `PostgresError` (with `code` and `constraint_name`) lives on
- * `err.cause`. Re-throws the original error when it is not a recognized
- * unique violation.
+ * @param err - Any error thrown by a `user` insert or update.
  */
 export function throwIfUniqueViolation(err: unknown): void {
-  const wrapped = err as {
-    cause?: { name?: string; code?: string; constraint_name?: string };
-  };
-  const pgErr =
-    wrapped.cause ?? (err as { name?: string; code?: string; constraint_name?: string });
-  if (pgErr.name === 'PostgresError' && pgErr.code === '23505') {
-    if (pgErr.constraint_name?.includes('email')) throw new Error('EMAIL_ALREADY_EXISTS');
-    if (pgErr.constraint_name?.includes('username')) throw new Error('USERNAME_ALREADY_EXISTS');
-  }
+  const conflict = userIdentifierConflict(err);
+  if (conflict) throw new Error(conflict);
 }
 
 /**

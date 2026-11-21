@@ -24,10 +24,22 @@ export function jsonRequestBody(
     ...(description ? { description } : {}),
     content: {
       [mediaType]: {
-        // hono-openapi v1.3.0's requestBody content schema type doesn't accept zod-openapi's JSON Schema output; cast required (D34 P3).
+        // hono-openapi's requestBody content schema type doesn't accept zod-openapi's JSON Schema output; cast required (D34 P3).
         // biome-ignore lint/suspicious/noExplicitAny: hono-openapi requestBody schema type incompatible with zod-openapi output; cast required
         schema: z.toJSONSchema(schema, { unrepresentable: 'any' }) as any,
       },
     },
   };
 }
+
+/**
+ * OpenAPI `headers` metadata for the `X-Robots-Tag` response header that non-public recipe and
+ * collection responses carry (capability `recipe-visibility`). Spread into a documented
+ * response's `headers`; documentation only.
+ */
+export const ROBOTS_TAG_RESPONSE_HEADERS = {
+  'X-Robots-Tag': {
+    schema: { type: 'string' as const },
+    description: 'noindex, nofollow for non-public items',
+  },
+};

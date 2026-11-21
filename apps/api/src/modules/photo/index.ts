@@ -10,6 +10,8 @@ import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth.ts';
 import type { AppEnv } from '../../types/hono.ts';
 import { error, success } from '../../utils/response/index.ts';
+import { UploadValidationError } from '../../utils/upload/errors.ts';
+import type { UploadPart } from '../../utils/upload/index.ts';
 import * as service from './service.ts';
 
 /** Hono sub-router for photo endpoints, mounted at `/api/v1/photos`. */
@@ -21,13 +23,32 @@ const PhotoFormSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).default(0),
 });
 
+/**
+ * Read a multipart `File` part into the shape the service validates. Only the
+ * declared type, size and bytes are read: the client filename (`name`) is
+ * never touched, so it cannot reach a key, a log or a storage request.
+ */
+async function toUploadPart(part: File): Promise<UploadPart> {
+  return {
+    declaredType: part.type,
+    size: part.size,
+    data: new Uint8Array(await part.arrayBuffer()),
+  };
+}
+
 photo.post(
   '/',
   describeRoute({
     tags: ['Photos'],
     summary: 'Upload a recipe photo',
     description:
-      'Uploads a photo for a recipe via multipart/form-data. The file is parsed manually (not via zValidator).',
+      'Uploads a photo for a recipe via multipart/form-data (parsed manually, not via zValidator). ' +
+      'The image type is detected from the file content (JPEG, PNG or WebP, limited to ' +
+      '`UPLOAD_ALLOWED_TYPES`); the declared Content-Type is only a hint and the filename is ignored. ' +
+      'Objects are stored under server-generated keys (`<uuid>.<ext>`, `<uuid>_medium.<ext>`). ' +
+      'Limits: the original is at most `UPLOAD_MAX_SIZE_BYTES` (default 10 MiB), 16,384 px per side ' +
+      'and 50 megapixels; the optional thumbnail is at most 1 MiB and 1,200 px per side. The whole ' +
+      'request body is capped at `UPLOAD_MAX_SIZE_BYTES` + 1 MiB + 64 KiB (413 above that).',
     security: [{ bearerAuth: [] }],
     requestBody: {
       content: {
@@ -36,11 +57,17 @@ photo.post(
             type: 'object',
             required: ['file', 'recipeId'],
             properties: {
-              file: { type: 'string', format: 'binary', description: 'The photo file' },
+              file: {
+                type: 'string',
+                format: 'binary',
+                description:
+                  'The photo: JPEG, PNG or WebP, at most UPLOAD_MAX_SIZE_BYTES, 16,384 px per side and 50 MP',
+              },
               thumbnail: {
                 type: 'string',
                 format: 'binary',
-                description: 'Optional pre-generated thumbnail',
+                description:
+                  'Optional pre-generated thumbnail: JPEG, PNG or WebP, at most 1,200 px per side and 1 MiB',
               },
               recipeId: { type: 'string', format: 'uuid' },
               alt: { type: 'string', maxLength: 200 },
@@ -58,7 +85,7 @@ photo.post(
         },
       },
       400: {
-        description: 'Validation or upload error',
+        description: 'Validation error, file too large, or invalid image',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       401: {
@@ -71,6 +98,14 @@ photo.post(
       },
       404: {
         description: 'Recipe not found',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      413: {
+        description: 'Request body larger than the photo upload cap (PAYLOAD_TOO_LARGE)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      415: {
+        description: 'Unsupported image type (UNSUPPORTED_MEDIA_TYPE)',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
     },
@@ -103,32 +138,34 @@ photo.post(
 
     const { recipeId, alt, sortOrder } = parsed.data;
 
-    const data = new Uint8Array(await fileField.arrayBuffer());
+    const file = await toUploadPart(fileField);
     const thumbnail =
       thumbnailField instanceof File && thumbnailField.size > 0
-        ? new Uint8Array(await thumbnailField.arrayBuffer())
+        ? await toUploadPart(thumbnailField)
         : null;
 
     try {
       const result = await service.uploadPhoto(
         userId,
         recipeId,
-        {
-          name: fileField.name,
-          type: fileField.type,
-          size: fileField.size,
-          data,
-        },
+        file,
         thumbnail,
         alt,
         sortOrder,
+        c.get('requestId'),
       );
       return success(c, result, 201);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
+      if (err instanceof UploadValidationError) {
+        return error(c, err.code, err.message, err.status, [
+          { field: err.field, message: err.message },
+        ]);
+      }
+      const message = err instanceof Error ? err.message : '';
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your recipe', 403);
-      return error(c, 'UPLOAD_ERROR', message, 400);
+      // Storage, filesystem and database failures go to app.onError (500 INTERNAL_ERROR).
+      throw err;
     }
   },
 );

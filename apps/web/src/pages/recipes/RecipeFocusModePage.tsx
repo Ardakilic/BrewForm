@@ -1,30 +1,28 @@
-import type {
-  RecipeDetailOutput,
-  RecipeDetailVersionOutput,
-  TasteNoteOutput,
-} from '@brewform/shared/schemas';
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
-import { recipeApi, tasteApi } from '../../api/index.ts';
+import type { RecipeDetailOutput, RecipeDetailVersionOutput } from '@brewform/shared/schemas';
+import { useEffect } from 'react';
+import { Link, useLoaderData } from 'react-router';
 import { BeanSection } from '../../components/recipe/BeanSection.tsx';
 import { BrewTimeline } from '../../components/recipe/BrewTimeline.tsx';
 import { EquipmentSection } from '../../components/recipe/EquipmentSection.tsx';
 import { StatCards } from '../../components/recipe/StatCards.tsx';
 import { TastingNotesSection } from '../../components/recipe/TastingNotesSection.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './RecipeFocusModePage.data.ts';
 
 const log = createLogger('RecipeFocusModePage');
 
-/** Renders a focused, distraction-free view of a single brew recipe with stats, bean info, brew timeline, equipment, and tasting notes. */
+/**
+ * Renders a focused, distraction-free view of a single brew recipe with stats, bean info,
+ * brew timeline, equipment, and tasting notes. The recipe and the taste-note lookup come from
+ * the route loader (`RecipeFocusModePage.data.ts`); a failed load renders the route error
+ * state. Never indexed; the canonical link points at the recipe page.
+ */
 export function RecipeFocusModePage() {
-  const { slug } = useParams();
+  const { recipe, allTasteNotes } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
-  const [recipe, setRecipe] = useState<RecipeDetailOutput | null>(null);
-  const [allTasteNotes, setAllTasteNotes] = useState<TasteNoteOutput[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const slug = recipe.slug;
 
   useEffect(() => {
     log.debug({}, 'RecipeFocusModePage mounted');
@@ -32,49 +30,6 @@ export function RecipeFocusModePage() {
       log.debug({}, 'RecipeFocusModePage unmounted');
     };
   }, []);
-
-  useEffect(() => {
-    tasteApi
-      .flat()
-      .then((data) => {
-        setAllTasteNotes(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => {
-        log.error({ err }, 'Failed to fetch taste notes for focus mode');
-      });
-  }, []);
-
-  useEffect(() => {
-    if (!slug) return;
-    recipeApi
-      .get(slug)
-      .then((data) => {
-        setRecipe(data);
-      })
-      .catch((err) => {
-        log.error({ err, slug }, 'Failed to fetch recipe for focus mode');
-        setError(t('recipe.focusMode.loadError'));
-      });
-  }, [slug, t]);
-
-  if (error) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
-        <ErrorState message={error} />
-      </div>
-    );
-  }
-
-  if (!recipe) {
-    return (
-      <div
-        className="mx-auto max-w-3xl px-4 sm:px-6 py-12 text-center"
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        {t('common.loading')}
-      </div>
-    );
-  }
 
   const v: Partial<RecipeDetailVersionOutput> = recipe.currentVersion ?? {};
 

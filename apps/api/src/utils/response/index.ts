@@ -11,6 +11,28 @@ import type { CursorPaginationMeta, PaginationMeta } from '@brewform/shared/type
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
+/** Name of the robots response header (capability `recipe-visibility`). */
+export const ROBOTS_TAG_HEADER = 'X-Robots-Tag';
+
+/** The robots value every non-public recipe or collection response carries. */
+export const NOINDEX_NOFOLLOW = 'noindex, nofollow';
+
+/**
+ * Mark the response `X-Robots-Tag: noindex, nofollow` unless the item is public
+ * (capability `recipe-visibility`, "Non-public pages and responses are never
+ * indexed"). Sets the header on the context, so it applies to the response the
+ * handler returns next.
+ *
+ * @param c - The request context.
+ * @param visibility - The recipe's or collection's visibility.
+ * @returns Whether the header was set.
+ */
+export function noIndexUnlessPublic(c: Context, visibility: string): boolean {
+  if (visibility === 'public') return false;
+  c.header(ROBOTS_TAG_HEADER, NOINDEX_NOFOLLOW);
+  return true;
+}
+
 /** Return a success envelope with optional pagination metadata. */
 export function success<T>(
   c: Context,

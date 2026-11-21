@@ -4,7 +4,8 @@
 # Stages:
 #   deps    — install / cache pnpm dependencies (same as the API Dockerfile)
 #   builder — Vite build of apps/web → apps/web/dist (VITE_* baked in at build time)
-#   runner  — Caddy serving the static dist/ on :80
+#   runner  — Caddy on :80: the static SPA, an always-local /healthz, and (opt-in through
+#             API_UPSTREAM) the same-origin edge that reverse-proxies the API paths
 # ============================================================
 
 # --- Stage 1: Dependencies ---
@@ -38,20 +39,36 @@ RUN pnpm --filter @brewform/web run build
 # Output is at apps/web/dist/
 
 # --- Stage 3: Runtime (Caddy) ---
-# Minimal static web server — serves the compiled SPA with try_files fallback.
-# VITE_PUBLIC_APP_URL is baked into the bundle above (build ARG). VITE_API_URL also has
-# a build-time default baked in, but the entrypoint can OVERRIDE it at container start
-# from the runtime $VITE_API_URL env var (it writes /config.js) — so a prebuilt image
-# can be retargeted to any API origin without a rebuild.
+# Caddy serving the compiled SPA with a try_files fallback, configured at container start
+# by docker-web-entrypoint.sh (see its header for every variable):
+#   - VITE_API_URL overrides the baked-in API URL through /config.js (no rebuild);
+#   - API_UPSTREAM (host:port) turns on the same-origin edge: /api/*, /uploads/*, /share/*
+#     and /health are proxied to the API with the client IP in X-Forwarded-For/X-Real-IP,
+#     bodies capped at EDGE_MAX_BODY_SIZE (default 16MB); unset = static files only;
+#   - TRUSTED_PROXIES (`private_ranges` and/or CIDRs) sets Caddy's trusted_proxies;
+#   - PUBLIC_APP_URL replaces the build-time public URL (recorded below as
+#     BREWFORM_BUILD_PUBLIC_APP_URL) in index.html og/twitter images and robots.txt.
+# The entrypoint writes its optional snippets into /etc/caddy/conf.d and
+# /etc/caddy/global.d, which the Caddyfile imports (an empty glob is not an error).
+#
+# Health: the HEALTHCHECK probes the local /healthz with the BusyBox wget of the Alpine
+# base (nothing is installed for it); /healthz never touches the API upstream.
 #
 # Pinned to a specific Caddy patch for reproducible builds. To track the latest
 # 2.x patch automatically instead, swap the line below for: FROM caddy:2-alpine
 FROM caddy:2.11.9-alpine AS runner
+# Re-declared so the entrypoint knows which origin the build baked into index.html and
+# robots.txt (PUBLIC_APP_URL replaces exactly that string at runtime).
+ARG VITE_PUBLIC_APP_URL=http://localhost:8080
+ENV BREWFORM_BUILD_PUBLIC_APP_URL=$VITE_PUBLIC_APP_URL
 COPY --from=builder /app/apps/web/dist /usr/share/caddy
 # Production Caddyfile on :80 (the repo-root Caddyfile is the :8080 preview one).
 COPY apps/web/Caddyfile /etc/caddy/Caddyfile
-# Entrypoint regenerates /usr/share/caddy/config.js from $VITE_API_URL at start, then execs Caddy.
+# Entrypoint: applies the runtime configuration above, then execs Caddy.
 COPY docker-web-entrypoint.sh /docker-web-entrypoint.sh
-RUN chmod +x /docker-web-entrypoint.sh
+RUN chmod +x /docker-web-entrypoint.sh \
+  && mkdir -p /etc/caddy/conf.d /etc/caddy/global.d
 EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --start-interval=1s --retries=3 \
+  CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
 ENTRYPOINT ["/docker-web-entrypoint.sh"]

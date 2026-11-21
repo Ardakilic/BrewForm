@@ -1,4 +1,4 @@
-import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
+import { generateSlug } from '@brewform/shared/utils';
 import { describe, expect, it } from 'vitest';
 
 describe('QR Code Utils — Integration', () => {
@@ -8,12 +8,6 @@ describe('QR Code Utils — Integration', () => {
       const slug = generateSlug(title);
       expect(slug).toBe('my-espresso-recipe');
       expect(slug).toMatch(/^[a-z0-9-]+$/);
-    });
-
-    it('should ensure slug uniqueness', () => {
-      const existing = ['my-recipe', 'my-recipe-1'];
-      const slug = ensureUniqueSlug('my-recipe', existing);
-      expect(slug).toBe('my-recipe-2');
     });
   });
 });

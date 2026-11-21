@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import * as path from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
 
 // Validate the production schema (not a copy) so refinement tests cover real behavior.
 // Importing env.ts initializes config, so stub the required vars first.
 process.env.DATABASE_URL ??= 'postgresql://test:test@localhost:5432/test';
 process.env.JWT_SECRET ??= 'a-very-long-secret-key-for-testing-12345';
-const { envSchema } = await import('./env.ts');
+const { envSchema, reloadConfig } = await import('./env.ts');
 
 describe('Environment Config Schema', () => {
   it('should apply defaults for optional fields', () => {
@@ -268,5 +269,321 @@ describe('CACHE_DRIVER', () => {
       CACHE_DRIVER: 'redis',
     });
     expect(result.success).toBe(true);
+  });
+});
+
+/** The two required variables, valid, for building test inputs. */
+const REQUIRED = {
+  DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+  JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+} as const;
+
+/** Variable names reported by a failed parse (first path segment of each issue). */
+function failedKeys(input: Record<string, string>): string[] {
+  const result = envSchema.safeParse(input);
+  expect(result.success).toBe(false);
+  if (result.success) return [];
+  return result.error.issues.map((issue) => String(issue.path[0]));
+}
+
+describe('blank values are treated as unset', () => {
+  it('should leave blank optional URL variables undefined with local storage', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      STORAGE_DRIVER: 'local',
+      S3_ENDPOINT: '',
+      S3_PUBLIC_URL: '',
+      PUBLIC_APP_URL: '',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.S3_ENDPOINT).toBeUndefined();
+      expect(result.data.S3_PUBLIC_URL).toBeUndefined();
+      expect(result.data.PUBLIC_APP_URL).toBeUndefined();
+    }
+  });
+
+  it('should fall back to numeric defaults for blank numbers', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      APP_PORT: '',
+      SMTP_PORT: '',
+      UPLOAD_MAX_SIZE_BYTES: '',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.APP_PORT).toBe(8000);
+      expect(result.data.SMTP_PORT).toBe(1025);
+      expect(result.data.UPLOAD_MAX_SIZE_BYTES).toBe(10485760);
+    }
+  });
+
+  it('should fall back to enum and boolean defaults for blank values', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      CACHE_ENABLED: '',
+      CACHE_DRIVER: '',
+      LOG_FORMAT: '',
+      STORAGE_DRIVER: '  ',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.CACHE_ENABLED).toBe(true);
+      expect(result.data.CACHE_DRIVER).toBe('memory');
+      expect(result.data.LOG_FORMAT).toBe('json');
+      expect(result.data.STORAGE_DRIVER).toBe('local');
+    }
+  });
+
+  it('should still fail blank required variables and name them', () => {
+    expect(failedKeys({ ...REQUIRED, JWT_SECRET: '' })).toContain('JWT_SECRET');
+    expect(failedKeys({ ...REQUIRED, DATABASE_URL: '   ' })).toContain('DATABASE_URL');
+  });
+
+  it('should still require non-blank S3 settings for the s3 driver', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      STORAGE_DRIVER: 's3',
+      S3_ENDPOINT: '',
+      S3_BUCKET: 'bucket',
+      S3_ACCESS_KEY: 'access',
+      S3_SECRET_KEY: 'secret',
+      S3_PUBLIC_URL: 'https://cdn.example.com',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.message)).toContain(
+        'S3_ENDPOINT is required when STORAGE_DRIVER is s3',
+      );
+    }
+  });
+});
+
+describe('port and size range checks', () => {
+  it('should reject non-numeric and out-of-range APP_PORT values', () => {
+    for (const value of ['abc', '0', '70000']) {
+      expect(failedKeys({ ...REQUIRED, APP_PORT: value })).toContain('APP_PORT');
+    }
+  });
+
+  it('should reject an out-of-range SMTP_PORT', () => {
+    expect(failedKeys({ ...REQUIRED, SMTP_PORT: '70000' })).toContain('SMTP_PORT');
+  });
+
+  it('should reject non-positive UPLOAD_MAX_SIZE_BYTES values', () => {
+    for (const value of ['-1', '0']) {
+      expect(failedKeys({ ...REQUIRED, UPLOAD_MAX_SIZE_BYTES: value })).toContain(
+        'UPLOAD_MAX_SIZE_BYTES',
+      );
+    }
+  });
+
+  it('should coerce valid numeric values', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      APP_PORT: '3000',
+      UPLOAD_MAX_SIZE_BYTES: '5242880',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.APP_PORT).toBe(3000);
+      expect(result.data.UPLOAD_MAX_SIZE_BYTES).toBe(5242880);
+    }
+  });
+});
+
+describe('upload limits and allowlist', () => {
+  /** The issues reported for UPLOAD_ALLOWED_TYPES when parsing `value`. */
+  function allowlistIssues(value: string): string[] {
+    const result = envSchema.safeParse({ ...REQUIRED, UPLOAD_ALLOWED_TYPES: value });
+    if (result.success) return [];
+    return result.error.issues
+      .filter((issue) => issue.path.join('.') === 'UPLOAD_ALLOWED_TYPES')
+      .map((issue) => issue.message);
+  }
+
+  it('should reject an unsupported allowlist entry with a message naming it', () => {
+    const messages = allowlistIssues('image/jpeg,image/gif');
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('UPLOAD_ALLOWED_TYPES');
+    expect(messages[0]).toContain('image/gif');
+  });
+
+  it('should trim and lower-case allowlist entries and ignore empty ones', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      UPLOAD_ALLOWED_TYPES: 'image/jpeg, image/png',
+    });
+    expect(result.success).toBe(true);
+    if (result.success)
+      expect(result.data.UPLOAD_ALLOWED_TYPES).toEqual(['image/jpeg', 'image/png']);
+
+    const messy = envSchema.safeParse({ ...REQUIRED, UPLOAD_ALLOWED_TYPES: ' IMAGE/WEBP ,, ' });
+    expect(messy.success).toBe(true);
+    if (messy.success) expect(messy.data.UPLOAD_ALLOWED_TYPES).toEqual(['image/webp']);
+  });
+
+  it('should reject an allowlist with no entries', () => {
+    expect(allowlistIssues(',')).toEqual([
+      'UPLOAD_ALLOWED_TYPES must list at least one image type',
+    ]);
+  });
+
+  it.each(['0', '-5', '1.5'])('should reject UPLOAD_MAX_SIZE_BYTES=%s', (value) => {
+    expect(failedKeys({ ...REQUIRED, UPLOAD_MAX_SIZE_BYTES: value })).toContain(
+      'UPLOAD_MAX_SIZE_BYTES',
+    );
+  });
+
+  it('should default to 10485760 bytes and the three supported types', () => {
+    const result = envSchema.safeParse(REQUIRED);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.UPLOAD_MAX_SIZE_BYTES).toBe(10485760);
+      expect(result.data.UPLOAD_ALLOWED_TYPES).toEqual(['image/jpeg', 'image/png', 'image/webp']);
+    }
+  });
+});
+
+describe('UPLOAD_DIR', () => {
+  it('should resolve a relative value against the working directory', () => {
+    const result = envSchema.safeParse({ ...REQUIRED, UPLOAD_DIR: './uploads' });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.UPLOAD_DIR).toBe(path.resolve('./uploads'));
+  });
+
+  it('should resolve the default to an absolute path', () => {
+    const result = envSchema.safeParse({ ...REQUIRED });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.UPLOAD_DIR).toBe(path.resolve('./uploads'));
+  });
+
+  it('should keep an absolute value as is', () => {
+    const result = envSchema.safeParse({ ...REQUIRED, UPLOAD_DIR: '/app/uploads' });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.UPLOAD_DIR).toBe('/app/uploads');
+  });
+});
+
+describe('loadEnv failure output', () => {
+  it('should name the failing variables without printing their values', () => {
+    const keys = ['JWT_SECRET', 'STORAGE_DRIVER', 'S3_ENDPOINT'] as const;
+    const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      process.env.JWT_SECRET = 'tooshort';
+      process.env.STORAGE_DRIVER = 's3';
+      process.env.S3_ENDPOINT = 'not a url';
+      expect(() => reloadConfig()).toThrow('Invalid environment variables');
+
+      const output = errorSpy.mock.calls.map((call) => JSON.stringify(call)).join('\n');
+      expect(output).toContain('JWT_SECRET');
+      expect(output).toContain('S3_ENDPOINT');
+      expect(output).not.toContain('tooshort');
+      expect(output).not.toContain('not a url');
+    } finally {
+      for (const key of keys) {
+        if (saved[key] === undefined) delete process.env[key];
+        else process.env[key] = saved[key];
+      }
+      errorSpy.mockRestore();
+      reloadConfig();
+    }
+  });
+});
+
+describe('rate limiting, trusted proxy and cache cap settings', () => {
+  it('should apply the documented defaults', () => {
+    const result = envSchema.safeParse({ ...REQUIRED });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.TRUST_PROXY).toBe('none');
+      expect(result.data.TRUST_PROXY_HOPS).toBe(1);
+      expect(result.data.TRUST_PROXY_CIDRS).toEqual([]);
+      expect(result.data.RATE_LIMIT_ENABLED).toBe(true);
+      expect(result.data.RATE_LIMIT_STORE).toBe('memory');
+      expect(result.data.RATE_LIMIT_GLOBAL_MAX).toBe(100);
+      expect(result.data.CACHE_MEMORY_MAX_ENTRIES).toBe(10000);
+    }
+  });
+
+  it('should reject an unknown TRUST_PROXY mode', () => {
+    expect(failedKeys({ ...REQUIRED, TRUST_PROXY: 'xff' })).toContain('TRUST_PROXY');
+  });
+
+  it('should reject TRUST_PROXY_HOPS outside 1-5', () => {
+    expect(failedKeys({ ...REQUIRED, TRUST_PROXY_HOPS: '0' })).toContain('TRUST_PROXY_HOPS');
+    expect(failedKeys({ ...REQUIRED, TRUST_PROXY_HOPS: '6' })).toContain('TRUST_PROXY_HOPS');
+  });
+
+  it('should reject an out-of-range prefix and a malformed CIDR', () => {
+    expect(failedKeys({ ...REQUIRED, TRUST_PROXY_CIDRS: '10.0.0.0/33' })).toContain(
+      'TRUST_PROXY_CIDRS',
+    );
+    expect(failedKeys({ ...REQUIRED, TRUST_PROXY_CIDRS: 'not-a-cidr' })).toContain(
+      'TRUST_PROXY_CIDRS',
+    );
+    expect(failedKeys({ ...REQUIRED, TRUST_PROXY_CIDRS: '2001:db8::/129' })).toContain(
+      'TRUST_PROXY_CIDRS',
+    );
+  });
+
+  it('should accept IPv4 and IPv6 CIDRs and expose them as a trimmed list', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      TRUST_PROXY_CIDRS: '10.0.0.0/8, 2001:db8::/32',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.TRUST_PROXY_CIDRS).toEqual(['10.0.0.0/8', '2001:db8::/32']);
+    }
+  });
+
+  it('should reject a CACHE_MEMORY_MAX_ENTRIES below 100', () => {
+    expect(failedKeys({ ...REQUIRED, CACHE_MEMORY_MAX_ENTRIES: '10' })).toContain(
+      'CACHE_MEMORY_MAX_ENTRIES',
+    );
+  });
+
+  it('should require REDIS_URL for the redis rate-limit store even with the cache disabled', () => {
+    expect(
+      failedKeys({ ...REQUIRED, CACHE_ENABLED: 'false', RATE_LIMIT_STORE: 'redis' }),
+    ).toContain('REDIS_URL');
+  });
+
+  it('should parse RATE_LIMIT_ENABLED=false and a custom global limit', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      RATE_LIMIT_ENABLED: 'false',
+      RATE_LIMIT_GLOBAL_MAX: '250',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.RATE_LIMIT_ENABLED).toBe(false);
+      expect(result.data.RATE_LIMIT_GLOBAL_MAX).toBe(250);
+    }
+  });
+
+  it('should treat blank values of the new variables as unset', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      TRUST_PROXY: '',
+      TRUST_PROXY_HOPS: ' ',
+      TRUST_PROXY_CIDRS: '',
+      RATE_LIMIT_ENABLED: '',
+      RATE_LIMIT_STORE: '',
+      RATE_LIMIT_GLOBAL_MAX: '',
+      CACHE_MEMORY_MAX_ENTRIES: '',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.TRUST_PROXY).toBe('none');
+      expect(result.data.TRUST_PROXY_HOPS).toBe(1);
+      expect(result.data.TRUST_PROXY_CIDRS).toEqual([]);
+      expect(result.data.RATE_LIMIT_ENABLED).toBe(true);
+      expect(result.data.RATE_LIMIT_STORE).toBe('memory');
+      expect(result.data.RATE_LIMIT_GLOBAL_MAX).toBe(100);
+      expect(result.data.CACHE_MEMORY_MAX_ENTRIES).toBe(10000);
+    }
   });
 });

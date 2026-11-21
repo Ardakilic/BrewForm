@@ -29,10 +29,9 @@ vi.mock('../../api/static-cache.ts', () => ({
 }));
 
 vi.mock('../../utils/recipe-filters.ts', async (importOriginal) => {
-  const actual = (await importOriginal()) as {
-    extractListParams: (sp: URLSearchParams) => Record<string, string>;
-  };
+  const actual = await importOriginal<typeof import('../../utils/recipe-filters.ts')>();
   return {
+    ...actual,
     extractListParams: vi.fn(actual.extractListParams),
   };
 });
@@ -104,7 +103,9 @@ function makeEmptyStarredResponse(): PaginatedResponse<RecipeListItemOutput> {
   };
 }
 
-import { loader, StarredRecipesPage } from './StarredRecipesPage.tsx';
+import { ApiError } from '../../api/errors.ts';
+import { loader } from './StarredRecipesPage.data.ts';
+import { StarredRecipesPage } from './StarredRecipesPage.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -301,6 +302,7 @@ describe('StarredRecipesPage', () => {
 
     expect(mockRecipeApiStarred).toHaveBeenCalledWith(
       expect.objectContaining({ brewMethod: 'espresso_machine' }),
+      { signal: expect.any(AbortSignal) },
     );
   });
 
@@ -321,5 +323,42 @@ describe('StarredRecipesPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Starred Recipes' })).toBeInTheDocument();
     });
+  });
+});
+
+describe('StarredRecipesPage loader — auth guard', () => {
+  it('redirects a final 401 to /login with the encoded return path', async () => {
+    mockRecipeApiStarred.mockRejectedValue(
+      new ApiError('UNAUTHORIZED', 'no session', undefined, 401),
+    );
+    mockGetEquipmentCached.mockResolvedValue([]);
+    mockGetTasteNotesCached.mockResolvedValue([]);
+
+    const thrown = await loader({
+      request: new Request('http://localhost/recipes/starred?sortBy=rating'),
+    }).catch((err: unknown) => err);
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).headers.get('Location')).toBe(
+      '/login?next=%2Frecipes%2Fstarred%3FsortBy%3Drating',
+    );
+  });
+});
+
+describe('StarredRecipesPage loader — request.signal', () => {
+  it('forwards request.signal to the starred list and both cached lookups', async () => {
+    mockRecipeApiStarred.mockResolvedValue(makeEmptyStarredResponse());
+    mockGetEquipmentCached.mockResolvedValue([]);
+    mockGetTasteNotesCached.mockResolvedValue([]);
+    const controller = new AbortController();
+
+    await loader({
+      request: new Request('http://localhost/recipes/starred', { signal: controller.signal }),
+    });
+
+    const signalOpts = { signal: expect.any(AbortSignal) };
+    expect(mockRecipeApiStarred).toHaveBeenCalledWith(expect.any(Object), signalOpts);
+    expect(mockGetEquipmentCached).toHaveBeenCalledWith(signalOpts);
+    expect(mockGetTasteNotesCached).toHaveBeenCalledWith(signalOpts);
   });
 });

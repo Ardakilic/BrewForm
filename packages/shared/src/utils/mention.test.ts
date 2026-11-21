@@ -62,8 +62,12 @@ describe('parseMentions', () => {
     expect(result[0]).toBe('user00');
   });
 
-  it('preserves case (resolution is exact-match)', () => {
+  it('preserves the first spelling of each username', () => {
     expect(parseMentions('@Alice @BOB @cD3')).toEqual(['Alice', 'BOB', 'cD3']);
+  });
+
+  it('de-duplicates case-insensitively, keeping the first spelling', () => {
+    expect(parseMentions('@Arda @arda @bob')).toEqual(['Arda', 'bob']);
   });
 
   it('does NOT match a lone @ or @ with no username', () => {

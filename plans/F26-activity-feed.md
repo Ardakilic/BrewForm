@@ -1,15 +1,33 @@
 # F26 — Expanded Activity Feed
 
+> **Refresh (2026-11-21): the F02 blocker is gone — the other blockers below still need the rewrite**
+>
+> - Brew logs exist since F02 shipped (2026-08-13): the `brewLogs` table (`brew_log`,
+>   `packages/db/src/schema.ts:1166`, indexed on `(userId, brewedAt)`) and the
+>   `apps/api/src/modules/brew-log/` module under `/api/v1/brew-logs`
+>   (`apps/api/src/routes/index.ts:60`), with the caller's `GET /stats/user`
+>   (`service.getUserBrewStats`, `brew-log/service.ts:177`) and the public
+>   `GET /stats/recipe/:recipeId` (`brew-log/index.ts:130-132`). A `brew_log` feed item needs a
+>   new `brew-log/model.ts` query over followed users (there is no `getFollowedBrewLogs`), keyed
+>   by `brewedAt` so it fits the cursor feed.
+> - Privacy decides the brew-log item's shape: brew logs are private journal entries that only
+>   their owner can list today, so a followed user's brew must be opt-in (or limited to a
+>   "brewed recipe X" event without `notes`/ratings), and it may only reference recipes listable
+>   to everyone (`listableRecipeCondition(null)`, `recipe/model.ts`, wave 6). The same rule
+>   applies to the comment items (no comments on unlisted, private or draft recipes).
+> - Wave 6 moved all web data loading to loaders, actions and fetchers (no `useEffect`
+>   fetching), which only reinforces the "stale frontend stack" bullet below.
+>
 > **Validation status (2026-07-13): ❌ Invalid — every 2026-07-04 blocker still stands**
 >
 > Re-validated against current code; all original blockers hold and the new notification substrate does not help.
-> - **brewLogs still absent (blocked on F02).** No `brewLogs` table in `packages/db/src/schema.ts` and no brew-log module; the plan's `brewLogModel.getFollowedBrewLogs` and the `brew_log` feed type cannot compile.
+> - ~~**brewLogs still absent (blocked on F02).**~~ Resolved by F02 (see the 2026-11-21 refresh above).
 > - **No `models/index.ts` barrel.** The plan imports `{ recipeModel, commentModel, badgeModel, brewLogModel } from '../../models/index.ts'`; modules own their own `model.ts` — no aggregate barrel exists, so every import needs rewriting.
 > - **Reimplements an offset-only feed over the existing cursor feed (D27).** `getFeed` (`follow/service.ts:93`) already delegates to `recipeModel.getFeed` with cursor + offset support, exposed at `GET /follow/feed` with a `cursor` param and `cursorEnvelope`/`cursorPaginated`/`decodeCursor` (`follow/index.ts:198`). The plan's `getExpandedFeed` fetches 100 rows per type and `.slice()`s in memory, discarding that infrastructure.
 > - **Stale frontend stack.** Plan uses `useInfiniteQuery` (no TanStack Query in the repo) and `react-router-dom`. `HomePage.tsx` is loader-based today (`useLoaderData` from `'react-router'`, HomePage.tsx:2); the plan would rewrite it back to a client-fetch pattern.
 > - **Notification substrate does not unblock this.** F04's `notifications` table holds recipient-targeted social events (things aimed at *you*), whereas this feed aggregates followed users' *public activity* — a different query surface. It is not a usable event source for F26.
 >
-> Verdict unchanged (❌): needs a full rewrite against current code (build on the cursor feed + loaders) and depends on F02 (brew logs) before it is actionable.
+> Verdict (2026-07-13, ❌): needs a full rewrite against current code (build on the cursor feed + loaders). Its F02 (brew logs) dependency was met on 2026-08-13.
 
 ## Overview
 

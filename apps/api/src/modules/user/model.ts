@@ -6,8 +6,16 @@
  * with latest version metadata, and full-text username/displayName search.
  */
 import { db } from '@brewform/db';
-import { recipes, recipeVersions, userFollows, userPreferences, users } from '@brewform/db/schema';
+import {
+  lower,
+  recipes,
+  recipeVersions,
+  userFollows,
+  userPreferences,
+  users,
+} from '@brewform/db/schema';
 import { and, asc, count, desc, eq, gt, isNull, like, or } from 'drizzle-orm';
+import { listableRecipeCondition } from '../recipe/model.ts';
 
 /**
  * Find a user by ID, including preferences via LEFT JOIN.
@@ -48,12 +56,15 @@ export async function findById(id: string) {
   };
 }
 
-/** Find a user by username. Returns null if deleted or not found. */
+/**
+ * Find a user by username, case-insensitively (served by `user_username_lower_unique`), so
+ * `/users/ARDA` resolves `Arda`. Returns null if deleted or not found.
+ */
 export async function findByUsername(username: string) {
   const result = await db
     .select()
     .from(users)
-    .where(and(eq(users.username, username), isNull(users.deletedAt)))
+    .where(and(eq(lower(users.username), username.toLowerCase()), isNull(users.deletedAt)))
     .limit(1);
   return result[0] ?? null;
 }
@@ -84,6 +95,10 @@ export async function deleteUser(id: string) {
 /**
  * Get aggregated stats for a user (public recipe count, followers, following).
  *
+ * `recipeCount` is a discovery count (capability `recipe-visibility`): it counts the
+ * user's recipes that `listableRecipeCondition(null)` selects (non-deleted `public`
+ * only), for every viewer including the user, matching {@link getUserPublicRecipes}.
+ *
  * @returns Object with recipeCount, followerCount, and followingCount
  */
 export async function getUserStats(id: string) {
@@ -91,9 +106,7 @@ export async function getUserStats(id: string) {
     db
       .select({ count: count() })
       .from(recipes)
-      .where(
-        and(eq(recipes.authorId, id), isNull(recipes.deletedAt), eq(recipes.visibility, 'public')),
-      ),
+      .where(and(eq(recipes.authorId, id), listableRecipeCondition(null))),
     db.select({ count: count() }).from(userFollows).where(eq(userFollows.followingId, id)),
     db.select({ count: count() }).from(userFollows).where(eq(userFollows.followerId, id)),
   ]);
@@ -104,15 +117,17 @@ export async function getUserStats(id: string) {
   };
 }
 
-/** Get a user's public recipes with their latest version's brew method and drink type. */
+/**
+ * Get a user's public recipes with their latest version's brew method and drink type.
+ *
+ * The profile `recipes` array is a discovery surface (capability `recipe-visibility`):
+ * it lists what `listableRecipeCondition(null)` selects (non-deleted `public` only), for
+ * every viewer including the profile owner.
+ */
 export async function getUserPublicRecipes(userId: string) {
   // Fetch the user's public recipes with their latest version's brew method and drink type.
   const userRecipes = await db.query.recipes.findMany({
-    where: and(
-      eq(recipes.authorId, userId),
-      eq(recipes.visibility, 'public'),
-      isNull(recipes.deletedAt),
-    ),
+    where: and(eq(recipes.authorId, userId), listableRecipeCondition(null)),
     orderBy: desc(recipes.createdAt),
     columns: {
       id: true,

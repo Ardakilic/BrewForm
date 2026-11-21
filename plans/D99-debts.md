@@ -1,8 +1,8 @@
 # D99 — Deferred Technical Debt (Post-Feature Batch)
 
-**Severity:** Mixed (Low–Medium)
-**Status:** Fully resolved — 2026-07-27 (wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19; remaining-debt-clearance resolved D99.4,.8,.17,.18)
-**Relationship:** Aggregates deferred items discovered during F01-recipe-collections implementation, other recent feature work, and the 2026-07-19 full audit (D99.10–D99.19). These are non-blocking polish/hardening tasks; items marked **Scheduled** are carried by the `wave-5-debt-clearance` OpenSpec change (which holds the full task-level detail — this ledger is the index), items marked **Deferred** wait for a future trigger. Individual items may be split into their own D-plan files when picked up.
+**Severity:** Mixed (Low–High)
+**Status:** D99.1–.19 resolved 2026-07-27 (wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19; remaining-debt-clearance resolved D99.4,.8,.17,.18). **D99.20–.62 open** since 2026-11-21: deferrals and unowned findings of `wave-6-audit-remediation` (2026-11-18 audit); see [Wave-6 follow-ups](#wave-6-follow-ups-d9920) and the status table in [`ROADMAP.md`](ROADMAP.md).
+**Relationship:** Aggregates deferred items discovered during F01-recipe-collections implementation, other recent feature work, the 2026-07-19 full audit (D99.10–D99.19) and the 2026-11-18 audit ([`AUDIT-2026-11-18.md`](AUDIT-2026-11-18.md), D99.20+). These are non-blocking polish/hardening tasks; items marked **Scheduled** are carried by the `wave-5-debt-clearance` OpenSpec change (which holds the full task-level detail — this ledger is the index), items marked **Deferred** wait for a future trigger. Individual items may be split into their own D-plan files when picked up.
 
 ---
 
@@ -684,3 +684,357 @@ Update the `AGENTS.md:50` list to match `main.ts:41-76` verbatim.
 ### Effort Estimate
 
 **Trivial** — a one-paragraph doc edit.
+
+---
+
+## Wave-6 follow-ups (D99.20+)
+
+Added 2026-11-21 by `wave-6-audit-remediation` (task 27.1). Each entry is a deferral from that change's `proposal.md` → Non-Goals, an audit finding with no wave-6 owner ([`AUDIT-2026-11-18.md`](AUDIT-2026-11-18.md)), or a follow-up found while implementing it. The entries are compact: a status line, one evidence line (paths as of 2026-11-21) and the intended fix. Expand an entry into its own D-plan when you pick it up. Priority and effort use the [`ROADMAP.md`](ROADMAP.md) legend, and ROADMAP's Remaining Debt table is the status index.
+
+## D99.20 — Recipe merge field parity, and merge copying another user's brewer notes — Open
+
+**Deferred:** wave-6 Non-Goals (t1). **Priority:** P3 · **Effort:** Medium. Full write-up: [`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md) §3.10.
+
+**Evidence:** `apps/api/src/modules/recipe/service.ts` `mergeRecipes` builds the new version from `tasteNoteIds` only, so every intensity becomes 1, and `RecipeMergeSchema.selections` (`packages/shared/src/schemas/recipe.ts`) has no `tds` or coffee-variety choice, so a merged recipe always has empty `tds`, `coffeeVarietyId` and `coffeeVarietyName`.
+
+**Fix:** add `tds` and `coffeeVariety` selections, pass the picked versions' `tasteNoteIntensities`, carry `coffeeVarietyId`, and add merge regression tests next to the bump/fork ones. In the same change, decide whether merge should stop copying `personalNotes` from a public version the caller does not own.
+
+## D99.21 — `SetupUpdateSchema` keeps the `isDefault` default, so a setup PATCH clears the default flag — Open
+
+**Deferred:** wave-6 Non-Goals (t1). **Priority:** P2 · **Effort:** Low. Full write-up: [`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md) §3.11.
+
+**Evidence:** `packages/shared/src/schemas/setup.ts` defines `SetupUpdateSchema = SetupCreateSchema.partial()`, and `isDefault: z.boolean().default(false)` survives `.partial()` in Zod 4. So every `PATCH /api/v1/setups/:id` writes `isDefault: false` through `setup/model.ts#update`.
+
+**Fix:** build `SetupUpdateSchema` field by field with no `.default()`. Add a shared test that `SetupUpdateSchema.parse({})` is `{}`, and a service test that a name-only PATCH keeps `isDefault: true`.
+
+## D99.22 — "My notes" listing and an `amendedAt` marker for in-place amends — Open
+
+**Deferred:** wave-6 Non-Goals (t1). **Priority:** P4 · **Effort:** Medium.
+
+**Evidence:** private notes are reachable only per recipe (`GET /api/v1/recipes/:id/notes`, `apps/api/src/modules/recipe-note/`), and no `GET /api/v1/users/me/notes` exists. `recipe_version` has no `amendedAt`, so a `bumpVersion: false` amend leaves no trace; the edit page only says that the current version is updated in place.
+
+**Fix:** add a caller-scoped, paginated `GET /api/v1/users/me/notes` joined with each recipe's title and slug, which skips recipes the caller can no longer view. Add an `amendedAt` column set by the amend path and show it on the versions page.
+
+## D99.23 — Author-only "My recipes" listing — Open
+
+**Deferred:** wave-6 Non-Goals (unlisted visibility). **Priority:** P3 · **Effort:** Medium.
+
+**Evidence:** every discovery listing, the owner's own profile included, uses the viewer-independent `listableRecipeCondition(null)` (`apps/api/src/modules/recipe/model.ts`). Authors therefore reach their own unlisted, draft and private recipes only by link, through collection items or through Starred.
+
+**Fix:** add `GET /api/v1/users/me/recipes` (author = caller, `viewableRecipeCondition(userId)`) and a "My recipes" page. The public profile stays public-only.
+
+## D99.24 — Unguessable URLs for unlisted recipes — Open
+
+**Deferred:** wave-6 Non-Goals (unlisted visibility). **Priority:** P3 · **Effort:** Medium.
+
+**Evidence:** slugs stay title-derived and immutable, with a random suffix only on collision (`recipe-slug` spec, `packages/shared/src/utils/slug.ts`). An unlisted recipe's URL can therefore be guessed from its title, and `docs/recipes.md` tells users to choose `private` for secrecy.
+
+**Fix:** give unlisted recipes a random share token (for example `/r/<token>`) or a random slug suffix when visibility becomes `unlisted`. Decide how existing unlisted slugs migrate.
+
+## D99.25 — Visibility gating of like, favourite, rate and the photo list — Open
+
+**Deferred:** wave-6 Non-Goals (unlisted visibility). **Priority:** P2 · **Effort:** Low–Medium.
+
+**Evidence:** `POST /api/v1/recipes/:id/like`, `/:id/favourite` and `/:id/rate` (`recipe/index.ts`; `toggleLike`/`toggleFavourite` in `recipe/service.ts`) and `GET /api/v1/photos/recipe/:recipeId` (`photo/index.ts`) never call `canViewRecipe`. A caller who knows a draft or private recipe's id can like it, rate it or list its photos.
+
+**Fix:** resolve the recipe through `viewableRecipeCondition(userId)` and return 404 when it is not viewable in each path, with one test per path.
+
+## D99.26 — Account-deletion anonymisation and releasing deleted identifiers — Open
+
+**Deferred:** wave-6 Non-Goals plus an unowned audit finding (audit §4 "Account deletion is shallow"). **Priority:** P1 · **Effort:** Medium.
+
+**Evidence:** `apps/api/src/modules/user/model.ts#deleteUser` only sets `deletedAt`, so email, username and profile fields stay in the row and the user's public content stays public. Re-registering with a deleted account's email returns `409 Email already registered`, and deleted usernames are never released, because `user_email_lower_unique`/`user_username_lower_unique` also cover deleted rows.
+
+**Fix:** a transactional `deleteAccount` that tombstones email and username (`deleted-<id>`), clears profile PII, unlists or soft-deletes content and revokes sessions (with D99.38). After that, re-registration with the old email can be allowed.
+
+## D99.27 — Catalog-name uniqueness (equipment, vendors, coffee varieties, taste notes) — Open
+
+**Deferred:** wave-6 Non-Goals (t3). **Priority:** P3 · **Effort:** Medium.
+
+**Evidence:** `packages/db/src/schema.ts` has no unique constraint on catalog names, so duplicates exist, and a constraint needs a de-duplication step first.
+
+**Fix:** an admin de-duplication tool that re-points references to the surviving row, then soft-delete-aware `lower(name)` unique indexes.
+
+## D99.28 — Drop the redundant plain indexes — Open
+
+**Deferred:** wave-6 Non-Goals (t3). **Priority:** P3 · **Effort:** Low.
+
+**Evidence:** `recipe_slug_idx`, `user_email_idx`, `user_username_idx`, `password_reset_token_idx` and `badge_rule_idx` (`packages/db/src/schema.ts`) duplicate a unique constraint or a `lower()` unique index, and the audit counted about 30 such indexes (§6.G). The exact email/username constraints stay, because the seed's conflict target needs them.
+
+**Fix:** check `pg_stat_user_indexes` first, then drop the duplicates in `schema.ts` and run `make db-generate`.
+
+## D99.29 — EXIF/GPS stripping of uploaded photos — Open (ships with F23)
+
+**Deferred:** wave-6 Non-Goals (t4a). **Priority:** P2 · **Effort:** Medium (as part of F23).
+
+**Evidence:** uploads are stored byte-for-byte after magic-byte sniffing (`apps/api/src/utils/upload/sniff.ts`, `validateImagePart`). Camera metadata, GPS coordinates included, is served unchanged with public recipe photos.
+
+**Fix:** the sharp pipeline in [`F23-image-optimisation.md`](F23-image-optimisation.md) re-encodes every upload (auto-orient, then output without metadata).
+
+## D99.30 — Per-user upload rate limit and env-configurable image dimension limits — Open
+
+**Deferred:** wave-6 Non-Goals (t4a). **Priority:** P3 · **Effort:** Low.
+
+**Evidence:** photo uploads fall only under the global IP policy (`apps/api/src/utils/rate-limit/policies.ts`). `MAX_IMAGE_SIDE_PX = 16_384` and `MAX_IMAGE_PIXELS = 50_000_000` are code constants (`apps/api/src/utils/upload/limits.ts`), so wider panoramas are refused.
+
+**Fix:** add a user-keyed photo-upload policy, plus optional env overrides range-checked in `apps/api/src/config/env.ts`.
+
+## D99.31 — Search follow-ups: full-text search, keyset paging on the score, current-version scope, minimum length — Open
+
+**Deferred:** wave-6 Non-Goals (t7). **Priority:** P3 · **Effort:** Medium–High.
+
+**Evidence:** search ranks with `pg_trgm` and pages with `LIMIT`/`OFFSET` plus `COUNT` (`findListPage` in `apps/api/src/modules/recipe/model.ts`, ADR-017). It matches any version's coffee name and notes, and it accepts a one-character term, bounded only by the statement timeout.
+
+**Fix:** decide each item separately: a `tsvector` column (ADR), a keyset cursor on `(score, id)`, a current-version scope flag, and a minimum length in `RecipeFilterSchema` if load warrants it.
+
+## D99.32 — Playwright screenshot and end-to-end tests — Open
+
+**Deferred:** wave-6 Non-Goals (t6). **Priority:** P3 · **Effort:** Medium.
+
+**Evidence:** chart layout is guarded by geometry unit tests (`apps/web/src/utils/chart/*.test.ts`) and a manual checklist (wave-6 task 19.27). There is no browser end-to-end or visual suite (audit §6.L).
+
+**Fix:** a small Playwright suite in CI (create → edit → paginate → comment → admin moderation) plus screenshots of `ScaaRadarChart` and `BrewTimeline` at phone and desktop widths.
+
+## D99.33 — Multi-arch images, a TLS compose overlay and a non-root web image — Open
+
+**Deferred:** wave-6 Non-Goals (t4b). **Priority:** P3 · **Effort:** Medium.
+
+**Evidence:** `.github/workflows/ci.yml` builds single-platform (amd64) images. `compose.production.yml` serves plain HTTP and expects an outer TLS proxy. `Dockerfile.web` (Caddy) runs as root, while the API image runs as `node`.
+
+**Fix:** buildx `platforms: linux/amd64,linux/arm64`; an opt-in compose overlay with Caddy automatic HTTPS; a non-root Caddy user listening on an unprivileged port.
+
+## D99.34 — Rate-limit follow-ups: admin lockout reset, env-tunable policies, Valkey in CI — Open
+
+**Deferred:** wave-6 Non-Goals (t2). **Priority:** P3 · **Effort:** Low–Medium.
+
+**Evidence:** only `RATE_LIMIT_GLOBAL_MAX` is env-tunable (`apps/api/src/config/env.ts`), and the other policies are constants in `apps/api/src/utils/rate-limit/policies.ts`. Account lockouts (`auth-login-fail-account-ip`) clear only on a password reset, and no admin action exists. `apps/api/src/utils/rate-limit/redis.integration.test.ts` is `describe.skipIf` without a Valkey URL, and CI runs no Valkey service, so the RESP3/Lua path ran once against the compose Valkey (wave-6 task 6.45).
+
+**Fix:** an audited admin "clear lockout" route, per-policy env overrides, and a Valkey service container in the CI `test` job.
+
+## D99.35 — Pre-infusion and flow-rate form inputs, and an `extractionTimeSeconds` upper bound — Open
+
+**Deferred:** wave-6 Non-Goals (t6). **Priority:** P3 · **Effort:** Low.
+
+**Evidence:** the recipe form does not render `preInfusionTimeSeconds` (`apps/web/src/pages/recipes/recipe-edit-payload.ts` passes it through untouched), and `flowRate` is only derived by the API. `extractionTimeSeconds` is `z.number().positive()` with no upper bound (`packages/shared/src/schemas/recipe.ts`), so `BrewTimeline` has to clamp defensively.
+
+**Fix:** add the inputs to `RecipeCreateForm`/`RecipeEditForm` (en/tr strings), and add an agreed upper bound, for example 24 h, to the shared schema with a test.
+
+## D99.36 — OpenAPI coverage for the admin routes — Open
+
+**Deferred:** wave-6 Non-Goals (t8). Admin parallel CRUD itself stays as it is, by user decision. **Priority:** P2 · **Effort:** Medium.
+
+**Evidence:** 37 of the 44 routes in `apps/api/src/modules/admin/index.ts` have no `describeRoute()`, so `/api/v1/openapi.json` and the generated `docs/api-reference.md` omit them (found again in wave-6 group 24). `apps/api/src/routes/openapi.coverage.test.ts` `IN_SCOPE_BASE_PATHS` leaves out `/api/v1/admin`, `/api/v1/auth` and `/api/v1/recipes`. Auth and recipe routes are all documented today, but nothing enforces it.
+
+**Fix:** add `describeRoute()` with admin output schemas to the 37 routes, add the three prefixes to `IN_SCOPE_BASE_PATHS`, and regenerate `docs/api-reference.md`.
+
+## D99.37 — Top-level error boundary above the providers, and safe `localStorage` access — Open
+
+**Deferred:** wave-6 Non-Goals (t5). **Priority:** P3 · **Effort:** Low.
+
+**Evidence:** `apps/web/src/App.tsx` renders `AppProviders` around `RouterProvider` with no error boundary above the providers, so a provider crash blanks the app. `contexts/ThemeContext.tsx`, `contexts/I18nContext.tsx` and `components/CookieConsent.tsx` call `localStorage` without try/catch, and that throws when storage is blocked.
+
+**Fix:** a minimal error boundary in `App.tsx` above `AppProviders`, and a guarded storage helper used by every caller.
+
+## D99.38 — Auth session hygiene: session revocation and hashed reset tokens — Open
+
+**Unowned audit finding** (audit §3.7). **Priority:** P1 · **Effort:** Medium.
+
+**Evidence:** refresh tokens are stateless `{sub,type}` JWTs (`apps/api/src/modules/auth/jwt.ts`) with no version claim, so a password reset does not end existing sessions. Reset tokens are stored in plaintext (`passwordResets.token`, `packages/db/src/schema.ts`) and consumed in two statements (`auth/model.ts` `findPasswordResetByToken` + `markPasswordResetUsed`).
+
+**Fix:** a `users.tokenVersion` embedded in both tokens, checked in `authMiddleware` and refresh, and bumped on reset, admin password change and a new "log out everywhere" action. Hash reset tokens and consume them with one `UPDATE … WHERE usedAt IS NULL RETURNING`.
+
+## D99.39 — Equipment 20-item cap and admin list pagination — Open
+
+**Unowned audit finding** (audit §4). **Priority:** P2 · **Effort:** Medium.
+
+**Evidence:** `equipmentApi.list()` (`apps/web/src/api/index.ts`) reads only the first page of the paginated `/api/v1/equipment` (20 of about 379 seeded items) and feeds the shared lookup cache (`apps/web/src/api/static-cache.ts`). `AdminEquipmentPage` and `AdminRecipesPage` have no pagination. The recipe editor's `EquipmentPicker` already searches server-side.
+
+**Fix:** use the paginated or `/equipment/search` call wherever the full catalog is needed, add `?mine=true` for My Equipment, and paginate both admin pages.
+
+## D99.40 — Undefined `.input` CSS class — Open
+
+**Unowned audit finding** (audit §4). **Priority:** P2 · **Effort:** Low.
+
+**Evidence:** 13 `className="input…"` usages in `BrewLogForm.tsx`, `AddToCollectionModal.tsx`, `CollectionCreatePage.tsx` and `CollectionEditPage.tsx`, while `apps/web/src/styles/globals.css` defines only `.input-field`, so those fields render borderless and transparent.
+
+**Fix:** switch them to `input-field`, and add a test that flags class tokens missing from the stylesheet.
+
+## D99.41 — Photo gallery wiring — Open
+
+**Unowned audit finding** (audit §4 "Photos never shown"). **Priority:** P2 · **Effort:** Medium.
+
+**Evidence:** no page mounts `apps/web/src/components/photos/PhotoUpload.tsx`; only its resource route (`apps/web/src/routes/resources/photos.ts`) and its test reference it. No recipe page renders the recipe's photos.
+
+**Fix:** mount `PhotoUpload` in the recipe editor, and add a gallery on the detail page ordered by `sortOrder` that excludes soft-deleted photos.
+
+## D99.42 — Cross-recipe comment replies — Open
+
+**Unowned audit finding** (audit §4). **Priority:** P2 · **Effort:** Low.
+
+**Evidence:** comment creation in `apps/api/src/modules/comment/service.ts` loads the parent comment (`parentCommentId`) but never checks that it belongs to the same recipe, so a reply can attach to a parent on another recipe.
+
+**Fix:** a same-recipe guard returning a typed 400/404, plus a test.
+
+## D99.43 — Moderation UI (F15a) — Open
+
+**Unowned audit finding** (audit §4 "Moderation is API-only"). **Priority:** P2 · **Effort:** Small–Medium.
+
+**Evidence:** the `report` module ships `POST /api/v1/reports` and the admin report routes, but no web code calls `/reports`: there is no Report button and no admin reports page.
+
+**Fix:** ship F15a from [`F15-admin-moderation.md`](F15-admin-moderation.md) (Report dialog, `AdminReportsPage`, nav badge).
+
+## D99.44 — Notification spam from toggles — Open
+
+**Unowned audit finding** (audit §6.H). **Priority:** P2 · **Effort:** Low–Medium.
+
+**Evidence:** every like/unlike (`toggleLike` in `apps/api/src/modules/recipe/service.ts`) and follow/unfollow (`apps/api/src/modules/follow/service.ts`) creates a new notification and email. The notification module has no upsert and no cooldown.
+
+**Fix:** upsert on `(type, actor, target)` and add an email cooldown per recipient, type and actor.
+
+## D99.45 — Background work is not multi-instance safe — Open
+
+**Unowned audit finding** (audit §6.I; migrations already run once per deploy through the wave-6 `migrate` service). **Priority:** P2 · **Effort:** Medium. Required before F29 or F30 runs on more than one replica.
+
+**Evidence:** node-cron's hourly `evaluate-badges` job (`apps/api/src/utils/jobs/cron.ts`) runs in every API replica with no lock or overlap guard. Emails are sent on the request path with nodemailer's default timeouts (`apps/api/src/utils/notify/index.ts` sets no `connectionTimeout` or `socketTimeout`).
+
+**Fix:** a Valkey `SET <key> <token> NX PX <ttl>` lock per job run when `CACHE_DRIVER=redis` (otherwise document a single replica), SMTP timeouts, and email sent off the request path.
+
+## D99.46 — Observability: access logs, metrics, error tracking — Open
+
+**Unowned audit finding** (audit §7). **Priority:** P3 · **Effort:** Medium.
+
+**Evidence:** `apps/api/src/main.ts` registers no HTTP access-log middleware, metrics endpoint, tracing or error tracking. There are only structured application logs carrying `X-Request-ID`.
+
+**Fix:** access-log middleware (request id, status, duration), `/metrics` (prom-client) on the internal network only, and optional Sentry/GlitchTip for API and web.
+
+## D99.47 — Web edge security headers, public sourcemaps, asset caching — Open
+
+**Unowned audit finding** (audit §7 "Web edge"). **Priority:** P2 · **Effort:** Low–Medium.
+
+**Evidence:** `apps/web/Caddyfile` sets only `Cache-Control` headers; its static handle is marked "the slot for future security headers". The SPA therefore ships without CSP, HSTS, `X-Frame-Options`, `nosniff` or `Referrer-Policy`. `apps/web/vite.config.ts` builds `sourcemap: 'hidden'` maps that `Dockerfile.web` copies into the served `dist`, and hashed `/assets/*` get no immutable caching.
+
+**Fix:** a Caddy `header` block, `Cache-Control: public, max-age=31536000, immutable` on `/assets/*`, and `.map` files dropped from the image (or uploaded to error tracking).
+
+## D99.48 — Renovate configuration fixes — Open
+
+**Unowned audit finding** (audit §7). **Priority:** P3 · **Effort:** Low.
+
+**Evidence:** `renovate.json` does not mirror pnpm's `minimumReleaseAge`, so fresh releases fail install and hand-added `minimumReleaseAgeExclude` entries pile up in `pnpm-workspace.yaml` (18 today). The file also carries `//` comments, which are JSON5 syntax in a `.json` file.
+
+**Fix:** set `minimumReleaseAge` to match pnpm, add grouping, a schedule and `lockFileMaintenance`, rename to `renovate.json5`, and prune the exclusions.
+
+## D99.49 — Recipe GET returns `tds` `'1.4'` for a stored `1.40` — Open
+
+**Found during wave 6** (group 8). **Priority:** P3 · **Effort:** Low.
+
+**Evidence:** `recipe_version.tds` is `decimal(4, 2)` (`packages/db/src/schema.ts`). The relational recipe query returns nested versions as JSON, the driver parses `1.40` as the number `1.4`, and Drizzle's decimal mapping then yields `'1.4'`; plain selects return `'1.40'`.
+
+**Fix:** normalise `tds` in the recipe output mapping (one canonical string or number, pinned by the output schema), and add a GET test that stores `1.40`.
+
+## D99.50 — `/ready` reports `cache: "ok"` while Valkey is down — Open
+
+**Found during wave 6** (group 21). **Priority:** P3 · **Effort:** Low.
+
+**Evidence:** `getCacheStatus()` (`apps/api/src/utils/cache/singleton.ts`) returns the fail-soft provider's last observed state, so `/ready` keeps reporting `cache: "ok"` until a cache operation fails. `rateLimitStore` (`getRateLimitStoreStatus()`) already shows `degraded` at that point.
+
+**Fix:** probe the cache backend from the readiness check (a bounded `PING`), or derive the cache state from the shared Valkey connection's state.
+
+## D99.51 — Unused `recipe/model.ts#update` — Open
+
+**Found during wave 6** (group 8). **Priority:** P4 · **Effort:** Trivial.
+
+**Evidence:** `update(id, data)` in `apps/api/src/modules/recipe/model.ts` has had no caller since group 8 moved amend and bump into one transactional model path. Wave 6 kept it rather than removing it.
+
+**Fix:** delete it, together with any test that covers only it.
+
+## D99.52 — Demo accounts seeded in production — Accepted (user decision 2026-11-19)
+
+**Non-Goal of wave 6** (audit item 2, §3.2); the user answered "No problems". Recorded so later audits do not report it again. **Priority:** P4 · **Effort:** Low if revisited.
+
+**Evidence:** the image's first-install bootstrap (`docker-entrypoint.sh`: when the users table is empty, it runs `node src/seed.ts`) seeds five verified demo users with the shared `defaultPassword` (`packages/db/src/seed-users-recipes.ts`), even with `APP_ENV=production`.
+
+**Revisit when:** public sign-ups open or anyone else deploys the image. **Fix then:** split `seed:base`/`seed:demo`, refuse the demo seed in production, and add a runbook step that soft-deletes `@example.com` accounts.
+
+## D99.53 — Missing entry/exit (API) and mount/unmount (web) debug logs — Open
+
+**Moved from `TODO_logs.md`** (its P3 list, never completed, plus the services its "complete" banner missed; audit §"Entry/exit logging is missing in several services"; wave-6 task 26.20). **Priority:** P4 · **Effort:** Low.
+
+**Evidence (API):** AGENTS.md → Logging asks for entry/exit debug logs on every public service function, but `apps/api/src/modules/badge/service.ts` has none (0 of 4 exports), `comment/service.ts` 1 of 4, `follow/service.ts` 1 of 6, `photo/service.ts` 1 of 3 and `recipe/service.ts` 14 of 25 (counted as exported functions vs `'… started'` logs on 2026-11-21).
+
+**Evidence (web):** `apps/web/src/pages/recipes/RecipeNotAvailablePage.tsx`, `apps/web/src/pages/ContactPage.tsx` (it logs only in `ContactPage.data.ts`), `apps/web/src/pages/admin/AdminLayout.tsx`, `apps/web/src/components/CookieConsent.tsx` and `apps/web/src/components/EmailVerificationBanner.tsx` have no `createLogger` mount/unmount `useEffect`, which AGENTS.md → Logging asks of every page. (`TermsPage`, `PrivacyPage` and `ErrorPage` have it; `NotFoundPage` no longer exists, 404s render through `ErrorPage`/`RouteErrorState`.)
+
+**Fix:** add the `started`/`completed` debug pair (ids only) to each uncovered service export and the `'<Name> mounted'`/`'<Name> unmounted'` pair to each web file, with `vi.spyOn(log, 'debug')` assertions.
+
+## D99.54 — Log conventions: latency on exit logs and one id-key vocabulary — Open
+
+**Moved from `TODO_logs.md`** (cross-cutting items; wave-6 task 26.20). **Priority:** P4 · **Effort:** Low–Medium.
+
+**Evidence:** no service measures its own duration (`performance.now()` appears nowhere in `apps/api/src`), so the entry/exit debug pairs carry no latency. 37 log calls in seven services (`coffee-variety`, `bean`, `setup`, `report`, `taste`, `equipment`, `vendor` `service.ts`) log a bare `id` instead of an entity-named key (`beanId`, `setupId`, …), so a log query cannot follow one entity across modules.
+
+**Fix:** add `durationMs` to the `completed` debug logs (a small helper next to `createLogger`), rename the bare `id` keys, and pin both with logger-spy assertions in the existing service tests.
+
+## D99.55 — Log volume controls and slow-query logging — Open
+
+**Moved from `TODO_logs.md`** (cross-cutting items; wave-6 task 26.20). **Priority:** P4 · **Effort:** Medium. Related: D99.46 (access logs and metrics).
+
+**Evidence:** `apps/api/src/utils/logger/index.ts` configures level, redaction and the `err` serializer only: there is no sampling (`LOG_SAMPLE_RATE` does not exist in `apps/api/src/config/env.ts`), and no `db` logger reports slow statements (nothing hooks the `postgres-js` client in `packages/db/src/index.ts`; only the server-side `statement_timeout` from `DB_STATEMENT_TIMEOUT_MS` bounds them).
+
+**Fix:** an optional debug-level sampling setting, and a `db` module logger that warns on statements slower than a configurable threshold (default 100 ms) with the statement kind and duration but no parameters (see `toLoggableError` in `apps/api/src/utils/errors.ts` for what must not be logged).
+
+## D99.56 — Web runtime telemetry: navigation timing and unhandled rejections — Open
+
+**Moved from `TODO_logs.md`** (cross-cutting items; wave-6 task 26.20). **Priority:** P4 · **Effort:** Low.
+
+**Evidence:** `apps/web/src` registers no `unhandledrejection` listener and never reads `performance.getEntriesByType('navigation')`; an error thrown outside a React render or a route loader/action reaches only the browser console, and page-load timing is not logged.
+
+**Fix:** register both in `apps/web/src/main.tsx` through the web logger (`error` for rejections with the reason's name and message only, `debug` for navigation timing), and test them with jsdom events. Error tracking itself stays with D99.46.
+
+The other `TODO_logs.md` items were already done when it was deleted: every P1/P2 target has logging (`d26-expand-logging`), API error logs serialize `err` with pino's standard serializer plus `toLoggableError` for database errors, and the HTTP access log (method, path, status, duration) is part of D99.46.
+
+## D99.57 — Shared recipe links never reach the API's Open Graph renderer — Open
+
+**Found during wave 6** (group 26, docs checked against code). **Priority:** P2 · **Effort:** Low.
+
+**Evidence:** `apps/web/src/components/recipe/ShareSection.tsx` builds every share link as `${location.origin}/recipes/${slug}`, and the OG HTML for that path comes from the API's `crawlerMiddleware` (`apps/api/src/middleware/crawler.ts`). The web Caddy edge (`apps/web/Caddyfile`, snippet written by `docker-web-entrypoint.sh`) proxies only `/api/*`, `/uploads/*`, `/share/*` and the exact path `/health`, so a crawler fetching `/recipes/:slug` always gets the SPA's `index.html` without recipe OG tags. The API's `/share/:slug` page (`apps/api/src/routes/share.ts`) has the tags but nothing links to it.
+
+**Fix:** either point the share buttons at `/share/:slug` (it already redirects browsers to `/recipes/:slug`), or route crawler user agents on `/recipes/*` to the API in the edge snippet; add a test that pins the chosen URL.
+
+## D99.58 — robots.txt `Sitemap:` URL falls back to the SPA on split domains — Open
+
+**Found during wave 6** (group 26, docs checked against code). **Priority:** P3 · **Effort:** Low.
+
+**Evidence:** the `build-robots-txt` plugin in `apps/web/vite.config.ts` and the `PUBLIC_APP_URL` rewrite in `docker-web-entrypoint.sh` both write `Sitemap: <web origin>/api/v1/sitemap.xml`. On Coolify's split domains (web and API on separate hosts, `docs/deployment_coolify.md`) the web container serves static files only unless `API_UPSTREAM` is set, so that URL returns `index.html` instead of the sitemap.
+
+**Fix:** derive the `Sitemap:` line from the API origin when no same-origin proxy is configured (for example from `VITE_API_URL`), or document `API_UPSTREAM` as required for the sitemap; extend `apps/web/src/robots.test.ts` and `scripts/ci/web-entrypoint.test.sh` to cover it.
+
+## D99.59 — Reply button shown to the thread author, but the API answers 403 — Open
+
+**Found during wave 6** (group 26, docs checked against code). **Priority:** P2 · **Effort:** Low.
+
+**Evidence:** `canReplyToComment` in `apps/web/src/components/recipe/CommentSection.tsx` (`:263-269`) also returns `true` when the viewer authored the top-level comment, but `createComment` in `apps/api/src/modules/comment/service.ts` (`:72-74`) lets only the recipe author or an admin reply and throws `FORBIDDEN`, which `apps/api/src/modules/comment/index.ts` returns as 403 "Only the recipe author can reply to comments".
+
+**Fix:** decide the rule once (`docs/comments.md` and `docs/architecture.md` describe the API rule and record this mismatch), then align the other side and add a component test plus a service test for a thread author replying.
+
+## D99.60 — `grindSize` accepts 100 characters, the column holds 50 — Open
+
+**Found during wave 6** (group 26, docs checked against code). **Priority:** P3 · **Effort:** Trivial.
+
+**Evidence:** `recipeFields.grindSize` in `packages/shared/src/schemas/recipe.ts` is `z.string().max(100)`, but `recipe_version.grind_size` in `packages/db/src/schema.ts` is `varchar(50)`. A 51-100 character value passes validation and then fails in Postgres (SQLSTATE `22001`), which `apps/api/src/middleware/errorHandler.ts` maps to a generic 400 "A value is invalid for this field" instead of a field-level Zod error.
+
+**Fix:** lower the schema limit to 50 (and the web input's `maxLength`), with a schema test at 50 and 51 characters.
+
+## D99.61 — Taste-note search uses an unescaped, case-sensitive `like` — Open
+
+**Found during wave 6** (group 26, docs checked against code). **Priority:** P3 · **Effort:** Low.
+
+**Evidence:** `searchByName` in `apps/api/src/modules/taste/model.ts` filters with `like(tasteNotes.name, \`%${query}%\`)`: `%` and `_` in the query act as wildcards, and "fruity" does not match "Fruity". Recipe search already escapes its patterns with `toContainsPattern` (`apps/api/src/modules/recipe/model.ts`).
+
+**Fix:** reuse the escaping helper with a case-insensitive match (`ilike`, as the other catalog searches do), and add model tests for mixed case and a literal `%`.
+
+## D99.62 — `make ci` runs the web tests twice — Open
+
+**Found during wave 6** (group 26, docs checked against code). **Priority:** P4 · **Effort:** Trivial.
+
+**Evidence:** the `ci` target in `Makefile` runs `test-coverage` and then `test-web`, and the root `test-coverage` script (`package.json`) already ends with `pnpm --filter @brewform/web run test --coverage`; the root `ci` script repeats the same pair (`test-coverage`, then `pnpm --filter @brewform/web run test`).
+
+**Fix:** drop the second web run from both, and keep `make test-web` as the standalone target.

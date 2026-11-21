@@ -30,28 +30,32 @@ Each coffee variety record includes:
 | ------------------- | ------------- | --------------------- |
 | Typica              | variety       | *Coffea arabica*      |
 | Bourbon             | variety       | *Coffea arabica*      |
-| Gesha (Geisha)      | variety       | *Coffea arabica*      |
+| Gesha / Geisha      | variety       | *Coffea arabica*      |
 | Caturra             | variety       | *Coffea arabica*      |
-| Ethiopian Heirloom  | variety       | *Coffea arabica*      |
-| Natural/Dry Process | processing    | —                     |
-| Washed Process      | processing    | —                     |
-| Honey Process       | processing    | —                     |
-| Anaerobic Fermentation | processing | —                     |
+| Ethiopian Heirloom / Landrace | variety | *Coffea arabica*  |
+| Natural (Dry) Process | processing  | —                     |
+| Washed (Wet) Process | processing   | —                     |
+| Yellow Honey Process | processing   | —                     |
+| Anaerobic Natural   | processing    | —                     |
 
 ## Equipment Catalog
 
 The equipment catalog contains **378 items** across 8 categories:
 
-| Category                              | Count | Examples                                    |
-| ------------------------------------- | ----: | ------------------------------------------- |
-| Espresso Machines — Commercial        |   110 | La Marzocco Linea Mini, Profitec Pro 700    |
-| Grinders                              |    65 | Mahlkönig EK43, Baratza Encore ESP          |
-| Pour-Over & Filter Brewers            |    44 | Hario V60, Chemex, Kalita Wave             |
-| Immersion & Pressure Brewers          |    53 | Aeropress, French Press, Moka Pot           |
-| Kettles & Water Tools                 |    20 | Fellow Stagg EKG, Hario Buono               |
-| Milk Texturing & Frothing Tools       |    12 | Motta Pitcher, Nanofoamer                    |
-| Scales, Measurement & Accessories     |    60 | Acaia Lunar, Hario Drip Scale, timemore     |
-| Coffee Roasters                       |    14 | Aillio Bullet R1, Huky 500T                 |
+| Category (source file)                | `type`             | Count | Examples                                     |
+| ------------------------------------- | ------------------ | ----: | -------------------------------------------- |
+| Espresso Machines — Commercial        | `espresso_machine` |   110 | La Marzocco Linea Mini, Profitec Pro 600     |
+| Grinders                              | `grinder`          |    65 | Mahlkönig EK43 / EK43 S, Baratza Encore ESP  |
+| Pour-Over & Filter Brewers            | `pour_over_brewer` |    44 | Hario V60 02 Ceramic, Chemex, Kalita Wave    |
+| Immersion & Pressure Brewers          | `immersion_brewer` |    53 | AeroPress, Espro P3 French Press, Bialetti Moka Express |
+| Kettles & Water Tools                 | `kettle`           |    20 | Fellow Stagg EKG, Hario V60 Buono            |
+| Milk Texturing & Frothing Tools       | `milk_tool`        |    12 | Fellow Opus Milk Pitcher, Subminimal NanoFoamer |
+| Scales, Measurement & Accessories     | `scale_accessory`  |    60 | Acaia Lunar, Felicita Arc, Timemore Black Mirror |
+| Coffee Roasters                       | `roaster`          |    14 | Aillio Bullet R1 V2, Ikawa Pro V3            |
+
+The remaining nine equipment types (`portafilter`, `basket`, `puck_screen`, `paper_filter`,
+`tamper`, `mesh_filter`, `cezve`, `thermometer`, `other`) have no catalog entries; users add such
+items themselves.
 
 ### Equipment Structure
 
@@ -70,9 +74,11 @@ Each equipment record includes:
 
 ### Recipe → Coffee Variety
 
-Each recipe version can optionally reference a coffee variety via `recipe_versions.coffee_variety_id`.
-Additionally, recipe versions carry a free-text `coffee_variety_name` field for cases where a
-specific variety isn't in the database.
+Each recipe version can optionally reference a coffee variety via `recipe_versions.coffee_variety_id`
+(`coffeeVarietyId` in the API). The version also stores `coffee_variety_name`, a copy of the
+variety's name that the API resolves server-side when the variety is set; clients never send
+`coffeeVarietyName`, and clearing `coffeeVarietyId` clears it. The copy keeps the name readable
+on old versions, forks and diffs.
 
 ```text
 recipe → recipe_version → coffee_variety
@@ -93,14 +99,15 @@ User setups (brewing station configurations) also link to equipment, allowing us
 their exact gear:
 
 ```text
-setup → equipment (via portafilter_id, basket_id, puck_screen_id, etc.)
+setup → equipment (via portafilter_id, basket_id, puck_screen_id, paper_filter_id, tamper_id)
 ```
 
 ### Brew Method Compatibility
 
 The `brew_method_equipment_rule` table defines which equipment types are compatible with which
 brew methods (e.g., a `portafilter` is compatible with `espresso_machine` but not with `v60`).
-This provides data-driven validation when users select equipment for a recipe.
+Recipe create and edit reject incompatible equipment with `422 VALIDATION_ERROR`, and admins
+toggle rules on the admin compatibility page.
 
 ## Seed Data Files
 
@@ -110,9 +117,10 @@ The canonical seed data lives in static TypeScript files (not parsed from JSON a
 |---|---|---|
 | `packages/db/src/seed-equipment-catalog.ts` | 378 equipment entries with pre-populated IDs | Generated from `files/coffee_equipments_v2.json` |
 | `packages/db/src/seed-coffee-varieties.ts` | 98 coffee variety entries with pre-populated IDs | Generated from `files/coffee_types_v2.json` |
-| `packages/db/src/seed-users-recipes.ts` | Users, recipes, vendors, beans, social data, setups | Manually maintained |
+| `packages/db/src/seed-users-recipes.ts` | Users, recipes, vendors, beans, social data, setups, brew-method/equipment rules | Manually maintained |
 
-All catalog entries have deterministic UUIDs (derived from names) and `isSystem: true`.
+All catalog entries have deterministic UUIDs (UUID v5 derived from names) and `isSystem: true`.
+`packages/db/src/seed.ts` inserts them (plus the taste-note wheel from `files/scaa-2.json`).
 
 ## How to Contribute New Coffee Varieties or Equipment
 
@@ -122,7 +130,8 @@ All catalog entries have deterministic UUIDs (derived from names) and `isSystem:
 2. **Generate a deterministic UUID** for the new entry (use the same hashing approach
    as existing entries — namespace + name).
 3. **Add the `coffeeVarietyName`** to existing or new recipes in
-   `packages/db/src/seed-users-recipes.ts` if they should reference the new entry.
+   `packages/db/src/seed-users-recipes.ts` if they should reference the new entry (the seed
+   looks the variety up by that exact name and sets `coffeeVarietyId`).
 4. **Run the seed** to populate the database:
    ```bash
    make db-seed

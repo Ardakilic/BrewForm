@@ -1,31 +1,22 @@
-import { useEffect, useState } from 'react';
-import { api } from '../../api/client.ts';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { useEffect } from 'react';
+import { useFetcher, useLoaderData } from 'react-router';
+import type { AdminRecipe } from '../../api/types.ts';
 import { useConfirm } from '../../components/ui/Modal.tsx';
-import { useToast } from '../../components/ui/Toast.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './AdminRecipesPage.data.ts';
 
 const log = createLogger('AdminRecipesPage');
 
-interface Recipe {
-  id: string;
-  title: string;
-  slug: string;
-  visibility: string;
-  author: { username: string };
-  likeCount: number;
-  commentCount: number;
-  createdAt: string;
-}
-
-/** Admin page: recipe list with per-recipe visibility change and delete. */
+/**
+ * Admin page: recipe list with per-recipe visibility change and delete. Recipes come from the
+ * `/admin/recipes` route loader; both mutations submit `intent`s to the route action
+ * (`AdminRecipesPage.data.ts`) through per-row fetchers and toast on `{ ok: false }`.
+ */
 export function AdminRecipesPage() {
   const { t } = useTranslation();
-  const { confirm } = useConfirm();
-  const toast = useToast();
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { recipes } = useLoaderData<typeof loader>();
 
   useEffect(() => {
     log.debug({}, 'AdminRecipesPage mounted');
@@ -34,31 +25,65 @@ export function AdminRecipesPage() {
     };
   }, []);
 
-  useEffect(() => {
-    // The API uses paginated() which puts the array directly in data.data.
-    // The client unwraps data.data, so the resolved value is the array itself.
-    api
-      .get<Recipe[]>('/admin/recipes?perPage=50')
-      .then((data: Recipe[]) => {
-        setRecipes(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => {
-        log.error({ err }, 'AdminRecipesPage loadData failed');
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+        {t('admin.recipes.management')}
+      </h1>
 
-  async function changeVisibility(id: string, visibility: string) {
-    try {
-      await api.patch(`/admin/recipes/${id}/visibility`, { visibility });
-      setRecipes((prev) => prev.map((r) => (r.id === id ? { ...r, visibility } : r)));
-    } catch (err) {
-      log.error({ err, recipeId: id }, 'changeVisibility failed');
-      toast.error('admin.recipes.visibilityError');
-    }
-  }
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
+              <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                {t('common.title')}
+              </th>
+              <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                {t('admin.recipes.author')}
+              </th>
+              <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                {t('recipe.visibility')}
+              </th>
+              <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                {t('admin.recipes.stats')}
+              </th>
+              <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                {t('common.actions')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {recipes.map((recipe) => (
+              <RecipeRow key={recipe.id} recipe={recipe} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
-  async function deleteRecipe(id: string) {
+/**
+ * One moderation row with its own fetcher. The visibility select shows the submitted value
+ * optimistically and a deleted row hides while its delete is in flight; a failure toasts and
+ * the row falls back to the saved recipe (the loader revalidates after every submission).
+ */
+function RecipeRow({ recipe }: { recipe: AdminRecipe }) {
+  const { t } = useTranslation();
+  const { confirm } = useConfirm();
+  const fetcher = useFetcher<typeof action>();
+  useActionFeedback(fetcher, {
+    errorKey: (data) =>
+      data.intent === 'delete' ? 'admin.recipes.deleteFailed' : 'admin.recipes.visibilityError',
+  });
+
+  const pendingIntent = fetcher.formData?.get('intent');
+  if (pendingIntent === 'delete') return null;
+  const pendingVisibility = fetcher.formData?.get('visibility');
+  const visibility = typeof pendingVisibility === 'string' ? pendingVisibility : recipe.visibility;
+
+  /** Asks for confirmation, then submits the `delete` intent. */
+  async function deleteRecipe() {
     if (
       !(await confirm({
         titleKey: 'common.confirmDelete',
@@ -67,89 +92,47 @@ export function AdminRecipesPage() {
       }))
     )
       return;
-    try {
-      await api.delete(`/admin/recipes/${id}`);
-      setRecipes((prev) => prev.filter((r) => r.id !== id));
-    } catch (err) {
-      log.error({ err, recipeId: id }, 'deleteRecipe failed');
-      toast.error('admin.recipes.deleteFailed');
-    }
+    fetcher.submit({ intent: 'delete', id: recipe.id }, { method: 'post' });
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
-        {t('admin.recipes.management')}
-      </h1>
-
-      {loading ? (
-        <LoadingState />
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                  {t('common.title')}
-                </th>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                  {t('admin.recipes.author')}
-                </th>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                  {t('recipe.visibility')}
-                </th>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                  {t('admin.recipes.stats')}
-                </th>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                  {t('common.actions')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {recipes.map((recipe) => (
-                <tr key={recipe.id} style={{ borderBottom: '1px solid var(--border-primary)' }}>
-                  <td className="py-2 px-3" style={{ color: 'var(--text-primary)' }}>
-                    {recipe.title}
-                  </td>
-                  <td className="py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
-                    {recipe.author?.username}
-                  </td>
-                  <td className="py-2 px-3">
-                    <select
-                      value={recipe.visibility}
-                      onChange={(e) => changeVisibility(recipe.id, e.target.value)}
-                      className="text-xs rounded px-2 py-1"
-                      style={{
-                        backgroundColor: 'var(--bg-tertiary)',
-                        color: 'var(--text-primary)',
-                        border: '1px solid var(--border-primary)',
-                      }}
-                    >
-                      <option value="draft">{t('visibility.draft')}</option>
-                      <option value="private">{t('visibility.private')}</option>
-                      <option value="unlisted">{t('visibility.unlisted')}</option>
-                      <option value="public">{t('visibility.public')}</option>
-                    </select>
-                  </td>
-                  <td className="py-2 px-3 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                    ❤️{recipe.likeCount} 💬{recipe.commentCount}
-                  </td>
-                  <td className="py-2 px-3">
-                    <button
-                      type="button"
-                      onClick={() => deleteRecipe(recipe.id)}
-                      className="btn-danger-text text-xs"
-                    >
-                      {t('common.delete')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+    <tr style={{ borderBottom: '1px solid var(--border-primary)' }}>
+      <td className="py-2 px-3" style={{ color: 'var(--text-primary)' }}>
+        {recipe.title}
+      </td>
+      <td className="py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+        {recipe.author?.username}
+      </td>
+      <td className="py-2 px-3">
+        <select
+          value={visibility}
+          onChange={(e) =>
+            fetcher.submit(
+              { intent: 'visibility', id: recipe.id, visibility: e.target.value },
+              { method: 'post' },
+            )
+          }
+          className="text-xs rounded px-2 py-1"
+          style={{
+            backgroundColor: 'var(--bg-tertiary)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-primary)',
+          }}
+        >
+          <option value="draft">{t('visibility.draft')}</option>
+          <option value="private">{t('visibility.private')}</option>
+          <option value="unlisted">{t('visibility.unlisted')}</option>
+          <option value="public">{t('visibility.public')}</option>
+        </select>
+      </td>
+      <td className="py-2 px-3 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+        ❤️{recipe.likeCount} 💬{recipe.commentCount}
+      </td>
+      <td className="py-2 px-3">
+        <button type="button" onClick={deleteRecipe} className="btn-danger-text text-xs">
+          {t('common.delete')}
+        </button>
+      </td>
+    </tr>
   );
 }

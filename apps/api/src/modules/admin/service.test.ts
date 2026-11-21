@@ -29,8 +29,12 @@ import {
 } from '@brewform/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import type { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import { closeTestCaches, testCache } from '../../utils/cache/test-helpers.ts';
 import * as service from './service.ts';
+
+// Close every provider created with testCache() so no sweep timer leaks.
+afterEach(closeTestCaches);
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -965,14 +969,14 @@ describe('deleteVendor', () => {
 
 describe('listTasteNotes', () => {
   it('should return the seeded taste note hierarchy', async () => {
-    const cache = new InMemoryCacheProvider();
+    const cache = testCache();
     const result = await service.listTasteNotes(cache);
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBeGreaterThan(0);
   });
 
   it('should serve subsequent calls from the cache', async () => {
-    const cache = new InMemoryCacheProvider();
+    const cache = testCache();
     const first = await service.listTasteNotes(cache);
     const second = await service.listTasteNotes(cache);
     // The in-memory cache stores the value by reference, so a cache hit
@@ -998,7 +1002,7 @@ describe('createTasteNote', () => {
   });
 
   it('should create the note and write a CREATE_TASTE_NOTE audit log', async () => {
-    const cache = new InMemoryCacheProvider();
+    const cache = testCache();
     const name = `Svc Note ${crypto.randomUUID().slice(0, 8)}`;
     const result = await service.createTasteNote(
       adminId,
@@ -1038,7 +1042,7 @@ describe('updateTasteNote', () => {
   });
 
   it('should update the note and write an UPDATE_TASTE_NOTE audit log', async () => {
-    const cache = new InMemoryCacheProvider();
+    const cache = testCache();
     await service.updateTasteNote(adminId, noteId, { name: 'Renamed Note' }, cache);
 
     const [row] = await db.select().from(tasteNotes).where(eq(tasteNotes.id, noteId));
@@ -1070,7 +1074,7 @@ describe('deleteTasteNote', () => {
   });
 
   it('should soft-delete the note and write a DELETE_TASTE_NOTE audit log', async () => {
-    const cache = new InMemoryCacheProvider();
+    const cache = testCache();
     await service.deleteTasteNote(adminId, noteId, cache);
 
     const [row] = await db.select().from(tasteNotes).where(eq(tasteNotes.id, noteId));
@@ -1109,7 +1113,7 @@ describe('updateCompatibilityRule', () => {
     const [rule] = await db.select().from(brewMethodEquipmentRules).limit(1);
     ruleId = rule.id;
     originalCompatible = rule.compatible;
-    cache = new InMemoryCacheProvider();
+    cache = testCache();
     await cache.set(['cache', 'compatibility', 'matrix'], { seeded: true });
   });
 
@@ -1147,7 +1151,7 @@ describe('createCompatibilityRule', () => {
   beforeEach(async () => {
     adminId = await insertAdmin();
     createdIds = [];
-    cache = new InMemoryCacheProvider();
+    cache = testCache();
     await cache.set(['cache', 'compatibility', 'matrix'], { seeded: true });
   });
 
@@ -1209,7 +1213,7 @@ describe('deleteCompatibilityRule', () => {
       equipmentType: 'grinder',
       compatible: true,
     });
-    cache = new InMemoryCacheProvider();
+    cache = testCache();
     await cache.set(['cache', 'compatibility', 'matrix'], { seeded: true });
   });
 
@@ -1415,7 +1419,7 @@ describe('flushCache', () => {
       email: 'system@brewform.test',
       username: 'system',
     });
-    cache = new InMemoryCacheProvider();
+    cache = testCache();
     await cache.set(['cache', 'alpha'], 1);
     await cache.set(['cache', 'beta'], 2);
     await cache.set(['other', 'gamma'], 3);

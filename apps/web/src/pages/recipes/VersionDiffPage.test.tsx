@@ -1,26 +1,19 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { t } from '@brewform/shared/i18n';
+import type { VersionDiffOutput } from '@brewform/shared/schemas';
+import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/utils/logger.ts', () => ({
-  createLogger: () => ({
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     trace: vi.fn(),
     fatal: vi.fn(),
-  }),
+  },
 }));
-
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: () => ({
-    t: (k: string) => k,
-    locale: 'en',
-    setLocale: vi.fn(),
-    availableLocales: ['en', 'tr'],
-  }),
-}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('../../hooks/useUnitSystem.ts', () => ({
   useUnitSystem: () => 'metric',
@@ -32,8 +25,11 @@ vi.mock('../../api/index.ts', () => ({
   },
 }));
 
-import type { VersionDiffOutput } from '@brewform/shared/schemas';
+import { ApiError } from '../../api/errors.ts';
 import { recipeApi } from '../../api/index.ts';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { loader } from './VersionDiffPage.data.ts';
 import { VersionDiffPage } from './VersionDiffPage.tsx';
 
 const mockRecipeApi = vi.mocked(recipeApi);
@@ -50,53 +46,124 @@ const mockDiff: VersionDiffOutput = {
   equipment: { added: [], removed: [], unchanged: ['Hario V60'] },
 };
 
-function renderPage() {
-  const router = createMemoryRouter(
-    [{ path: '/recipes/:slug/versions/diff', element: <VersionDiffPage /> }],
-    { initialEntries: ['/recipes/test-recipe/versions/diff?v1=1&v2=2'] },
+/** Renders the diff page for `url` through the real loader. */
+function renderPage(url = '/recipes/test-recipe/versions/diff?v1=1&v2=2') {
+  return renderWithAppProviders(
+    [
+      {
+        path: '/recipes/:slug/versions/diff',
+        loader,
+        Component: VersionDiffPage,
+        errorElement: <RouteErrorState />,
+      },
+    ],
+    { initialEntries: [url] },
   );
-  render(<RouterProvider router={router} />);
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   mockRecipeApi.diffVersions.mockResolvedValue(mockDiff);
 });
 
-describe('VersionDiffPage', () => {
-  it('shows loading state initially', () => {
-    mockRecipeApi.diffVersions.mockReturnValue(new Promise(() => {}));
+describe('/recipes/:slug/versions/diff loader', () => {
+  it('reads ?v1&v2 and forwards request.signal', async () => {
     renderPage();
-    expect(screen.getByText('common.loading')).toBeInTheDocument();
+
+    expect(await screen.findByText(t('recipe.brewMethod'))).toBeInTheDocument();
+    expect(mockRecipeApi.diffVersions).toHaveBeenCalledWith('test-recipe', '1', '2', {
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it('renders the route error state (not common.noResults) when the diff fails', async () => {
+    mockRecipeApi.diffVersions.mockRejectedValue(new Error('fail'));
+    renderPage();
+
+    expect(await screen.findByText(t('error.route.loadFailed'))).toBeInTheDocument();
+    expect(screen.queryByText(t('common.noResults'))).not.toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: 'test-recipe' }),
+      'VersionDiffPage loadDiff failed',
+    );
+  });
+
+  it('renders the not-found page for an unknown version', async () => {
+    mockRecipeApi.diffVersions.mockRejectedValue(
+      new ApiError('NOT_FOUND', 'missing', undefined, 404),
+    );
+    renderPage();
+
+    expect(await screen.findByText(t('error.404'))).toBeInTheDocument();
+  });
+
+  it('renders the not-found page without a request when v1 or v2 is missing', async () => {
+    renderPage('/recipes/test-recipe/versions/diff?v1=1');
+
+    expect(await screen.findByText(t('error.404'))).toBeInTheDocument();
+    expect(mockRecipeApi.diffVersions).not.toHaveBeenCalled();
+  });
+});
+
+describe('VersionDiffPage', () => {
+  it('is never indexed (derived view): sets robots noindex, nofollow', async () => {
+    renderPage();
+    await screen.findByText(t('recipe.brewMethod'));
+
+    await waitFor(() =>
+      expect(document.head.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe(
+        'noindex, nofollow',
+      ),
+    );
   });
 
   it('renders diff fields with correct statuses after load', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('recipe.brewMethod')).toBeInTheDocument();
-    });
+    expect(await screen.findByText(t('recipe.brewMethod'))).toBeInTheDocument();
     expect(screen.getByText('espresso_machine')).toBeInTheDocument();
     expect(screen.getByText('v60')).toBeInTheDocument();
-    expect(screen.getByText('recipe.temperature')).toBeInTheDocument();
+    expect(screen.getByText(t('recipe.temperature'))).toBeInTheDocument();
+  });
+
+  it("labels the personalNotes field as the brewer's notes", async () => {
+    mockRecipeApi.diffVersions.mockResolvedValue({
+      ...mockDiff,
+      fields: [{ field: 'personalNotes', value1: 'Floral', value2: 'Juicy', status: 'modified' }],
+    });
+    renderPage();
+    expect(await screen.findByText(t('recipe.brewerNotes'))).toBeInTheDocument();
+    expect(screen.getByText('Juicy')).toBeInTheDocument();
   });
 
   it('renders taste notes and equipment sections', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('recipe.tasteNotes')).toBeInTheDocument();
-    });
+    expect(await screen.findByText(t('recipe.tasteNotes'))).toBeInTheDocument();
     expect(screen.getByText('+ chocolate')).toBeInTheDocument();
     expect(screen.getByText('- citrus')).toBeInTheDocument();
     expect(screen.getByText('caramel')).toBeInTheDocument();
-    expect(screen.getByText('equipment.title')).toBeInTheDocument();
+    expect(screen.getByText(t('equipment.title'))).toBeInTheDocument();
     expect(screen.getByText('Hario V60')).toBeInTheDocument();
   });
 
-  it('shows empty state on error', async () => {
-    mockRecipeApi.diffVersions.mockRejectedValue(new Error('fail'));
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('common.noResults')).toBeInTheDocument();
+  it('formats durations, the ratio and the flow rate with the shared formatters', async () => {
+    mockRecipeApi.diffVersions.mockResolvedValue({
+      ...mockDiff,
+      fields: [
+        { field: 'extractionTimeSeconds', value1: 28, value2: 43200, status: 'modified' },
+        { field: 'brewRatio', value1: 2, value2: 2.2222223, status: 'modified' },
+        { field: 'flowRate', value1: null, value2: 1.2857143, status: 'added' },
+      ],
     });
+    renderPage();
+    expect(await screen.findByText('12h')).toBeInTheDocument();
+    expect(screen.getByText('28s')).toBeInTheDocument();
+    expect(screen.getByText('1:2')).toBeInTheDocument();
+    expect(screen.getByText('1:2.2')).toBeInTheDocument();
+    expect(
+      screen.getByText(t('recipe.brewTimeline.flowRate').replace('{value}', '1.3')),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('43200s')).not.toBeInTheDocument();
+    expect(screen.queryByText(/2\.2222/)).not.toBeInTheDocument();
   });
 });

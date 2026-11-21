@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { formatDecimal } from '../../utils/format.ts';
 import { AuthorButton } from '../ui/AuthorButton.tsx';
 
 /**
@@ -66,7 +67,7 @@ interface RecipeCardProps {
  * passed explicitly (e.g. `r.versions[0]` from the coffee-variety endpoint).
  */
 export function RecipeCard({ recipe, hideAuthor, version }: RecipeCardProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { author } = recipe;
   return (
     <Link to={`/recipes/${recipe.slug}`} className="card hover:shadow-lg transition-shadow">
@@ -86,7 +87,10 @@ export function RecipeCard({ recipe, hideAuthor, version }: RecipeCardProps) {
           <span>{version.brewMethod.replace(/_/g, ' ')}</span>
           <span>•</span>
           <span>{version.drinkType.replace(/_/g, ' ')}</span>
-          {version.rating && <span>• ★ {version.rating}</span>}
+          {/* Stored 1–10 rating shown on the five-star scale next to the star glyph */}
+          {version.rating != null && version.rating > 0 && (
+            <span>• ★ {formatDecimal(version.rating / 2, locale, 1)}</span>
+          )}
         </div>
       )}
       <div

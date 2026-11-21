@@ -1,9 +1,14 @@
 import '../../test-setup.ts';
+import { db } from '@brewform/db';
+import { setups } from '@brewform/db/schema';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { errorHandler } from '../../middleware/errorHandler.ts';
 import type { AppEnv } from '../../types/hono.ts';
 import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
 import { setCacheProvider } from '../../utils/cache/singleton.ts';
+import { bearer, NoteFixtures } from '../recipe-note/test-helpers.ts';
 import setupRouter from './index.ts';
 
 /**
@@ -123,5 +128,47 @@ describe('Setup Routes — pre-auth & validation', () => {
       });
       expect(res.status).toBe(401);
     });
+  });
+});
+
+describe('Setup Routes — concurrent default switch (DB-backed)', () => {
+  const fixtures = new NoteFixtures();
+
+  beforeEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  afterAll(async () => {
+    if (fixtures.userIds.length > 0) {
+      await db.delete(setups).where(inArray(setups.userId, fixtures.userIds));
+    }
+    await fixtures.cleanup();
+  });
+
+  it('answers concurrent set-default calls with 200/409, never 500, leaving one default', async () => {
+    const user = await fixtures.user('setup-default');
+    const token = await bearer(user);
+    const [a] = await db.insert(setups).values({ name: 'A', userId: user.id }).returning();
+    const [b] = await db.insert(setups).values({ name: 'B', userId: user.id }).returning();
+    const app = createTestApp();
+    app.onError(errorHandler);
+
+    const responses = await Promise.all(
+      [a.id, b.id].map((id) =>
+        app.request(`/api/v1/setups/${id}/set-default`, {
+          method: 'POST',
+          headers: { Authorization: token },
+        }),
+      ),
+    );
+
+    const statuses = responses.map((res) => res.status);
+    for (const status of statuses) expect([200, 409]).toContain(status);
+    expect(statuses).toContain(200);
+    const defaults = await db
+      .select({ id: setups.id })
+      .from(setups)
+      .where(and(eq(setups.userId, user.id), eq(setups.isDefault, true), isNull(setups.deletedAt)));
+    expect(defaults).toHaveLength(1);
   });
 });

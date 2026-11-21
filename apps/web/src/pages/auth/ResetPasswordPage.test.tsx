@@ -1,9 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthProvider } from '../../contexts/AuthContext.tsx';
-import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { action } from './ResetPasswordPage.data.ts';
 import { ResetPasswordPage } from './ResetPasswordPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
@@ -48,16 +47,12 @@ vi.mock('../../api/index.ts', () => ({
 
 import { authApi } from '../../api/index.ts';
 
+/** Renders `/reset-password` (with an optional `?token=`) with its real route action. */
 function renderPage(token?: string) {
   const initialEntry = token ? `/reset-password?token=${token}` : '/reset-password';
-  return render(
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <I18nProvider>
-        <AuthProvider>
-          <ResetPasswordPage />
-        </AuthProvider>
-      </I18nProvider>
-    </MemoryRouter>,
+  return renderWithAppProviders(
+    [{ path: '/reset-password', element: <ResetPasswordPage />, action }],
+    { initialEntries: [initialEntry], locale: 'en' },
   );
 }
 
@@ -98,10 +93,10 @@ describe('ResetPasswordPage', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: /reset password/i }));
     await waitFor(() => {
-      expect(authApi.resetPassword).toHaveBeenCalledWith({
-        token: 'valid-token',
-        newPassword: 'newpassword123',
-      });
+      expect(authApi.resetPassword).toHaveBeenCalledWith(
+        { token: 'valid-token', newPassword: 'newpassword123' },
+        { signal: expect.any(AbortSignal) },
+      );
     });
   });
 
@@ -148,5 +143,16 @@ describe('ResetPasswordPage', () => {
       { err: expect.any(Error) },
       'ResetPasswordPage resetPassword failed',
     );
+  });
+});
+
+describe('ResetPasswordPage — local validation', () => {
+  it('does not submit to the action when the passwords do not match', async () => {
+    renderPage('valid-token');
+    await userEvent.type(screen.getByPlaceholderText('At least 8 characters'), 'newpassword123');
+    await userEvent.type(screen.getByPlaceholderText('Re-enter your new password'), 'other');
+    await userEvent.click(screen.getByRole('button', { name: /reset password/i }));
+    await screen.findByText('Passwords do not match');
+    expect(authApi.resetPassword).not.toHaveBeenCalled();
   });
 });

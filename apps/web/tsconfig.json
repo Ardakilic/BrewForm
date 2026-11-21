@@ -33,6 +33,13 @@
     "src/**/*.preservation.test.tsx",
     "src/**/__tests__/*.integration.test.ts",
     "src/**/__tests__/*.integration.test.tsx",
-    "src/i18n-literals.test.ts"
+    "src/i18n-literals.test.ts",
+    "src/utils/chart/contrast.test.ts",
+    // Node-API source scans (node:fs/node:path; the web tsconfig has no Node types).
+    "src/architecture.test.ts",
+    "src/data-loading.enforcement.test.ts",
+    "src/robots.test.ts",
+    "src/router.reserved-slugs.test.ts",
+    "src/test-utils/source-scan.ts"
   ]
 }

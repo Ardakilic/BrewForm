@@ -1,10 +1,10 @@
 import type { NotificationOutput } from '@brewform/shared/schemas';
-import { Link } from 'react-router';
+import { Link, useFetcher } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
-import { notificationApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
+import { type markReadAction, markReadPath } from '../../routes/resources/notifications.ts';
 import { formatDate } from '../../utils/format.ts';
-import { notifyNotificationsChanged } from '../../utils/notification-events.ts';
 
 const log = createLogger('NotificationItem');
 
@@ -55,11 +55,23 @@ interface NotificationItemProps {
 /**
  * Single notification row: mention text (actor + recipe title interpolated
  * via i18n), unread dot, timestamp, and a mark-as-read affordance. Clicking
- * the row marks it read (fire-and-forget) and navigates to the recipe when
- * the metadata carries a `recipeSlug`.
+ * the row marks it read and navigates to the recipe when the metadata carries a
+ * `recipeSlug`. Marking read submits through a fetcher to the
+ * `resources/notifications/:id/read` action (no loader revalidation); the action broadcasts
+ * `brewform:notifications-changed` for the bell badge, `onRead` runs on `{ ok: true }`, and
+ * `{ ok: false }` shows an error toast.
  */
 export function NotificationItem({ notification, onRead, onNavigate }: NotificationItemProps) {
   const { t, locale } = useTranslation();
+  const fetcher = useFetcher<typeof markReadAction>();
+
+  useActionFeedback(fetcher, {
+    errorKey: 'notifications.markReadError',
+    onSuccess: () => {
+      log.debug({ notificationId: notification.id }, 'NotificationItem marked read');
+      onRead?.(notification.id);
+    },
+  });
 
   const meta = parseMetadata(notification.metadata);
   const username = notification.actorUsername ?? '';
@@ -105,19 +117,20 @@ export function NotificationItem({ notification, onRead, onNavigate }: Notificat
     return meta.recipeSlug ? `/recipes/${meta.recipeSlug}` : null;
   })();
 
+  /** Submits the mark-read action for an unread notification (no-op while one is pending). */
   function markRead() {
-    if (!isUnread) return;
-    notificationApi
-      .markRead(notification.id)
-      .then(() => {
-        onRead?.(notification.id);
-        notifyNotificationsChanged();
-      })
-      .catch((err) => {
-        log.error({ err, notificationId: notification.id }, 'markRead failed');
-      });
+    if (!isUnread || fetcher.state !== 'idle') return;
+    fetcher.submit(
+      {},
+      {
+        method: 'post',
+        action: markReadPath(notification.id),
+        defaultShouldRevalidate: false,
+      },
+    );
   }
 
+  /** Marks the notification read and lets the parent close its menu. */
   function handleActivate() {
     markRead();
     onNavigate?.();

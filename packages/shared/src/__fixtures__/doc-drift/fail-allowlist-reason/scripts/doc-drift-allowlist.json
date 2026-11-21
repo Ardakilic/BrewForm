@@ -1,0 +1,9 @@
+{
+  "entries": [
+    {
+      "path": "docs/history/**",
+      "reason": ""
+    }
+  ],
+  "retiredCapabilities": {}
+}

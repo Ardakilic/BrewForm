@@ -6,38 +6,58 @@ notes.
 ## Features
 
 - **Recipe Management** — Create, version, and fork coffee brewing recipes with full parameter
-  tracking
+  tracking; visibility is public, unlisted (direct link only), private or draft
+- **Brew Journal** — Log each brew of a recipe (version, actual dose and yield, rating, notes) and see your
+  brew history and per-recipe stats
+- **Collections** — Group recipes into named collections, reorder them, and browse other
+  brewers' public collections
 - **Coffee Varieties** — Browse 98 coffee varieties (botanical, processing methods, specialty lots) with search, filtering, and recipe linkage
 - **Equipment Catalog** — 378 coffee machines, grinders, brewers, kettles, and tools across 17 equipment types with branded search and recipe integration
 - **SCAA Taste Notes** — Structured tasting notes from the SCAA 2016 Flavor Wheel with autocomplete
 - **Brew Method Compatibility** — Data-driven validation ensures brew methods and equipment are
   compatible
 - **Social Features** — Follow brewers, like/favourite recipes, comment with OP-only replies; admins can reply to and delete any comment
+- **Notifications** — In-app notification bell and list (new followers, likes, comments and
+  @mentions in comments) plus email, which also announces new recipes from brewers you follow;
+  each category has its own preference toggle
+- **Version Control** — Each recipe edit can create an immutable version snapshot; browse the
+  full history and diff any two versions side by side
+- **Compare and Merge** — Compare two recipes field by field and merge selected parameters of
+  both into a new recipe draft
+- **Advanced Search** — Ranked recipe search (trigram-indexed) with filters (brew method, drink
+  type, equipment, coffee variety, taste notes, author, date and rating ranges) and cursor
+  pagination
+- **Sitemap and Social Previews** — `/api/v1/sitemap.xml` lists public recipes, and shared links
+  render Open Graph previews for crawlers
 - **🌐 Language Switcher** — Switch between English and Turkish from the footer dropdown
 - **Achievement Badges** — Gamification system with data-driven badge rules
-- **QR Codes** — Generate shareable QR codes for public recipes (PNG and SVG)
+- **QR Codes** — Generate shareable QR codes for public and unlisted recipes (PNG and SVG)
 - **Three Themes** — Light, Dark, and Coffee mode
 - **Canonical Units** — All data stored in metric; UI converts to user preferences
-- **Version Control** — Each recipe edit creates an immutable snapshot; full history browsable
 - **Onboarding Wizard** — Guided 5-step setup for new users
-- **Admin Dashboard** — User management, content moderation, analytics, audit logging
+- **Admin Area** — User management (create, edit, ban and unban), recipe and catalog management
+  (equipment, vendors, taste notes, coffee varieties, badges, compatibility rules), the audit log,
+  cache tools and dashboard stats. The report moderation queue and the analytics charts are
+  API-only (`/api/v1/admin/reports`, `/api/v1/admin/analytics/*`) until their admin UI ships
+  (F15/F17 in [`plans/ROADMAP.md`](plans/ROADMAP.md))
 
 ## Tech Stack
 
-| Layer      | Technology                                  |
-| ---------- | ------------------------------------------- |
-| Runtime    | Node 26 LTS                                   |
-| Monorepo   | pnpm workspaces                               |
-| Backend    | Hono                                        |
-| Frontend   | React 19 + Vite + Tailwind CSS v4 + Base UI |
-| ORM        | Drizzle ORM (postgres-js driver)            |
-| Database   | PostgreSQL                                  |
-| Cache      | In-memory default, Redis-backed optional (`CACHE_ENABLED`/`CACHE_DRIVER`) |
-| Storage    | Local filesystem or S3-compatible (Garage)  |
-| Email      | MJML (pre-compiled at build time)           |
-| Validation | Zod (shared between frontend and backend)   |
-| Testing    | Vitest                                        |
-| CI/CD      | GitHub Actions → GHCR images (Coolify)        |
+| Layer      | Technology                                                                     |
+| ---------- | ------------------------------------------------------------------------------ |
+| Runtime    | Node 26 LTS (tsx in development)                                               |
+| Monorepo   | pnpm workspaces                                                                |
+| Backend    | Hono                                                                           |
+| Frontend   | React 19 + React Router + Vite + Tailwind CSS v4 + Base UI                     |
+| ORM        | Drizzle ORM (postgres-js driver)                                               |
+| Database   | PostgreSQL 18                                                                  |
+| Cache      | In-memory default or Redis-protocol via `CACHE_DRIVER=redis` (Valkey 9.1 in compose); `CACHE_ENABLED` |
+| Storage    | Local filesystem or S3-compatible (Garage)                                     |
+| Email      | MJML (pre-compiled at build time)                                              |
+| Validation | Zod (shared between frontend and backend)                                      |
+| Lint/format| Biome                                                                          |
+| Testing    | Vitest + Testing Library                                                       |
+| CI/CD      | GitHub Actions → GHCR (CI-gated publish)                                       |
 
 ## Quick Start
 
@@ -45,8 +65,8 @@ All commands run through Docker. No local Node/pnpm installation required.
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/brewform.git
-cd brewform
+git clone https://github.com/Ardakilic/BrewForm.git
+cd BrewForm
 
 # Copy environment config (required by Docker Compose services such as Garage)
 cp .env.example .env
@@ -73,9 +93,33 @@ make db-seed
 make dev
 ```
 
-Admin credentials after seeding: `admin@brewform.local` / `admin123456`
-
 Open **http://localhost:5173** for the web app and **http://localhost:8000** for the API.
+
+### Seeded accounts
+
+The seed (`make db-seed` here; the API image's `migrate` step on its first boot) creates these
+accounts whenever it runs against a database whose `users` table is empty. **That includes the
+first boot of a production install**, so change the passwords (or delete the demo users) right
+after a production install.
+
+| Account | Email | Password |
+| ------- | ----- | -------- |
+| Admin | `admin@brewform.local` (`ADMIN_EMAIL`), username `admin` (`ADMIN_USERNAME`) | `admin123456`, or `ADMIN_PASSWORD` when set |
+| Demo users `alice`, `bob`, `charlie`, `diana`, `evan` | `<username>@example.com` | `user123456` |
+
+The `ADMIN_*` variables are read only when the admin row is created; changing them later does not
+update an existing admin. The seed also inserts the reference catalogs and demo content (18
+recipes, beans, setups, comments, collections and brew logs for the demo users).
+
+### Tests
+
+DB-backed tests run against a separate `brewform_test` database. Provision it once after
+`make up` (idempotent, safe to re-run after new migrations):
+
+```bash
+make test-db-provision
+make test
+```
 
 ## Development
 
@@ -94,26 +138,30 @@ make preview        # Build web + preview production build (API :8000 + web :808
 # Code quality
 make check          # Type-check all workspaces (api, web, db, shared)
 make check-api      # Type-check API only
-make check-web      # Lint web frontend
+make check-web      # Type-check web frontend
 make check-db       # Type-check database package
 make check-shared   # Type-check shared package
 make lint           # Lint all apps and packages
 make fmt            # Format the codebase
 make fmt-check      # Check formatting without changes
+make docs-check     # Doc-drift check (docs/specs) + docblock scan of exported symbols
 
 # Dependencies
 make install          # Install pnpm dependencies (frozen lockfile)
 make lockfile-update  # Regenerate pnpm-lock.yaml inside Docker (after dep changes)
 
 # Testing
-make test           # Run all tests
-make test-coverage  # Run tests with coverage
-make test-api       # Run API tests only
-make test-shared    # Run shared package tests only
-make check-tests    # Type-check test files
+make test-db-provision  # Create + migrate + seed the brewform_test DB (once, before DB-backed tests)
+make test               # Run all tests (API + shared + db + web)
+make test-coverage      # Run tests with coverage
+make test-api           # Run API tests only
+make test-shared        # Run shared package tests only
+make test-web           # Run web (Vitest + Testing Library) tests only
+make test-specific filter=src/path/to/file.test.ts  # Run one api/db/shared test file (substring match; not web)
+make check-tests        # Type-check test files
 
 # CI
-make ci             # Full CI pipeline (fmt, lint, check, build, test)
+make ci             # Full CI pipeline locally (fmt, lint, check, build, test, docs)
 ```
 
 > **Why `make up` does not start the app?**
@@ -137,16 +185,21 @@ make ci             # Full CI pipeline (fmt, lint, check, build, test)
 ## Database
 
 ```bash
-make db-push         # Push schema changes (always use for enum changes)
-make db-generate     # Generate Drizzle migration SQL
+make db-generate     # Generate a Drizzle migration from packages/db/src/schema.ts
 make db-migrate      # Apply pending migrations
-make db-seed         # Seed sample data (378 equipment + 98 varieties + 6 recipes)
+make db-push         # Prototyping only — use db-generate + db-migrate for schema changes
+make db-seed         # Seed reference + demo data (378 equipment, 98 varieties, 18 recipes, demo users)
 make db-studio       # Open Drizzle Studio (GUI)
+make db-check-identifiers  # Report rows that break the case-insensitive identifier indexes
 make flush-db        # Truncate all database tables
 make flush-cache     # Clear API cache
 make flush-contents  # Truncate all tables + clear API cache
-make db-reset        # Full reset: recreate DB, push schema, re-seed, flush cache
+make db-reset        # Drop + recreate the dev DB, enable pg_trgm, push schema, seed, flush cache
 ```
+
+Schema changes are made in `packages/db/src/schema.ts` and shipped as a generated migration
+(`make db-generate && make db-migrate`). `make db-reset` builds the dev database with
+`drizzle-kit push`, so run `make db-migrate` only against databases created by migrations.
 
 ## Architecture
 
@@ -157,8 +210,8 @@ apps/api ──┬──→ packages/shared
            └──→ packages/db ──→ packages/shared
 ```
 
-- **`apps/api/`** — Hono backend API (Node 26 + tsx)
-- **`apps/web/`** — React SPA frontend (static build served by Caddy)
+- **`apps/api/`** — Hono backend API (Node 26; `tsx` watch in development, native TypeScript in the image)
+- **`apps/web/`** — React SPA frontend (static build served by Caddy, which can also proxy `/api` same-origin)
 - **`packages/shared/`** — Types, Zod schemas, constants, utils, i18n
 - **`packages/db/`** — Drizzle schema, migrations, seed data, client
 
@@ -173,15 +226,16 @@ brewform/
 │   │   └── src/
 │   │       ├── main.ts         # Server bootstrap, graceful shutdown
 │   │       ├── config/         # Zod-validated env config
-│   │       ├── middleware/     # CORS, requestId, errorHandler, auth, rateLimit
-│   │       ├── modules/        # Domain modules (auth, recipe, user, ...)
-│   │       ├── routes/         # Health, OpenAPI, route aggregator
-│   │       ├── utils/          # logger, cache, response, qrcode, upload, jobs
+│   │       ├── middleware/     # CORS, requestId, rateLimit, bodyLimit, crawler, auth, errorHandler
+│   │       ├── modules/        # Domain modules (auth, recipe, health, ...)
+│   │       ├── routes/         # Route aggregator, OpenAPI, sitemap, share pages
+│   │       ├── utils/          # logger, cache, rate-limit, client-ip, response, storage, upload, jobs
 │   │       ├── types/          # Hono env, MJML type declarations
 │   │       └── templates/      # MJML email templates
 │   └── web/                    # React SPA frontend
 │       └── src/
-│           ├── pages/          # Route page components
+│           ├── routes/         # Root route, resource routes, actions
+│           ├── pages/          # Route page components + their loaders (*.data.ts)
 │           ├── components/     # Reusable UI components
 │           ├── contexts/       # Auth, Theme, I18n providers
 │           ├── api/            # API client + typed endpoint functions
@@ -193,10 +247,13 @@ brewform/
 │   ├── scaa-2.json              # SCAA 2016 flavor wheel data
 │   ├── coffee_types_v2.json     # Coffee varieties reference data (98 entries)
 │   └── coffee_equipments_v2.json # Equipment catalog reference data (378 items)
-├── docs/                      # Feature & API documentation
-├── .github/workflows/         # CI/CD pipelines
-├── compose.yml
-├── Dockerfile
+├── docs/                      # Feature & API documentation (index: docs/README.md)
+├── scripts/                   # Doc-drift check, docblock scan, CI helper scripts
+├── .github/workflows/ci.yml   # The single CI workflow (checks, image smoke tests, publish)
+├── compose.yml                # Development stack
+├── compose.production.yml     # Self-hosted production stack
+├── Dockerfile                 # API image
+├── Dockerfile.web             # Web image (Caddy)
 ├── Makefile
 ├── package.json
 ├── pnpm-workspace.yaml
@@ -211,45 +268,81 @@ brewform/
 | Web (Vite HMR)  | http://localhost:5173     | React dev server with hot reload |
 | Web (Caddy)     | http://localhost:8080     | Built SPA preview                |
 | PostgreSQL      | localhost:5432            | Database                         |
+| Valkey          | `valkey:6379` (compose network only) | Optional Redis-protocol cache / rate-limit store; not started by `make up` (`docker compose up -d valkey`, then `CACHE_DRIVER=redis` / `RATE_LIMIT_STORE=redis`) |
 | Mailpit SMTP    | localhost:1025            | SMTP server for email testing    |
 | Mailpit UI      | http://localhost:8025     | Email web UI                     |
 | pgAdmin         | http://localhost:5050     | Database GUI                     |
 | Garage S3 API   | http://localhost:3900     | S3-compatible object storage     |
 | Garage Web      | http://localhost:3902     | Garage web gateway               |
 
+## Self-hosting
+
+Production runs the published GHCR images. Two supported setups:
+
+- **Docker Compose** — [`docs/deployment_compose.md`](docs/deployment_compose.md) with
+  `compose.production.yml` and the `make prod-*` targets (`prod-up`, `prod-down`, `prod-ps`,
+  `prod-logs`, `prod-pull`, `prod-backup`, `prod-backup-export`, `prod-restore`, `prod-smoke`, …;
+  run `make help` for the full list).
+- **Coolify** — [`docs/deployment_coolify.md`](docs/deployment_coolify.md) (as-built) and
+  [`coolify_deployment_plan.md`](coolify_deployment_plan.md) (long-form).
+
 ## API
 
-The API is versioned at `/api/v1/`. See [docs/api.md](docs/api.md) for the full endpoint reference
-(100+ endpoints).
+The API is versioned at `/api/v1/`.
+
+- [docs/api.md](docs/api.md) — conventions: envelopes, error codes, authentication, pagination,
+  rate limits, request limits, visibility.
+- [docs/api-reference.md](docs/api-reference.md) — every route, generated from the OpenAPI
+  metadata (`pnpm --filter @brewform/api run docs:api`).
+- Interactive docs: the Scalar UI at `/api/v1/docs` and the spec at `/api/v1/openapi.json`
+  (when `OPENAPI_ENABLED` is on).
 
 ## Documentation
 
+The full index is [docs/README.md](docs/README.md).
+
 | Document                                               | Description                                                 |
 | ------------------------------------------------------ | ----------------------------------------------------------- |
-| [docs/api.md](docs/api.md)                             | Complete API endpoint reference                             |
+| [docs/README.md](docs/README.md)                       | Index of current documentation and `docs/history/`          |
+| [docs/api.md](docs/api.md)                             | API conventions (envelopes, errors, pagination, limits, visibility) |
+| [docs/api-reference.md](docs/api-reference.md)         | Generated per-route API reference                           |
 | [docs/auth.md](docs/auth.md)                           | Authentication flows and token strategy                     |
-| [docs/recipes.md](docs/recipes.md)                     | Recipe versioning, forking, validation                      |
+| [docs/recipes.md](docs/recipes.md)                     | Recipe versioning, forking, validation, visibility          |
+| [docs/comments.md](docs/comments.md)                   | Comment threads, OP-only replies, @mentions                 |
 | [docs/coffee-data.md](docs/coffee-data.md)             | Coffee varieties (98 entries) and equipment catalog         |
 | [docs/coffee-equipments.md](docs/coffee-equipments.md) | Equipment catalog reference (378 items, 17 types)           |
 | [docs/taste-notes.md](docs/taste-notes.md)             | SCAA Flavor Wheel integration and autocomplete              |
-| [docs/notifications.md](docs/notifications.md)         | Email categories, triggers, and delivery model              |
-| [docs/deployment.md](docs/deployment.md)               | Production deployment guide (legacy Deno Deploy target, superseded by Coolify) |
-| [docs/deployment_coolify.md](docs/deployment_coolify.md) | Coolify self-hosted deployment (as-built, GHCR, nuances)    |
+| [docs/notifications.md](docs/notifications.md)         | In-app and email notifications, preferences, @mentions      |
+| [docs/logging.md](docs/logging.md)                     | Structured logging rules and request ids                    |
+| [docs/seo.md](docs/seo.md)                             | Meta tags, sitemap, robots, social previews, noindex rules  |
 | [docs/architecture.md](docs/architecture.md)           | Monorepo structure, module pattern, conventions             |
 | [docs/request-lifecycle.md](docs/request-lifecycle.md) | End-to-end trace of an HTTP request through the API         |
 | [docs/decisions.md](docs/decisions.md)                 | Architectural decision records (the _why_ behind the stack) |
 | [docs/docker.md](docs/docker.md)                       | Docker development environment, volume strategy, troubleshooting |
+| [docs/deployment_compose.md](docs/deployment_compose.md) | Self-hosting with Docker Compose (`compose.production.yml`, `make prod-*`) |
+| [docs/deployment_coolify.md](docs/deployment_coolify.md) | Coolify self-hosted deployment (as-built, GHCR, nuances)    |
+
+**History** (superseded, kept for reference — do not follow):
+
+| Document | Description |
+| -------- | ----------- |
+| [docs/history/2026-10-11-serverless-deployment.md](docs/history/2026-10-11-serverless-deployment.md) | The retired serverless deployment guide, superseded by the Compose and Coolify guides |
+| [docs/history/2026-05-03-requirements-audit-report.md](docs/history/2026-05-03-requirements-audit-report.md) | May 2026 requirements audit snapshot |
 
 ## Container images
 
 The API and SPA publish to GHCR (`ghcr.io/ardakilic/brewform-api`, `ghcr.io/ardakilic/brewform-web`)
-on every push to `main` via `.github/workflows/release.yml`.
+from the `publish` job of `.github/workflows/ci.yml`. It runs only for pushes to `main` and `v*`
+tags, only after every other CI job passed, and pushes the exact images the `images` job
+smoke-tested (`latest` on `main`, the commit SHA, and the version tag on tag pushes).
 
 The **web image's API URL is runtime-configurable**: set `VITE_API_URL` as a container
 environment variable to point a prebuilt image at any API origin **without rebuilding** — the
 entrypoint writes it into `/config.js` at startup, overriding the build-time default baked by
-Vite (resolution order: runtime `/config.js` → build-time `VITE_API_URL` → `/api/v1`). See
-[coolify_deployment_plan.md](coolify_deployment_plan.md) and [docs/deployment.md](docs/deployment.md).
+Vite (resolution order: runtime `/config.js` → build-time `VITE_API_URL` → `/api/v1`). The web
+image can also serve the API same-origin (`API_UPSTREAM`) and rewrite its public origin at
+runtime (`PUBLIC_APP_URL`). See [docs/deployment_compose.md](docs/deployment_compose.md) and
+[docs/deployment_coolify.md](docs/deployment_coolify.md).
 
 ## License
 

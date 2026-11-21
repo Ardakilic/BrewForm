@@ -1,7 +1,13 @@
 # version-diff Specification
 
 ## Purpose
-TBD - created by archiving change f09-version-diff. Update Purpose after archive.
+
+Defines the recipe version diff: `GET /api/v1/recipes/:slug/versions/diff` compares two versions of
+the same recipe under the recipe's view rules and returns a shared, OpenAPI-documented output
+schema. The web `VersionDiffPage`, the `DiffHighlighter` extension and version selection on
+`RecipeVersionsPage` present it with themeable CSS variables and localized strings, backed by tests
+and docblocks.
+
 ## Requirements
 ### Requirement: Diff endpoint
 

@@ -6,9 +6,13 @@
  * the one-time database seed:
  *
  * ```sh
- * USER_COUNT=$(pnpm --filter @brewform/db exec tsx src/check-users-empty.ts)
- * [ "$USER_COUNT" = "0" ] && pnpm --filter @brewform/db run seed
+ * cd /app/packages/db
+ * USER_COUNT=$(node /app/packages/db/src/check-users-empty.ts)
+ * [ "$USER_COUNT" = "0" ] && node src/seed.ts
  * ```
+ *
+ * Node runs the TypeScript source directly (Node 26 native type stripping); no pnpm or
+ * tsx process is involved.
  *
  * The admin account is the first row the seed inserts, so an empty `users` table
  * means the database has never been seeded. Using the existing `@brewform/db`
@@ -20,7 +24,7 @@
  *   - stderr: any incidental diagnostics (none are emitted on the happy path).
  *
  * Failure behaviour: if the count query fails (DB unreachable, bad
- * `DATABASE_URL`, ...) the rejected promise propagates, tsx exits non-zero, and
+ * `DATABASE_URL`, ...) the rejected promise propagates, node exits non-zero, and
  * the entrypoint's `set -e` aborts the boot. The check NEVER masks an error to
  * `0`, which would otherwise re-seed an already-populated database on every boot.
  *

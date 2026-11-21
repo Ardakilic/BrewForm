@@ -7,7 +7,9 @@ import {
   recipeTasteNotes,
   recipeVersions,
   reports,
+  setups,
   tasteNotes,
+  userRecipeNotes,
   userRecipeRatings,
   users,
 } from './schema.ts';
@@ -72,6 +74,7 @@ describe('Schema CHECK constraints', () => {
    */
   afterEach(async () => {
     await db.delete(brewLogs).where(eq(brewLogs.userId, userId));
+    await db.delete(userRecipeNotes).where(eq(userRecipeNotes.recipeId, recipeId));
     await db.delete(recipeTasteNotes).where(eq(recipeTasteNotes.recipeVersionId, recipeVersionId));
     await db.delete(userRecipeRatings).where(eq(userRecipeRatings.recipeId, recipeId));
     await db.delete(tasteNotes).where(eq(tasteNotes.id, tasteNoteId));
@@ -213,6 +216,63 @@ describe('Schema CHECK constraints', () => {
     });
   });
 
+  describe('user_recipe_note_notes_length_check', () => {
+    it('should reject notes longer than 10000 characters', async () => {
+      await expect(
+        db.insert(userRecipeNotes).values({ userId, recipeId, notes: 'a'.repeat(10001) }),
+      ).rejects.toThrow();
+    });
+
+    it('should accept notes of exactly 10000 characters', async () => {
+      await expect(
+        db.insert(userRecipeNotes).values({ userId, recipeId, notes: 'a'.repeat(10000) }),
+      ).resolves.toBeDefined();
+    });
+
+    it('should accept an empty (scrubbed) note', async () => {
+      await expect(
+        db.insert(userRecipeNotes).values({ userId, recipeId, notes: '', deletedAt: new Date() }),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe('user_recipe_note_user_id_recipe_id_unique', () => {
+    it('should reject a second row for the same (user, recipe) pair', async () => {
+      await db.insert(userRecipeNotes).values({ userId, recipeId, notes: 'first' });
+      await expect(
+        db.insert(userRecipeNotes).values({ userId, recipeId, notes: 'second' }),
+      ).rejects.toThrow();
+    });
+
+    it('should reject a second row even when the first one is soft-deleted', async () => {
+      await db
+        .insert(userRecipeNotes)
+        .values({ userId, recipeId, notes: '', deletedAt: new Date() });
+      await expect(
+        db.insert(userRecipeNotes).values({ userId, recipeId, notes: 'again' }),
+      ).rejects.toThrow();
+    });
+
+    it("should accept another user's row for the same recipe", async () => {
+      const otherUserId = crypto.randomUUID();
+      await db.insert(users).values({
+        id: otherUserId,
+        email: `test-${otherUserId}@example.com`,
+        username: `testuser-${otherUserId}`,
+        passwordHash: 'hash',
+      });
+      try {
+        await db.insert(userRecipeNotes).values({ userId, recipeId, notes: 'mine' });
+        await expect(
+          db.insert(userRecipeNotes).values({ userId: otherUserId, recipeId, notes: 'theirs' }),
+        ).resolves.toBeDefined();
+      } finally {
+        await db.delete(userRecipeNotes).where(eq(userRecipeNotes.userId, otherUserId));
+        await db.delete(users).where(eq(users.id, otherUserId));
+      }
+    });
+  });
+
   describe('brew_log_personal_rating_check', () => {
     it('should reject personalRating = 0', async () => {
       await expect(
@@ -347,5 +407,83 @@ describe('Schema enum constraints', () => {
         ),
       ).rejects.toThrow();
     });
+  });
+});
+
+/**
+ * Await a promise that must reject and return the postgres-js error on its `cause` (drizzle-orm
+ * wraps driver errors in `DrizzleQueryError`).
+ *
+ * @param promise - The failing query.
+ */
+async function postgresCause(
+  promise: PromiseLike<unknown>,
+): Promise<{ code?: string; constraint_name?: string }> {
+  try {
+    await promise;
+  } catch (err) {
+    return ((err as { cause?: unknown }).cause ?? err) as {
+      code?: string;
+      constraint_name?: string;
+    };
+  }
+  throw new Error('expected the query to fail');
+}
+
+describe('Identifier unique indexes (wave-6 unique-identifiers)', () => {
+  const userIds: string[] = [];
+
+  /** Insert a user with the given email and username and track it for cleanup. */
+  function insertUser(email: string, username: string) {
+    const id = crypto.randomUUID();
+    userIds.push(id);
+    return db.insert(users).values({ id, email, username, passwordHash: 'hash' });
+  }
+
+  afterEach(async () => {
+    if (userIds.length === 0) return;
+    await db.delete(setups).where(inArray(setups.userId, userIds));
+    await db.delete(users).where(inArray(users.id, userIds));
+    userIds.length = 0;
+  });
+
+  it('rejects an email that differs only in case on user_email_lower_unique', async () => {
+    const m = crypto.randomUUID().slice(0, 8);
+    await insertUser(`Case${m}@example.com`, `case-a-${m}`);
+    const cause = await postgresCause(insertUser(`case${m}@example.com`, `case-b-${m}`));
+    expect(cause.code).toBe('23505');
+    expect(cause.constraint_name).toBe('user_email_lower_unique');
+  });
+
+  it('rejects a username that differs only in case on user_username_lower_unique', async () => {
+    const m = crypto.randomUUID().slice(0, 8);
+    await insertUser(`arda-a-${m}@example.com`, `Arda${m}`);
+    const cause = await postgresCause(insertUser(`arda-b-${m}@example.com`, `arda${m}`));
+    expect(cause.code).toBe('23505');
+    expect(cause.constraint_name).toBe('user_username_lower_unique');
+  });
+
+  it('rejects a second active default setup on setup_user_default_unique', async () => {
+    const m = crypto.randomUUID().slice(0, 8);
+    await insertUser(`setup-${m}@example.com`, `setup-${m}`);
+    const userId = userIds[0];
+    await db.insert(setups).values({ userId, name: 'First', isDefault: true });
+    const cause = await postgresCause(
+      db.insert(setups).values({ userId, name: 'Second', isDefault: true }),
+    );
+    expect(cause.code).toBe('23505');
+    expect(cause.constraint_name).toBe('setup_user_default_unique');
+  });
+
+  it('accepts a soft-deleted default setup plus an active default', async () => {
+    const m = crypto.randomUUID().slice(0, 8);
+    await insertUser(`setup-del-${m}@example.com`, `setup-del-${m}`);
+    const userId = userIds[0];
+    await db
+      .insert(setups)
+      .values({ userId, name: 'Deleted', isDefault: true, deletedAt: new Date() });
+    await expect(
+      db.insert(setups).values({ userId, name: 'Active', isDefault: true }),
+    ).resolves.toBeDefined();
   });
 });

@@ -1,9 +1,13 @@
 import '../../test-setup.ts';
+import { db } from '@brewform/db';
+import { users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
 import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
 import { setCacheProvider } from '../../utils/cache/singleton.ts';
+import { NoteFixtures } from '../recipe-note/test-helpers.ts';
 import userRouter from './index.ts';
 
 /**
@@ -92,5 +96,33 @@ describe('User Routes — pre-auth & validation', () => {
       expect(body.success).toBe(false);
       expect(body.error.code).toBe('NOT_FOUND');
     });
+  });
+});
+
+describe('User Routes — case-insensitive profile lookup (DB-backed)', () => {
+  const fixtures = new NoteFixtures();
+
+  beforeEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  it('resolves GET /api/v1/users/ARDA<m> to user Arda<m>', async () => {
+    const m = crypto.randomUUID().replaceAll('-', '').slice(0, 8);
+    const user = await fixtures.user('profile-case');
+    await db
+      .update(users)
+      .set({ username: `Arda${m}` })
+      .where(eq(users.id, user.id));
+
+    const app = createTestApp();
+    const res = await app.request(`/api/v1/users/ARDA${m}`);
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.data.id).toBe(user.id);
+    expect(body.data.username).toBe(`Arda${m}`);
   });
 });

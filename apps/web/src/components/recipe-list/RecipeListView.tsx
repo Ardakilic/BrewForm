@@ -16,6 +16,7 @@ import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { RecipeCardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useDebouncedUrlText } from '../../hooks/useListUrlState.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { Field } from '../form/Field.tsx';
 import { PaginationControls } from '../ui/PaginationControls.tsx';
@@ -65,7 +66,9 @@ export interface RecipeListViewProps {
 /**
  * Unified recipe-list view rendered by `/recipes` and `/recipes/starred`.
  * Owns filter sidebar, badges, recipe grid, and pagination. No data
- * fetching — all data flows in via props from the page loader.
+ * fetching — all data flows in via props from the page loader. Every
+ * selection lives in the URL (`useRecipeFilters`); the search and author
+ * inputs commit after a typing pause (`useDebouncedUrlText`).
  */
 export function RecipeListView({
   source,
@@ -100,8 +103,12 @@ export function RecipeListView({
     minRating,
     maxRating,
     updateFilter,
+    setPage,
     clearAllFilters,
   } = useRecipeFilters();
+  // Free-text filters commit to the URL after a 300 ms pause, replacing the history entry.
+  const searchInput = useDebouncedUrlText('search');
+  const authorInput = useDebouncedUrlText('author');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   useEffect(() => {
     log.debug({ source }, 'RecipeListView mounted');
@@ -271,8 +278,9 @@ export function RecipeListView({
               <input
                 type="text"
                 placeholder={t('recipe.list.searchPlaceholder')}
-                value={search}
-                onChange={(e) => updateFilter('search', e.target.value)}
+                maxLength={200}
+                value={searchInput.value}
+                onChange={(e) => searchInput.setValue(e.target.value)}
                 className="input-field text-sm"
               />
             </Field>
@@ -358,8 +366,9 @@ export function RecipeListView({
               <input
                 type="text"
                 placeholder={t('recipe.filter.authorPlaceholder')}
-                value={author}
-                onChange={(e) => updateFilter('author', e.target.value)}
+                maxLength={100}
+                value={authorInput.value}
+                onChange={(e) => authorInput.setValue(e.target.value)}
                 className="input-field text-sm"
               />
             </Field>
@@ -428,7 +437,7 @@ export function RecipeListView({
                 <PaginationControls
                   page={page}
                   totalPages={totalPages}
-                  onPageChange={(p) => updateFilter('page', String(p))}
+                  onPageChange={setPage}
                   pageLabel={t('recipe.list.page')}
                 />
               )}

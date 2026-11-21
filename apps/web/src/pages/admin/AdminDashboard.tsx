@@ -1,46 +1,27 @@
-import { useEffect, useState } from 'react';
-import { api } from '../../api/client.ts';
+import { useEffect } from 'react';
+import { useLoaderData } from 'react-router';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { formatNumber } from '../../utils/format.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './AdminDashboard.data.ts';
 
 const log = createLogger('AdminDashboard');
 
-interface DashboardStats {
-  totalUsers: number;
-  totalRecipes: number;
-  totalComments: number;
-  totalPhotos: number;
-  recentSignups: number;
-  recentRecipes: number;
-}
-
-/** Admin landing page: stat cards for user/recipe/comment/photo totals and recent activity. */
+/**
+ * Admin landing page: stat cards for user/recipe/comment/photo totals and recent activity.
+ * The totals come from the `/admin` route loader (`AdminDashboard.data.ts`); a failed load
+ * renders the route error state inside `AdminLayout`.
+ */
 export function AdminDashboard() {
-  const { t } = useTranslation();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
+  const { t, locale } = useTranslation();
+  const { stats } = useLoaderData<typeof loader>();
 
   useEffect(() => {
     log.debug({}, 'AdminDashboard mounted');
     return () => {
       log.debug({}, 'AdminDashboard unmounted');
     };
-  }, []);
-
-  useEffect(() => {
-    api
-      .get<DashboardStats>('/admin/stats')
-      .then((data) => {
-        setStats(data as DashboardStats);
-        setStatus('ready');
-      })
-      .catch((err) => {
-        log.error({ err }, 'admin stats fetch failed');
-        setStatus('error');
-      });
   }, []);
 
   return (
@@ -50,25 +31,38 @@ export function AdminDashboard() {
         {t('admin.dashboard')}
       </h1>
 
-      {status === 'loading' ? (
-        <LoadingState message={t('admin.dashboard.loading')} />
-      ) : status === 'error' ? (
-        <ErrorState message={t('admin.dashboard.loadError')} />
-      ) : stats ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard label={t('admin.dashboard.totalUsers')} value={stats.totalUsers} />
-          <StatCard label={t('admin.dashboard.totalRecipes')} value={stats.totalRecipes} />
-          <StatCard label={t('admin.dashboard.totalComments')} value={stats.totalComments} />
-          <StatCard label={t('admin.dashboard.totalPhotos')} value={stats.totalPhotos} />
-          <StatCard label={t('admin.dashboard.recentSignups')} value={stats.recentSignups} />
-          <StatCard label={t('admin.dashboard.recentRecipes')} value={stats.recentRecipes} />
-        </div>
-      ) : null}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard
+          label={t('admin.dashboard.totalUsers')}
+          value={formatNumber(stats.totalUsers, locale)}
+        />
+        <StatCard
+          label={t('admin.dashboard.totalRecipes')}
+          value={formatNumber(stats.totalRecipes, locale)}
+        />
+        <StatCard
+          label={t('admin.dashboard.totalComments')}
+          value={formatNumber(stats.totalComments, locale)}
+        />
+        <StatCard
+          label={t('admin.dashboard.totalPhotos')}
+          value={formatNumber(stats.totalPhotos, locale)}
+        />
+        <StatCard
+          label={t('admin.dashboard.recentSignups')}
+          value={formatNumber(stats.recentSignups, locale)}
+        />
+        <StatCard
+          label={t('admin.dashboard.recentRecipes')}
+          value={formatNumber(stats.recentRecipes, locale)}
+        />
+      </div>
     </div>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+/** One dashboard tile: a locale-formatted value above its label. */
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="card text-center">
       <div className="text-3xl font-bold" style={{ color: 'var(--accent-primary)' }}>

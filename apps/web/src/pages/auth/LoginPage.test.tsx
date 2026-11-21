@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router';
+import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../../contexts/AuthContext.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
@@ -46,6 +46,7 @@ vi.mock('../../api/index', () => ({
   },
 }));
 
+import { ApiError } from '../../api/errors.ts';
 import { authApi } from '../../api/index.ts';
 
 async function renderLoginPage() {
@@ -63,6 +64,91 @@ async function renderLoginPage() {
   });
   return result;
 }
+
+/** Renders `/login` (with `entry`'s search) in a memory router that also has `/` and `/collections`. */
+async function renderLoginAt(entry: string) {
+  const router = createMemoryRouter(
+    [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/collections', element: <p>collections page</p> },
+      { path: '/', element: <p>home page</p> },
+    ],
+    { initialEntries: ['/start', entry], initialIndex: 1 },
+  );
+  render(
+    <I18nProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </I18nProvider>,
+  );
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+  });
+  return router;
+}
+
+/** Fills and submits the login form. */
+async function submitLogin() {
+  await userEvent.type(screen.getByLabelText(/email/i), 'test@test.com');
+  await userEvent.type(screen.getByLabelText(/password/i), 'password123');
+  await userEvent.click(screen.getByRole('button', { name: /log in/i }));
+}
+
+const LOGGED_IN = {
+  user: {
+    id: '1',
+    email: 'test@test.com',
+    username: 'testuser',
+    displayName: null,
+    avatarUrl: null,
+    emailVerifiedAt: null,
+    isAdmin: false,
+    onboardingCompleted: true,
+  },
+};
+
+describe('LoginPage — return path', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('replaces the history entry with a safe ?next= path after login', async () => {
+    vi.mocked(authApi.login).mockResolvedValue(LOGGED_IN);
+    const router = await renderLoginAt('/login?next=%2Fcollections%3Fpage%3D2');
+
+    await submitLogin();
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/collections');
+    });
+    expect(router.state.location.search).toBe('?page=2');
+    expect(router.state.historyAction).toBe('REPLACE');
+  });
+
+  it('refuses an open redirect and lands on /', async () => {
+    vi.mocked(authApi.login).mockResolvedValue(LOGGED_IN);
+    const router = await renderLoginAt('/login?next=%2F%2Fevil.example');
+
+    await submitLogin();
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/');
+    });
+    expect(router.state.historyAction).toBe('REPLACE');
+  });
+
+  it('lands on / when there is no next param', async () => {
+    vi.mocked(authApi.login).mockResolvedValue(LOGGED_IN);
+    const router = await renderLoginAt('/login');
+
+    await submitLogin();
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/');
+    });
+  });
+});
 
 describe('LoginPage', () => {
   beforeEach(() => {
@@ -243,7 +329,7 @@ describe('LoginPage', () => {
   });
 
   it('should disable button and show loading text while logging in', async () => {
-    vi.mocked(authApi.login).mockReturnValue(new Promise(() => {}));
+    vi.mocked(authApi.login).mockReturnValue(new Promise(() => undefined));
 
     await renderLoginPage();
     await userEvent.type(screen.getByLabelText(/email/i), 'test@test.com');
@@ -284,5 +370,48 @@ describe('LoginPage', () => {
       { err: expect.any(Error) },
       'LoginPage login failed',
     );
+  });
+});
+
+describe('LoginPage — rate limiting', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('shows the Turkish error.rateLimited text with the Retry-After seconds on a 429', async () => {
+    localStorage.setItem('brewform_locale', 'tr');
+    try {
+      vi.mocked(authApi.login).mockRejectedValue(
+        new ApiError(
+          'RATE_LIMITED',
+          'Too many login attempts, please try again later',
+          undefined,
+          429,
+          120,
+        ),
+      );
+      render(
+        <MemoryRouter>
+          <I18nProvider>
+            <AuthProvider>
+              <LoginPage />
+            </AuthProvider>
+          </I18nProvider>
+        </MemoryRouter>,
+      );
+      const submit = await screen.findByRole('button', { name: 'Giriş Yap' });
+      await userEvent.type(screen.getByLabelText('E-posta'), 'test@test.com');
+      await userEvent.type(screen.getByLabelText('Şifre'), 'password123');
+      await userEvent.click(submit);
+
+      expect(
+        await screen.findByText(
+          'Çok fazla deneme yapıldı. Lütfen 120 saniye sonra tekrar deneyin.',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Too many login attempts/)).not.toBeInTheDocument();
+    } finally {
+      localStorage.removeItem('brewform_locale');
+    }
   });
 });

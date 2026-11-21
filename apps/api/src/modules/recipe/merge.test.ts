@@ -382,6 +382,129 @@ describe('mergeRecipes', () => {
       await db.delete(users).where(eq(users.id, otherUserId));
     }
   });
+
+  it('throws RECIPE_NOT_FOUND when a source recipe is soft-deleted, even for its author', async () => {
+    await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, recipeId2));
+
+    await expect(
+      mergeRecipes(userId, {
+        recipeVersionId1: versionId1,
+        recipeVersionId2: versionId2,
+        title: 'Deleted Source',
+        selections: {},
+      }),
+    ).rejects.toThrow('RECIPE_NOT_FOUND');
+  });
+
+  describe("another user's source recipe", () => {
+    let otherUserId: string;
+    let otherRecipeId: string;
+    let otherVersionId: string;
+
+    /**
+     * Inserts another user's recipe with one version under the given visibility.
+     *
+     * @param visibility - The source recipe's visibility.
+     * @param deletedAt - Optional soft-delete timestamp for the source recipe.
+     */
+    async function insertOtherSource(
+      visibility: 'public' | 'unlisted' | 'private' | 'draft',
+      deletedAt: Date | null = null,
+    ): Promise<void> {
+      await db.insert(recipes).values({
+        id: otherRecipeId,
+        slug: `merge-other-${otherRecipeId.slice(0, 8)}`,
+        title: `Other ${visibility}`,
+        authorId: otherUserId,
+        visibility,
+        deletedAt,
+      });
+      await db.insert(recipeVersions).values({
+        id: otherVersionId,
+        recipeId: otherRecipeId,
+        versionNumber: 1,
+        brewMethod: 'v60',
+        drinkType: 'pour_over',
+        brewDate: new Date(),
+        preparationNotes: 'other notes',
+        isFavourite: false,
+      });
+    }
+
+    /** Counts the merge caller's recipes (proves a rejected merge created nothing). */
+    async function countCallerRecipes(): Promise<number> {
+      const rows = await db
+        .select({ id: recipes.id })
+        .from(recipes)
+        .where(eq(recipes.authorId, userId));
+      return rows.length;
+    }
+
+    beforeEach(async () => {
+      otherUserId = crypto.randomUUID();
+      otherRecipeId = crypto.randomUUID();
+      otherVersionId = crypto.randomUUID();
+      await db.insert(users).values({
+        id: otherUserId,
+        email: `merge-other-${otherUserId}@example.com`,
+        username: `mo-${otherUserId.slice(0, 8)}`,
+        passwordHash: 'hash',
+      });
+    });
+
+    afterEach(async () => {
+      await db.delete(recipeVersions).where(eq(recipeVersions.id, otherVersionId));
+      await db.delete(recipes).where(eq(recipes.id, otherRecipeId));
+      await db.delete(users).where(eq(users.id, otherUserId));
+    });
+
+    it('merges an unlisted source (viewable by direct link)', async () => {
+      await insertOtherSource('unlisted');
+
+      const result = await mergeRecipes(userId, {
+        recipeVersionId1: versionId1,
+        recipeVersionId2: otherVersionId,
+        title: 'Merged With Unlisted',
+        selections: { preparationNotes: 'v2' },
+      });
+      createdRecipeIds.push(result!.id);
+
+      expect(result!.visibility).toBe('draft');
+      expect(result!.authorId).toBe(userId);
+      expect(result!.versions?.[0]?.preparationNotes).toBe('other notes');
+    });
+
+    it.each(['private', 'draft'] as const)(
+      'throws FORBIDDEN for a %s source',
+      async (visibility) => {
+        await insertOtherSource(visibility);
+        const before = await countCallerRecipes();
+
+        await expect(
+          mergeRecipes(userId, {
+            recipeVersionId1: versionId1,
+            recipeVersionId2: otherVersionId,
+            title: `Forbidden ${visibility}`,
+            selections: {},
+          }),
+        ).rejects.toThrow('FORBIDDEN');
+        expect(await countCallerRecipes()).toBe(before);
+      },
+    );
+
+    it('throws RECIPE_NOT_FOUND for a soft-deleted public source', async () => {
+      await insertOtherSource('public', new Date());
+
+      await expect(
+        mergeRecipes(userId, {
+          recipeVersionId1: otherVersionId,
+          recipeVersionId2: versionId2,
+          title: 'Deleted Public Source',
+          selections: {},
+        }),
+      ).rejects.toThrow('RECIPE_NOT_FOUND');
+    });
+  });
 });
 
 describe('fetchRecipeVersionWithRelations', () => {

@@ -8,7 +8,7 @@
  * empty) and via `make db-seed`.
  */
 import { readFile } from 'node:fs/promises';
-import { and, count, eq, ilike, inArray, isNull } from 'drizzle-orm';
+import { and, count, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
 import { db } from './index.ts';
 import {
   badges,
@@ -22,6 +22,7 @@ import {
   comments,
   equipment,
   type equipmentTypeEnum,
+  lower,
   photos,
   type RecipeVisibility,
   recipeAdditionalPreparations,
@@ -190,37 +191,102 @@ async function seedBadges(tx: SeedTX) {
 }
 
 /**
+ * Normalize the configured admin email the same way the API's shared `EmailSchema` does
+ * (trim, then lower-case), so the seeded admin can sign in with the address as typed and the row
+ * matches the case-insensitive `user_email_lower_unique` index. Falls back to the default admin
+ * address when `ADMIN_EMAIL` is unset or blank.
+ *
+ * @param raw - The raw `ADMIN_EMAIL` value (may be `undefined`, padded or mixed-case).
+ * @returns The normalized admin email.
+ */
+export function normalizeAdminEmail(raw: string | undefined): string {
+  return (raw || 'admin@brewform.local').trim().toLowerCase();
+}
+
+/** Insert shape of a seeded account (the seed lower-cases `email` before using it). */
+type SeedUserValues = typeof users.$inferInsert;
+
+/**
+ * Find the account that already holds a seed identity, matching case-insensitively the way the
+ * `user_email_lower_unique` / `user_username_lower_unique` indexes do (soft-deleted rows
+ * included, since they keep their identifiers reserved). An email match wins over a username
+ * match held by another account.
+ *
+ * @param tx - The seed transaction.
+ * @param email - The seed email, already lower-cased.
+ * @param username - The seed username (any case).
+ * @returns The existing account, or `undefined` when neither identifier is taken.
+ */
+async function findSeedUser(
+  tx: SeedTX,
+  email: string,
+  username: string,
+): Promise<typeof users.$inferSelect | undefined> {
+  const matches = await tx
+    .select()
+    .from(users)
+    .where(or(eq(lower(users.email), email), eq(lower(users.username), username.toLowerCase())))
+    .limit(2);
+  return matches.find((user) => user.email.toLowerCase() === email) ?? matches[0];
+}
+
+/**
+ * Return the account for a seed identity, inserting it only when no account holds its email or
+ * username case-insensitively. Existing accounts are reused as they are (the seed never updates
+ * them), so re-running the seed on a database whose admin or demo rows differ only in case
+ * succeeds. The insert has no conflict target, so a row that appears concurrently under either
+ * the exact or the `lower()` unique index is skipped and selected instead of aborting the
+ * transaction.
+ *
+ * @param tx - The seed transaction.
+ * @param values - The account to create; `email` is trimmed and lower-cased first.
+ * @returns The existing or newly inserted account.
+ * @throws Error when the insert was skipped and no conflicting account can be found.
+ */
+async function findOrCreateSeedUser(
+  tx: SeedTX,
+  values: SeedUserValues,
+): Promise<typeof users.$inferSelect> {
+  const email = values.email.trim().toLowerCase();
+  const existing = await findSeedUser(tx, email, values.username);
+  if (existing) return existing;
+  const [inserted] = await tx
+    .insert(users)
+    .values({ ...values, email })
+    .onConflictDoNothing()
+    .returning();
+  if (inserted) return inserted;
+  const conflicting = await findSeedUser(tx, email, values.username);
+  if (!conflicting) {
+    throw new Error(`seed user ${values.username} was neither inserted nor found`);
+  }
+  return conflicting;
+}
+
+/**
  * Seed the admin and seed users idempotently.
  *
- * Uses `onConflictDoNothing` on the unique `email` and `username` columns,
- * then selects the existing user when a conflict occurs so the returned
- * user map is complete even when the database already contains the users.
- * User preferences are also inserted with `onConflictDoNothing` keyed by
- * the unique `userId` column.
+ * Each account goes through {@link findOrCreateSeedUser}: an account that already holds the
+ * email or username (compared case-insensitively, like the `lower()` unique indexes) is reused
+ * as it is, otherwise the account is inserted, so the returned user map is complete even when
+ * the database already contains the users. User preferences are inserted with
+ * `onConflictDoNothing` keyed by the unique `userId` column.
+ *
+ * @param tx - The seed transaction.
+ * @returns The seeded accounts keyed by seed username (`admin` for the admin).
  */
 async function seedUsers(tx: SeedTX) {
   // First-install only: the entrypoint runs the seed solely when the users
-  // table is empty, and onConflictDoNothing never updates existing rows.
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@brewform.local';
-  const adminUsername = process.env.ADMIN_USERNAME || 'admin';
-  const adminPassword = hashPassword(process.env.ADMIN_PASSWORD || 'admin123456');
-
-  const [adminInserted] = await tx
-    .insert(users)
-    .values({
-      email: adminEmail,
-      username: adminUsername,
-      passwordHash: adminPassword,
-      displayName: 'BrewForm Admin',
-      isAdmin: true,
-      onboardingCompleted: true,
-      emailVerifiedAt: new Date(),
-    })
-    .onConflictDoNothing({ target: users.email })
-    .returning();
-
-  const admin =
-    adminInserted ?? (await tx.select().from(users).where(eq(users.email, adminEmail)).limit(1))[0];
+  // table is empty, and existing accounts are never updated.
+  const admin = await findOrCreateSeedUser(tx, {
+    email: normalizeAdminEmail(process.env.ADMIN_EMAIL),
+    username: process.env.ADMIN_USERNAME || 'admin',
+    passwordHash: hashPassword(process.env.ADMIN_PASSWORD || 'admin123456'),
+    displayName: 'BrewForm Admin',
+    isAdmin: true,
+    onboardingCompleted: true,
+    emailVerifiedAt: new Date(),
+  });
 
   await tx.insert(userPreferences).values({ userId: admin.id }).onConflictDoNothing({
     target: userPreferences.userId,
@@ -229,23 +295,15 @@ async function seedUsers(tx: SeedTX) {
   const createdUsers: Record<string, typeof users.$inferSelect> = { admin };
 
   for (const userData of userSeedData) {
-    const [userInserted] = await tx
-      .insert(users)
-      .values({
-        email: userData.email,
-        username: userData.username,
-        passwordHash: hashPassword(defaultPassword),
-        displayName: userData.displayName,
-        bio: userData.bio,
-        onboardingCompleted: userData.onboardingCompleted,
-        emailVerifiedAt: new Date(),
-      })
-      .onConflictDoNothing({ target: users.email })
-      .returning();
-
-    const user =
-      userInserted ??
-      (await tx.select().from(users).where(eq(users.email, userData.email)).limit(1))[0];
+    const user = await findOrCreateSeedUser(tx, {
+      email: userData.email,
+      username: userData.username,
+      passwordHash: hashPassword(defaultPassword),
+      displayName: userData.displayName,
+      bio: userData.bio,
+      onboardingCompleted: userData.onboardingCompleted,
+      emailVerifiedAt: new Date(),
+    });
 
     await tx
       .insert(userPreferences)

@@ -1,9 +1,10 @@
 import type { db as DbType } from '@brewform/db';
 import { recipes, users } from '@brewform/db/schema';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
 import { config } from '../config/index.ts';
+import { listableRecipeCondition } from '../modules/recipe/model.ts';
 import type { AppEnv } from '../types/hono.ts';
 import { cacheProvider } from '../utils/cache/singleton.ts';
 
@@ -42,7 +43,13 @@ async function getDb() {
   return _db;
 }
 
-/** Dependency-injection proxy for test stubbing (public recipe + active user queries). */
+/**
+ * Dependency-injection proxy for test stubbing (public recipe + active user queries).
+ *
+ * The sitemap is a discovery surface (capability `recipe-visibility`): both queries
+ * filter with `listableRecipeCondition(null)` from the recipe model, so only non-deleted
+ * `public` recipes are listed, and a user is listed only when they author at least one.
+ */
 export const deps = {
   getPublicRecipes: async () => {
     const db = await getDb();
@@ -52,7 +59,7 @@ export const deps = {
         updatedAt: recipes.updatedAt,
       })
       .from(recipes)
-      .where(and(eq(recipes.visibility, 'public'), isNull(recipes.deletedAt)))
+      .where(listableRecipeCondition(null))
       .orderBy(desc(recipes.updatedAt));
   },
   getActiveUsers: async () => {
@@ -64,7 +71,7 @@ export const deps = {
       })
       .from(users)
       .innerJoin(recipes, eq(recipes.authorId, users.id))
-      .where(and(eq(recipes.visibility, 'public'), isNull(recipes.deletedAt)));
+      .where(listableRecipeCondition(null));
   },
 };
 

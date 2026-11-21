@@ -2,6 +2,7 @@ interface TypeBadgeProps {
   label: string;
 }
 
+/** Small accent-coloured pill showing a catalog entry's type or category label. */
 export function TypeBadge({ label }: TypeBadgeProps) {
   return (
     <span
@@ -13,6 +14,7 @@ export function TypeBadge({ label }: TypeBadgeProps) {
   );
 }
 
+/** Maps a coffee-variety category (`variety`, `processing`, `market_name`) to its short translated label; unknown categories are returned unchanged. */
 export function varietyCategoryLabel(t: (key: string) => string, category: string): string {
   switch (category) {
     case 'variety':

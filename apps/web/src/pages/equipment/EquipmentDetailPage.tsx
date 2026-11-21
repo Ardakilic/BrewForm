@@ -1,24 +1,23 @@
-import type { EquipmentOutput, RecipeWithAuthorOutput } from '@brewform/shared/schemas';
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
-import { api } from '../../api/client.ts';
+import { useEffect } from 'react';
+import { useLoaderData } from 'react-router';
 import { TypeBadge } from '../../components/catalog/TypeBadge.tsx';
 import { RecipeCard } from '../../components/recipe-list/RecipeCard.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';
-import { Skeleton } from '../../components/ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import type { loader } from './EquipmentDetailPage.data.ts';
 
 const log = createLogger('EquipmentDetailPage');
 
-/** Displays a single equipment item's details, description, and associated recipes. */
+/**
+ * Displays a single equipment item's details, description, and associated recipes. The data
+ * comes from the `/equipment/:id` route loader (`EquipmentDetailPage.data.ts`): an unknown id
+ * renders the not-found page and any other failure the route error state, so the page never
+ * shows a previous item's data under a new URL.
+ */
 export function EquipmentDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const [equipment, setEquipment] = useState<EquipmentOutput | null>(null);
-  const [recipes, setRecipes] = useState<RecipeWithAuthorOutput[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { equipment, recipes } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -27,61 +26,6 @@ export function EquipmentDetailPage() {
       log.debug({}, 'EquipmentDetailPage unmounted');
     };
   }, []);
-
-  useEffect(() => {
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(false);
-
-    Promise.all([
-      api.get<EquipmentOutput>(`/equipment/${id}`),
-      api.get<{ data: RecipeWithAuthorOutput[] }>(`/equipment/${id}/recipes?perPage=6`),
-    ])
-      .then(([equipData, recipesData]) => {
-        setEquipment(equipData);
-        const items = Array.isArray(recipesData?.data)
-          ? recipesData.data
-          : Array.isArray(recipesData)
-            ? recipesData
-            : [];
-        setRecipes(items);
-      })
-      .catch((err) => {
-        log.error({ err }, 'EquipmentDetailPage loadData failed');
-        setError(true);
-      })
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div className="mx-auto max-w-4xl px-6 py-8 space-y-6">
-        <Skeleton height="0.875rem" width="12rem" />
-        <Skeleton height="2rem" width="50%" />
-        <Skeleton height="1rem" width="30%" />
-        <Skeleton height="3rem" />
-      </div>
-    );
-  }
-
-  if (error || !equipment) {
-    return (
-      <div
-        className="mx-auto max-w-4xl px-6 py-12 text-center"
-        style={{ color: 'var(--text-tertiary)' }}
-      >
-        <h1 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
-          {t('equipment.error.notFound')}
-        </h1>
-        <Link to="/equipments" className="btn-primary">
-          {t('equipment.backToList')}
-        </Link>
-      </div>
-    );
-  }
 
   const displayTitle = [equipment.brand, equipment.model || equipment.name]
     .filter(Boolean)

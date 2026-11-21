@@ -8,6 +8,7 @@
  */
 
 import type { User, UserPreferences } from '@brewform/shared/types';
+import { isReservedUsername } from '@brewform/shared/utils';
 import { config } from '../../config/env.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { sendPasswordResetEmail, sendVerificationEmail } from './email.ts';
@@ -17,7 +18,8 @@ import * as model from './model.ts';
 // Standard dedup approach for future OAuth/social login:
 // import { generateUniqueUsername } from '@brewform/shared';
 
-const logger = createLogger('auth-service');
+/** Module-scoped structured logger for the auth service (exported for test spies). */
+export const logger = createLogger('auth-service');
 
 /**
  * Authenticated user shape with the stored `passwordHash` and a
@@ -49,16 +51,51 @@ export function toAuthUser(user: Record<string, unknown>): AuthUser {
 }
 
 /**
+ * Insert the user through `model.createUser`, translating a unique violation on
+ * any of `USER_EMAIL_CONSTRAINTS` / `USER_USERNAME_CONSTRAINTS` into
+ * `EMAIL_ALREADY_EXISTS` / `USERNAME_ALREADY_EXISTS`. This is the race
+ * fallback for registrations that passed the availability pre-checks (and for
+ * identifiers the pre-checks do not cover yet). A translated driver error, which
+ * embeds the submitted values, is neither logged nor re-thrown.
+ *
+ * @param data - The registration payload passed to `model.createUser`.
+ * @returns The newly created user row.
+ * @throws {Error} EMAIL_ALREADY_EXISTS or USERNAME_ALREADY_EXISTS on a unique violation.
+ */
+async function createUserOrThrowConflict(data: Parameters<typeof model.createUser>[0]) {
+  logger.debug({}, 'createUserOrThrowConflict started');
+  try {
+    const user = await model.createUser(data);
+    logger.debug({ userId: user.id }, 'createUserOrThrowConflict completed');
+    return user;
+  } catch (err) {
+    const conflict = model.userIdentifierConflict(err);
+    if (conflict) {
+      logger.warn({ domainCode: conflict }, 'register hit a unique violation after the pre-checks');
+      throw new Error(conflict);
+    }
+    throw err;
+  }
+}
+
+/**
  * Register a new user account.
  *
- * @param data.email - User's email address (must be unique)
- * @param data.username - Chosen username (must be unique)
+ * Availability is decided before the insert: the email and username checks
+ * compare case-insensitively and count soft-deleted accounts (their
+ * identifiers stay reserved), and a reserved username (`isReservedUsername`)
+ * is refused as if it were taken, so the response does not reveal the list.
+ * A unique violation from the insert itself is only the race fallback
+ * (`USER_EMAIL_CONSTRAINTS` / `USER_USERNAME_CONSTRAINTS`).
+ *
+ * @param data.email - User's email address (already trimmed and lower-cased by `EmailSchema`)
+ * @param data.username - Chosen username (unique ignoring case; display case kept)
  * @param data.password - Plaintext password (hashed via model.createUser)
  * @param data.displayName - Optional display name
  * @returns Created user object, access token, and refresh token
  * @throws {Error} REGISTRATION_DISABLED if ENABLE_REGISTRATION env var is false
  * @throws {Error} EMAIL_ALREADY_EXISTS if the email is taken
- * @throws {Error} USERNAME_ALREADY_EXISTS if the username is taken
+ * @throws {Error} USERNAME_ALREADY_EXISTS if the username is reserved or taken
  */
 export async function register(data: {
   email: string;
@@ -76,12 +113,16 @@ export async function register(data: {
     throw new Error('EMAIL_ALREADY_EXISTS');
   }
 
+  if (isReservedUsername(data.username)) {
+    throw new Error('USERNAME_ALREADY_EXISTS');
+  }
+
   const usernameTaken = await model.isUsernameTaken(data.username);
   if (usernameTaken) {
     throw new Error('USERNAME_ALREADY_EXISTS');
   }
 
-  const user = toAuthUser(await model.createUser(data));
+  const user = toAuthUser(await createUserOrThrowConflict(data));
   const accessToken = await jwt.signAccessToken({
     id: user.id,
     email: user.email,
@@ -220,8 +261,14 @@ export async function requestPasswordReset(email: string) {
  * @throws {Error} INVALID_RESET_TOKEN if the token does not exist
  * @throws {Error} TOKEN_ALREADY_USED if the token has been consumed
  * @throws {Error} TOKEN_EXPIRED if the token has passed its expiry
+ * @returns The account's normalised (trimmed, lower-cased) email, so the route
+ *   can clear its login-failure rate-limit counters; `null` if the reset row
+ *   has no user.
  */
-export async function confirmPasswordReset(token: string, newPassword: string) {
+export async function confirmPasswordReset(
+  token: string,
+  newPassword: string,
+): Promise<string | null> {
   logger.debug({}, 'confirmPasswordReset started');
   const reset = await model.findPasswordResetByToken(token);
   if (!reset) {
@@ -237,6 +284,8 @@ export async function confirmPasswordReset(token: string, newPassword: string) {
   await model.updateUserPassword(reset.userId, newPassword);
   await model.markPasswordResetUsed(reset.id);
   logger.debug({}, 'confirmPasswordReset completed');
+  // The route clears this account's login-failure counters with it.
+  return reset.user?.email ? reset.user.email.trim().toLowerCase() : null;
 }
 
 /** Fetch the currently authenticated user by ID. */

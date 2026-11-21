@@ -47,14 +47,14 @@ describe('CategoryTabs', () => {
   ];
 
   it('renders all tab buttons', () => {
-    render(<CategoryTabs tabs={tabs} active="" onSelect={() => {}} />);
+    render(<CategoryTabs tabs={tabs} active="" onSelect={() => undefined} />);
     expect(screen.getByText('All')).toBeInTheDocument();
     expect(screen.getByText('Grinder')).toBeInTheDocument();
     expect(screen.getByText('Kettle')).toBeInTheDocument();
   });
 
   it('applies active styling to the selected tab', () => {
-    render(<CategoryTabs tabs={tabs} active="grinder" onSelect={() => {}} />);
+    render(<CategoryTabs tabs={tabs} active="grinder" onSelect={() => undefined} />);
     const activeBtn = screen.getByText('Grinder');
     expect(activeBtn.className).toContain('bg-[color:var(--accent-primary)]');
   });

@@ -6,8 +6,8 @@ const logger = createLogger('follow');
 
 /**
  * Action for `/follow/:userId`: POST follows, DELETE unfollows.
- * Returns `{ ok: true }` or `{ ok: false, error }` so `FollowButton`
- * can confirm or roll back its optimistic toggle.
+ * Returns `{ ok: true, following }` (the new state) or `{ ok: false, error }` so
+ * `FollowButton` can confirm or roll back its optimistic toggle without a revalidation.
  */
 export const followAction = async ({ params, request }: ActionFunctionArgs) => {
   const userId = params.userId;
@@ -27,7 +27,7 @@ export const followAction = async ({ params, request }: ActionFunctionArgs) => {
       return { ok: false, error: 'Unsupported method' };
     }
     logger.debug({ userId }, 'followAction completed');
-    return { ok: true };
+    return { ok: true, following: request.method === 'POST' };
   } catch (err: unknown) {
     logger.error({ err, userId }, 'followAction failed');
     return { ok: false, error: err instanceof Error ? err.message : 'Follow action failed' };

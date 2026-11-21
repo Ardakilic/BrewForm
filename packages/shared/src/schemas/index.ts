@@ -37,7 +37,9 @@ export {
 export type { CommentCreate } from './comment.ts';
 export { CommentCreateSchema } from './comment.ts';
 export {
+  EmailSchema,
   PaginationSchema,
+  QR_CODE_FILENAME_PATTERN,
   QrCodeFilenameSchema,
   SearchQuerySchema,
   SlugSchema,
@@ -62,6 +64,8 @@ export { NotificationQuerySchema } from './notification.ts';
 export { PhotoUploadSchema } from './photo.ts';
 export type {
   RecipeCreate,
+  RecipeCrossFieldIssue,
+  RecipeCrossFieldValues,
   RecipeFork,
   RecipeMerge,
   RecipeNotes,
@@ -76,7 +80,9 @@ export {
   RecipeMergeSchema,
   RecipeNotesSchema,
   RecipeRateSchema,
+  RecipeUpdateObjectSchema,
   RecipeUpdateSchema,
+  recipeCrossFieldIssues,
 } from './recipe.ts';
 export { ReportCreateSchema, ReportFilterSchema } from './report.ts';
 export type { PaginatedResponse, PaginationMeta } from './response.ts';
@@ -123,6 +129,7 @@ export type {
   FollowingListItemOutput,
   FollowOutput,
 } from './responses/follow.ts';
+export type { HealthOutput, ReadinessOutput } from './responses/health.ts';
 export * from './responses/index.ts';
 export type { NotificationOutput, UnreadCountOutput } from './responses/notification.ts';
 export type { PhotoOutput } from './responses/photo.ts';
@@ -147,6 +154,7 @@ export type {
   VersionDiffOutput,
   VersionMeta,
 } from './responses/recipe.ts';
+export type { RecipeUserNoteOutput } from './responses/recipe-note.ts';
 export type { ReportOutput } from './responses/report.ts';
 export type { SetupOutput } from './responses/setup.ts';
 export type { TasteNoteNodeOutput, TasteNoteOutput } from './responses/taste.ts';

@@ -15,3 +15,17 @@ export function useSafeT(): (key: string) => string {
   const context = useContext(I18nContext);
   return context ? context.t : fallbackTranslate;
 }
+
+/**
+ * Active locale that degrades to `'en'` outside an `I18nProvider`.
+ *
+ * The locale companion of {@link useSafeT}: presentational chart and rating
+ * components pass it to the `utils/format.ts` helpers so numbers and durations
+ * localize in the app while bare test renders (no provider) still work.
+ *
+ * @returns The context locale, or `'en'` when no provider is mounted.
+ */
+export function useSafeLocale(): string {
+  const context = useContext(I18nContext);
+  return context ? context.locale : 'en';
+}

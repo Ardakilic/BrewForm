@@ -4,8 +4,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
-    // DB-backed tests assert global table counts/deltas; run files serially
-    // (matches Deno-era `deno test` default) so files can't race each other.
+    // DB-backed test files share one database and assert table counts/deltas;
+    // run files serially so one file's inserts never skew another file's counts.
     fileParallelism: false,
     coverage: {
       provider: 'v8',
@@ -17,6 +17,7 @@ export default defineConfig({
         // Test-only support code (imported manually by tests, not via setupFiles)
         'src/test-setup.ts',
         'src/**/test-helpers.ts',
+        'src/test-fixtures/**',
         // Generated from MJML by `pnpm run email-build`
         'src/templates/email/generated/**',
       ],

@@ -1,7 +1,12 @@
 # join-table-audit Specification
 
 ## Purpose
-TBD - created by archiving change wave-4-independent-fillers. Update Purpose after archive.
+
+Gives the recipe join tables `recipe_taste_note`, `recipe_equipment` and `recipe_version_photo` a
+`createdAt` audit timestamp in the house style, added by migration 0008 with a `DEFAULT now()`
+backfill. The change adds no indexes and no API response fields, keeps the seed and fork paths
+working, and is verified by column-existence and insertion tests.
+
 ## Requirements
 ### Requirement: All recipe join tables carry a createdAt audit timestamp
 
@@ -172,7 +177,7 @@ model test verifies the insert path produces populated `createdAt` values.
 
 #### Scenario: Column-existence test passes
 
-- **WHEN** the schema column test is run (`make test` or `deno test packages/db/src/schema-indexes.test.ts`)
+- **WHEN** the schema column test is run (`make test`, or `pnpm --filter @brewform/db exec vitest run src/schema-columns.test.ts src/schema-indexes.test.ts`)
 - **THEN** `recipeTasteNotes`, `recipeEquipment`, and `recipeVersionPhotos` are each asserted to
   have a `createdAt` column with `notNull` and a `default`
 

@@ -1,7 +1,13 @@
 # i18n Specification
 
 ## Purpose
-TBD - created by archiving change wave-3-frontend-structure. Update Purpose after archive.
+
+Defines the web app's internationalisation contract: `en.json` and `tr.json` keep deterministic
+two-way key parity in a flat dotted-key format, and every user-visible string on pages, admin
+screens and shared components, including accessibility and SEO text, goes through `t()`. Dates and
+numbers follow the active locale, and a literal-attribute regression test stops new hard-coded
+strings.
+
 ## Requirements
 ### Requirement: Locale files maintain deterministic bidirectional key parity
 
@@ -23,7 +29,7 @@ The existing one-directional sampled property test (en→tr, 100 random samples 
 replaced by (or supplemented with) the deterministic bidirectional equality check. Every value in
 both locale files SHALL be a string (no nested objects, no arrays, no nulls).
 
-**Reason:** The existing parity test (`i18n.test.ts`, 22 lines) uses `npm:fast-check` with
+**Reason:** The existing parity test (`i18n.test.ts`, 22 lines) uses `fast-check` with
 `numRuns: 100` sampling 100 random keys of 504 from en→tr only. It could miss an asymmetry on a
 given run and doesn't check tr→en. D40 adds ~150+ new keys; a deterministic test guarantees no key
 ships half-translated. The current state is exact parity (504=504, verified); this requirement
@@ -31,7 +37,7 @@ locks it.
 
 #### Scenario: Deterministic parity test passes
 
-- **WHEN** `make test-shared` is executed (or `deno test --no-check --allow-all packages/shared/src/i18n/i18n.test.ts`)
+- **WHEN** `make test-shared` is executed (or `pnpm --filter @brewform/shared exec vitest run src/i18n/i18n.test.ts`)
 - **THEN** the deterministic bidirectional key-set equality assertion passes
 
 #### Scenario: Adding an en key without tr fails the test

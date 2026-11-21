@@ -1,9 +1,13 @@
 import '../../test-setup.ts';
+import { db } from '@brewform/db';
+import { recipes } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
 import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
 import { setCacheProvider } from '../../utils/cache/singleton.ts';
+import { NoteFixtures } from '../recipe-note/test-helpers.ts';
 import qrcodeRouter from './index.ts';
 
 /**
@@ -63,5 +67,40 @@ describe('QR-Code Routes — pre-auth & validation', () => {
       expect(body.success).toBe(false);
       expect(body.error.code).toBe('NOT_FOUND');
     });
+  });
+});
+
+describe('QR-Code Routes — legacy slugs (DB-backed)', () => {
+  const fixtures = new NoteFixtures();
+  const createdRecipeIds: string[] = [];
+
+  beforeEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  afterAll(async () => {
+    for (const id of createdRecipeIds) {
+      await db.delete(recipes).where(eq(recipes.id, id));
+    }
+    await fixtures.cleanup();
+  });
+
+  it('returns 200 image/png for a public recipe with a legacy underscore slug', async () => {
+    const marker = crypto.randomUUID().replaceAll('-', '').slice(0, 10);
+    const author = await fixtures.user('qr-legacy');
+    const slug = `cold_brew_${marker}`;
+    const [recipe] = await db
+      .insert(recipes)
+      .values({ slug, title: `Cold brew ${marker}`, authorId: author.id, visibility: 'public' })
+      .returning({ id: recipes.id });
+    createdRecipeIds.push(recipe.id);
+
+    const app = createTestApp();
+    const res = await app.request(`/api/v1/qrcode/recipe/${slug}.png`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('image/png');
+    const body = new Uint8Array(await res.arrayBuffer());
+    // PNG signature: 0x89 'P' 'N' 'G'.
+    expect(Array.from(body.slice(0, 4))).toEqual([0x89, 0x50, 0x4e, 0x47]);
   });
 });

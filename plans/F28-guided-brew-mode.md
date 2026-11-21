@@ -1,5 +1,27 @@
 # F28 — Guided Brew Mode
 
+> **Refresh (2026-11-21): F02 shipped (2026-08-13) — the completion hook now has a real target**
+>
+> - The brew journal exists: the `brewLogs` table (`brew_log`, `packages/db/src/schema.ts:1166`)
+>   and the `apps/api/src/modules/brew-log/` module under `/api/v1/brew-logs`
+>   (`apps/api/src/routes/index.ts:60`). There is no `/api/v1/journal`; the completion hook below
+>   creates a brew log with `POST /api/v1/brew-logs` (`BrewLogCreateSchema`,
+>   `packages/shared/src/schemas/brew-log.ts`: `recipeId`, `recipeVersionId`, `brewedAt` =
+>   `completedAt`, optional `doseActual`/`yieldActual`/`notes`/`personalRating`). Map
+>   `BrewSessionResult` onto that payload rather than adding a parallel session table; an
+>   abandoned session creates nothing.
+> - The summary screen can show the recipe's journal context from the existing
+>   `GET /api/v1/brew-logs/stats/recipe/:recipeId` (public, `brew-log/index.ts:130-132`) and, for
+>   the signed-in user, `GET /api/v1/brew-logs/stats/user` (`service.getUserBrewStats`,
+>   `brew-log/service.ts:177`).
+> - Web: submit the brew log through the action of the existing resource route
+>   `apps/web/src/routes/resources/brew-logs.ts` (web data-loading rule: components never import
+>   `api/index.ts`); the brew-log form/list live in `apps/web/src/pages/brew-logs/`.
+> - `RecipeFocusModePage` now loads through `RecipeFocusModePage.data.ts` (a route loader, wave 6),
+>   not `recipeApi.get` in `useEffect`; the "Current state" bullet below predates that.
+> - Logging the brew stays optional: the guided session must still work signed out, and the
+>   hook only offers "Save to brew journal" to signed-in, email-verified users.
+
 > **Validation status (2026-07-13): ✅ Valid**
 >
 > - All 11 brew methods confirmed in `BREW_METHODS` / `BREW_METHOD_VALUES` (`packages/shared/src/constants/brew-methods.ts:1-89`) — the exhaustive `Record<BrewMethodValue, …>` template is well-founded. `recipeVersions` supplies every field a session needs (`schema.ts:176-239`, cited 175-238).
@@ -8,7 +30,7 @@
 
 ## Summary
 
-An interactive, step-by-step brew session view at `/recipes/:slug/brew`: per-brew-method step templates hydrated with the recipe version's actual numbers (dose, temperature, pre-infusion, extraction time), live countdown timers, screen wake-lock, and a completion summary. Builds on the existing distraction-free `RecipeFocusModePage` and the `BrewTimeline` visualisation. Defines — but does not depend on — a completion hook for the future brew journal (F02).
+An interactive, step-by-step brew session view at `/recipes/:slug/brew`: per-brew-method step templates hydrated with the recipe version's actual numbers (dose, temperature, pre-infusion, extraction time), live countdown timers, screen wake-lock, and a completion summary. Builds on the existing distraction-free `RecipeFocusModePage` and the `BrewTimeline` visualisation. Defines — but does not depend on — a completion hook for the brew journal (F02, shipped 2026-08-13).
 
 ## Motivation
 
@@ -21,13 +43,13 @@ FEATURE_SUGGESTIONS §1.6 (guided brews) is the natural next step after focus mo
 - `recipeVersions` (`packages/db/src/schema.ts:175-238`) provides everything a session needs: `brewMethod` (`brewMethodEnum`), `groundWeightGrams`, `extractionTimeSeconds`, `preInfusionTimeSeconds`, `temperatureCelsius`, `extractionVolumeMl`, `brewRatio`, `grindSize`, `preparationNotes` (notNull).
 - Brew methods are single-sourced: `BREW_METHODS` / `BREW_METHOD_VALUES` in `packages/shared/src/constants/brew-methods.ts` (11 methods, each with `equipmentTypes`), per D07.
 - `GET /api/v1/recipes/:slugOrId` (`apps/api/src/modules/recipe/index.ts:301`) already returns the full recipe with `currentVersion` — no new API surface required for phase 1.
-- F02 (brew journal) is a separate plan with no implementation yet.
+- F02 (brew journal) shipped 2026-08-13: `brewLogs` table and `POST /api/v1/brew-logs` (see the 2026-11-21 refresh).
 
 ## Proposed design
 
 ### DB schema
 
-**None in phase 1.** Guided brew is a pure client-side experience over existing recipe data. The completion payload is defined now (shared schema) so F02 can persist it later without reshaping.
+**None in phase 1.** Guided brew is a pure client-side experience over existing recipe data. The completion payload is defined now (shared schema) and maps onto F02's existing `BrewLogCreateSchema` without reshaping.
 
 ### Step templates (shared, single-sourced)
 
@@ -71,7 +93,7 @@ export const BREW_STEP_TEMPLATES: Record<BrewMethodValue, BrewStepTemplate[]> = 
 
 A small resolver `buildBrewSession(brewMethod, version)` (colocated, pure, unit-tested) maps templates → concrete steps with resolved durations, skipping timed steps whose duration resolves to `null`/`<= 0`.
 
-### Completion hook (F02 integration point — designed, not depended on)
+### Completion hook (F02 integration point — `POST /api/v1/brew-logs`, optional)
 
 New `packages/shared/src/schemas/brew-session.ts`:
 
@@ -89,11 +111,11 @@ export const BrewSessionResultSchema = z.object({
 export type BrewSessionResult = z.infer<typeof BrewSessionResultSchema>;
 ```
 
-The page calls an injected `onSessionComplete(result: BrewSessionResult)` prop/callback. Phase 1 implementation: log via web logger and offer "Rate this brew" linking to the existing recipe rating flow. When F02 lands, the same callback POSTs to the journal endpoint — no UI rework.
+The page calls an injected `onSessionComplete(result: BrewSessionResult)` prop/callback. Phase 1 implementation: log via web logger and offer "Rate this brew" linking to the existing recipe rating flow. With F02 shipped, the same callback can create a brew log via `POST /api/v1/brew-logs` (through the brew-logs resource-route action) — no UI rework.
 
 ### API endpoints
 
-None. The existing `GET /api/v1/recipes/:slugOrId` supplies all data. (If F02 later adds `POST /api/v1/journal`, it plugs into the completion hook above.)
+None new. The existing `GET /api/v1/recipes/:slugOrId` supplies all data; the optional journal save uses the existing `POST /api/v1/brew-logs` through the completion hook above.
 
 ### Frontend (loader-based)
 
@@ -157,4 +179,4 @@ export const loader = async ({ params }: LoaderFunctionArgs) => {
 - Existing recipe GET endpoint and `recipeVersions` fields (verified above)
 - `BREW_METHODS` constants (D07 single source)
 - `BrewTimeline`, `RecipeFocusModePage` as design substrate
-- F02 (brew journal): **integration point only** — this plan must land and function without it
+- F02 (brew journal, shipped): **integration point only** (`POST /api/v1/brew-logs`) — this plan must still function without saving a brew log

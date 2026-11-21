@@ -2,7 +2,10 @@ import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import { users } from '@brewform/db/schema';
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { VisibilityFixtures, type VisibilityScenario } from '../recipe/test-helpers.ts';
+import * as recipeNoteService from '../recipe-note/service.ts';
+import { NoteFixtures } from '../recipe-note/test-helpers.ts';
 import { deleteAccount, getProfile, getPublicProfile, log, updateProfile } from './service.ts';
 
 describe('User Service', () => {
@@ -162,5 +165,86 @@ describe('User Service', () => {
       expect(debugSpy).toHaveBeenNthCalledWith(1, { userId }, 'deleteAccount started');
       expect(debugSpy).toHaveBeenNthCalledWith(2, { userId }, 'deleteAccount completed');
     });
+  });
+});
+
+describe('User Service — deleteAccount scrubs private recipe notes', () => {
+  const fixtures = new NoteFixtures();
+
+  afterEach(async () => {
+    await fixtures.cleanup();
+  });
+
+  it("soft-deletes and scrubs every private note of the user and leaves other users' notes", async () => {
+    const author = await fixtures.user('delete-account-author');
+    const leaving = await fixtures.user('delete-account-user');
+    const staying = await fixtures.user('delete-account-other');
+    const recipes = await Promise.all([1, 2, 3].map(() => fixtures.recipe(author.id)));
+    for (const { recipe } of recipes) {
+      await recipeNoteService.saveMyNote(leaving.id, recipe.id, `private on ${recipe.id}`, false);
+    }
+    await recipeNoteService.saveMyNote(staying.id, recipes[0].recipe.id, 'still here', false);
+
+    await deleteAccount(leaving.id);
+
+    for (const { recipe } of recipes) {
+      const [row] = await fixtures.noteRows(leaving.id, recipe.id);
+      expect(row.deletedAt).toBeInstanceOf(Date);
+      expect(row.notes).toBe('');
+    }
+    const [kept] = await fixtures.noteRows(staying.id, recipes[0].recipe.id);
+    expect(kept.notes).toBe('still here');
+    expect(kept.deletedAt).toBeNull();
+  });
+
+  it('calls the recipe-note service before soft-deleting the user row', async () => {
+    const user = await fixtures.user('delete-account-order');
+    const notesSpy = vi
+      .spyOn(recipeNoteService, 'deleteAllNotesForUser')
+      .mockRejectedValueOnce(new Error('notes cleanup failed'));
+
+    await expect(deleteAccount(user.id)).rejects.toThrow('notes cleanup failed');
+
+    expect(notesSpy).toHaveBeenCalledWith(user.id);
+    const [row] = await db
+      .select({ deletedAt: users.deletedAt })
+      .from(users)
+      .where(eq(users.id, user.id));
+    expect(row.deletedAt).toBeNull();
+    notesSpy.mockRestore();
+  });
+});
+
+/**
+ * Regression lock for capability `recipe-visibility` (task 11.1): the public profile's
+ * `recipes` and `recipeCount` are a discovery surface for every viewer, the profile owner
+ * included.
+ */
+describe('getPublicProfile — unlisted recipes (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let scenario: VisibilityScenario;
+
+  beforeAll(async () => {
+    scenario = await fixtures.scenario('vis-profile');
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  it('lists and counts only the public recipe for an anonymous viewer, a follower and the owner', async () => {
+    const viewers: Array<{ label: string; id: string | undefined }> = [
+      { label: 'anonymous', id: undefined },
+      { label: 'a follower', id: scenario.userB.id },
+      { label: 'the owner', id: scenario.authorA.id },
+    ];
+    for (const viewer of viewers) {
+      const profile = await getPublicProfile(scenario.authorA.username, viewer.id);
+      expect(
+        profile.recipes.map((r) => r.id),
+        viewer.label,
+      ).toEqual([scenario.publicP.id]);
+      expect(profile.recipeCount, viewer.label).toBe(1);
+    }
   });
 });

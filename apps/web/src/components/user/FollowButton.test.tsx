@@ -25,7 +25,7 @@ function renderWithRouter(ui: React.ReactElement) {
         children: [
           {
             path: 'follow/:userId',
-            action: () => new Promise(() => {}),
+            action: () => new Promise(() => undefined),
             element: null,
           },
         ],
@@ -126,7 +126,7 @@ describe('FollowButton — action failure rollback', () => {
     });
   });
 
-  it('completes normally when action returns ok', async () => {
+  it('keeps the following state after { ok: true, following } (no revalidation)', async () => {
     const user = userEvent.setup();
     const router = createMemoryRouter(
       [
@@ -136,7 +136,7 @@ describe('FollowButton — action failure rollback', () => {
           children: [
             {
               path: 'follow/:userId',
-              action: () => ({ ok: true }),
+              action: () => ({ ok: true, following: true }),
               element: null,
             },
           ],
@@ -151,7 +151,7 @@ describe('FollowButton — action failure rollback', () => {
 
     await waitFor(() => {
       expect(button).not.toBeDisabled();
-      expect(button.textContent).toBe('Follow');
+      expect(button.textContent).toBe('Following');
     });
   });
 });

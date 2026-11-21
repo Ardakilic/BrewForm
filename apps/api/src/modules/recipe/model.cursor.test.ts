@@ -565,13 +565,22 @@ describe('Recipe model — list filters (DB)', () => {
     expect(ids.length).toBe(1);
   });
 
-  it('ignores a search term that sanitizes to empty', async () => {
-    const r = await createRecipeWithVersion(author.id, 'Search Empty Sanitize');
+  it('ignores a search term that is empty after trimming', async () => {
+    const r = await createRecipeWithVersion(author.id, 'Search Empty Trimmed');
 
-    const where = model.buildListRecipesWhere({ search: '%_%' }, false);
+    const where = model.buildListRecipesWhere({ search: '   ', authorId: author.id }, false);
     const result = await model.findMany(where, 1, 100);
     const ids = result.recipes.map((r) => r.id);
     expect(ids).toContain(r.recipe.id);
+  });
+
+  it('treats a metacharacter-only search as a literal search (wave 6)', async () => {
+    await createRecipeWithVersion(author.id, 'Search Literal Metacharacters');
+
+    const where = model.buildListRecipesWhere({ search: '%_%', authorId: author.id }, false);
+    const result = await model.findMany(where, 1, 100);
+    expect(result.recipes).toEqual([]);
+    expect(result.total).toBe(0);
   });
 
   it('filters by tasteNoteIds against the current version', async () => {

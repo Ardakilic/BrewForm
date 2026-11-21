@@ -2,10 +2,11 @@ import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions } from '@brewform/db/schema';
 import type { CoffeeVarietyCategory } from '@brewform/shared';
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
+import { listableRecipeCondition, maskUnlistableForkSources } from '../recipe/model.ts';
 
 /** Find a non-deleted coffee variety by ID. */
 export async function findById(id: string) {
-  return db.query.coffeeVarieties.findFirst({
+  return await db.query.coffeeVarieties.findFirst({
     where: and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)),
   });
 }
@@ -82,9 +83,17 @@ export async function softDelete(id: string) {
 /**
  * List public, non-deleted recipes whose current version uses the given
  * variety, paginated with total count and author/photo relations joined.
+ *
+ * The coffee-variety page is a discovery surface (capability
+ * `recipe-visibility`), so both the data and the count branch filter with
+ * `listableRecipeCondition(null)` from the recipe model: `unlisted`, `draft`
+ * and `private` recipes are never listed or counted, for any viewer. The rows
+ * pass through `maskUnlistableForkSources`, so a fork of a non-public source
+ * carries `forkedFromId: null`.
  */
 export async function getRecipesUsingVariety(varietyId: string, page: number, perPage: number) {
   const offset = (page - 1) * perPage;
+  const recipeConditions = listableRecipeCondition(null);
 
   const [data, countResult] = await Promise.all([
     db.query.recipes.findMany({
@@ -96,8 +105,7 @@ export async function getRecipesUsingVariety(varietyId: string, page: number, pe
         },
       },
       where: and(
-        eq(recipes.visibility, 'public'),
-        isNull(recipes.deletedAt),
+        recipeConditions,
         inArray(
           recipes.currentVersionId,
           db
@@ -114,14 +122,8 @@ export async function getRecipesUsingVariety(varietyId: string, page: number, pe
       .select({ count: sql<number>`count(distinct ${recipes.id})` })
       .from(recipes)
       .innerJoin(recipeVersions, eq(recipes.currentVersionId, recipeVersions.id))
-      .where(
-        and(
-          eq(recipeVersions.coffeeVarietyId, varietyId),
-          eq(recipes.visibility, 'public'),
-          isNull(recipes.deletedAt),
-        ),
-      ),
+      .where(and(eq(recipeVersions.coffeeVarietyId, varietyId), recipeConditions)),
   ]);
 
-  return { data, total: Number(countResult[0]?.count ?? 0) };
+  return { data: await maskUnlistableForkSources(data), total: Number(countResult[0]?.count ?? 0) };
 }

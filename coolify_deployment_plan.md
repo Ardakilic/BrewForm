@@ -3,8 +3,8 @@
 > **Status:** This document is the step-by-step operator guide for deploying BrewForm on a
 > self-hosted **Coolify** instance. It assumes the OpenSpec change
 > `d30-coolify-ghcr-deployment` has been **implemented** — i.e. the two Docker images exist on
-> GHCR, the `compose.yml` `prod` profile works, and the `release.yml` workflow is publishing
-> images on every `main` push.
+> GHCR, and the `publish` job of `.github/workflows/ci.yml` publishes them after every `main`
+> push whose CI jobs (quality, tests, image smoke tests, doc-drift) all passed.
 >
 > If the implementation has NOT been done yet, the "Codebase prerequisites" section below tells
 > you what must land first; the Coolify steps are what you do in the Coolify panel.
@@ -26,7 +26,7 @@
 11. [Step 7 — First deploy: migrations & seed](#step-7--first-deploy-migrations--seed)
 12. [Step 8 — Cloudflare R2 for uploads](#step-8--cloudflare-r2-for-uploads)
 13. [Step 9 — Email (SMTP)](#step-9--email-smtp)
-14. [Step 10 — GitHub Actions → Coolify deploy webhook (optional)](#step-10--github-actions--coolify-deploy-webhook-optional)
+14. [Step 10 — Redeploy after CI publishes](#step-10--redeploy-after-ci-publishes)
 15. [Post-deploy verification checklist](#post-deploy-verification-checklist)
 16. [Troubleshooting](#troubleshooting)
 17. [Maintenance & upgrades](#maintenance--upgrades)
@@ -79,15 +79,14 @@
                            ▼                             ▼
                   ┌─────────────────┐          ┌─────────────────────┐
                   │ Cloudflare R2    │          │  GitHub Actions      │
-                  │ (S3-compatible)  │          │  release.yml          │
+                  │ (S3-compatible)  │          │  ci.yml              │
                   │ bucket:          │          │                      │
-                  │  brewform-uploads│          │  on push to main:    │
-                  │                  │          │   build + push to    │
-                  │ S3_* env → API   │          │   GHCR               │
-                  │ S3_PUBLIC_URL →  │          │   (api + web images) │
-                  │  R2 public URL   │          │                      │
-                  └─────────────────┘          │  optional: curl       │
-                                               │  Coolify webhook      │
+                  │  brewform-uploads│          │  PRs + main: build + │
+                  │                  │          │   smoke-test images  │
+                  │ S3_* env → API   │          │  main/v* push: the   │
+                  │ S3_PUBLIC_URL →  │          │   publish job pushes │
+                  │  R2 public URL   │          │   to GHCR after all  │
+                  └─────────────────┘          │   jobs passed        │
                                                └─────────────────────┘
 ```
 
@@ -105,32 +104,34 @@
 ## 2. Codebase prerequisites (implement & merge first)
 
 This is the **prerequisite implementation checklist** for the `d30-coolify-ghcr-deployment`
-OpenSpec change. **The change is currently unapplied** — it must be implemented and
-merged to `main` *before* you start any Coolify step (see
-[Step 0](#step-0--pre-flight-before-any-coolify-work)). Most rows do **not** exist on disk yet;
-the **Status** column marks which files are already committed versus which still need to be
-written.
+OpenSpec change and its wave-6 follow-ups. Every row has shipped on `main`; the table records
+what each piece is. Rows for removed mechanisms (the `compose.yml` `prod` profile, the
+separate `release.yml` workflow and its webhook deploy job, `make images-push`/`make release`)
+were deleted.
 
-> **Install command:** the Docker `deps` stages and CI install dependencies with
-> `pnpm install --frozen-lockfile` (via `pnpm fetch` + offline install in Docker), not
-> `pnpm install`. The frozen install fails fast if `pnpm-lock.yaml` is missing or out of date.
+> **Install command:** the Docker `deps` stages install dependencies with `pnpm fetch` followed
+> by `pnpm install --frozen-lockfile --offline`, and CI with `pnpm install --frozen-lockfile`,
+> never a plain `pnpm install`. The frozen install fails fast if `pnpm-lock.yaml` is missing or
+> out of date.
 
 | # | Change | File(s) | Status |
 |---|--------|---------|--------|
-| 1 | API Dockerfile: `node:26-trixie-slim` stages (`pnpm fetch` + frozen offline install); `builder` runs `pnpm run email-build` (compiles MJML templates) + `drizzle-kit generate` (migration SQL) with a `tsc` gate; `runner` keeps the full install (tsx, drizzle-kit) and uses `ENTRYPOINT ["/app/docker-entrypoint.sh"]`, which execs `tsx src/main.ts` via pnpm (no `dist/` — root `noEmit:true`, api `build` = email-templates only) | `Dockerfile`, `docker-entrypoint.sh` | Done |
-| 2 | `docker-entrypoint.sh`: runs `drizzle-kit migrate` (always), checks `users` row count via a tsx script and runs seed only if empty (first boot), then `exec`s the API server | `docker-entrypoint.sh` | Done |
+| 1 | API Dockerfile: `node:<version>-trixie-slim` stages (`pnpm fetch` + frozen offline install); `builder` runs `pnpm run email-build` + the `tsc` gate; a `prod-deps` stage keeps production dependencies only; the `runner` runs as the non-root `node` user under `tini` with a `HEALTHCHECK` (`node /app/healthcheck.mjs /ready`) and contains no pnpm, tsx or drizzle-kit | `Dockerfile`, `apps/api/scripts/healthcheck.mjs` | Done |
+| 2 | `docker-entrypoint.sh [serve\|migrate]`: runs `node /app/packages/db/src/migrate.ts` (the `@brewform/db` migration runner), checks the `users` row count and seeds only an empty database (first boot), then `exec node src/main.ts`; `RUN_MIGRATIONS=false` skips the migrations in `serve` mode | `docker-entrypoint.sh` | Done |
 | 3 | Web Dockerfile: 3-stage build (node deps → vite build with `VITE_*` ARGs → `caddy:2.11.9-alpine` serving `dist/` on port 80) | `Dockerfile.web` | Done |
-| 4 | `compose.yml` `prod` profile (`app-prod`, `web-prod` referencing GHCR images); no cache sidecar (`CACHE_DRIVER=memory`) | `compose.yml` | Done |
+| 4 | Self-hosting definition `compose.production.yml` (postgres, valkey, one-shot migrate, api, web edge, backup, profile-gated restore); `compose.yml` has no production services | `compose.production.yml` | Done |
 | 5 | In-memory `CacheProvider` default in `main.ts`; in-process `node-cron` badge evaluation | `apps/api/src/main.ts`, `apps/api/src/utils/jobs/` | Done |
-| 6 | `CACHE_DRIVER=memory` pinned in `.env.example` files (no cache sidecar to configure) | `.env.example`, `apps/api/.env.example` | Already committed (on disk) |
-| 7 | `.env.example` split into three files: root (local-dev infra), `apps/api/.env.example` (API runtime for Coolify), `apps/web/.env.example` (web build-time for GitHub Secrets) | `.env.example`, `apps/api/.env.example`, `apps/web/.env.example` | Already committed (on disk) |
-| 8 | `release.yml` workflow (build + push to GHCR on `main`/tags, with `cache-from/to: type=gha`, optional Coolify webhook deploy job) | `.github/workflows/release.yml` | Done |
-| 9 | Makefile targets (`images`, `images-push`, `prod-up`, `prod-up-build`, `prod-down`, `release`) | `Makefile` | Done |
-| 10 | This document | `coolify_deployment_plan.md` | Already committed (on disk) |
+| 6 | `CACHE_DRIVER=memory` pinned in `.env.example` files (no cache sidecar to configure) | `.env.example`, `apps/api/.env.example` | Done |
+| 7 | `.env.example` split into three files: root (local-dev infra), `apps/api/.env.example` (API runtime for Coolify), `apps/web/.env.example` (web build-time for GitHub Secrets) | `.env.example`, `apps/api/.env.example`, `apps/web/.env.example` | Done |
+| 8 | One CI workflow: pull requests and `main` build and smoke-test both images; the `publish` job pushes the tested images to GHCR (`latest` on `main`, `<full sha>`, `vX.Y.Z` tags) only after every job passed | `.github/workflows/ci.yml` | Done |
+| 9 | Makefile targets (`images` builds `:local` tags; `prod-*` wrap `compose.production.yml`; no target pushes images) | `Makefile` | Done |
+| 10 | This document | `coolify_deployment_plan.md` | Done |
 
-**Health endpoints** (verified in `apps/api/src/routes/health.ts`):
+**Health endpoints** (verified in `apps/api/src/modules/health/`):
 - `GET /health` — liveness, returns `200 { status: 'ok' }` (no DB check)
-- `GET /ready` — readiness, returns `200 { status: 'ready', db: 'connected' }` or `503` (checks DB)
+- `GET /ready` — readiness, returns `200` with `status: 'ready'` or `503` with `status: 'not_ready'`
+  (checks the DB); the body always has `status`, `db`, `cache`, `rateLimitStore`, `storage` and
+  `shuttingDown`
 - These are at the **root** (`/health`, `/ready`), NOT under `/api/v1/`
 
 **Verify the images exist on GHCR before proceeding:**
@@ -138,7 +139,8 @@ written.
 https://github.com/Ardakilic/BrewForm/pkgs/container/brewform-api
 https://github.com/Ardakilic/BrewForm/pkgs/container/brewform-web
 ```
-If the first `release.yml` run has completed on `main`, both packages should be visible. If they
+If the first `publish` job of the `CI` workflow has completed on `main`, both packages should be
+visible. If they
 default to **private**, flip them to **public** once:
 - GitHub → your profile → Packages → `brewform-api` → Package settings → Change visibility → Public
 - Repeat for `brewform-web`
@@ -160,8 +162,8 @@ default to **private**, flip them to **public** once:
   HTTP-01 challenge fails otherwise.
 - **Host architecture:** the published GHCR images are **amd64-only**. On an **ARM64** Coolify
   host they fail with `exec format error`. Either run on an amd64 host, or rebuild the images
-  multi-arch (`platforms: linux/amd64,linux/arm64` plus `docker/setup-qemu-action` in
-  `release.yml`).
+  multi-arch (`platforms: linux/amd64,linux/arm64` plus `docker/setup-qemu-action` in the
+  `images`/`publish` jobs of `ci.yml`), or build them on the host with `make images`.
 - **No `docker login` required** — the GHCR images are public. If you later make them private,
   SSH into the Coolify server and run:
   ```bash
@@ -173,43 +175,39 @@ default to **private**, flip them to **public** once:
 
 ## Step 0 — Pre-flight (before any Coolify work)
 
-> **Pinned runtime:** BrewForm runs on **Node 26 LTS**. Both images build from
-> `node:26-trixie-slim` (API `Dockerfile`, web `Dockerfile.web` deps/builder stages),
-> `.nvmrc` pins `26`, and CI installs pnpm via `pnpm/action-setup`. If you fork or rebuild
-> an image, keep the base on a pinned `node:26.x-trixie-slim` tag.
+> **Pinned runtime:** BrewForm runs on **Node 26 LTS**, and pnpm is pinned exactly. The
+> authoritative pins are `.nvmrc`, the root `package.json` `engines` / `devEngines` /
+> `packageManager` fields, and the `FROM node:<version>-trixie-slim` lines of `Dockerfile` and
+> `Dockerfile.web` (deps/builder stages); Renovate bumps them, so this plan does not repeat patch
+> versions. CI installs pnpm via `pnpm/action-setup` and Node from `.nvmrc`. If you fork or
+> rebuild an image, keep the base on a pinned `node:26.x.y-trixie-slim` tag.
 
 Do all of this **before** you touch the Coolify panel. The web image bakes its config at build
 time, so getting these wrong means rebuilding and republishing images later.
 
-1. **Apply & merge the `d30-coolify-ghcr-deployment` change to `main`.** This change is currently
-   **unapplied** — implement it, open the PR, merge it, and confirm the new files
-   now exist on `main`:
+1. **Confirm the deployment files exist on `main`** (they have shipped):
    - `Dockerfile.web`
    - `docker-entrypoint.sh`
-   - `.github/workflows/release.yml`
+   - `.github/workflows/ci.yml` (with its `images` and `publish` jobs)
 
    (See [Section 2](#2-codebase-prerequisites-implement--merge-first) for the full prerequisite
    checklist.)
 
-2. **Lock down `.dockerignore`.** Add `.env` and `*.env` while **keeping** `*.env.example`:
-   ```gitignore
-   .env
-   *.env
-   !*.env.example
-   ```
-   Both `Dockerfile` and `Dockerfile.web` do `COPY . .`, so without this a local `make images` /
-   `make release` bakes your real `.env` secrets into the **public** GHCR image.
+2. **Keep `.dockerignore` excluding env files.** It ignores `.env`, `*.env`, `.env.*` (and their
+   `**/` forms) while **keeping** `*.env.example`. Both `Dockerfile` and `Dockerfile.web` do
+   `COPY . .`, so without this a local `make images` would bake your real `.env` secrets into the
+   image. Images are published only by CI's `publish` job; no Makefile target pushes them.
 
-3. **Set the GitHub repo Secrets before the first push to `main`.** They are baked into the web
-   image at **build time** in `release.yml`, so an unset secret bakes a wrong `/api/v1` URL and
-   `http://localhost:8080` into the SPA:
+3. **Set the GitHub repo Secrets before the first push to `main`** (optional). The `images` job
+   of `ci.yml` bakes them into the web image on `main` pushes; unset, the image bakes `/api/v1`
+   and `http://localhost:8080` (the runtime `VITE_API_URL` / `PUBLIC_APP_URL` on the web
+   resource override both without a rebuild):
    - `VITE_API_URL=https://api.brewform.example.com/api/v1`
    - `VITE_PUBLIC_APP_URL=https://brewform.example.com`
-   - (optional, for auto-deploy) `COOLIFY_API_TOKEN`, `COOLIFY_API_WEBHOOK`,
-     `COOLIFY_WEB_WEBHOOK` — see [Step 10](#step-10--github-actions--coolify-deploy-webhook-optional).
+   No Coolify webhook or token secrets are used.
 
-4. **Push to `main`, wait for `release.yml` to finish, then make both packages public.** Once the
-   first workflow run completes, flip both GHCR packages to **Public** (GitHub → Packages →
+4. **Push to `main`, wait for the `CI` run's `publish` job to finish, then make both packages
+   public.** Once the first publish completes, flip both GHCR packages to **Public** (GitHub → Packages →
    `brewform-api` / `brewform-web` → Package settings → Change visibility → Public).
 
 5. **Verify DNS + firewall.** Confirm both records resolve to the server and inbound ports 80/443
@@ -332,21 +330,19 @@ in-process Map with TTL support, wired at startup with no extra service to provi
    - `JWT_SECRET` — at least 16 characters (Zod enforces this); use `openssl rand -hex 32`.
    - `CORS_ALLOWED_ORIGINS` — the web SPA's public origin (no trailing slash).
 
-6. **Persistent Storage:** The API container needs **no** persistent volume (the cache is
-   in-memory; uploads go to R2). Leave
-   this empty unless you want to persist logs to a volume (not required — Coolify captures
-   container stdout).
+6. **Persistent Storage:** none with `STORAGE_DRIVER=s3` (this plan; the cache is in-memory and
+   uploads go to R2). With `STORAGE_DRIVER=local`, add a Volume Mount (`brewform-uploads` →
+   `/app/uploads`) or a Directory Mount owned by `1000:1000`, plus the API network alias and
+   `API_UPSTREAM` on the web resource — see `docs/deployment_coolify.md` §6 step 5.
 
-7. **Healthcheck:** The API exposes `GET /health` (liveness, returns `200 { status: 'ok' }`)
-   and `GET /ready` (readiness, checks DB, returns `200` or `503`). These are at the **root**,
-   not under `/api/v1`. In the Coolify UI, set:
-   - Path: `/health`
-   - Expected status code: `200`
-   - Interval: `30s`
-
-   > **Note:** The path is `/health` (root), NOT `/api/v1/health`. The API's health routes are
-   > mounted at the root in `apps/api/src/routes/index.ts` (`routes.route('/', health)`), so
-   > the full path is `https://api.brewform.example.com/health`.
+7. **Healthcheck:** The API exposes `GET /health` (liveness, `200 { status: 'ok' }`) and
+   `GET /ready` (readiness, checks the DB, `200` or `503`), both at the **root**, not under
+   `/api/v1` (`apps/api/src/modules/health/`). In the Coolify UI set: Enabled, Type `CMD`,
+   Command `node /app/healthcheck.mjs /ready`, Interval `15`, Timeout `5`, Retries `3`,
+   Start period `180`. The `HTTP` type needs curl/wget, which the image does not ship; the `CMD`
+   type runs the same probe as the image's own `HEALTHCHECK`. Uptime monitors use
+   `https://api.brewform.example.com/health`, never `/ready`. Details:
+   `docs/deployment_coolify.md` §6 step 4.
 
 8. **Deploy.** Watch the logs. On first boot (empty database) you should see:
    ```
@@ -383,18 +379,26 @@ in-process Map with TTL support, wired at startup with no extra service to provi
 4. **Assign to the same destination** as the API (so Caddy could proxy to the API if needed,
    though with subdomain routing the SPA talks to the API cross-origin via CORS).
 5. **Environment Variables:** **Optional.** `VITE_API_URL` and `VITE_PUBLIC_APP_URL` are
-   baked into the image at build time (in the `release.yml` workflow via GitHub Secrets), so
+   baked into the image at build time (by the `images` job of `ci.yml` via GitHub Secrets), so
    for this deployment you can leave the web resource's env **empty**. However, `VITE_API_URL`
    is **runtime-overridable**: set it as an env var on the web resource and the image's
    entrypoint writes it into `/config.js` at startup, overriding the baked default — handy for
    pointing a prebuilt image at a different API origin without a rebuild.
 
    > **Changing the API URL:** set `VITE_API_URL` on the web resource and redeploy (no rebuild
-   > needed — the entrypoint regenerates `/config.js`). `VITE_PUBLIC_APP_URL` (og:image /
-   > sitemap meta) is still build-time only; changing it requires rebuilding and re-pushing the
-   > web image.
+   > needed — the entrypoint regenerates `/config.js`). `VITE_PUBLIC_APP_URL` itself is
+   > build-time only, but the optional runtime `PUBLIC_APP_URL` on the web resource rewrites the
+   > `og:image`/`twitter:image` tags and the `robots.txt` `Sitemap:` line at startup, so a
+   > domain change needs no rebuild. With `STORAGE_DRIVER=local`, also set
+   > `API_UPSTREAM=brewform-api:8000` (same-origin edge; see `docs/deployment_coolify.md` §7).
 
-6. **Deploy.** Verify it starts: `curl http://<coolify-assigned-domain>/` should return the
+6. **Healthcheck:** Enabled, Type `HTTP`, Method `GET`, Scheme `http`, Host `localhost`, Port
+   `80`, Path `/healthz`, expected status `200`, Interval `30`, Timeout `3`, Retries `3`, Start
+   period `10` (the web image ships BusyBox `wget`, so the `HTTP` type works here). Uptime
+   monitors use `https://brewform.example.com/healthz`. Changes take effect after a Redeploy.
+   Details: `docs/deployment_coolify.md` §7 step 4.
+
+7. **Deploy.** Verify it starts: `curl http://<coolify-assigned-domain>/` should return the
    SPA's `index.html`.
 
 ---
@@ -451,6 +455,10 @@ Neither the API nor the web container needs a Coolify volume:
 - Uploads go to R2 (`STORAGE_DRIVER=s3`), not to container disk.
 - The API cache is in-memory and rebuilds on access — there is no cache volume to persist.
 
+With `STORAGE_DRIVER=local` instead, the API needs Persistent Storage at `/app/uploads` (Volume
+Mount `brewform-uploads`, or a Directory Mount owned by `1000:1000`), the API network alias and
+`API_UPSTREAM` on the web resource, exactly as in `docs/deployment_coolify.md` §6 step 5.
+
 To verify nothing depends on container disk, restart the API resource and confirm uploads
 (still served from R2) and login still work.
 
@@ -458,46 +466,50 @@ To verify nothing depends on container disk, restart the API resource and confir
 
 ## Step 7 — First deploy: migrations & seed
 
-> **Workspace layout:** this is a pnpm workspace (root `pnpm-workspace.yaml`
-> `packages: ['apps/*', 'packages/*']`). The migrate/seed commands below run from the repo
-> root via root scripts (`pnpm run db:migrate`, `pnpm run db:seed`); the
-> `pnpm --filter @brewform/db run …` form is equivalent and also correct.
+The API's `docker-entrypoint.sh` handles this automatically, with Node directly (the runtime
+image contains neither pnpm nor drizzle-kit). On the first deploy (Step 3 above):
 
-The API's `docker-entrypoint.sh` handles this automatically. Here's what happens on the first
-deploy (Step 3 above):
+1. **Container starts** → `tini` runs `docker-entrypoint.sh` in its default `serve` mode.
+2. **Migrations:** `node /app/packages/db/src/migrate.ts` (the `@brewform/db` migration runner,
+   a drizzle-orm migrator with a `pg_trgm` pre-flight) applies the pending migration SQL files
+   committed in `packages/db/drizzle/` against `DATABASE_URL`. This creates all tables.
+3. **Seed check:** `node src/check-users-empty.ts` (cwd `/app/packages/db`) prints the `users`
+   row count. If it is `0`, `node src/seed.ts` inserts the admin user, badges, equipment catalog,
+   coffee varieties and the rest of the seed data.
+4. **API starts:** `cd /app/apps/api && exec node src/main.ts` — one Node process (native
+   TypeScript type stripping, no `dist/` build and no runtime flags); badge evaluation runs
+   in-process via `node-cron`, once per replica.
 
-1. **Container starts** → `docker-entrypoint.sh` runs.
-2. **Migrations:** `pnpm --filter @brewform/db run migrate` runs against `DATABASE_URL`.
-   Drizzle applies any pending migration SQL files in `packages/db/drizzle/`. This creates all
-   tables.
-3. **Seed check:** The script runs a `users` row-count check via tsx. If the count is `0`:
-   - `pnpm --filter @brewform/db run seed` runs, inserting the admin user, badges,
-     equipment catalog, coffee varieties, seed users/recipes, and social data.
-   - The admin credentials are logged once.
-4. **API starts:** `exec pnpm --filter @brewform/api exec tsx src/main.ts` (TypeScript run
-   directly — no `dist/` build; badge evaluation runs in-process via `node-cron`, so no
-   extra runtime flags are needed).
+Expected log lines: `Entrypoint mode: serve`, `Running database migrations...`,
+`Migrations complete.`, `Database is empty, running seed...`, `Seeding complete.`,
+`Starting BrewForm API...`.
 
 On subsequent restarts/redeploys:
 - Migrations run again (no-op if nothing pending).
-- Seed is **skipped** (the `users` table is not empty).
+- Seed is **skipped** (`Seed skipped — database already contains data (N users).`).
 - API starts immediately.
 
 > **If you ever need to re-seed** (e.g., to reset to a clean state), you can:
-> 1. `docker exec` into the running API container (Coolify's Terminal tab).
-> 2. Run: `pnpm --filter @brewform/db run seed` — the seed is idempotent
+> 1. Open the running API container's Terminal in Coolify (or `docker exec -it <api container> sh`).
+> 2. Run: `cd /app/packages/db && node src/seed.ts` — the seed is idempotent
 >    (`onConflictDoNothing` on all inserts), so it won't overwrite or delete existing data.
 > 3. To start completely fresh: drop the database in Coolify, recreate it, and restart the API
 >    container (the entrypoint will re-migrate and re-seed).
 
-> **Partial-seed recovery:** the seed runs only when `SELECT count(*) FROM users` is `0`. If the
-> first-boot seed fails **partway** — after the admin row is inserted but before the rest — that
-> sentinel will be `>0` on the next boot and the seed is **skipped**, leaving a partially-seeded
+> **Partial-seed recovery:** the seed runs only when the `users` table is empty. If the
+> first-boot seed fails **partway** — after the admin row is inserted but before the rest — the
+> count will be `>0` on the next boot and the seed is **skipped**, leaving a partially-seeded
 > DB. To recover, either drop & recreate the database before a successful first boot, or manually
-> re-run the (idempotent) seed: `pnpm --filter @brewform/db run seed`.
+> re-run the (idempotent) seed as above.
 
-> **Secrets hygiene:** the seed logs the admin email/password to stdout once, and Coolify retains
-> container logs — **change the admin password in-app after first login**.
+> **Development and CI** run the same steps through the pnpm workspace scripts
+> (`pnpm --filter @brewform/db run migrate` / `run seed`, or the root `pnpm run db:migrate` /
+> `pnpm run db:seed`), inside the workspace defined by `pnpm-workspace.yaml`
+> (`packages: ['apps/*', 'packages/*']`); drizzle-kit is used there only to generate migrations
+> (`pnpm run db:generate`).
+
+> **Secrets hygiene:** the seed never logs the admin password (it only says whether
+> `ADMIN_PASSWORD` was set). **Change the admin password in-app after first login** anyway.
 
 ---
 
@@ -574,30 +586,23 @@ EMAIL_FROM=noreply@yourdomain.com
 
 ---
 
-## Step 10 — GitHub Actions → Coolify deploy webhook (optional)
+## Step 10 — Redeploy after CI publishes
 
-To automatically trigger a Coolify re-pull + restart when GitHub Actions finishes publishing
-images, configure deploy webhooks.
+There is no webhook deploy job. The `CI` workflow (`.github/workflows/ci.yml`) builds and
+smoke-tests both images on every pull request and `main` push, and its `publish` job pushes them to
+GHCR only after every other job passed. Redeploy from Coolify afterwards:
 
-### In Coolify
-1. **Settings → Configuration → Advanced → API Access** → enable the API.
-2. **Keys & Tokens → API Tokens** → create a token with **Deploy** permission. Save it.
-3. On the **API** resource → **Webhooks** tab → copy the **Deploy webhook URL**.
-4. Repeat for the **Web** resource → copy its **Deploy webhook URL**.
+1. Wait until the `CI` run of the `main` commit is green, including `publish` (GitHub → Actions).
+2. Coolify → **API** resource → **Redeploy**; wait until it is healthy (the new container runs the
+   migrations while the old one keeps serving).
+3. Coolify → **Web** resource → **Redeploy**.
 
-### In GitHub
-1. Go to the repo → **Settings → Secrets and variables → Actions**.
-2. Add the following repository secrets:
-   - `COOLIFY_API_TOKEN` — the API token from step 2.
-   - `COOLIFY_API_WEBHOOK` — the API resource's deploy webhook URL.
-   - `COOLIFY_WEB_WEBHOOK` — the web resource's deploy webhook URL.
-   - `VITE_API_URL` — `https://api.brewform.example.com/api/v1` (for the web image build).
-   - `VITE_PUBLIC_APP_URL` — `https://brewform.example.com` (for the web image build).
-3. The `release.yml` workflow's `deploy` job (if implemented) will `curl` these webhooks after
-   a successful image push, causing Coolify to re-pull `:latest` and restart the containers.
-
-> **Without webhooks:** Coolify can also auto-pull on a schedule, or you can click "Redeploy"
-> in the Coolify UI manually after a push. The webhook is just for automation.
+To pin a version, set the resource's image tag to the full commit SHA or `vX.Y.Z` before
+redeploying. A redeploy can be scripted with Coolify's own API
+(`GET /api/v1/deploy?uuid=<resource uuid>` with a **Deploy** token), but no CI job calls it.
+Remove the old `COOLIFY_API_TOKEN`, `COOLIFY_API_WEBHOOK` and `COOLIFY_WEB_WEBHOOK` repository
+secrets if they still exist. The only optional secrets are `VITE_API_URL` and
+`VITE_PUBLIC_APP_URL` (defaults baked into the published web image).
 
 ---
 
@@ -663,15 +668,17 @@ missing or invalid required var causes an immediate exit with the field errors l
 - **Cause:** `STORAGE_DRIVER=s3` but R2 credentials/endpoint are wrong, or
   `S3_PUBLIC_URL` doesn't resolve.
 - **Fix:** Verify `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, and `S3_PUBLIC_URL` in the
-  API env. Test R2 connectivity from the API container's Terminal:
-  `curl -I https://<account-id>.r2.cloudflarestorage.com/brewform-uploads/`.
+  API env. Test R2 connectivity from the API container's Terminal (the image ships no curl or
+  wget, so use Node):
+  `node -e "fetch('https://<account-id>.r2.cloudflarestorage.com/brewform-uploads/',{method:'HEAD'}).then(r=>console.log(r.status))"`
+  (any HTTP status, even `403`, proves the endpoint is reachable).
 
 ### Migrations fail on startup
 - **Symptom:** Container logs show a Drizzle migration error and exits.
 - **Cause:** Usually a DB connectivity issue, or a migration file is missing from the image.
-- **Fix:** Verify `DATABASE_URL` is correct and the DB is reachable. If the image is missing
-  migration files, the `Dockerfile` builder stage didn't run `drizzle-kit generate` — rebuild and repush the
-  image.
+- **Fix:** Verify `DATABASE_URL` is correct and the DB is reachable. Migration files are committed
+  in `packages/db/drizzle/` (CI fails when a schema change lacks its migration) and copied into the
+  image; a missing file means the image is not from a green `CI` run — redeploy a published tag.
 
 ### Seed runs on every restart (not just first boot)
 - **Cause:** The `users` table is empty (e.g., the admin was deleted, or the DB was wiped).
@@ -685,13 +692,13 @@ missing or invalid required var causes an immediate exit with the field errors l
   the next boot **skips** the seed, leaving a partially-seeded database.
 - **Fix:** Either drop & recreate the database and let the API re-seed on a clean first boot, or
   manually re-run the idempotent seed from the API container's Terminal:
-  `pnpm --filter @brewform/db run seed` (see
+  `cd /app/packages/db && node src/seed.ts` (the image has no pnpm; see
   [Step 7](#step-7--first-deploy-migrations--seed)).
 
 ### GHCR pull fails: "image not found"
-- **Cause:** The `release.yml` workflow hasn't run yet, or the images are private and the
-  server isn't logged in.
-- **Fix:** Push a commit to `main` to trigger `release.yml`. If the package is private on
+- **Cause:** The `publish` job of the `CI` workflow hasn't run yet (it runs only on `main`/`v*`
+  pushes after every other job passed), or the images are private and the server isn't logged in.
+- **Fix:** Push a commit to `main` and wait for a green `CI` run including `publish`. If the package is private on
   GHCR, either flip it to public (GitHub → Packages → brewform-api → Package settings →
   Public) or SSH into the Coolify server and `docker login ghcr.io`.
 
@@ -701,17 +708,19 @@ missing or invalid required var causes an immediate exit with the field errors l
 
 ### Updating BrewForm
 1. Merge a PR to `main` (or push a `v*` tag for a versioned release).
-2. `release.yml` builds and pushes new `:latest` images to GHCR.
-3. If you set up deploy webhooks (Step 10), Coolify auto-repulls and restarts. Otherwise:
-   - Go to each Coolify resource → click **Redeploy** (or "Restart").
+2. The `CI` workflow tests the commit and builds and smoke-tests both images; only after every
+   job passed does its `publish` job push those exact images as `:latest` and `:<full sha>`
+   (and `:vX.Y.Z` for a tag) to GHCR.
+3. Go to each Coolify resource → click **Redeploy** (API first, then web; see
+   [Step 10](#step-10--redeploy-after-ci-publishes)).
 4. The API entrypoint re-runs migrations (no-op if nothing new) and skips the seed (DB is not
    empty).
 
 ### Rollback
 
 Coolify resources track the `:latest` tag, so you roll back a bad deploy by pinning to a
-known-good immutable tag. `release.yml` publishes both `:<commit-sha>` and `:vX.Y.Z` tags
-alongside `:latest`. To roll back:
+known-good immutable tag. CI's `publish` job pushes `:<full commit sha>` (and `:vX.Y.Z` for
+version tags) alongside `:latest`. To roll back:
 1. On the affected resource (API and/or web), change the image tag from `:latest` to a specific
    `:<commit-sha>` or `:vX.Y.Z`.
 2. **Redeploy** — Coolify pulls the pinned image.

@@ -1,7 +1,12 @@
 # optimistic-rollback Specification
 
 ## Purpose
-TBD - created by archiving change d18-fix-optimistic-rollback. Update Purpose after archive.
+
+Defines how the like, favourite and follow buttons handle failure. Their resource-route actions
+return `{ ok, error }` result objects instead of throwing and log structured entry, exit and error
+events, and the buttons roll back their optimistic state when an action fails. Component tests cover
+both the success and the error paths.
+
 ## Requirements
 ### Requirement: Resource route actions return error data instead of throwing
 

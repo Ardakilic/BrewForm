@@ -1,5 +1,7 @@
+import '../../test-setup.ts';
 import { mkdir, readFile, rm, stat } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { app } from '../../main.ts';
 import { LocalStorageDriver } from './local.ts';
 
 describe('LocalStorageDriver', () => {
@@ -40,39 +42,107 @@ describe('LocalStorageDriver', () => {
     }
   });
 
+  /** A safe key in the shape the server generates (`<uuid>.<ext>`). */
+  const key = (ext = 'jpg') => `${crypto.randomUUID()}.${ext}`;
+
   it('should save a file and return a public URL', async () => {
     const data = new TextEncoder().encode('hello world');
-    const url = await driver.save(data, 'test-file.txt');
-    expect(url).toBe('/uploads/test-file.txt');
+    const name = key('png');
+    const url = await driver.save(data, name, { contentType: 'image/png' });
+    expect(url).toBe(`/uploads/${name}`);
 
-    const content = await readFile(`${testDir}/test-file.txt`, 'utf8');
+    const content = await readFile(`${testDir}/${name}`, 'utf8');
     expect(content).toBe('hello world');
+  });
+
+  it('should accept a legacy timestamp key', async () => {
+    const data = new TextEncoder().encode('legacy');
+    const url = await driver.save(data, '1731000000000-abcd1234.jpeg', {
+      contentType: 'image/jpeg',
+    });
+    expect(url).toBe('/uploads/1731000000000-abcd1234.jpeg');
   });
 
   it('should delete a file', async () => {
     const data = new TextEncoder().encode('delete me');
-    await driver.save(data, 'delete-me.txt');
-    await driver.delete('delete-me.txt');
+    const name = key();
+    await driver.save(data, name, { contentType: 'image/jpeg' });
+    await driver.delete(name);
 
-    const exists = await stat(`${testDir}/delete-me.txt`)
+    const exists = await stat(`${testDir}/${name}`)
       .then(() => true)
       .catch(() => false);
     expect(exists).toBe(false);
   });
 
   it('should not throw when deleting a non-existent file', async () => {
-    await expect(driver.delete('non-existent.txt')).resolves.toBeUndefined();
+    await expect(driver.delete(key())).resolves.toBeUndefined();
   });
 
   it('should reject path traversal in save', async () => {
     const data = new TextEncoder().encode('malicious');
-    await expect(driver.save(data, '../../../etc/passwd')).rejects.toThrow('Invalid filename');
-    await expect(driver.save(data, '/etc/passwd')).rejects.toThrow('Invalid filename');
+    const options = { contentType: 'image/jpeg' };
+    await expect(driver.save(data, '../../../etc/passwd', options)).rejects.toThrow(
+      'Invalid storage key',
+    );
+    await expect(driver.save(data, '/etc/passwd', options)).rejects.toThrow('Invalid storage key');
+  });
+
+  it('should reject a nested key without creating any file or directory', async () => {
+    const data = new TextEncoder().encode('nested');
+    await rm(testDir, { recursive: true, force: true });
+
+    await expect(
+      driver.save(data, 'abc.x/sub/evil', { contentType: 'image/jpeg' }),
+    ).rejects.toThrow('Invalid storage key');
+
+    // The key guard runs before mkdir: not even UPLOAD_DIR itself was created.
+    const dirExists = await stat(testDir)
+      .then(() => true)
+      .catch(() => false);
+    expect(dirExists).toBe(false);
+  });
+
+  it('should never replace an existing file (exclusive create)', async () => {
+    const name = key();
+    const first = new TextEncoder().encode('first bytes');
+    await driver.save(first, name, { contentType: 'image/jpeg' });
+
+    await expect(
+      driver.save(new TextEncoder().encode('second'), name, { contentType: 'image/jpeg' }),
+    ).rejects.toMatchObject({ code: 'EEXIST' });
+
+    expect(await readFile(`${testDir}/${name}`, 'utf8')).toBe('first bytes');
+  });
+
+  it('should serve a file saved by the driver from GET /uploads/<file> in the same directory', async () => {
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+    const name = key('png');
+    const url = await driver.save(bytes, name, { contentType: 'image/png' });
+    expect(url).toBe(`/uploads/${name}`);
+
+    const res = await app.request(url);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('image/png');
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
+    // The handler read exactly what the driver wrote to the configured directory.
+    expect(new Uint8Array(await readFile(`${testDir}/${name}`))).toEqual(bytes);
+  });
+
+  it('should answer 404 from GET /uploads/<file> for a file the driver never saved', async () => {
+    const res = await app.request('/uploads/never-saved.png');
+    expect(res.status).toBe(404);
+  });
+
+  it('should refuse encoded path traversal on GET /uploads/<path>', async () => {
+    const res = await app.request('/uploads/..%2F..%2Fetc%2Fpasswd');
+    expect(res.status).toBe(403);
   });
 
   it('should reject path traversal in delete', async () => {
-    await expect(driver.delete('../../../etc/passwd')).rejects.toThrow('Invalid filename');
-    await expect(driver.delete('/etc/passwd')).rejects.toThrow('Invalid filename');
+    await expect(driver.delete('../../../etc/passwd')).rejects.toThrow('Invalid storage key');
+    await expect(driver.delete('/etc/passwd')).rejects.toThrow('Invalid storage key');
+    await expect(driver.delete('abc.x/sub/evil')).rejects.toThrow('Invalid storage key');
   });
 });
 
