@@ -9,7 +9,7 @@ export default defineConfig({
       // Source files only (explicit extension keeps i18n JSON, package.json and configs out).
       // Test files, setup files and this config are always excluded by Vitest itself.
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.d.ts'],
+      exclude: ['src/**/*.d.ts', 'src/**/__fixtures__/**'],
       // json-summary + json feed the single PR coverage comment (.github/workflows/ci.yml).
       reporter: ['text', 'html', 'clover', 'json', 'json-summary'],
       reportOnFailure: true,
