@@ -108,6 +108,15 @@ docker ps --format '{{.Names}}' | grep -i postgres   # e.g. postgresql-ojbuh8rsp
     https://ghcr.io/v2/ardakilic/brewform-web/manifests/latest   # 200 = public
   ```
 
+- **Runtime (nothing to install on the server):** the images run **Node 26 LTS**, and pnpm is
+  pinned exactly for builds. The authoritative pins are `.nvmrc`, the root `package.json`
+  `engines` / `devEngines` / `packageManager` fields, and the `FROM node:<version>-trixie-slim`
+  lines of `Dockerfile` and `Dockerfile.web` (Renovate bumps them, so this guide does not repeat
+  patch versions). Rebuilding an image (`make images`, or CI) uses frozen installs: the Docker
+  `deps` stages run `pnpm fetch` then `pnpm install --frozen-lockfile --offline`, and CI runs
+  `pnpm install --frozen-lockfile`. drizzle-kit is a development tool only, for generating
+  migrations through the `@brewform/db` scripts (`pnpm --filter @brewform/db run generate`); the
+  API image applies migrations itself ([§6 step 7](#6-step-3--api-docker-image)).
 - **Generate secrets** (reused below):
 
   ```bash
@@ -718,6 +727,7 @@ never becomes healthy, and the old one keeps serving until you fix the data and 
 - [`docs/deployment_compose.md`](deployment_compose.md) — self-hosting with
   `compose.production.yml` and the `make prod-*` targets (backups, restore, data storage).
 - [`coolify_deployment_plan.md`](../coolify_deployment_plan.md) — long-form operator reference.
-- [`docs/deployment.md`](deployment.md) — legacy hosted-platform reference from before the Node
-  migration (superseded; retained for history).
+- [`docs/history/2026-10-11-serverless-deployment.md`](history/2026-10-11-serverless-deployment.md)
+  — legacy hosted-platform reference from before the Node migration (superseded; retained for
+  history).
 - [`docs/docker.md`](docker.md) — local Docker dev environment.

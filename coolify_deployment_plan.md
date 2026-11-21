@@ -109,9 +109,10 @@ what each piece is. Rows for removed mechanisms (the `compose.yml` `prod` profil
 separate `release.yml` workflow and its webhook deploy job, `make images-push`/`make release`)
 were deleted.
 
-> **Install command:** the Docker `deps` stages and CI install dependencies with
-> `pnpm install --frozen-lockfile` (via `pnpm fetch` + offline install in Docker), not
-> `pnpm install`. The frozen install fails fast if `pnpm-lock.yaml` is missing or out of date.
+> **Install command:** the Docker `deps` stages install dependencies with `pnpm fetch` followed
+> by `pnpm install --frozen-lockfile --offline`, and CI with `pnpm install --frozen-lockfile`,
+> never a plain `pnpm install`. The frozen install fails fast if `pnpm-lock.yaml` is missing or
+> out of date.
 
 | # | Change | File(s) | Status |
 |---|--------|---------|--------|
@@ -120,11 +121,11 @@ were deleted.
 | 3 | Web Dockerfile: 3-stage build (node deps → vite build with `VITE_*` ARGs → `caddy:2.11.9-alpine` serving `dist/` on port 80) | `Dockerfile.web` | Done |
 | 4 | Self-hosting definition `compose.production.yml` (postgres, valkey, one-shot migrate, api, web edge, backup, profile-gated restore); `compose.yml` has no production services | `compose.production.yml` | Done |
 | 5 | In-memory `CacheProvider` default in `main.ts`; in-process `node-cron` badge evaluation | `apps/api/src/main.ts`, `apps/api/src/utils/jobs/` | Done |
-| 6 | `CACHE_DRIVER=memory` pinned in `.env.example` files (no cache sidecar to configure) | `.env.example`, `apps/api/.env.example` | Already committed (on disk) |
-| 7 | `.env.example` split into three files: root (local-dev infra), `apps/api/.env.example` (API runtime for Coolify), `apps/web/.env.example` (web build-time for GitHub Secrets) | `.env.example`, `apps/api/.env.example`, `apps/web/.env.example` | Already committed (on disk) |
+| 6 | `CACHE_DRIVER=memory` pinned in `.env.example` files (no cache sidecar to configure) | `.env.example`, `apps/api/.env.example` | Done |
+| 7 | `.env.example` split into three files: root (local-dev infra), `apps/api/.env.example` (API runtime for Coolify), `apps/web/.env.example` (web build-time for GitHub Secrets) | `.env.example`, `apps/api/.env.example`, `apps/web/.env.example` | Done |
 | 8 | One CI workflow: pull requests and `main` build and smoke-test both images; the `publish` job pushes the tested images to GHCR (`latest` on `main`, `<full sha>`, `vX.Y.Z` tags) only after every job passed | `.github/workflows/ci.yml` | Done |
 | 9 | Makefile targets (`images` builds `:local` tags; `prod-*` wrap `compose.production.yml`; no target pushes images) | `Makefile` | Done |
-| 10 | This document | `coolify_deployment_plan.md` | Already committed (on disk) |
+| 10 | This document | `coolify_deployment_plan.md` | Done |
 
 **Health endpoints** (verified in `apps/api/src/modules/health/`):
 - `GET /health` — liveness, returns `200 { status: 'ok' }` (no DB check)
@@ -174,10 +175,12 @@ default to **private**, flip them to **public** once:
 
 ## Step 0 — Pre-flight (before any Coolify work)
 
-> **Pinned runtime:** BrewForm runs on **Node 26 LTS**. Both images build from
-> `node:26-trixie-slim` (API `Dockerfile`, web `Dockerfile.web` deps/builder stages),
-> `.nvmrc` pins `26`, and CI installs pnpm via `pnpm/action-setup`. If you fork or rebuild
-> an image, keep the base on a pinned `node:26.x-trixie-slim` tag.
+> **Pinned runtime:** BrewForm runs on **Node 26 LTS**, and pnpm is pinned exactly. The
+> authoritative pins are `.nvmrc`, the root `package.json` `engines` / `devEngines` /
+> `packageManager` fields, and the `FROM node:<version>-trixie-slim` lines of `Dockerfile` and
+> `Dockerfile.web` (deps/builder stages); Renovate bumps them, so this plan does not repeat patch
+> versions. CI installs pnpm via `pnpm/action-setup` and Node from `.nvmrc`. If you fork or
+> rebuild an image, keep the base on a pinned `node:26.x.y-trixie-slim` tag.
 
 Do all of this **before** you touch the Coolify panel. The web image bakes its config at build
 time, so getting these wrong means rebuilding and republishing images later.
@@ -383,11 +386,19 @@ in-process Map with TTL support, wired at startup with no extra service to provi
    pointing a prebuilt image at a different API origin without a rebuild.
 
    > **Changing the API URL:** set `VITE_API_URL` on the web resource and redeploy (no rebuild
-   > needed — the entrypoint regenerates `/config.js`). `VITE_PUBLIC_APP_URL` (og:image /
-   > sitemap meta) is still build-time only; changing it requires rebuilding and re-pushing the
-   > web image.
+   > needed — the entrypoint regenerates `/config.js`). `VITE_PUBLIC_APP_URL` itself is
+   > build-time only, but the optional runtime `PUBLIC_APP_URL` on the web resource rewrites the
+   > `og:image`/`twitter:image` tags and the `robots.txt` `Sitemap:` line at startup, so a
+   > domain change needs no rebuild. With `STORAGE_DRIVER=local`, also set
+   > `API_UPSTREAM=brewform-api:8000` (same-origin edge; see `docs/deployment_coolify.md` §7).
 
-6. **Deploy.** Verify it starts: `curl http://<coolify-assigned-domain>/` should return the
+6. **Healthcheck:** Enabled, Type `HTTP`, Method `GET`, Scheme `http`, Host `localhost`, Port
+   `80`, Path `/healthz`, expected status `200`, Interval `30`, Timeout `3`, Retries `3`, Start
+   period `10` (the web image ships BusyBox `wget`, so the `HTTP` type works here). Uptime
+   monitors use `https://brewform.example.com/healthz`. Changes take effect after a Redeploy.
+   Details: `docs/deployment_coolify.md` §7 step 4.
+
+7. **Deploy.** Verify it starts: `curl http://<coolify-assigned-domain>/` should return the
    SPA's `index.html`.
 
 ---
@@ -443,6 +454,10 @@ Neither the API nor the web container needs a Coolify volume:
 
 - Uploads go to R2 (`STORAGE_DRIVER=s3`), not to container disk.
 - The API cache is in-memory and rebuilds on access — there is no cache volume to persist.
+
+With `STORAGE_DRIVER=local` instead, the API needs Persistent Storage at `/app/uploads` (Volume
+Mount `brewform-uploads`, or a Directory Mount owned by `1000:1000`), the API network alias and
+`API_UPSTREAM` on the web resource, exactly as in `docs/deployment_coolify.md` §6 step 5.
 
 To verify nothing depends on container disk, restart the API resource and confirm uploads
 (still served from R2) and login still work.
@@ -653,8 +668,10 @@ missing or invalid required var causes an immediate exit with the field errors l
 - **Cause:** `STORAGE_DRIVER=s3` but R2 credentials/endpoint are wrong, or
   `S3_PUBLIC_URL` doesn't resolve.
 - **Fix:** Verify `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, and `S3_PUBLIC_URL` in the
-  API env. Test R2 connectivity from the API container's Terminal:
-  `curl -I https://<account-id>.r2.cloudflarestorage.com/brewform-uploads/`.
+  API env. Test R2 connectivity from the API container's Terminal (the image ships no curl or
+  wget, so use Node):
+  `node -e "fetch('https://<account-id>.r2.cloudflarestorage.com/brewform-uploads/',{method:'HEAD'}).then(r=>console.log(r.status))"`
+  (any HTTP status, even `403`, proves the endpoint is reachable).
 
 ### Migrations fail on startup
 - **Symptom:** Container logs show a Drizzle migration error and exits.
