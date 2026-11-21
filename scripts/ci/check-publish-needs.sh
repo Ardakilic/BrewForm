@@ -26,6 +26,11 @@ if [ ! -f "$WORKFLOW" ]; then
 	echo "check-publish-needs: $WORKFLOW not found" >&2
 	exit 1
 fi
+# Without this, a missing yq would surface as the misleading "has no publish job" below.
+if ! command -v yq >/dev/null 2>&1; then
+	echo "check-publish-needs: yq (mikefarah v4) not found; install it, or run this script in the mikefarah/yq:4 image" >&2
+	exit 1
+fi
 if [ "$(yq '.jobs | has("publish")' "$WORKFLOW")" != "true" ]; then
 	echo "check-publish-needs: $WORKFLOW has no publish job" >&2
 	exit 1
