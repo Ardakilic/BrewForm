@@ -161,6 +161,24 @@ describe('BeanSection — conditional rendering unit tests', () => {
     }
   });
 
+  it('renders the processing subtitle through the en process key', () => {
+    render(withI18n(<BeanSection coffeeBrand="Heart Roasters" coffeeProcessing="washed" />));
+    expect(screen.getByText('Heart Roasters · Washed process')).toBeInTheDocument();
+  });
+
+  it('renders the processing subtitle in Turkish under tr, never a hard-coded "process" word', () => {
+    localStorage.setItem('brewform_locale', 'tr');
+    try {
+      const { container } = render(
+        withI18n(<BeanSection coffeeBrand="Heart Roasters" coffeeProcessing="washed" />),
+      );
+      expect(screen.getByText('Heart Roasters · Washed işlemi')).toBeInTheDocument();
+      expect(container.textContent).not.toMatch(/\bprocess\b/i);
+    } finally {
+      localStorage.removeItem('brewform_locale');
+    }
+  });
+
   it('stacks the date grid below sm and lets each date and age wrap (320 px, V1)', () => {
     render(
       withI18n(

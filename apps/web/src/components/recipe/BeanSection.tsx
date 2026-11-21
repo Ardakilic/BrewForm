@@ -116,9 +116,10 @@ export function BeanSection(props: BeanSectionProps) {
   // Subtitle: "Heart Roasters · Washed process"
   const roasterDisplay = coffeeBrand ?? bean?.roaster ?? null;
   const processingDisplay = coffeeProcessing
-    ? coffeeProcessing.charAt(0).toUpperCase() +
-      coffeeProcessing.slice(1).toLowerCase() +
-      ' process'
+    ? t('recipe.bean.process').replace(
+        '{process}',
+        coffeeProcessing.charAt(0).toUpperCase() + coffeeProcessing.slice(1).toLowerCase(),
+      )
     : null;
   const subtitle = [roasterDisplay, processingDisplay].filter(Boolean).join(' · ') || null;
 

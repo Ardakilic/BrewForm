@@ -477,6 +477,7 @@
   "recipe.bean.daysAgo": "{days} days ago",
   "recipe.bean.daysShort": "{days}d",
   "recipe.bean.peakWindow": "peak window",
+  "recipe.bean.process": "{process} process",
   "recipe.tastingNotes.title": "Tasting Notes · SCAA 2016",
   "recipe.tastingNotes.brewerNote": "— Brewer's note",
   "recipe.tastingNotes.empty": "No tasting notes recorded.",
