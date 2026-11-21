@@ -1370,9 +1370,9 @@ How to use this task list
 - [x] 29.9 Run `openspec validate --all --strict` and `node scripts/doc-drift-check.ts`; both exit 0.
 - [x] 29.10 Run `make ci` once end to end.
 - [x] 29.11 Read `AGENTS.md` and `README.md` once more against the `Makefile`, the root `package.json`, `biome.json` and `.github/workflows/ci.yml`, and fix any mismatch (t8 verification).
-- [ ] 29.12 Commit the remaining changes with conventional commit messages, each ending with the `Co-Authored-By` attribution line, and push the `wave-6-audit-remediation` branch.
-  - Status 2026-11-21: commits done, push pending user approval.
-- [ ] 29.13 Open ONE pull request against `main` with `gh pr create`. The description contains:
+- [x] 29.12 Commit the remaining changes with conventional commit messages, each ending with the `Co-Authored-By` attribution line, and push the `wave-6-audit-remediation` branch.
+  - Status 2026-11-21: commits done; branch pushed and PR #172 opened after user approval.
+- [x] 29.13 Open ONE pull request against `main` with `gh pr create`. The description contains:
   - a summary per track and the **BREAKING** list from `proposal.md`
   - upgrade notes: run the identifier check first (`make prod-check-identifiers` for compose, the one-off `docker run` from the Coolify guide); Coolify `TRUST_PROXY`, the `CMD` API health check and the HTTP `/healthz` web check; for compose, the photo rescue, `make prod-fix-uploads-owner` (or `UPLOADS_SOURCE` for a host folder) and `COMPOSE_PROJECT_NAME`; the S3 photo storage security check
   - t1's release-note text (task 17.17)
@@ -1383,3 +1383,4 @@ How to use this task list
 
   End the description with the Claude Code attribution line.
 - [ ] 29.14 After opening the PR, confirm: exactly one `CI` run per push; `images` builds and smoke-tests both images; `publish` is skipped on the PR. After merge, confirm `publish` runs only after `quality`, `test`, `images` and `doc-drift` pass and that GHCR shows `latest` and `<sha>` for both images. On a personal fork, push a throwaway `v0.0.0-rc` tag, confirm the run does not move `latest`, then delete the tag.
+  - Status 2026-11-21 (PR #172, run 44887464763): one `CI & Deploy` run for the push; `doc-drift`, `quality`, `test` and `images` passed (both images built and smoke-tested standalone and as the production compose stack); `publish` skipped. Post-merge checks (publish ordering, GHCR `latest`/`<sha>`, the fork `v0.0.0-rc` tag test) are pending the merge.
