@@ -312,3 +312,53 @@ fixtures use a single line-level directive:
 - All imports use explicit file extensions (`.ts`, `.tsx`) — no sloppy imports.
 - Shared dependency versions are pinned in the `pnpm-workspace.yaml` `catalog` and each
   workspace's `package.json`.
+
+### Documentation comments
+
+Every exported production symbol under `apps/api/src`, `apps/web/src`, `packages/shared/src` and
+`packages/db/src` carries a `/** … */` docblock directly above its declaration (code-documentation
+capability, ADR-020). That covers functions, classes, components and hooks, and also constants,
+types, interfaces, Zod schemas, `z.infer` aliases, Drizzle tables and enums, Hono routers and
+module singletons. For `export default X;` and local `export { X };` the docblock sits on the
+declaration of `X`. Line comments (`//`) and plain block comments (`/* */`) do not count. Test,
+spec, fixture, generated and `*.d.ts` files are out of scope.
+
+`node scripts/docblock-scan.ts --check` lists every missing docblock as `file:line symbol` and exits
+1. It runs in `pnpm run docs:check` / `make docs-check` and in the `doc-drift` CI job.
+
+Follow the house style captured by the wave-5 inventory
+(`openspec/changes/archive/2026-07-27-wave-5-debt-clearance/audit/docblock-inventory.md`):
+
+1. **API service functions**: an imperative first sentence, then vertically aligned
+   `@param name - desc` lines and `@returns` (`apps/api/src/modules/collection/service.ts`):
+
+   ```ts
+   /**
+    * Create a collection for the authenticated user.
+    * @param userId - The authenticated user's UUID.
+    * @param data   - Collection creation payload (name, description, visibility).
+    * @returns The created collection with author, items, and recipeCount.
+    */
+   ```
+
+2. **Small shared utils**: a single-line `/** … */` with a verb-first "does X: mechanics" summary
+   and no tags (`packages/shared/src/utils/conversion.ts`):
+   `/** Formats a weight stored in grams for display: "12.3 g" (metric) or "0.4 oz" (imperial), … */`.
+3. **React hooks and components**: tag-less prose that states the behaviour and says in words what
+   is returned. Components may add interaction notes, cross-file references and known limitations
+   (`apps/web/src/hooks/useDebounce.ts`, `apps/web/src/components/recipe-list/RecipeCard.tsx`).
+4. **Zod schemas**: "Validates X; response envelope for METHOD /route" one-liners
+   (`packages/shared/src/schemas/responses/user.ts`).
+5. **Cross-references**: `{@link Symbol}` for related types and functions, backticks for code
+   references, declarative present tense.
+
+The bulk categories use prescribed one-liners:
+
+| Export | Docblock |
+|---|---|
+| Drizzle `pgTable` const | Names the entity and its notable columns or constraints (soft delete, unique targets) |
+| Drizzle `pgEnum` const | Names the `*_VALUES` constant that drives it |
+| `z.infer` alias | `/** Inferred type of {@link XSchema}. */` |
+| Hono router const | `/** Hono router for /api/v1/x — mounted in routes/index.ts. */` |
+| Module `log` singleton | Names the module the logger belongs to |
+| Module `deps` object | Names the module and the injectable seam it provides |
