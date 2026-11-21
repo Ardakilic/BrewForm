@@ -1115,3 +1115,57 @@ describe('unlisted collections — listing rule regression locks', () => {
     expect(body.error.code).toBe('FORBIDDEN');
   });
 });
+
+/**
+ * Non-public collection responses are never indexed (capability `recipe-visibility`, task
+ * 11.8): `GET /api/v1/collections/:id` carries `X-Robots-Tag: noindex, nofollow` unless the
+ * collection is public, including for its owner.
+ */
+describe('GET /api/v1/collections/:id — X-Robots-Tag (recipe-visibility)', () => {
+  let ownerA: typeof users.$inferSelect;
+  let unlistedK: typeof collections.$inferSelect;
+  let publicCol: typeof collections.$inferSelect;
+  let privateCol: typeof collections.$inferSelect;
+  let originalCache: CacheProvider;
+
+  beforeEach(async () => {
+    originalCache = cacheProvider;
+    setCacheProvider(new InMemoryCacheProvider());
+    ownerA = await createUser('route-robots-a');
+    unlistedK = await createCollectionRow(ownerA.id, 'Unlisted K', 'unlisted');
+    publicCol = await createCollectionRow(ownerA.id, 'Public', 'public');
+    privateCol = await createCollectionRow(ownerA.id, 'Private', 'private');
+  });
+
+  afterEach(async () => {
+    setCacheProvider(originalCache);
+    deps.authMiddleware = originalAuthMiddleware;
+    deps.optionalAuthMiddleware = originalOptionalAuthMiddleware;
+    await cleanupUsers([ownerA.id]);
+  });
+
+  it("marks the unlisted collection's detail for an anonymous viewer", async () => {
+    const res = await createTestApp(null).request(`/api/v1/collections/${unlistedK.id}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+  });
+
+  it("leaves the public collection's detail unmarked", async () => {
+    const res = await createTestApp(null).request(`/api/v1/collections/${publicCol.id}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-Robots-Tag')).toBeNull();
+  });
+
+  it("marks the owner's own private collection detail", async () => {
+    const res = await createTestApp(ownerA.id).request(`/api/v1/collections/${privateCol.id}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+  });
+
+  it('marks a cached unlisted detail too', async () => {
+    await createTestApp(null).request(`/api/v1/collections/${unlistedK.id}`);
+    const res = await createTestApp(null).request(`/api/v1/collections/${unlistedK.id}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+  });
+});

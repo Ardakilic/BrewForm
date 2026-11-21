@@ -31,3 +31,15 @@ export function jsonRequestBody(
     },
   };
 }
+
+/**
+ * OpenAPI `headers` metadata for the `X-Robots-Tag` response header that non-public recipe and
+ * collection responses carry (capability `recipe-visibility`). Spread into a documented
+ * response's `headers`; documentation only.
+ */
+export const ROBOTS_TAG_RESPONSE_HEADERS = {
+  'X-Robots-Tag': {
+    schema: { type: 'string' as const },
+    description: 'noindex, nofollow for non-public items',
+  },
+};

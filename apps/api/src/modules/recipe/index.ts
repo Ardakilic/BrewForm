@@ -23,12 +23,13 @@ import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts
 import type { AppEnv } from '../../types/hono.ts';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
 import { AppError } from '../../utils/errors.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { jsonRequestBody, ROBOTS_TAG_RESPONSE_HEADERS } from '../../utils/openapi/index.ts';
 import {
   cursorPaginated,
   error,
   invalidCursor,
   isEmailVerified,
+  noIndexUnlessPublic,
   paginated,
   success,
   zodValidationHook,
@@ -417,9 +418,9 @@ recipe.get(
     tags: ['Recipes'],
     summary: 'List recipe version history',
     description:
-      'Returns recipe title, slug, and all versions ordered by version number descending.',
+      "Returns recipe title, slug, and all versions ordered by version number descending. A non-public recipe's response carries `X-Robots-Tag: noindex, nofollow`.",
     responses: {
-      200: { description: 'Version history payload' },
+      200: { description: 'Version history payload', headers: ROBOTS_TAG_RESPONSE_HEADERS },
       404: { description: 'Recipe not found' },
     },
   }),
@@ -432,6 +433,7 @@ recipe.get(
       if (!service.canViewRecipe(recipe, c.get('userId'))) {
         return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
+      noIndexUnlessPublic(c, recipe.visibility);
       const versions = await service.getVersionsByRecipeId(recipe.id);
       return success(c, {
         id: recipe.id,
@@ -458,7 +460,7 @@ recipe.get(
     tags: ['Recipes'],
     summary: 'Diff two versions of a recipe',
     description:
-      'Returns a field-by-field comparison between two versions of the same recipe, including scalar field diffs and set diffs for taste notes and equipment.',
+      "Returns a field-by-field comparison between two versions of the same recipe, including scalar field diffs and set diffs for taste notes and equipment. A non-public recipe's response carries `X-Robots-Tag: noindex, nofollow`.",
     parameters: [
       {
         name: 'slug',
@@ -484,6 +486,7 @@ recipe.get(
     responses: {
       200: {
         description: 'Version diff payload',
+        headers: ROBOTS_TAG_RESPONSE_HEADERS,
         content: {
           'application/json': {
             schema: resolver(successEnvelope(VersionDiffOutputSchema)),
@@ -515,6 +518,7 @@ recipe.get(
       if (!service.canViewRecipe(recipe, c.get('userId'), c.get('user')?.isAdmin)) {
         return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
+      noIndexUnlessPublic(c, recipe.visibility);
       const diff = await service.diffVersions(recipe.id, v1, v2);
       return success(c, diff);
     } catch (err: unknown) {
@@ -581,9 +585,10 @@ recipe.get(
   describeRoute({
     tags: ['Recipes'],
     summary: 'Get a recipe by slug or id',
-    description: 'Drafts and private recipes are visible only to their author.',
+    description:
+      "Drafts and private recipes are visible only to their author; unlisted recipes open for anyone with the link. A non-public recipe's response carries `X-Robots-Tag: noindex, nofollow`. `forkedFrom`, `forkedFromId` and `forkedFromSlug` are `null` unless the fork source is public (the source's own author also sees it).",
     responses: {
-      200: { description: 'Recipe payload' },
+      200: { description: 'Recipe payload', headers: ROBOTS_TAG_RESPONSE_HEADERS },
       404: { description: 'Recipe not found' },
     },
   }),
@@ -595,6 +600,7 @@ recipe.get(
       if (!service.canViewRecipe(r, c.get('userId'))) {
         return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
+      noIndexUnlessPublic(c, r.visibility);
       // Transform the Drizzle result into the shape the frontend expects:
       // - currentVersion: the latest version (versions[0])
       // - tasteNotes: flattened from currentVersion.tasteNotes[].tasteNote

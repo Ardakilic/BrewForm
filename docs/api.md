@@ -218,11 +218,63 @@ Response `401` (invalid or expired refresh token):
 
 ---
 
+## Visibility
+
+Recipes and collections share four `visibility` values, each with one meaning:
+
+| Value      | Meaning                                                                                       |
+| ---------- | --------------------------------------------------------------------------------------------- |
+| `public`   | Listed on discovery surfaces and indexable                                                    |
+| `unlisted` | Direct link only: opens for anyone with its URL or id; never listed, searched, counted on public lists or indexed |
+| `private`  | Visible only to its author (collection: owner)                                                |
+| `draft`    | Visible only to its author (collection: owner)                                                |
+
+**unlisted = direct link only; never listed, searched, counted on public lists or indexed.**
+Unlisted is "not listed", not "secret": a slug derived from the title can be guessed.
+
+Every surface belongs to one class, and the class decides which recipes it shows:
+
+| Class | Surfaces | Recipes shown |
+| ----- | -------- | ------------- |
+| Discovery (the same for every viewer) | `GET /recipes` browse, search, filters and sorts (non-admin); the home grids; the follow feed `GET /follow/feed`; `GET /equipment/:id/recipes` and `GET /coffee-varieties/:id/recipes`; the `recipes` array and `recipeCount` of `GET /users/:username` (for every viewer, the profile owner included); the sitemap; share and crawler Open Graph pages | Non-deleted `public` only, for every viewer including the recipe's author |
+| Collection items (mixed authors) | Collection detail items and collection `recipeCount` | Non-deleted `public`, plus recipes authored by the viewer (see [Visibility of items](#visibility-of-items)) |
+| Direct link | Recipe detail by slug or id, versions, version diff, compare and merge, focus mode, fork, comments, like, favourite, rating, brew-log create, QR code, collection detail by id | `public` and `unlisted` for anyone; `draft` and `private` for the author |
+| Viewer-only records | The caller's own Starred list (`GET /recipes/starred`) and own brew journal (`GET /brew-logs`) | Entries the caller can open (see below) |
+| Owner-only lists | `GET /collections`, and `GET /users/:userId/collections` when the caller is that user | Every visibility of the owner's own collections |
+| Admin | `/admin/*`, and `GET /recipes` when an admin passes `visibility` | Exempt from these rules |
+
+- Discovery lists are viewer-independent: an author does not see their own `unlisted`, `draft` or
+  `private` recipes on them, their own profile included. There is no "my recipes" listing; an
+  author reaches an unlisted recipe through its link.
+- **Starred** includes the `unlisted` recipes the caller favourited, and the caller's own `draft`
+  and `private` recipes. Another author's recipe that became `private` or `draft`, or was deleted,
+  drops out. Only the caller can read the list.
+- **Brew journal**: `POST /brew-logs` accepts any recipe the caller can open (an `unlisted` recipe
+  included, for any signed-in link holder); the journal keeps every non-deleted recipe the caller
+  logged, and the log is visible only to its owner.
+- **Fork fields** are `null` unless the source is public: `forkedFromId` on every list row
+  (`GET /recipes`, the feed, the equipment and coffee-variety pages, collection items), and
+  `forkedFrom`, `forkedFromId` and `forkedFromSlug` on the recipe detail and the `PATCH /recipes/:id`
+  response. A source that is `unlisted`, `private`, `draft` or deleted is masked, because an
+  unlisted recipe's id works as its link. On the recipe detail, the source's own author still sees
+  the attribution (`forkedFrom` is `{ id, slug, title }`, never the source's visibility). The stored
+  fork link and `forkCount` are unchanged.
+- **`X-Robots-Tag: noindex, nofollow`** is set on `GET /recipes/:slugOrId`,
+  `GET /recipes/:slug/versions` and `GET /recipes/:slug/versions/diff` for a recipe that is not
+  `public` (for the author too), on `GET /collections/:id` for a collection that is not `public`,
+  on every `404` from `GET /share/:slug` (an unknown slug and a non-public recipe get the identical
+  status, body and header), and on crawler fall-throughs for `/recipes/:slug` paths. Share,
+  crawler and `GET /recipes/meta/:slug` serve previews for `public` recipes only.
+- **Admin exemption**: the admin module, and an admin's `visibility` filter on `GET /recipes`,
+  are exempt. An admin without the filter gets the public discovery list.
+
+---
+
 ## Recipes
 
 | Method | Endpoint                 | Auth     | Description                                           |
 | ------ | ------------------------ | -------- | ----------------------------------------------------- |
-| GET    | `/recipes`               | none     | List public recipes with filters                      |
+| GET    | `/recipes`               | none     | List public recipes with filters (see [Visibility](#visibility)) |
 | GET    | `/recipes/meta/:slug`    | none     | Get recipe metadata for social crawlers               |
 | GET    | `/recipes/:slugOrId`     | optional | Get a single recipe (private requires auth+ownership) |
 | POST   | `/recipes`               | required | Create a new recipe                                   |
@@ -246,7 +298,7 @@ Response `401` (invalid or expired refresh token):
 | `perPage`      | 20            | Items per page (max 100)                               |
 | `brewMethod`   | —             | Filter by brew method                                  |
 | `drinkType`    | —             | Filter by drink type                                   |
-| `visibility`   | —             | Filter by visibility (own drafts require auth)         |
+| `visibility`   | —             | Admin only: filter on this visibility (ignored for everyone else, who get public recipes only; see [Visibility](#visibility)) |
 | `authorId`     | —             | Filter by author                                       |
 | `search`       | —             | Case-insensitive substring match on title, coffee name and personal notes (any version); max 200 characters after trimming (longer → 400); `%`, `_` and `\` match literally; whitespace-only means no search. Results are relevance-ranked in the database (title 3, coffee name 2, notes 1, best single version), then by `sortBy`; trigram-indexed (`pg_trgm`). A search uses offset pagination even when `cursor` is sent |
 | `equipmentId`  | —             | Filter by linked equipment UUID                        |
@@ -556,7 +608,8 @@ Only the recipe author can reply to comments (OP-only reply rule).
 - An `unlisted` collection opens for anyone with its direct link (`GET /collections/:id`, items
   filtered as above) and is never listed to anyone but its owner. `private` and `draft`
   collections return `403` to everyone else.
-- See [Visibility](#visibility) for the meaning of each visibility value on every surface.
+- See [Visibility](#visibility) for the meaning of each visibility value on every surface, fork
+  attribution and the `X-Robots-Tag` header.
 
 ---
 

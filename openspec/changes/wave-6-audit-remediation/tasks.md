@@ -717,18 +717,18 @@ How to use this task list
 - [x] 11.7 Brew log on unlisted recipes:
   - Add failing cases to `apps/api/src/modules/brew-log/service.test.ts`: `createBrewLog(B, { recipeId: U })` succeeds; `createBrewLog(B, { recipeId: <A's private> })` and `<A's draft>` throw `RECIPE_NOT_FOUND`. Add a failing case to `brew-log/index.test.ts`: B's `POST /api/v1/brew-logs` for U returns `201`, and A's `GET /api/v1/brew-logs` does not contain B's log.
   - Then replace the check at `brew-log/service.ts:27` with `if (!recipe || !canViewRecipe(recipe, userId)) throw new Error('RECIPE_NOT_FOUND')`, importing `canViewRecipe` from `../recipe/service.ts`. Keep the existing logs, and update the `createBrewLog` docblock ("visible to the user per `canViewRecipe`").
-- [ ] 11.8 Write failing `X-Robots-Tag` tests:
+- [x] 11.8 Write failing `X-Robots-Tag` tests:
   - `apps/api/src/routes/share.test.ts`: `GET /share/<U slug>` and `GET /share/<unknown>` both return the same `404` HTML body with `X-Robots-Tag: noindex, nofollow`; public P returns `200` without the header.
   - `apps/api/src/middleware/crawler.test.ts`, `deps.getRecipeMeta` stubbed: a `Googlebot` user agent on `/recipes/<U slug>`, on `/recipes/<unknown>` (stub throws `RECIPE_NOT_FOUND`) and on a stub that throws a generic error each fall through to the next handler, and the response carries the header; public returns OG HTML without it; a non-recipe path gets no header.
   - `apps/api/src/modules/recipe/index.test.ts`: U's detail, versions and diff responses carry the header for anonymous viewers and for A; P's do not.
   - `apps/api/src/modules/collection/index.test.ts`: K's detail carries the header; a public collection's does not; A's private collection detail requested by A carries it.
-- [ ] 11.9 Implement the headers:
+- [x] 11.9 Implement the headers:
   - `routes/share.ts`: set `c.header('X-Robots-Tag', 'noindex, nofollow')` on both 404 returns.
   - `middleware/crawler.ts`: after a recipe-path match, if the meta is missing, not public, or the lookup throws, `await next()` and then `c.res.headers.set('X-Robots-Tag', 'noindex, nofollow')`. Log at debug with `{ slug, reason }`, where `reason` is `missing`/`non-public`/`error`.
   - `recipe/index.ts` `GET /:slugOrId`, `GET /:slug/versions` and `GET /:slug/versions/diff`, and `collection/index.ts` `GET /:id`: set the header when `visibility !== 'public'`.
   - Add `headers: { 'X-Robots-Tag': { schema: { type: 'string' }, description: 'noindex, nofollow for non-public items' } }` to those routes' `describeRoute` 200 responses and to the share 404 response. Keep `zValidator`.
   - Run `make test-specific filter=openapi.coverage.test.ts`.
-- [ ] 11.10 Write `apps/api/src/modules/recipe/visibility.enforcement.test.ts`, the static scan from the `recipe-visibility` requirement "An enforcement test keeps every recipe listing on the shared condition":
+- [x] 11.10 Write `apps/api/src/modules/recipe/visibility.enforcement.test.ts`, the static scan from the `recipe-visibility` requirement "An enforcement test keeps every recipe listing on the shared condition":
   - read the files with `node:fs` relative to `import.meta.dirname`;
   - implement Rule A (no inline comparisons outside the two helpers, except lines ending in `// visibility-exempt:`);
   - split each file into top-level units at every `function`, `async function`, `export function`, `export async function` and `export const` declaration that starts at column 0 (non-exported `async function list` in `brew-log/model.ts` is its own unit);
@@ -737,7 +737,7 @@ How to use this task list
   - add the stale-key check and the self-test on an in-memory fixture.
   - Run it. It passes.
   - Add a temporary `eq(recipes.visibility, 'public')` list function to `apps/api/src/modules/user/model.ts`, confirm the test fails and names `user/model.ts#<fn>` with its line, then remove the function.
-- [ ] 11.11 Add a "Visibility" section to `docs/api.md`:
+- [x] 11.11 Add a "Visibility" section to `docs/api.md`:
   - the four values and the surface-class table from the `recipe-visibility` spec;
   - "unlisted = direct link only; never listed, searched, counted on public lists or indexed";
   - Starred includes unlisted recipes the caller favourited;
@@ -745,7 +745,7 @@ How to use this task list
   - the `X-Robots-Tag` header;
   - admin exemption.
   Link it from the collections "Visibility of items" note (task 9.19).
-- [ ] 11.12 Group check: run `make check`, `make lint`, `make test-api` (after `make test-db-provision`) and `make test-shared`, then `make fmt` and `make fmt-check`. Everything must be green.
+- [x] 11.12 Group check: run `make check`, `make lint`, `make test-api` (after `make test-db-provision`) and `make test-shared`, then `make fmt` and `make fmt-check`. Everything must be green.
 
 ## 12. Web foundations: app providers, router smoke test, pagination fix, API client and auth guards (t5)
 
@@ -908,7 +908,7 @@ How to use this task list
 - [x] 17.18 After all migration tasks: empty the architecture test's pending list and the enforcement test's `PENDING` set (delete both), and raise the Biome rule to `error`.
 - [x] 17.19 Run `make test-web` with the architecture pending list and `PENDING` set deleted (previous task), and record in the PR description: "Data-loading migration: 41 useEffect fetch blocks in 38 files, 13 inline loaders moved to `*.data.ts`, 12 mutation-only modules moved to actions, 2 raw-fetch QR downloads moved to a resource route (65 modules); AuthContext is the only API-client exception."
 - [x] 17.20 Group check: run `make fmt`, then `make check`, `make check-tests` and `make lint`, all clean.
-- [ ] 17.21 Group check: run `make test-db-provision` once, then `make test-api`, `make test-shared` and `make test-web`, all green, including `openapi.coverage.test.ts`, the en/tr key-parity test and every regression test listed in the `recipe-write` and `recipe-personal-notes` specs. Run `grep -rnwE "saveNotes|updateVersionNotes" apps/api/src apps/web/src` and confirm no matches.
+- [x] 17.21 Group check: run `make test-db-provision` once, then `make test-api`, `make test-shared` and `make test-web`, all green, including `openapi.coverage.test.ts`, the en/tr key-parity test and every regression test listed in the `recipe-write` and `recipe-personal-notes` specs. Run `grep -rnwE "saveNotes|updateVersionNotes" apps/api/src apps/web/src` and confirm no matches.
 - [ ] 17.22 Manual smoke test with `make dev`:
   - As user B on user A's recipe: save, reload and delete a private note, and confirm A's brewer note is unchanged.
   - As A: edit `grindSize` without the checkbox and confirm it persists with no new version.

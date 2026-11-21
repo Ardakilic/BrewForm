@@ -41,6 +41,7 @@ import {
   RecipeWriteFixtures,
   recipeInput,
   VisibilityFixtures,
+  type VisibilityScenario,
 } from './test-helpers.ts';
 
 // Spy on the model so one test can make `findListPage` fail with a statement timeout;
@@ -1628,5 +1629,80 @@ describe('Fork attribution masking (recipe-visibility)', () => {
     expect(body.data.forkedFrom).toBeNull();
     expect(body.data.forkedFromId).toBeNull();
     expect(body.data.forkedFromSlug).toBeNull();
+  });
+});
+
+/**
+ * Non-public recipe responses are never indexed (capability `recipe-visibility`, task 11.8):
+ * the detail, versions and version-diff JSON of a non-public recipe carry
+ * `X-Robots-Tag: noindex, nofollow`, for anonymous viewers and for the author alike; a public
+ * recipe's responses carry no such header.
+ */
+describe('X-Robots-Tag on non-public recipe responses (recipe-visibility)', () => {
+  const fixtures = new VisibilityFixtures();
+  let s: VisibilityScenario;
+  /** Version ids (v1, v2) per recipe id, for the diff route. */
+  const versionPairs = new Map<string, [string, string]>();
+
+  beforeAll(async () => {
+    deps.authMiddleware = originalAuthMiddleware;
+    deps.optionalAuthMiddleware = originalOptionalAuthMiddleware;
+    s = await fixtures.scenario('vis-robots');
+    for (const recipe of [s.publicP, s.unlistedU]) {
+      const [second] = await db
+        .insert(recipeVersions)
+        .values({
+          recipeId: recipe.id,
+          versionNumber: 2,
+          brewMethod: 'v60',
+          drinkType: 'pour_over',
+          preparationNotes: 'Second pour',
+        })
+        .returning();
+      versionPairs.set(recipe.id, [recipe.currentVersionId as string, second.id]);
+    }
+  });
+
+  afterAll(async () => {
+    await fixtures.cleanup();
+  });
+
+  /** The detail, versions and diff paths of a recipe. */
+  function paths(recipe: typeof recipes.$inferSelect): string[] {
+    const [v1, v2] = versionPairs.get(recipe.id) as [string, string];
+    return [
+      `/api/v1/recipes/${recipe.slug}`,
+      `/api/v1/recipes/${recipe.slug}/versions`,
+      `/api/v1/recipes/${recipe.slug}/versions/diff?v1=${v1}&v2=${v2}`,
+    ];
+  }
+
+  it('marks the unlisted recipe for an anonymous viewer and for its author', async () => {
+    for (const viewer of [undefined, s.authorA]) {
+      for (const path of paths(s.unlistedU)) {
+        const { status, headers } = await visibilityGet(path, viewer);
+        const label = `${viewer ? 'author' : 'anonymous'} ${path}`;
+        expect(status, label).toBe(200);
+        expect(headers.get('X-Robots-Tag'), label).toBe('noindex, nofollow');
+      }
+    }
+  });
+
+  it("marks the author's draft detail", async () => {
+    const draft = await fixtures.recipe(s.authorA.id, 'draft');
+    const { status, headers } = await visibilityGet(`/api/v1/recipes/${draft.slug}`, s.authorA);
+    expect(status).toBe(200);
+    expect(headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+  });
+
+  it('leaves the public recipe unmarked', async () => {
+    for (const viewer of [undefined, s.authorA]) {
+      for (const path of paths(s.publicP)) {
+        const { status, headers } = await visibilityGet(path, viewer);
+        const label = `${viewer ? 'author' : 'anonymous'} ${path}`;
+        expect(status, label).toBe(200);
+        expect(headers.get('X-Robots-Tag'), label).toBeNull();
+      }
+    }
   });
 });

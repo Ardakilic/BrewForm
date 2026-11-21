@@ -18,8 +18,14 @@ import { Hono } from 'hono';
 import { describeRoute, resolver } from 'hono-openapi';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import type { AppEnv } from '../../types/hono.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
-import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
+import { jsonRequestBody, ROBOTS_TAG_RESPONSE_HEADERS } from '../../utils/openapi/index.ts';
+import {
+  error,
+  noIndexUnlessPublic,
+  paginated,
+  success,
+  zodValidationHook,
+} from '../../utils/response/index.ts';
 import * as service from './service.ts';
 
 /** Dependency-injection proxy for test stubbing (auth middleware). */
@@ -161,11 +167,12 @@ collection.get(
     tags: ['Collections'],
     summary: 'Get a collection',
     description:
-      'Fetch a single collection by ID. Public/unlisted collections are visible to all; private/draft only to the owner.',
+      "Fetch a single collection by ID. Public/unlisted collections are visible to all; private/draft only to the owner. A non-public collection's response carries `X-Robots-Tag: noindex, nofollow`.",
     parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Collection detail',
+        headers: ROBOTS_TAG_RESPONSE_HEADERS,
         content: {
           'application/json': { schema: resolver(successEnvelope(CollectionDetailOutputSchema)) },
         },
@@ -186,6 +193,7 @@ collection.get(
     const userId = c.get('userId') as string | null;
     try {
       const result = await service.getCollection(userId, id);
+      noIndexUnlessPublic(c, result.visibility);
       return success(c, result);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
