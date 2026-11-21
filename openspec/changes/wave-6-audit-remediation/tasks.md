@@ -1070,8 +1070,8 @@ How to use this task list
   - The script uses no imports beyond Node built-ins. It takes a path argument (default `/ready`) that must match `^/[A-Za-z0-9/_-]*$`, and calls `fetch('http://127.0.0.1:' + (process.env.APP_PORT || 8000) + path, { signal: AbortSignal.timeout(4000) })`.
   - It exits 0 only on status 200. Otherwise it writes one stderr line with the status or error name and exits 1.
   - Add a header docblock naming its three callers: the image `HEALTHCHECK`, the compose healthcheck and the Coolify CMD check.
-- [ ] 20.11 Spike, before refactoring: build the current `builder` stage, run `docker run --rm -w /app/apps/api <builder> node -e "await import('./src/main.ts')"` with dummy `DATABASE_URL`/`JWT_SECRET` and `APP_ENV=test`, and `node -e "await import('/app/packages/db/src/seed.ts'); await import('/app/packages/db/src/check-users-empty.ts')"` (their `import.meta.main` guards keep them from running), to confirm Node 26 native type stripping loads the whole graph. Record the outcome in the PR. If it fails, apply the fallback: move `tsx` to `dependencies` in `apps/api/package.json` and `packages/db/package.json` (then `make lockfile-update`) and use `node --import tsx` everywhere the entrypoint runs TypeScript.
-- [ ] 20.12 In `Dockerfile`:
+- [x] 20.11 Spike, before refactoring: build the current `builder` stage, run `docker run --rm -w /app/apps/api <builder> node -e "await import('./src/main.ts')"` with dummy `DATABASE_URL`/`JWT_SECRET` and `APP_ENV=test`, and `node -e "await import('/app/packages/db/src/seed.ts'); await import('/app/packages/db/src/check-users-empty.ts')"` (their `import.meta.main` guards keep them from running), to confirm Node 26 native type stripping loads the whole graph. Record the outcome in the PR. If it fails, apply the fallback: move `tsx` to `dependencies` in `apps/api/package.json` and `packages/db/package.json` (then `make lockfile-update`) and use `node --import tsx` everywhere the entrypoint runs TypeScript.
+- [x] 20.12 In `Dockerfile`:
   - Remove `RUN pnpm --filter @brewform/db run generate`.
   - Add a `prod-deps` stage: `FROM builder`, `pnpm install --prod --frozen-lockfile --offline`, then `rm -rf apps/web openspec plans docs` plus the test and coverage dirs.
   - Rebuild `runner` to copy only `package.json`, `pnpm-workspace.yaml`, `node_modules`, `apps/api`, `packages/db`, `packages/shared` and `files` from `prod-deps`, without the global pnpm install.
@@ -1080,14 +1080,14 @@ How to use this task list
   - Add `COPY apps/api/scripts/healthcheck.mjs /app/healthcheck.mjs`, then `USER node` and `ENTRYPOINT ["/usr/bin/tini","-g","--","/app/docker-entrypoint.sh"]`.
   - Add `HEALTHCHECK --interval=15s --timeout=5s --start-period=180s --start-interval=2s --retries=3 CMD ["node", "/app/healthcheck.mjs", "/ready"]`.
   - Update the stage comments at the top of the file. They must say the image probes readiness and that `/health` is for uptime monitors.
-- [ ] 20.13 Verify locally:
+- [x] 20.13 Verify locally:
   - Run `make images`.
   - Run `docker run --rm --entrypoint sh brewform-api:local -c 'id -u; ls /app; test ! -e /app/apps/web; test -f /app/files/scaa-2.json; test -f /app/packages/db/drizzle/meta/_journal.json; test -f /app/healthcheck.mjs; ! command -v curl; ! command -v wget'`. `id -u` must print `1000`.
   - `docker inspect --format '{{json .Config.Healthcheck}}' brewform-api:local` must show `["CMD","node","/app/healthcheck.mjs","/ready"]` with the 15s/5s/180s/2s/3 values.
   - Confirm that `vitest`, `typescript`, `vite` and `drizzle-kit` cannot be resolved from `/app/apps/api`.
   - Compare the image size before and after in the PR description.
-- [ ] 20.14 Confirm `make preview` (`compose.yml` `app-preview`, runner target) still boots with the new runner.
-- [ ] 20.15 Group check: run `make check`, `make lint`, `make test-shared` (health schemas), `make test-api` (health module, probe and lifecycle tests, `openapi.coverage.test.ts`), `make test-specific filter=migrate.test.ts`, `make test-specific filter=preflight.test.ts` and `make db-generate` (expect "No schema changes, nothing to migrate"), then `sh -n docker-entrypoint.sh`, `make fmt` and `make fmt-check`. All must be green.
+- [x] 20.14 Confirm `make preview` (`compose.yml` `app-preview`, runner target) still boots with the new runner.
+- [x] 20.15 Group check: run `make check`, `make lint`, `make test-shared` (health schemas), `make test-api` (health module, probe and lifecycle tests, `openapi.coverage.test.ts`), `make test-specific filter=migrate.test.ts`, `make test-specific filter=preflight.test.ts` and `make db-generate` (expect "No schema changes, nothing to migrate"), then `sh -n docker-entrypoint.sh`, `make fmt` and `make fmt-check`. All must be green.
 
 ## 21. Deploy: web image edge, build context, data volumes and production compose (t4b, refine D5)
 
