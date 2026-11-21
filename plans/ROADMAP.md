@@ -16,6 +16,14 @@ All ledgered debt (D01–D43, D99.1–.19) is **resolved** — see
 [`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md). Wave-5 closeout (manual walk + archive) completed
 2026-07-28.
 
+Open follow-ups found by the 2026-11-18 audit and left out of `wave-6-audit-remediation`
+(detail in [`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md)):
+
+| Priority | Item | Where |
+|----------|------|-------|
+| **P2** | `SetupUpdateSchema` `.partial()` keeps `isDefault: false`, so a setup PATCH clears the default flag | TECHNICAL_DEBT §3.11 |
+| **P3** | Recipe merge drops taste-note intensities, `tds` and coffee variety | TECHNICAL_DEBT §3.10 |
+
 ---
 
 ## Feature Backlog

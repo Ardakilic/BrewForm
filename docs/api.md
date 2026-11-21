@@ -62,6 +62,7 @@ List endpoints return `meta.pagination` with:
 | `PAYLOAD_TOO_LARGE`     | 413         | Request body is over the size limit                                           |
 | `RATE_LIMITED`          | 429         | Too many requests; retry after the `Retry-After` header                       |
 | `USER_BANNED`           | 403         | User account is banned                                                        |
+| `EMAIL_NOT_VERIFIED`    | 403         | The action needs a verified email (create, edit or merge a recipe; comment)   |
 | `INVALID_CREDENTIALS`   | 401         | Wrong email or password                                                       |
 | `INVALID_REFRESH_TOKEN` | 401         | Invalid or expired refresh token                                              |
 | `INVALID_RESET_TOKEN`   | 400         | Invalid password reset token                                                  |
@@ -231,7 +232,9 @@ Response `401` (invalid or expired refresh token):
 | POST   | `/recipes/:id/favourite` | required | Toggle favourite on a recipe                          |
 | POST   | `/recipes/:id/feature`   | required | Toggle featured status (author only)                  |
 | POST   | `/recipes/:id/rate`     | required | Rate a recipe (1–10)                                  |
-| POST   | `/recipes/:id/notes`    | required | Save personal notes for a recipe                      |
+| GET    | `/recipes/:id/notes`    | required | Get the caller's own private note on a recipe         |
+| PUT    | `/recipes/:id/notes`    | required | Create or replace the caller's own private note       |
+| DELETE | `/recipes/:id/notes`    | required | Delete the caller's own private note                  |
 | GET    | `/recipes/:slug/versions` | optional | List all versions for a recipe |
 
 ### Query Parameters (GET /recipes)
@@ -279,7 +282,59 @@ Response `401` (invalid or expired refresh token):
 }
 ```
 
+Optional version fields also include `tds` (number, 0–25; stored with two decimals and returned
+as a string such as `"1.35"`), `coffeeVarietyId` (UUID of a coffee variety; the API copies the
+variety's name into `coffeeVarietyName`, which clients never send), `beanId` (one of the caller's
+own beans) and `vendorId`. `brewRatio` and `flowRate` are computed by the API from the
+measurements and are ignored if sent.
+
 See [docs/recipes.md](recipes.md) for versioning, forking, and validation rules.
+
+### PATCH /recipes/:id
+
+Updates a recipe the caller authored. Requires a verified email: an unverified author gets
+`403 EMAIL_NOT_VERIFIED` and nothing is written; another user's recipe gets `403 FORBIDDEN`.
+
+`bumpVersion` (default `false`) chooses how the change is saved:
+
+- `bumpVersion: false` **amends the current version in place**. Every field in the body is
+  written to the recipe and its current version in one transaction; no new version is created.
+- `bumpVersion: true` **creates a new version** (`versionNumber` one above the highest existing
+  one). It carries forward every value and relation of the current version that the body does
+  not provide: all scalar fields (including `tds`, the coffee variety, `beanId`, `vendorId`,
+  `rating`, `emojiTag` and `isFavourite`), taste notes with their intensities, equipment,
+  additional preparations and version photos. `brewDate` is the body value or now.
+
+Earlier versions are never modified. Either way the write is all-or-nothing: validation,
+referenced records and equipment compatibility are checked (on the body and on the body merged
+over the current version) before the first write.
+
+Body semantics, decided by which keys are present:
+
+| In the body              | Effect                                                                     |
+| ------------------------ | -------------------------------------------------------------------------- |
+| key absent               | The stored value is kept (an omitted `visibility` or `isFavourite` too)    |
+| `null`                   | Clears a clearable field (see below)                                       |
+| `[]` for a relation      | Removes every row of `tasteNoteIds`, `equipmentIds` or `additionalPreparations` |
+| non-empty relation array | Replaces the rows                                                          |
+
+- Clearable with `null`: `productName`, `coffeeBrand`, `coffeeProcessing`, `vendorId`,
+  `roastDate`, `packageOpenDate`, `grindDate`, `brewerDetails`, `grinder`, `grindSize`,
+  `groundWeightGrams`, `extractionTimeSeconds`, `extractionVolumeMl`, `temperatureCelsius`,
+  `tds`, `preInfusionTimeSeconds`, `beanId`, `coffeeVarietyId` (clears the name too),
+  `personalNotes`, `rating`, `emojiTag`.
+- `null` is a `400 VALIDATION_ERROR` for `title`, `visibility`, `brewMethod`, `drinkType`,
+  `preparationNotes`, `isFavourite`, `brewDate`, `setupId` and the relation arrays.
+- `tasteNoteIntensities` is accepted only together with `tasteNoteIds`.
+- A relation array with the same id twice is a `400 VALIDATION_ERROR`.
+
+```json
+{ "grindSize": "medium", "grinder": null, "tasteNoteIds": [], "bumpVersion": false }
+```
+
+Statuses: `200` (the updated recipe detail), `400 VALIDATION_ERROR` (with `details`; also an
+empty title or an unknown referenced record), `401`, `403 EMAIL_NOT_VERIFIED` / `FORBIDDEN`,
+`404`, `409 CONFLICT`, `422` (equipment incompatible with the brew method).
 
 ### POST /recipes/:id/rate
 
@@ -295,19 +350,34 @@ Rate a recipe on a 1–10 integer scale. Each user can rate a recipe once; subse
 
 Response `200`: returns the updated rating and aggregate stats (average rating, rating count).
 
-### POST /recipes/:id/notes
+### Private notes: GET, PUT and DELETE /recipes/:id/notes
 
-Save or update personal notes on the current version of a recipe.
+Each signed-in user can keep one **private note** per recipe. These endpoints act only on the
+caller's own note (the user comes from the access token; nothing in the request can name another
+user, and admins cannot read other users' notes either). They never read or change the author's
+public brewer notes (`personalNotes` on the version, edited through `PATCH /recipes/:id`).
+
+| Method   | Body                | Response `200` `data`                                     |
+| -------- | ------------------- | --------------------------------------------------------- |
+| `GET`    | —                   | `{ recipeId, notes, updatedAt }`; `notes` and `updatedAt` are `null` when the caller has no note |
+| `PUT`    | `{ "notes": "…" }`  | The stored note. Creates or replaces it (1–10,000 characters after trimming; HTML tags and zero-width characters are stripped, and text that is empty afterwards is a `400`) |
+| `DELETE` | —                   | `{ recipeId, notes: null, updatedAt: null }`. Idempotent; the text is scrubbed, and a later `PUT` revives the note |
 
 ```json
 { "notes": "Tried 19g dose — extracted faster, brighter acidity." }
 ```
 
-| Field   | Type   | Required | Constraints      |
-| ------- | ------ | -------- | ----------------- |
-| `notes` | string | yes      | 1–10,000 chars    |
+- **`404 NOT_FOUND`** when the recipe does not exist, is deleted, or is not viewable by the
+  caller (for example another user's private or draft recipe).
+- `400 VALIDATION_ERROR` for a malformed recipe id or invalid note text; `401` without a valid
+  token. No verified email is needed (the note is visible only to its owner).
+- Every response, success or error, carries **`Cache-Control: private, no-store`**, so no shared
+  cache stores a private note. Private notes are never embedded in the recipe detail payload,
+  search, feeds or crawler metadata.
 
-Response `200`: `{ "message": "Notes saved" }`.
+**Removed in wave 6:** `POST /recipes/:id/notes` no longer exists and returns `404`. It used to
+overwrite the recipe author's public brewer notes for any signed-in caller. Clients save the
+caller's private note with `PUT /recipes/:id/notes`.
 
 ---
 

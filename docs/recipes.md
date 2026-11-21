@@ -1,30 +1,78 @@
 # Recipes
 
-Recipes are the core entity of BrewForm. This document covers the versioning model, forking,
-validation rules, and visibility controls.
+Recipes are the core entity of BrewForm. This document covers the versioning model, brewer and
+private notes, forking, validation rules, and visibility controls.
 
 ## Two-Layer Model
 
 A recipe consists of two layers:
 
 - **Recipe** — mutable metadata (title, visibility, fork reference, like/favourite counts)
-- **RecipeVersion** — an immutable snapshot of all brewing parameters
+- **RecipeVersion** — a snapshot of all brewing parameters (measurements, dates, coffee identity
+  including `tds` and the coffee variety, brewer notes, taste notes with intensities, equipment,
+  additional preparations and photos)
 
-When you create a recipe, version 1 is automatically created. When you update a recipe with
-`bumpVersion: true`, a new immutable version is created while preserving the previous version's
-data.
+When you create a recipe, version 1 is automatically created. Every later edit either amends the
+current version or saves a new version (`bumpVersion`).
 
 ## Versioning
 
 - Each version has a monotonically increasing `versionNumber`
-- Versions are **immutable** — once created, they cannot be modified
+- The **current version is amendable** by the recipe's author; **earlier versions are
+  immutable** and are never modified
 - The recipe's `currentVersionId` always points to the latest version
 - Full version history is accessible via:
   - API: `GET /api/v1/recipes/:slug/versions` — returns all versions for a recipe
   - UI: `/recipes/:slug/versions` — browsable version history page (linked from the
     recipe detail page when `versionCount > 1`)
-- Updating with `bumpVersion: false` modifies the current version in place (only for minor
-  corrections)
+
+Editing goes through `PATCH /api/v1/recipes/:id` (author only, verified email required; see
+[api.md](api.md)). The body says which fields change: an absent key keeps the
+stored value, `null` clears a field, and `[]` removes every taste note, equipment item or
+additional preparation. An omitted `visibility` or `isFavourite` is always kept.
+
+- **Amend** (`bumpVersion: false`, the default): every field in the body is written to the
+  current version in one transaction, and only the relations in the body are replaced. No new
+  version is created. The edit page labels this "Updates the current version (vN) in place".
+- **Bump** (`bumpVersion: true`): a new version numbered one above the highest existing version
+  is created in one transaction, and the recipe points at it. The edit page labels this "Save as
+  a new version".
+
+**Bump carry-forward rules.** The new version starts as a copy of the current version, and the
+body overrides only what it provides:
+
+- every scalar field is carried forward, including `tds`, `coffeeVarietyId` and
+  `coffeeVarietyName`, `beanId`, `vendorId`, `preInfusionTimeSeconds`, `rating`, `emojiTag`,
+  `isFavourite` and the brewer notes;
+- taste notes keep their intensities; equipment, additional preparations (with their order) and
+  version photos are copied;
+- a relation in the body replaces the copied rows (`[]` leaves the new version without them),
+  and the previous version keeps its own;
+- `brewDate` is the body value or the time of the bump;
+- `brewRatio` and `flowRate` are recomputed from the merged measurements.
+
+All validation (title, cross-field rules on the merged values, referenced records, equipment
+compatibility) runs before the first write, so a rejected edit leaves the recipe and every
+version unchanged. Concurrent edits of the same recipe are serialized, so two bumps get
+consecutive version numbers.
+
+## Brewer notes and private notes
+
+A recipe page shows two kinds of notes:
+
+- **Brewer's notes** (`personalNotes` on the version) are the author's public notes. Everyone who
+  can view the recipe sees them, and they feed the recipe description, search and the tasting
+  notes card. Only the author edits them, through the create and edit forms (they belong to the
+  version, so amend, bump, fork and diff treat them like any other version field).
+- **My private notes** are per viewer: every signed-in user, the author included, can keep one
+  private note per recipe they can view, through `GET`, `PUT` and `DELETE
+  /api/v1/recipes/:id/notes` (see [api.md](api.md)). Nobody else, admins included, can read
+  them; they are never part of the recipe payload, search, feeds or forks, and they are scrubbed
+  when deleted or when the account is deleted.
+
+Before wave 6 the "Personal Notes" box on the recipe page wrote to the author's public notes for
+any signed-in viewer (the removed `POST /api/v1/recipes/:id/notes`). Existing brewer notes were
+left as they are, so authors should review theirs; private notes start empty.
 
 ## Forking
 
@@ -36,7 +84,11 @@ POST /api/v1/recipes/:id/fork
 
 - Creates a new recipe owned by the forker
 - Links back to the original via `forkedFromId`
-- Copies all parameters from the source recipe's latest version
+- Copies every version-level value of the source's current version, including `tds`, the coffee
+  variety (`coffeeVarietyId` and `coffeeVarietyName`), the brewer notes, taste notes with their
+  intensities, equipment, additional preparations and photos
+- Resets the source author's own assessments (`rating` is cleared and `isFavourite` is `false`)
+  and never copies anyone's private notes
 - Starts as `draft` visibility
 - Increments `forkCount` on the original recipe
 - The forker can modify any parameters after forking

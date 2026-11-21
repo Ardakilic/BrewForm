@@ -894,17 +894,17 @@ How to use this task list
   - A variety change is sent.
   - Pre-populated equipment is sent unchanged.
   Add create-page tests for `?beanId` → `beanId` in the payload and for the variety selection. Add a detail-page test for the variety link.
-- [ ] 17.14 Update `docs/api.md`:
+- [x] 17.14 Update `docs/api.md`:
   - Document `GET`, `PUT` and `DELETE /recipes/:id/notes` (caller-scoped private notes, `Cache-Control`, statuses).
   - State that `POST /recipes/:id/notes` was removed in wave 6 (it returns 404) and that clients use `PUT /recipes/:id/notes` for the caller's private note.
   - Document the PATCH body semantics (amend versus bump, absent/null/[]), the `tds` and `coffeeVarietyId` fields, and the 403 `EMAIL_NOT_VERIFIED`.
-- [ ] 17.15 Update `docs/recipes.md`:
+- [x] 17.15 Update `docs/recipes.md`:
   - Versioning: the current version is amendable and earlier versions are immutable.
   - Bump carry-forward rules.
   - Private notes versus brewer notes.
   - Fork copies `tds` and variety.
-- [ ] 17.16 Update `plans/TECHNICAL_DEBT.md` (and `plans/ROADMAP.md` if it lists open items) with two entries: merge field parity (intensities, `tds`, variety); and the `SetupUpdateSchema` `.partial()` default trap (`setup.ts:17,24`). Do not add a notes-POST removal entry (the endpoint is removed in this change).
-- [ ] 17.17 Draft the change-announcement and release-note text (in the PR description): the old "Personal Notes" box on others' recipes edited the author's public note; private notes now start empty; authors should review their brewer notes. State that `POST /api/v1/recipes/:id/notes` was removed (404) and link the photo storage security check for S3 deployments.
+- [x] 17.16 Update `plans/TECHNICAL_DEBT.md` (and `plans/ROADMAP.md` if it lists open items) with two entries: merge field parity (intensities, `tds`, variety); and the `SetupUpdateSchema` `.partial()` default trap (`setup.ts:17,24`). Do not add a notes-POST removal entry (the endpoint is removed in this change).
+- [x] 17.17 Draft the change-announcement and release-note text (in the PR description): the old "Personal Notes" box on others' recipes edited the author's public note; private notes now start empty; authors should review their brewer notes. State that `POST /api/v1/recipes/:id/notes` was removed (404) and link the photo storage security check for S3 deployments.
 - [ ] 17.18 After all migration tasks: empty the architecture test's pending list and the enforcement test's `PENDING` set (delete both), and raise the Biome rule to `error`.
 - [ ] 17.19 Run `make test-web` with the architecture pending list and `PENDING` set deleted (previous task), and record in the PR description: "Data-loading migration: 41 useEffect fetch blocks in 38 files, 13 inline loaders moved to `*.data.ts`, 12 mutation-only modules moved to actions, 2 raw-fetch QR downloads moved to a resource route (65 modules); AuthContext is the only API-client exception."
 - [ ] 17.20 Group check: run `make fmt`, then `make check`, `make check-tests` and `make lint`, all clean.

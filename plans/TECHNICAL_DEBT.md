@@ -144,6 +144,18 @@
 - **Verified fix**: `apps/api/src/modules/recipe/service.ts` has zero `drizzle-orm` imports; transaction moved to `model.createRecipeWithRelations` (`model.ts:550`).
 - **PRD**: [`plans/D29-recipe-service-drizzle-orm-import.md`](D29-recipe-service-drizzle-orm-import.md)
 
+### 3.10 Recipe Merge Drops Taste-Note Intensities, `tds` and Coffee Variety — **OPEN** (found 2026-11-18, wave-6 audit W13)
+- **Status: Open** — deferred by `wave-6-audit-remediation` (it fixed create, amend, bump and fork, but merge needs a merge-selection schema change).
+- **Files**: `apps/api/src/modules/recipe/service.ts` `mergeRecipes` (builds the new recipe with `tasteNoteIds` only, through `getMergedIds`); `packages/shared/src/schemas/recipe.ts` `RecipeMergeSchema.selections` (no `tds` or coffee-variety choice).
+- **Issue**: a merged recipe's taste notes all get intensity `1` (the picked side's intensities are dropped), and its `tds`, `coffeeVarietyId` and `coffeeVarietyName` are always empty, although both source versions persist them since wave 6. The other version paths share `copyVersionColumns`/`versionColumnsFrom`, so merge is the only path without field parity.
+- **Fix**: add `tds` and `coffeeVariety` to `RecipeMergeSchema.selections` (and the merge UI), pass `tasteNoteIntensities` from the picked versions (both sides for `both`), carry `coffeeVarietyId` so the service resolves the name, and add merge regression tests next to the bump/fork ones. Decide in the same change whether merge should stop copying another user's public brewer notes (`personalNotes` picked from a public version the caller does not own).
+
+### 3.11 `SetupUpdateSchema` `.partial()` Keeps the `isDefault` Default — **OPEN** (found 2026-11-18, wave-6 audit)
+- **Status: Open** — the same Zod 4 trap wave 6 fixed for `RecipeUpdateSchema`; not fixed for setups in that change.
+- **Files**: `packages/shared/src/schemas/setup.ts:17` (`isDefault: z.boolean().default(false)` in `SetupCreateSchema`) and `:24` (`SetupUpdateSchema = SetupCreateSchema.partial()`); consumed by `PATCH /api/v1/setups/:id` → `setup/model.ts update` (`db.update(setups).set(data)`).
+- **Issue**: Zod 4 keeps `.default()` through `.partial()`, so every parsed setup PATCH carries `isDefault: false`. Editing the default setup's name or grinder without sending `isDefault` silently clears its default flag.
+- **Fix**: build `SetupUpdateSchema` field by field with no `.default()` (as `RecipeUpdateObjectSchema` and `UserPreferencesPatchSchema` do), add a shared test that `SetupUpdateSchema.parse({})` is `{}`, and a service test that a name-only PATCH keeps `isDefault: true`.
+
 ---
 
 ## 4. Medium — Frontend Code Quality
@@ -277,6 +289,8 @@ _(Corrected 2026-07-19: the previous table here still listed D36/D42/D39/D35/D37
 | **P3** | [D99.14](D99-debts.md) Docblock gaps — 196 undocumented exported symbols | All | Medium | Wave 5 — Track 9 |
 | **P3** | [D99.15](D99-debts.md) Dependency refresh — 15 safe bumps, Deno/CI version sync, renovate blind spots, gated TypeScript 7 | Tooling | Medium | Wave 5 — Track 10 |
 | **P3** | [D99.19](D99-debts.md) AGENTS.md middleware-order doc drift | Docs | Trivial | Wave 5 — Track 11 |
+| **P2** | §3.11 `SetupUpdateSchema` `.partial()` keeps `isDefault: false` (a setup PATCH clears the default flag) — **open** | Shared/API | Low | Unscheduled (wave-6 follow-up) |
+| **P3** | §3.10 Recipe merge drops taste-note intensities, `tds` and coffee variety — **open** | Both | Medium | Unscheduled (wave-6 follow-up) |
 
 **All deferred items resolved.** The 2026-07-19 audit re-verified all open D99 items against code; wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19 (2026-07-27) and remaining-debt-clearance resolved D99.4,.8,.17,.18 (2026-07-27). The D99 ledger is fully closed.
 
