@@ -175,3 +175,9 @@ the 2026-11-21 wave-6 refresh. Ship dates are the merge dates of the linked pull
   The plans were refreshed for Node, pnpm, Vitest and sharp (F07, F16, F17, F23, F27, F29, F30).
   F03, F20, F25, F26 and F28 got F02 refresh notes, F24 was cut to immutability guards, F15 was
   split into F15a/F15b, and F31 got its frame-header note.
+- **Wave 6 review remediation** (2026-11-21): the `wave-6-review-remediation` OpenSpec change
+  fixed the findings of the ponytail review of PR #172 in the same pull request (date-only
+  journal filters, no demo accounts in a production seed, the root-level `/sitemap.xml` index,
+  bounded comment replies, the comment-count recount, a safe `make prod-restore`, and the web
+  auth, URL-state and theme fixes). Archived at
+  [`openspec/changes/archive/2026-11-21-wave-6-review-remediation/`](../openspec/changes/archive/2026-11-21-wave-6-review-remediation/proposal.md).
