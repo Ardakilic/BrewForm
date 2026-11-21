@@ -1,11 +1,14 @@
 /**
  * @module
- * Re-runnable database seed for BrewForm. Populates reference data (taste notes, brew-method
- * compatibility, badges, equipment + coffee-variety catalogs) plus a baseline admin user, vendors,
- * beans, recipes, and social/setup sample data. Idempotent where supported: inserts use
- * `onConflictDoNothing` on tables with unique constraints and fall back to select-before-insert
- * existence checks for tables without them. Invoked on first container boot (when the users table is
- * empty) and via `make db-seed`.
+ * Re-runnable database seed for BrewForm (capability `database-seed`). Always populates the
+ * reference data (taste notes, brew-method compatibility, badges, the equipment and coffee-variety
+ * catalogs, the vendor directory) and the admin account. Outside production it also writes the
+ * demo accounts and their beans, recipes, social, setup, collection and brew-log sample data; with
+ * `APP_ENV=production` that demo content is skipped ({@link shouldSeedDemoContent}). Idempotent
+ * where supported: inserts use `onConflictDoNothing` on tables with unique constraints (target-less
+ * for the partial `setup_user_default_unique` index) and fall back to select-before-insert
+ * existence checks for tables without them. Invoked on first container boot (when the users table
+ * is empty) and via `make db-seed`.
  */
 import { readFile } from 'node:fs/promises';
 import { and, count, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
@@ -264,18 +267,35 @@ async function findOrCreateSeedUser(
 }
 
 /**
- * Seed the admin and seed users idempotently.
+ * Decide whether the seed writes demo accounts and demo content (capability `database-seed`).
+ *
+ * Production installs get only the admin and the reference data, so a fresh site never starts
+ * with the demo accounts and their published shared password. Every other environment
+ * (`development`, `test`, unset) keeps the full demo data set. There is deliberately no
+ * environment override (no `SEED_DEMO_DATA`).
+ *
+ * @param appEnv - The `APP_ENV` value, read when the seed runs.
+ * @returns `false` for `production`, `true` otherwise.
+ */
+export function shouldSeedDemoContent(appEnv: string | undefined): boolean {
+  return appEnv !== 'production';
+}
+
+/**
+ * Seed the admin and, when requested, the demo users idempotently.
  *
  * Each account goes through {@link findOrCreateSeedUser}: an account that already holds the
  * email or username (compared case-insensitively, like the `lower()` unique indexes) is reused
  * as it is, otherwise the account is inserted, so the returned user map is complete even when
  * the database already contains the users. User preferences are inserted with
- * `onConflictDoNothing` keyed by the unique `userId` column.
+ * `onConflictDoNothing` keyed by the unique `userId` column. The admin and its preferences are
+ * always written; the `userSeedData` demo accounts only when `demoUsers` is `true`.
  *
  * @param tx - The seed transaction.
+ * @param options - `demoUsers`: also seed the demo accounts (see {@link shouldSeedDemoContent}).
  * @returns The seeded accounts keyed by seed username (`admin` for the admin).
  */
-async function seedUsers(tx: SeedTX) {
+async function seedUsers(tx: SeedTX, { demoUsers }: { demoUsers: boolean }) {
   // First-install only: the entrypoint runs the seed solely when the users
   // table is empty, and existing accounts are never updated.
   const admin = await findOrCreateSeedUser(tx, {
@@ -293,6 +313,7 @@ async function seedUsers(tx: SeedTX) {
   });
 
   const createdUsers: Record<string, typeof users.$inferSelect> = { admin };
+  if (!demoUsers) return createdUsers;
 
   for (const userData of userSeedData) {
     const user = await findOrCreateSeedUser(tx, {
@@ -909,7 +930,12 @@ async function seedSocialData(
  *
  * The `setup` table has no unique constraint on `(userId, name)`, so
  * duplicates are avoided by selecting an existing matching row before
- * inserting.
+ * inserting. The insert also carries a target-less `onConflictDoNothing()`:
+ * the partial unique index `setup_user_default_unique` (one active default
+ * setup per user) still holds when a user renamed their seeded default, so
+ * the name check misses it. Without a target Postgres skips a conflict on any
+ * unique constraint or index, partial ones included; a target would need the
+ * index predicate as an `sql` fragment to infer the partial index.
  */
 async function seedSetups(
   tx: SeedTX,
@@ -932,27 +958,24 @@ async function seedSetups(
       equipMap[`${equip.type}Id`] = equip.id;
     }
 
-    await tx.insert(setups).values({
-      name: setupData.name,
-      userId,
-      brewerDetails: setupData.brewerDetails,
-      grinder: setupData.grinder,
-      portafilterId: equipMap.portafilterId ?? null,
-      basketId: equipMap.basketId ?? null,
-      puckScreenId: equipMap.puck_screenId ?? null,
-      paperFilterId: equipMap.paper_filterId ?? null,
-      tamperId: equipMap.tamperId ?? null,
-      isDefault: setupData.isDefault,
-    });
+    await tx
+      .insert(setups)
+      .values({
+        name: setupData.name,
+        userId,
+        brewerDetails: setupData.brewerDetails,
+        grinder: setupData.grinder,
+        portafilterId: equipMap.portafilterId ?? null,
+        basketId: equipMap.basketId ?? null,
+        puckScreenId: equipMap.puck_screenId ?? null,
+        paperFilterId: equipMap.paper_filterId ?? null,
+        tamperId: equipMap.tamperId ?? null,
+        isDefault: setupData.isDefault,
+      })
+      .onConflictDoNothing();
   }
 }
 
-/**
- * Run the complete seed inside a database transaction.
- *
- * Every helper is idempotent, so calling this function repeatedly is safe
- * even when the database already contains seed data.
- */
 /**
  * Seed sample collections for demo users.
  *
@@ -1207,7 +1230,17 @@ async function seedBrewLogs(
   }
 }
 
-/** Seed entrypoint: provisions all demo data inside a single transaction. */
+/**
+ * Seed entrypoint: runs the complete seed inside a single database transaction.
+ *
+ * Always writes the reference data (brew-method rules, badges, the system equipment catalogue,
+ * the system coffee varieties, the vendor directory, the SCAA taste notes) and the admin with its
+ * preferences. The demo accounts and their content (equipment, beans, recipes, social data,
+ * setups, recipe taste notes, collections, brew logs) follow only when
+ * {@link shouldSeedDemoContent} allows it for `APP_ENV`, read here on every call; with
+ * `APP_ENV=production` they are skipped and one line says so. Every helper is idempotent, so
+ * calling this function repeatedly is safe even when the database already contains seed data.
+ */
 export async function main() {
   const adminPasswordConfigured = Boolean(process.env.ADMIN_PASSWORD);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -1224,14 +1257,22 @@ export async function main() {
   const scaaPath = new URL('../../../files/scaa-2.json', import.meta.url);
   const scaaData: ScaaFile = JSON.parse(await readFile(scaaPath, 'utf8'));
 
+  const demo = shouldSeedDemoContent(process.env.APP_ENV);
+
   await db.transaction(async (tx) => {
+    // Reference data and the admin: every environment.
     await seedBrewMethodCompatibility(tx);
     await seedBadges(tx);
 
-    const createdUsers = await seedUsers(tx);
+    const createdUsers = await seedUsers(tx, { demoUsers: demo });
     const createdEquipmentCatalog = await seedEquipmentCatalog(tx);
     const createdCoffeeVarieties = await seedCoffeeVarietiesCatalogue(tx);
     const createdVendors = await seedVendors(tx);
+    await seedTasteNotes(tx, scaaData.data);
+
+    // Demo content: everything below belongs to the demo accounts.
+    if (!demo) return;
+
     const createdEquipment = await seedEquipment(tx, createdUsers);
 
     await seedBeans(tx, createdUsers, createdVendors);
@@ -1246,12 +1287,14 @@ export async function main() {
 
     await seedSocialData(tx, createdUsers, createdRecipes);
     await seedSetups(tx, createdUsers, createdEquipment);
-    await seedTasteNotes(tx, scaaData.data);
     await seedRecipeTasteNotes(tx, createdVersions);
     await seedCollections(tx, createdUsers, createdRecipes, createdVersions);
     await seedBrewLogs(tx, createdUsers, createdRecipes, createdVersions);
   });
 
+  if (!demo) {
+    console.log('Demo content skipped (APP_ENV=production): admin and reference catalogs only');
+  }
   console.log('Seeding complete!');
   console.log(
     'Admin ready (first install only; changing ADMIN_* later does not update the existing admin row)',

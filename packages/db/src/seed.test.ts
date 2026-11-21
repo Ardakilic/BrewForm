@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { normalizeAdminEmail } from './seed.ts';
+import { normalizeAdminEmail, shouldSeedDemoContent } from './seed.ts';
 import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
 import { equipmentCatalogSeedData } from './seed-equipment-catalog.ts';
 import {
@@ -483,5 +483,17 @@ describe('normalizeAdminEmail', () => {
 
   it('falls back to the default admin email when unset', () => {
     expect(normalizeAdminEmail(undefined)).toBe('admin@brewform.local');
+  });
+});
+
+describe('shouldSeedDemoContent', () => {
+  it('skips demo content in production', () => {
+    expect(shouldSeedDemoContent('production')).toBe(false);
+  });
+
+  it('seeds demo content in development, test and when APP_ENV is unset', () => {
+    expect(shouldSeedDemoContent('development')).toBe(true);
+    expect(shouldSeedDemoContent('test')).toBe(true);
+    expect(shouldSeedDemoContent(undefined)).toBe(true);
   });
 });
