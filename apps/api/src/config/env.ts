@@ -8,6 +8,10 @@
  * whitespace-only (what Compose produces for `${VAR:-}` and what operators
  * leave in a `.env` file or a Coolify variable) is dropped before validation,
  * so optional variables fall back to their default and required ones still fail.
+ *
+ * Public base URLs (`S3_PUBLIC_URL`, `PUBLIC_APP_URL`, `APP_URL`) are normalised
+ * once here: every trailing `/` is stripped, so code that builds a URL from them
+ * appends `/<path>` and never trims the value again.
  */
 import { isIP } from 'node:net';
 import * as path from 'node:path';
@@ -34,6 +38,15 @@ function dropBlankValues(input: unknown): unknown {
   }
   return copy;
 }
+
+/**
+ * Strip every trailing `/` from a public base URL, so `https://cdn.example.com/`
+ * and `https://cdn.example.com` build the same `<base>/<path>` URLs.
+ *
+ * @param value - The validated URL string.
+ * @returns The value without trailing slashes.
+ */
+const withoutTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
 
 /** A TCP port: an integer between 1 and 65535 (coerced from the env string). */
 const portSchema = z.coerce.number().int().min(1).max(65535);
@@ -196,7 +209,8 @@ const envObjectSchema = z
     S3_BUCKET: z.string().optional(),
     S3_ACCESS_KEY: z.string().optional(),
     S3_SECRET_KEY: z.string().optional(),
-    S3_PUBLIC_URL: z.url().optional(),
+    // Public base URL of the bucket; a trailing slash is ignored (see withoutTrailingSlash).
+    S3_PUBLIC_URL: z.url().transform(withoutTrailingSlash).optional(),
 
     // Local storage driver. UPLOAD_DIR is resolved to an absolute path at load
     // (relative values against the process working directory); the production
@@ -212,8 +226,10 @@ const envObjectSchema = z
       .default(10 * 1024 * 1024),
     UPLOAD_ALLOWED_TYPES: uploadAllowedTypesSchema,
 
-    APP_URL: z.string().default('http://localhost:8000'),
-    PUBLIC_APP_URL: z.url().optional(),
+    // Base URLs for QR/OG links (APP_URL) and email/share links (PUBLIC_APP_URL);
+    // a trailing slash is ignored (see withoutTrailingSlash).
+    APP_URL: z.string().default('http://localhost:8000').transform(withoutTrailingSlash),
+    PUBLIC_APP_URL: z.url().transform(withoutTrailingSlash).optional(),
 
     ADMIN_EMAIL: z.string().default('admin@brewform.local'),
     ADMIN_USERNAME: z.string().default('admin'),

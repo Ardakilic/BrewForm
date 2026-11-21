@@ -1,6 +1,6 @@
 import '../../test-setup.ts';
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
-import { config } from '../../config/index.ts';
+import { config, reloadConfig } from '../../config/env.ts';
 import { JPEG_1x1, PNG_1x1 } from '../../test-fixtures/images.ts';
 import { capturedRequest, verifySigV4 } from '../../test-fixtures/sigv4.ts';
 import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
@@ -26,7 +26,7 @@ import {
  * signed with an empty canonical query string. `fetch` is mocked; no network.
  */
 
-/** Config values the S3 driver and `getPublicUrl` read during these tests. */
+/** Config values the S3 driver reads during these tests. */
 const S3_TEST_CONFIG = {
   STORAGE_DRIVER: 's3',
   S3_ENDPOINT: 'https://s3.test',
@@ -160,5 +160,37 @@ describe('Photo upload through the S3 driver — request integrity', () => {
     }
     expect(urls[0]).not.toBe(urls[1]);
     expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('stores URLs with one slash when S3_PUBLIC_URL ends with a slash', async () => {
+    // Go through the env loader so its trailing-slash normalisation runs.
+    const env = { ...S3_TEST_CONFIG, S3_PUBLIC_URL: 'https://cdn.test/' };
+    const previous = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]]));
+    Object.assign(process.env, env);
+    reloadConfig();
+    try {
+      storageDeps.driver = new S3StorageDriver();
+      const res = await postUpload(
+        createPhotoTestApp(),
+        author.token,
+        buildUploadForm(
+          author.recipeId,
+          { bytes: PNG_1x1, filename: 'photo.png', type: 'image/png' },
+          { bytes: JPEG_1x1, filename: 'thumb.jpg', type: 'image/jpeg' },
+        ),
+      );
+      expect(res.status).toBe(201);
+      const { url, thumbnailUrl } = (await res.json()).data;
+      expect(url).toMatch(new RegExp(`^https://cdn\\.test/${UUID_V4}\\.(jpg|png)$`));
+      expect(thumbnailUrl).toMatch(
+        new RegExp(`^https://cdn\\.test/${UUID_V4}_medium\\.(jpg|png)$`),
+      );
+    } finally {
+      for (const [key, value] of Object.entries(previous)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      reloadConfig();
+    }
   });
 });

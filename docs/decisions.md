@@ -208,7 +208,7 @@ runtime, which would inflate cold-start time and the Docker image. The browser a
 original file in memory and a free `<canvas>` resize.
 
 **Trade-off.** Non-browser clients (e.g. a future mobile app or a curl test) won't produce
-thumbnails. The backend's `saveThumbnail()` falls back to the original URL in that case so
+thumbnails. The photo service (`uploadPhoto`) falls back to the original URL in that case so
 `Photo.thumbnailUrl` is never null. If a future client must upload without resizing and still
 produce thumbnails, server-side generation becomes a localized change in one helper.
 

@@ -83,7 +83,7 @@ export class S3StorageDriver implements StorageDriver {
     this.bucket = requireSetting('S3_BUCKET', config.S3_BUCKET);
     this.accessKey = requireSetting('S3_ACCESS_KEY', config.S3_ACCESS_KEY);
     this.secretKey = requireSetting('S3_SECRET_KEY', config.S3_SECRET_KEY);
-    this.publicUrl = requireSetting('S3_PUBLIC_URL', config.S3_PUBLIC_URL).replace(/\/$/, '');
+    this.publicUrl = requireSetting('S3_PUBLIC_URL', config.S3_PUBLIC_URL);
   }
 
   /**

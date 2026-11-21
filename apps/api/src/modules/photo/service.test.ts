@@ -281,12 +281,12 @@ describe('Photo Service', () => {
 
   describe('uploadPhoto partial-write cleanup', () => {
     let originalDriver: StorageDriver;
-    let saved: string[];
+    let attempted: string[];
     let deleted: string[];
 
     beforeEach(() => {
       originalDriver = storageDeps.driver;
-      saved = [];
+      attempted = [];
       deleted = [];
     });
 
@@ -294,12 +294,21 @@ describe('Photo Service', () => {
       storageDeps.driver = originalDriver;
     });
 
-    /** A fake driver whose second `save` fails; `delete` fails too when `failDelete` is set. */
-    function installFailingDriver(failDelete: boolean): void {
+    /**
+     * A fake driver that records every key it is asked to write and rejects the `failOn`-th
+     * `save` (1 = the original, 2 = the thumbnail) with `error`; `delete` records the key and
+     * fails too when `failDelete` is set.
+     */
+    function installFailingDriver(options: {
+      failOn: 1 | 2;
+      error?: Error;
+      failDelete?: boolean;
+    }): void {
+      const { failOn, error = new Error('thumbnail write failed'), failDelete = false } = options;
       storageDeps.driver = {
         save: (_data, key) => {
-          if (saved.length >= 1) return Promise.reject(new Error('thumbnail write failed'));
-          saved.push(key);
+          attempted.push(key);
+          if (attempted.length === failOn) return Promise.reject(error);
           return Promise.resolve(`/uploads/${key}`);
         },
         delete: (key) => {
@@ -311,26 +320,55 @@ describe('Photo Service', () => {
 
     const thumbnail = { declaredType: 'image/jpeg', size: JPEG_1x1.byteLength, data: JPEG_1x1 };
 
-    it('deletes the stored original when the thumbnail write fails, and creates no row', async () => {
-      installFailingDriver(false);
+    it('deletes the key of a failed original write, and creates no row', async () => {
+      installFailingDriver({ failOn: 1, error: new Error('ENOSPC') });
+
+      await expect(service.uploadPhoto(authorId, recipeId, makeFile(), thumbnail)).rejects.toThrow(
+        'ENOSPC',
+      );
+
+      expect(attempted).toHaveLength(1);
+      expect(deleted).toEqual([attempted[0]]);
+      expect(await photoRows()).toHaveLength(0);
+    });
+
+    it('deletes the original and the thumbnail key when the thumbnail write fails, and creates no row', async () => {
+      installFailingDriver({ failOn: 2 });
 
       await expect(service.uploadPhoto(authorId, recipeId, makeFile(), thumbnail)).rejects.toThrow(
         'thumbnail write failed',
       );
 
-      expect(saved).toHaveLength(1);
-      expect(deleted).toEqual(saved);
+      expect(attempted).toHaveLength(2);
+      expect(attempted[1]).toMatch(/_medium\.jpg$/);
+      expect(deleted).toEqual([attempted[0], attempted[1]]);
+      expect(await photoRows()).toHaveLength(0);
+    });
+
+    it('never deletes a key whose write failed with EEXIST, and rethrows', async () => {
+      installFailingDriver({
+        failOn: 1,
+        error: Object.assign(new Error('exists'), { code: 'EEXIST' }),
+      });
+
+      await expect(service.uploadPhoto(authorId, recipeId, makeFile(), thumbnail)).rejects.toThrow(
+        'exists',
+      );
+
+      expect(attempted).toHaveLength(1);
+      expect(deleted).toEqual([]);
       expect(await photoRows()).toHaveLength(0);
     });
 
     it('still surfaces the original error when the cleanup delete also fails', async () => {
-      installFailingDriver(true);
+      installFailingDriver({ failOn: 2, failDelete: true });
 
       await expect(service.uploadPhoto(authorId, recipeId, makeFile(), thumbnail)).rejects.toThrow(
         'thumbnail write failed',
       );
 
-      expect(deleted).toEqual(saved);
+      expect(attempted).toHaveLength(2);
+      expect(deleted).toEqual([attempted[0], attempted[1]]);
       expect(await photoRows()).toHaveLength(0);
     });
   });

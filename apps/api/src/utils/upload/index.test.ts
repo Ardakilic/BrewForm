@@ -18,9 +18,6 @@ import { UploadValidationError } from './errors.ts';
 import {
   deleteStoredFile,
   generateStorageKey,
-  getPublicUrl,
-  getThumbnailSizes,
-  saveThumbnail,
   saveUploadedFile,
   storageDeps,
   thumbnailKey,
@@ -192,20 +189,7 @@ describe('validateImagePart', () => {
   });
 });
 
-describe('getPublicUrl', () => {
-  it('should return a URL containing the filename', () => {
-    const result = getPublicUrl('test.jpg');
-    expect(typeof result).toBe('string');
-    expect(result).toContain('test.jpg');
-  });
-
-  it('should return /uploads/<name> for the local driver (default config)', () => {
-    const result = getPublicUrl('test.jpg');
-    expect(result).toBe('/uploads/test.jpg');
-  });
-});
-
-describe('storage helpers (saveUploadedFile, saveThumbnail, deleteStoredFile)', () => {
+describe('storage helpers (saveUploadedFile, deleteStoredFile)', () => {
   let originalDriver: StorageDriver;
   let calls: Array<{ op: 'save' | 'delete'; key: string; contentType?: string; size?: number }>;
 
@@ -236,51 +220,8 @@ describe('storage helpers (saveUploadedFile, saveThumbnail, deleteStoredFile)', 
     ]);
   });
 
-  it('saveThumbnail stores the bytes with their content type and returns the public URL', async () => {
-    const url = await saveThumbnail(PNG_1x1, 'abc_medium.png', 'image/png');
-    expect(url).toBe('/uploads/abc_medium.png');
-    expect(calls).toEqual([
-      { op: 'save', key: 'abc_medium.png', contentType: 'image/png', size: PNG_1x1.byteLength },
-    ]);
-  });
-
   it('deleteStoredFile deletes the key through the driver', async () => {
     await deleteStoredFile('abc.jpg');
     expect(calls).toEqual([{ op: 'delete', key: 'abc.jpg' }]);
-  });
-});
-
-describe('getThumbnailSizes', () => {
-  it('should return an object with small, medium, large keys', () => {
-    const sizes = getThumbnailSizes();
-    expect(sizes).toBeDefined();
-    expect(sizes.small).toBeDefined();
-    expect(sizes.medium).toBeDefined();
-    expect(sizes.large).toBeDefined();
-  });
-
-  it('each size should have a width number', () => {
-    const sizes = getThumbnailSizes();
-    expect(typeof sizes.small.width).toBe('number');
-    expect(typeof sizes.medium.width).toBe('number');
-    expect(typeof sizes.large.width).toBe('number');
-  });
-
-  it('each size should have optional height and quality when defined', () => {
-    const sizes = getThumbnailSizes();
-    expect(sizes.small.height).toBeDefined();
-    expect(sizes.small.quality).toBeDefined();
-    expect(typeof sizes.small.height).toBe('number');
-    expect(typeof sizes.small.quality).toBe('number');
-  });
-
-  it('should return a fresh top-level object each call (top-level keys do not leak)', () => {
-    // getThumbnailSizes spreads THUMBNAIL_SIZES into a new top-level object, so
-    // adding/removing a top-level key on one returned object does not affect
-    // the next. (Nested size objects are shared by reference — shallow copy.)
-    const a = getThumbnailSizes();
-    a.extra = { width: 1 };
-    const b = getThumbnailSizes();
-    expect(b.extra).toBeUndefined();
   });
 });

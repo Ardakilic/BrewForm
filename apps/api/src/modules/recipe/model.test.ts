@@ -37,6 +37,7 @@ import {
 } from '@brewform/db/schema';
 import { eq as drizzleEq, getTableColumns } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
 import * as recipeModel from './model.ts';
 import * as recipeService from './service.ts';
 import { RecipeWriteFixtures } from './test-helpers.ts';
@@ -86,10 +87,6 @@ function and(...conditions: (MockCondition | undefined)[]): MockCondition | unde
 function union(...selects: unknown[]): MockCondition {
   return { type: 'union', value: selects };
 }
-
-// The pure search-term helpers are the real exports: the mirror below must build
-// exactly the patterns production builds.
-const { normalizeSearchTerm, toContainsPattern } = recipeModel;
 
 const recipes = {
   id: 'recipes.id',
@@ -348,26 +345,6 @@ function searchPatterns(condition: MockCondition): unknown[] {
   const versionConditions = versionRecipeIds.where.conditions ?? [];
   return [titleIds.where.value, ...versionConditions.map((c) => c.value)];
 }
-
-describe('normalizeSearchTerm / toContainsPattern (real exports)', () => {
-  it('normalizeSearchTerm trims only and maps undefined to an empty string', () => {
-    expect(normalizeSearchTerm(undefined)).toBe('');
-    expect(normalizeSearchTerm('   ')).toBe('');
-    expect(normalizeSearchTerm('  Espresso_100%  ')).toBe('Espresso_100%');
-    expect(normalizeSearchTerm('İstanbul')).toBe('İstanbul');
-  });
-
-  it('toContainsPattern escapes \\, % and _ in that order and wraps in %…%', () => {
-    // The five-character term `50%_\` becomes the pattern `%50\%\_\\%`.
-    expect(toContainsPattern('50%_\\')).toBe('%50\\%\\_\\\\%');
-    expect(toContainsPattern('espresso')).toBe('%espresso%');
-    expect(toContainsPattern('\\')).toBe('%\\\\%');
-    expect(toContainsPattern('a_c')).toBe('%a\\_c%');
-    expect(toContainsPattern('100%')).toBe('%100\\%%');
-    // An already-escaped sequence is escaped again, never treated as an escape.
-    expect(toContainsPattern('\\%')).toBe('%\\\\\\%%');
-  });
-});
 
 describe('buildRecipeFilters', () => {
   it('returns an empty array when no filters are set', () => {

@@ -32,19 +32,6 @@ export interface UploadPart {
   data: Uint8Array;
 }
 
-/** Resize options for a thumbnail variant; height defaults to width for a square crop. */
-export interface ThumbnailOptions {
-  width: number;
-  height?: number;
-  quality?: number;
-}
-
-const THUMBNAIL_SIZES: Record<string, ThumbnailOptions> = {
-  small: { width: 200, height: 200, quality: 80 },
-  medium: { width: 600, height: 600, quality: 85 },
-  large: { width: 1200, height: 1200, quality: 90 },
-};
-
 /**
  * Generate a fresh storage key for an original photo: `<uuidv4>.<ext>`, with
  * the extension looked up in the fixed {@link MIME_TO_EXT} table.
@@ -136,23 +123,16 @@ export function validateImagePart(part: UploadPart, kind: UploadPartField): Dete
 }
 
 /**
- * Build the public URL for a stored file: `/uploads/<key>` for the local
- * driver, otherwise `<S3_PUBLIC_URL>/<key>`.
- */
-export function getPublicUrl(filename: string): string {
-  if (config.STORAGE_DRIVER === 'local') {
-    return `/uploads/${filename}`;
-  }
-  return `${config.S3_PUBLIC_URL}/${filename}`;
-}
-
-/**
- * Persist an original photo through {@link storageDeps}' driver.
+ * Persist an original photo or its client-produced thumbnail through {@link storageDeps}'
+ * driver. Thumbnails are produced client-side via `<canvas>` in PhotoUpload before upload
+ * (see apps/web/src/components/photos/PhotoUpload.tsx) and validated by
+ * {@link validateImagePart} like the original; the server only stores them.
  *
  * @param data - The validated bytes.
- * @param key - A key from {@link generateStorageKey} in the same request.
+ * @param key - A key from {@link generateStorageKey} or {@link thumbnailKey} in the same request.
  * @param contentType - The server-detected MIME type (never the client's).
- * @returns The driver's public URL or path for the object.
+ * @returns The URL that is stored for the object, built by the driver: `/uploads/<key>` for the
+ *   local driver, `<S3_PUBLIC_URL>/<key>` for the S3 driver (the base has no trailing slash).
  */
 export function saveUploadedFile(
   data: Uint8Array,
@@ -163,27 +143,6 @@ export function saveUploadedFile(
 }
 
 /**
- * Persist a client-produced thumbnail and return its public URL.
- *
- * Thumbnails are produced client-side via `<canvas>` in PhotoUpload before
- * upload (see apps/web/src/components/photos/PhotoUpload.tsx) and validated
- * by {@link validateImagePart} like the original; the server only stores them.
- *
- * @param data - The validated thumbnail bytes.
- * @param key - A key from {@link thumbnailKey} for the same upload.
- * @param contentType - The thumbnail's server-detected MIME type.
- * @returns The public URL from {@link getPublicUrl}.
- */
-export async function saveThumbnail(
-  data: Uint8Array,
-  key: string,
-  contentType: SupportedImageMime,
-): Promise<string> {
-  await storageDeps.driver.save(data, key, { contentType });
-  return getPublicUrl(key);
-}
-
-/**
  * Delete a stored object through {@link storageDeps}' driver (used to clean up
  * the objects of an upload that failed part-way).
  *
@@ -191,9 +150,4 @@ export async function saveThumbnail(
  */
 export function deleteStoredFile(key: string): Promise<void> {
   return storageDeps.driver.delete(key);
-}
-
-/** Return a shallow copy of the preset thumbnail size definitions (small/medium/large). */
-export function getThumbnailSizes(): Record<string, ThumbnailOptions> {
-  return { ...THUMBNAIL_SIZES };
 }

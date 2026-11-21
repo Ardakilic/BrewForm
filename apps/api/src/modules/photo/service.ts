@@ -14,13 +14,12 @@ import {
   type DetectedImage,
   deleteStoredFile,
   generateStorageKey,
-  getPublicUrl,
-  saveThumbnail,
   saveUploadedFile,
   thumbnailKey,
   type UploadPart,
   validateImagePart,
 } from '../../utils/upload/index.ts';
+import type { SupportedImageMime } from '../../utils/upload/mime.ts';
 import { detectImage } from '../../utils/upload/sniff.ts';
 import * as recipeModel from '../recipe/model.ts';
 import * as model from './model.ts';
@@ -84,8 +83,9 @@ function validatePart(
 }
 
 /**
- * Best-effort deletion of objects written earlier in a failed upload. A
- * cleanup failure is logged at `warn` and never replaces the original error.
+ * Best-effort deletion of the objects written or attempted in a failed upload
+ * (see {@link saveTracked}). A cleanup failure is logged at `warn` and never
+ * replaces the original error.
  */
 async function cleanupWrittenKeys(keys: string[], context: UploadLogContext): Promise<void> {
   for (const key of keys) {
@@ -101,15 +101,45 @@ async function cleanupWrittenKeys(keys: string[], context: UploadLogContext): Pr
 }
 
 /**
+ * Save one object through the storage driver, recording its key in `written` before the
+ * write: a failed write can still leave a partial local file or a stored S3 object (a PUT
+ * that timed out on our side), so its key must be cleaned up too. A write that fails with
+ * `EEXIST` created nothing; its key is removed from `written` again, because that object
+ * belongs to another upload and must never be deleted.
+ *
+ * @param written - The keys attempted so far for this upload (mutated).
+ * @param data - The validated bytes.
+ * @param key - The server-generated storage key.
+ * @param mime - The server-detected MIME type.
+ * @returns The URL the driver built for the object (the value stored in the photo row).
+ * @throws The driver's error, unchanged.
+ */
+async function saveTracked(
+  written: string[],
+  data: Uint8Array,
+  key: string,
+  mime: SupportedImageMime,
+): Promise<string> {
+  written.push(key);
+  try {
+    return await saveUploadedFile(data, key, mime);
+  } catch (err) {
+    if ((err as { code?: unknown } | null)?.code === 'EEXIST') written.pop();
+    throw err;
+  }
+}
+
+/**
  * Upload a photo for a recipe.
  *
  * Order: verify the recipe exists and the caller is its author; validate the
  * original and, if present and non-empty, the thumbnail (nothing is written
  * until both pass); generate a server key from the detected type; save the
  * original, then the thumbnail (`<id>_medium.<ext>` with the thumbnail's own
- * type), then insert the photo row. If any step after the first write fails,
- * the objects already written are deleted (best effort) and the original
- * error is rethrown.
+ * type), then insert the photo row. The stored `url` and `thumbnailUrl` are the
+ * URLs the storage driver returns. If a write or the insert fails, every object
+ * written or attempted for this upload (except a key whose write failed with
+ * `EEXIST`) is deleted (best effort) and the original error is rethrown.
  *
  * @param userId    - The ID of the user uploading the photo
  * @param recipeId  - The recipe the photo belongs to
@@ -146,16 +176,12 @@ export async function uploadPhoto(
   const { id, key } = generateStorageKey(image.mime);
   const written: string[] = [];
   try {
-    await saveUploadedFile(file.data, key, image.mime);
-    written.push(key);
-    const url = getPublicUrl(key);
+    const url = await saveTracked(written, file.data, key, image.mime);
 
     let thumbnailUrl = url;
     if (thumbnailPart && thumbnailImage) {
       const thumbKey = thumbnailKey(id, thumbnailImage.mime);
-      await saveThumbnail(thumbnailPart.data, thumbKey, thumbnailImage.mime);
-      written.push(thumbKey);
-      thumbnailUrl = getPublicUrl(thumbKey);
+      thumbnailUrl = await saveTracked(written, thumbnailPart.data, thumbKey, thumbnailImage.mime);
     }
 
     const photo = await model.create({

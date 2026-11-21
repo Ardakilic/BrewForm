@@ -714,6 +714,20 @@ web container overrides both at runtime (`VITE_API_URL`, `PUBLIC_APP_URL`).
 | `413` on photo upload through the edge | `EDGE_MAX_BODY_SIZE` is below the API's photo cap; keep the `16MB` default. |
 | All clients share one rate limit | `TRUSTED_PROXIES` does not match what connects to the web port ([§5](#5-client-ip-and-trusted_proxies)). |
 | `exec format error` | The images are amd64-only; run on amd64 or build your own images ([§15](#15-building-the-images-yourself)). |
+| Photos uploaded before this release 404, their URL has `//` after the bucket URL | They were uploaded while `S3_PUBLIC_URL` ended with `/`. The API now ignores a trailing slash, so new uploads are fine; repair the old rows once (below). |
+
+**Repairing photo URLs stored with a trailing-slash `S3_PUBLIC_URL`.** Replace `<base>` with your
+`S3_PUBLIC_URL` without the trailing slash (for example `https://cdn.brewform.example.com`) and run
+this once inside the postgres container (operator SQL; adjust `-U`/`-d` if you changed
+`POSTGRES_USER`/`POSTGRES_DB`):
+
+```sh
+docker compose --env-file .env.production -f compose.production.yml exec -T postgres \
+  psql -U brewform -d brewform -c "
+  UPDATE photo SET url = replace(url, '<base>//', '<base>/'),
+         thumbnail_url = replace(thumbnail_url, '<base>//', '<base>/')
+   WHERE url LIKE '<base>//%';"
+```
 
 ---
 

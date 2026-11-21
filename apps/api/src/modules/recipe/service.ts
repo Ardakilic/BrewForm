@@ -35,6 +35,7 @@ import {
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyFollowersOfNewRecipe } from '../../utils/notify/index.ts';
 import { sanitizeText } from '../../utils/sanitize.ts';
+import { normalizeSearchTerm } from '../../utils/search.ts';
 import { evaluateBadges } from '../badge/service.ts';
 import { createLikeNotification } from '../notification/service.ts';
 import * as model from './model.ts';
@@ -704,7 +705,7 @@ async function runListQuery<T>(
  * When both `page` and `cursor` are provided, cursor wins and `page` is
  * silently ignored.
  *
- * When `search` is non-empty after {@link model.normalizeSearchTerm}, the request
+ * When `search` is non-empty after {@link normalizeSearchTerm}, the request
  * uses offset pagination (a cursor is ignored) and {@link model.findListPage}
  * ranks, orders and pages the matches in SQL: one bounded page query plus one
  * `COUNT`, never the full result set. A statement timeout becomes
@@ -734,7 +735,7 @@ export async function listRecipes(
   const sortOrder = filters.sortOrder || 'desc';
 
   // Search-active detection uses the same normalized term as the filter and the score.
-  const search = model.normalizeSearchTerm(filters.search);
+  const search = normalizeSearchTerm(filters.search);
   const hasSearch = search.length > 0;
 
   logger.debug(
@@ -883,7 +884,7 @@ export async function listStarredRecipes(
   }
 
   // The normalized term drives the starred filter and its SQL relevance ranking.
-  const search = model.normalizeSearchTerm(filters.search);
+  const search = normalizeSearchTerm(filters.search);
   const result = await runListQuery(
     () => model.findStarred(userId, { ...filters, search }, page, perPage),
     requestId,

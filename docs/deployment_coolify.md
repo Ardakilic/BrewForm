@@ -719,6 +719,19 @@ never becomes healthy, and the old one keeps serving until you fix the data and 
 | CORS errors in browser | `CORS_ALLOWED_ORIGINS` must exactly match the frontend origin(s); restart API after changes. |
 | `exec format error` on the host | amd64-only image on an ARM host → run on amd64 or rebuild multi-arch ([§3](#3-prerequisites)). |
 | `docker pull` fails `no matching manifest for linux/arm64` (dev machine) | Add `--platform linux/amd64`. |
+| Photos uploaded before this release 404, their URL has `//` after the bucket URL | They were uploaded while `S3_PUBLIC_URL` ended with `/`. The API now ignores a trailing slash, so new uploads are fine; repair the old rows once (below). |
+
+**Repairing photo URLs stored with a trailing-slash `S3_PUBLIC_URL`.** Replace `<base>` with your
+`S3_PUBLIC_URL` without the trailing slash (for example `https://cdn.brewform.cc`) and run this
+once in the terminal of the PostgreSQL resource's container (operator SQL; use the database user
+and name of your `DATABASE_URL`):
+
+```sh
+psql -U brewform -d brewform -c "
+  UPDATE photo SET url = replace(url, '<base>//', '<base>/'),
+         thumbnail_url = replace(thumbnail_url, '<base>//', '<base>/')
+   WHERE url LIKE '<base>//%';"
+```
 
 ---
 

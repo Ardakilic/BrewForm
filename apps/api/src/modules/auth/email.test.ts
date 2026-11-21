@@ -1,10 +1,11 @@
 import '../../test-setup.ts';
 import { escapeHtml } from '@brewform/shared/utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { reloadConfig } from '../../config/env.ts';
 import { template as resetPasswordTemplate } from '../../templates/email/generated/reset-password.ts';
 import { template as verifyEmailTemplate } from '../../templates/email/generated/verify-email.ts';
 import { template as welcomeTemplate } from '../../templates/email/generated/welcome.ts';
-import { appBaseUrl } from '../../utils/notify/index.ts';
+import { appBaseUrl, getTransporter } from '../../utils/notify/index.ts';
 import {
   renderTemplate,
   sendPasswordResetEmail,
@@ -114,6 +115,31 @@ describe('Auth Email', () => {
       expect(html).toContain(appBaseUrl().replace(/\//g, '&#x2F;'));
       expect(html).toContain('href="' + escapedResetUrl + '"');
       expect(html).toContain(encodeURIComponent(token));
+    });
+
+    it('builds the reset link without a double slash when PUBLIC_APP_URL ends with a slash', async () => {
+      const previousUrl = process.env.PUBLIC_APP_URL;
+      const previousEnv = process.env.APP_ENV;
+      process.env.PUBLIC_APP_URL = 'https://brewform.example.com/';
+      process.env.APP_ENV = 'development';
+      reloadConfig();
+      const sendMail = vi
+        .spyOn(getTransporter(), 'sendMail')
+        .mockImplementation(() => Promise.resolve({} as never));
+      try {
+        await sendPasswordResetEmail('reset@example.com', 'token123', 'testuser');
+        expect(sendMail).toHaveBeenCalledTimes(1);
+        // The template HTML-escapes the link (`/` becomes `&#x2F;`), so compare escaped text.
+        const html = String(sendMail.mock.calls[0][0].html);
+        expect(html).toContain(escapeHtml('https://brewform.example.com/reset-password?token='));
+        expect(html).not.toContain(escapeHtml('https://brewform.example.com//'));
+      } finally {
+        sendMail.mockRestore();
+        if (previousUrl === undefined) delete process.env.PUBLIC_APP_URL;
+        else process.env.PUBLIC_APP_URL = previousUrl;
+        process.env.APP_ENV = previousEnv ?? 'test';
+        reloadConfig();
+      }
     });
   });
 

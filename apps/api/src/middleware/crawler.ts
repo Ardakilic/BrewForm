@@ -71,7 +71,7 @@ export async function crawlerMiddleware(c: Context, next: Next) {
   if (meta.visibility !== 'public') return fallThroughNoIndex(c, next, slug, 'non-public');
 
   try {
-    const baseUrl = (config.PUBLIC_APP_URL || config.APP_URL).replace(/\/+$/, '');
+    const baseUrl = config.PUBLIC_APP_URL || config.APP_URL;
     const canonicalUrl = `${baseUrl}/recipes/${encodeURIComponent(meta.slug)}`;
 
     const description = meta.productName

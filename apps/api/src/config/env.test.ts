@@ -359,6 +359,40 @@ describe('blank values are treated as unset', () => {
   });
 });
 
+describe('public base URLs are normalised without a trailing slash', () => {
+  /** Parse `input` with the required variables and return the validated data. */
+  function parse(input: Record<string, string>) {
+    const result = envSchema.safeParse({ ...REQUIRED, ...input });
+    expect(result.success).toBe(true);
+    if (!result.success) throw result.error;
+    return result.data;
+  }
+
+  it('strips trailing slashes from S3_PUBLIC_URL', () => {
+    expect(parse({ S3_PUBLIC_URL: 'https://cdn.example.com/' }).S3_PUBLIC_URL).toBe(
+      'https://cdn.example.com',
+    );
+    expect(parse({ S3_PUBLIC_URL: 'http://localhost:3902/brewform-uploads//' }).S3_PUBLIC_URL).toBe(
+      'http://localhost:3902/brewform-uploads',
+    );
+  });
+
+  it('strips the trailing slash from PUBLIC_APP_URL and APP_URL', () => {
+    expect(parse({ PUBLIC_APP_URL: 'https://brewform.example.com/' }).PUBLIC_APP_URL).toBe(
+      'https://brewform.example.com',
+    );
+    expect(parse({ APP_URL: 'http://localhost:8000/' }).APP_URL).toBe('http://localhost:8000');
+  });
+
+  it('leaves values without a trailing slash and blank values unchanged', () => {
+    expect(parse({ S3_PUBLIC_URL: 'https://cdn.example.com' }).S3_PUBLIC_URL).toBe(
+      'https://cdn.example.com',
+    );
+    expect(parse({ S3_PUBLIC_URL: '' }).S3_PUBLIC_URL).toBeUndefined();
+    expect(parse({}).APP_URL).toBe('http://localhost:8000');
+  });
+});
+
 describe('port and size range checks', () => {
   it('should reject non-numeric and out-of-range APP_PORT values', () => {
     for (const value of ['abc', '0', '70000']) {
