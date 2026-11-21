@@ -31,7 +31,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { errorHandler } from '../../middleware/errorHandler.ts';
 import type { AppEnv } from '../../types/hono.ts';
 import { signAccessToken } from '../auth/jwt.ts';
+import coffeeVarietyRouter from '../coffee-variety/index.ts';
 import recipeRouter, { deps } from './index.ts';
+import * as service from './service.ts';
+import { RecipeWriteFixtures, recipeInput } from './test-helpers.ts';
 
 async function createUser(prefix: string) {
   const id = crypto.randomUUID();
@@ -433,6 +436,33 @@ describe('POST /api/v1/recipes — create', () => {
     expect(body.success).toBe(false);
     expect(body.error.code).toBe('VALIDATION_ERROR');
     expect(body.error.details).toEqual([{ field: 'title', message: 'Title cannot be empty' }]);
+  });
+
+  it('returns 400 VALIDATION_ERROR for duplicate tasteNoteIds and writes no recipe row', async () => {
+    const app = createTestApp(user.id);
+    const title = `Dup Taste ${crypto.randomUUID().slice(0, 8)}`;
+    const res = await app.request('/api/v1/recipes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title,
+        brewMethod: 'v60',
+        drinkType: 'pour_over',
+        preparationNotes: 'Bloom 45s',
+        tasteNoteIds: [tasteNoteId, tasteNoteId],
+      }),
+    });
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    const body = (await res.json()) as any;
+
+    expect(res.status).toBe(400);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.details).toContainEqual({
+      field: 'tasteNoteIds',
+      message: 'Duplicate ids are not allowed',
+    });
+    const rows = await db.select({ id: recipes.id }).from(recipes).where(eq(recipes.title, title));
+    expect(rows).toHaveLength(0);
   });
 
   it('returns 201 twice with different slugs for the same payload', async () => {
@@ -1022,5 +1052,285 @@ describe('Recipe routes — detail, mutations and toggles', () => {
       expect(res.status).toBe(200);
       expect(res.headers.get('Deprecation')).toBe('true');
     });
+  });
+});
+
+/**
+ * recipe-write: the PATCH route is gated, mapped and documented, and create/update persist
+ * every field (tds, coffee variety, relations). Recipes are created through the service and
+ * cleaned up by {@link RecipeWriteFixtures}.
+ */
+describe('Recipe write integrity — POST / and PATCH /:id', () => {
+  const fixtures = new RecipeWriteFixtures();
+  let author: typeof users.$inferSelect;
+
+  beforeEach(async () => {
+    author = await fixtures.user('write-route');
+  });
+
+  afterEach(async () => {
+    deps.authMiddleware = originalAuthMiddleware;
+    deps.optionalAuthMiddleware = originalOptionalAuthMiddleware;
+    await fixtures.cleanup();
+  });
+
+  /** App with the recipe and coffee-variety routers, the global error handler and a stub user. */
+  function writeApp(userId: string | null, emailVerified = true) {
+    deps.authMiddleware = stubAuth;
+    deps.optionalAuthMiddleware = stubOptionalAuth;
+    const app = new Hono<AppEnv>();
+    app.use('*', async (c, next) => {
+      c.set('requestId', crypto.randomUUID());
+      if (userId) {
+        c.set('userId', userId);
+        c.set('user', {
+          id: userId,
+          isAdmin: false,
+          emailVerifiedAt: emailVerified ? new Date() : null,
+          // biome-ignore lint/suspicious/noExplicitAny: test mock user
+        } as any);
+      }
+      await next();
+    });
+    app.route('/api/v1/recipes', recipeRouter);
+    app.route('/api/v1/coffee-varieties', coffeeVarietyRouter);
+    app.onError(errorHandler);
+    return app;
+  }
+
+  /** Send a JSON request and return the status and parsed body. */
+  async function send(
+    app: Hono<AppEnv>,
+    method: 'POST' | 'PATCH',
+    path: string,
+    payload: Record<string, unknown>,
+  ) {
+    const res = await app.request(path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    return { status: res.status, body: (await res.json()) as any };
+  }
+
+  /** GET a recipe detail anonymously. */
+  async function getDetail(slug: string) {
+    const res = await writeApp(null).request(`/api/v1/recipes/${slug}`);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    return { status: res.status, body: (await res.json()) as any };
+  }
+
+  /**
+   * Create a public recipe with taste note T (intensity 2), equipment E, tds 1.35 and variety V.
+   * (A value with a trailing zero would read back as e.g. '1.4': the relational query returns
+   * nested numerics through JSON.)
+   */
+  async function createLinked() {
+    const tasteNoteId = await fixtures.tasteNote();
+    const equipmentId = await fixtures.equipmentItem();
+    const variety = await fixtures.variety('Pink Bourbon');
+    const recipe = await service.createRecipe(author.id, {
+      title: `Linked ${crypto.randomUUID().slice(0, 8)}`,
+      visibility: 'public',
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: 'Bloom',
+      isFavourite: true,
+      grindSize: 'fine',
+      tds: 1.35,
+      coffeeVarietyId: variety.id,
+      tasteNoteIds: [tasteNoteId],
+      tasteNoteIntensities: { [tasteNoteId]: 2 },
+      equipmentIds: [equipmentId],
+    });
+    return { recipe: recipe!, tasteNoteId, equipmentId, variety };
+  }
+
+  it('returns 403 EMAIL_NOT_VERIFIED for an unverified author and writes nothing', async () => {
+    const { recipe } = await createLinked();
+    const before = await fixtures.snapshot(recipe.currentVersionId!);
+    const { status, body } = await send(
+      writeApp(author.id, false),
+      'PATCH',
+      `/api/v1/recipes/${recipe.id}`,
+      { grindSize: 'coarse', visibility: 'private' },
+    );
+    expect(status).toBe(403);
+    expect(body.error.code).toBe('EMAIL_NOT_VERIFIED');
+    expect(await fixtures.snapshot(recipe.currentVersionId!)).toEqual(before);
+    expect((await fixtures.rawRecipe(recipe.id)).visibility).toBe('public');
+  });
+
+  it('returns 400 VALIDATION_ERROR (not 500) for a title that is empty after sanitization', async () => {
+    const { recipe } = await createLinked();
+    const { status, body } = await send(
+      writeApp(author.id),
+      'PATCH',
+      `/api/v1/recipes/${recipe.id}`,
+      {
+        title: '<i></i>',
+      },
+    );
+    expect(status).toBe(400);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.details).toEqual([{ field: 'title', message: 'Title cannot be empty' }]);
+  });
+
+  it('returns 400 VALIDATION_ERROR for null on a required field', async () => {
+    const { recipe } = await createLinked();
+    for (const payload of [{ title: null }, { brewMethod: null }]) {
+      const { status, body } = await send(
+        writeApp(author.id),
+        'PATCH',
+        `/api/v1/recipes/${recipe.id}`,
+        payload,
+      );
+      expect(status).toBe(400);
+      expect(body.error.code).toBe('VALIDATION_ERROR');
+    }
+  });
+
+  it('returns 400 for duplicate equipmentIds and leaves the current version unchanged', async () => {
+    const { recipe, equipmentId } = await createLinked();
+    const before = await fixtures.snapshot(recipe.currentVersionId!);
+    const { status, body } = await send(
+      writeApp(author.id),
+      'PATCH',
+      `/api/v1/recipes/${recipe.id}`,
+      {
+        equipmentIds: [equipmentId, equipmentId],
+      },
+    );
+    expect(status).toBe(400);
+    expect(body.error.details).toContainEqual({
+      field: 'equipmentIds',
+      message: 'Duplicate ids are not allowed',
+    });
+    expect(await fixtures.snapshot(recipe.currentVersionId!)).toEqual(before);
+  });
+
+  it('returns 400 with a grindDate detail for a merged cross-field violation', async () => {
+    const recipe = await service.createRecipe(author.id, {
+      ...recipeInput(`Merged ${crypto.randomUUID().slice(0, 8)}`),
+      roastDate: '2026-11-10',
+    });
+    const { status, body } = await send(
+      writeApp(author.id),
+      'PATCH',
+      `/api/v1/recipes/${recipe!.id}`,
+      {
+        grindDate: '2026-11-01',
+      },
+    );
+    expect(status).toBe(400);
+    expect(body.error.details.map((d: { field: string }) => d.field)).toContain('grindDate');
+  });
+
+  it('keeps visibility on a title-only PATCH (detail and list)', async () => {
+    const { recipe } = await createLinked();
+    const { status } = await send(writeApp(author.id), 'PATCH', `/api/v1/recipes/${recipe.id}`, {
+      title: 'Renamed only',
+    });
+    expect(status).toBe(200);
+
+    const detail = await getDetail(recipe.slug);
+    expect(detail.body.data.title).toBe('Renamed only');
+    expect(detail.body.data.visibility).toBe('public');
+    const list = await writeApp(null).request(`/api/v1/recipes?authorId=${author.id}`);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    const listBody = (await list.json()) as any;
+    expect(listBody.data.map((r: { id: string }) => r.id)).toContain(recipe.id);
+  });
+
+  it('keeps taste notes, equipment, tds and variety through a bump (GET /:slug round-trip)', async () => {
+    const { recipe, tasteNoteId, equipmentId, variety } = await createLinked();
+    const { status, body } = await send(
+      writeApp(author.id),
+      'PATCH',
+      `/api/v1/recipes/${recipe.id}`,
+      {
+        grindSize: 'medium',
+        bumpVersion: true,
+      },
+    );
+    expect(status).toBe(200);
+    expect(body.data.versions).toHaveLength(2);
+
+    const detail = await getDetail(recipe.slug);
+    const current = detail.body.data.versions.find(
+      (v: { id: string }) => v.id === detail.body.data.currentVersionId,
+    );
+    expect(current.versionNumber).toBe(2);
+    expect(current.grindSize).toBe('medium');
+    expect(current.tds).toBe('1.35');
+    expect(current.coffeeVarietyId).toBe(variety.id);
+    expect(current.coffeeVarietyName).toBe(variety.name);
+    expect(current.isFavourite).toBe(true);
+    expect(
+      current.tasteNotes.map((tn: { tasteNoteId: string; intensity: number }) => [
+        tn.tasteNoteId,
+        tn.intensity,
+      ]),
+    ).toEqual([[tasteNoteId, 2]]);
+    expect(current.equipment.map((e: { equipmentId: string }) => e.equipmentId)).toEqual([
+      equipmentId,
+    ]);
+  });
+
+  it('keeps the recipe listed under ?coffeeVarietyId= and /coffee-varieties/:id/recipes after a bump', async () => {
+    const { recipe, variety } = await createLinked();
+    await send(writeApp(author.id), 'PATCH', `/api/v1/recipes/${recipe.id}`, {
+      grindSize: 'medium',
+      bumpVersion: true,
+    });
+
+    const app = writeApp(null);
+    const byFilter = await app.request(`/api/v1/recipes?coffeeVarietyId=${variety.id}`);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    const filterBody = (await byFilter.json()) as any;
+    expect(byFilter.status).toBe(200);
+    expect(filterBody.data.map((r: { id: string }) => r.id)).toContain(recipe.id);
+
+    const byVariety = await app.request(`/api/v1/coffee-varieties/${variety.id}/recipes`);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    const varietyBody = (await byVariety.json()) as any;
+    expect(byVariety.status).toBe(200);
+    expect(varietyBody.data.map((r: { id: string }) => r.id)).toContain(recipe.id);
+  });
+
+  it('POST / returns 400 for an unknown tasteNoteId and writes no recipe row', async () => {
+    const title = `Unknown Taste ${crypto.randomUUID().slice(0, 8)}`;
+    const { status, body } = await send(writeApp(author.id), 'POST', '/api/v1/recipes', {
+      title,
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: 'Bloom',
+      tasteNoteIds: [crypto.randomUUID()],
+    });
+    expect(status).toBe(400);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.details.map((d: { field: string }) => d.field)).toEqual(['tasteNoteIds']);
+    const rows = await db.select({ id: recipes.id }).from(recipes).where(eq(recipes.title, title));
+    expect(rows).toHaveLength(0);
+  });
+
+  it('POST / persists tds and coffeeVarietyId and returns them', async () => {
+    const variety = await fixtures.variety('Gesha');
+    const { status, body } = await send(writeApp(author.id), 'POST', '/api/v1/recipes', {
+      title: `With TDS ${crypto.randomUUID().slice(0, 8)}`,
+      visibility: 'public',
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: 'Bloom',
+      tds: 1.35,
+      coffeeVarietyId: variety.id,
+      coffeeVarietyName: 'ignored client value',
+    });
+    expect(status).toBe(201);
+    expect(body.data.versions[0].tds).toBe('1.35');
+    expect(body.data.versions[0].coffeeVarietyId).toBe(variety.id);
+    expect(body.data.versions[0].coffeeVarietyName).toBe(variety.name);
+    expect(body.data.currentVersionId).toBe(body.data.versions[0].id);
   });
 });

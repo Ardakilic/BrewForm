@@ -505,15 +505,15 @@ How to use this task list
 
 ## 8. Recipe write integrity — shared schemas, model, service and route (t1, refine D2a)
 
-- [ ] 8.1 Add failing tests to `packages/shared/src/schemas/recipe.test.ts`:
+- [x] 8.1 Add failing tests to `packages/shared/src/schemas/recipe.test.ts`:
   - `RecipeUpdateSchema.parse({ title: 'x' })` deep-equals `{ title: 'x', bumpVersion: false }` (no `visibility` or `isFavourite` key).
   - `Object.keys(RecipeUpdateSchema.parse({}))` equals `['bumpVersion']` (drift guard against any future `.default()` on an update field).
   - `null` is accepted for the clearable fields and rejected for `title`, `brewMethod`, `drinkType`, `preparationNotes`, `visibility`, `isFavourite` and `brewDate`.
   - `tasteNoteIntensities` without `tasteNoteIds` is rejected.
   - The cross-field refinements apply to updates.
-- [ ] 8.2 Add failing cases to `packages/shared/src/schemas/recipe.test.ts`: duplicate ids in `tasteNoteIds` and `equipmentIds` are rejected on create and update with the message `Duplicate ids are not allowed`. Then add `.refine((ids) => new Set(ids).size === ids.length, { message: 'Duplicate ids are not allowed' })` to the shared id-array schema both fields use (`recipe-write` requirement "Recipe payloads reject duplicate relation ids"). Add a route test to `apps/api/src/modules/recipe/index.test.ts`: `POST /api/v1/recipes` with `tasteNoteIds: [a, a]` returns `400 VALIDATION_ERROR` and writes no recipe row.
-- [ ] 8.3 Extract the five cross-field rules into an exported pure `recipeCrossFieldIssues(data)` in `packages/shared/src/schemas/recipe.ts`. Use it from `RecipeCreateSchema` via `.superRefine`, keeping the same messages and paths, and unit-test it directly.
-- [ ] 8.4 Build `RecipeUpdateObjectSchema` field by field: `.nullish()` for clearable fields, `.optional()` for required fields, no `.default()`. Then set `RecipeUpdateSchema = RecipeUpdateObjectSchema.extend({ bumpVersion: z.boolean().default(false) }).superRefine(recipeCrossFieldIssues + intensities-require-ids)`. Update the docblocks to describe absent/null/[] semantics.
+- [x] 8.2 Add failing cases to `packages/shared/src/schemas/recipe.test.ts`: duplicate ids in `tasteNoteIds` and `equipmentIds` are rejected on create and update with the message `Duplicate ids are not allowed`. Then add `.refine((ids) => new Set(ids).size === ids.length, { message: 'Duplicate ids are not allowed' })` to the shared id-array schema both fields use (`recipe-write` requirement "Recipe payloads reject duplicate relation ids"). Add a route test to `apps/api/src/modules/recipe/index.test.ts`: `POST /api/v1/recipes` with `tasteNoteIds: [a, a]` returns `400 VALIDATION_ERROR` and writes no recipe row.
+- [x] 8.3 Extract the five cross-field rules into an exported pure `recipeCrossFieldIssues(data)` in `packages/shared/src/schemas/recipe.ts`. Use it from `RecipeCreateSchema` via `.superRefine`, keeping the same messages and paths, and unit-test it directly.
+- [x] 8.4 Build `RecipeUpdateObjectSchema` field by field: `.nullish()` for clearable fields, `.optional()` for required fields, no `.default()`. Then set `RecipeUpdateSchema = RecipeUpdateObjectSchema.extend({ bumpVersion: z.boolean().default(false) }).superRefine(recipeCrossFieldIssues + intensities-require-ids)`. Update the docblocks to describe absent/null/[] semantics.
 - [x] 8.5 Add `coffeeVarietyId: z.uuid().optional()` to `RecipeCreateObjectSchema` (nullish on update). Remove `brewRatio` and `flowRate` from the input schemas. Update the affected shared tests and `RecipeUpdate`/`RecipeCreate` consumers.
 - [x] 8.6 Add a version-column mapping helper to `apps/api/src/modules/recipe/model.ts` (`versionColumnsFrom(resolved)` and `copyVersionColumns(source)`) covering every `recipeVersions` column except `id`, `recipeId`, `versionNumber` and `createdAt`. Add the drift-guard test to `model.test.ts` using `getTableColumns(recipeVersions)`.
 - [x] 8.7 Extend `CreateRecipeWithRelationsInput` with `tds: string | null`, `coffeeVarietyId: string | null` and `coffeeVarietyName: string | null`. Insert them through the mapping in `createRecipeWithRelations`, and update its docblock.
@@ -554,12 +554,12 @@ How to use this task list
   Throw t3's typed `ValidationError` (with `details`) from `apps/api/src/utils/errors.ts` (task 2.2). Bump `brewDate` is the payload value or now. Update the docblock and keep the entry/exit logs.
 - [x] 8.14 Update `createRecipe`: run reference validation and variety-name resolution before the helper, pass `tds` (as a string), `coffeeVarietyId` and `coffeeVarietyName`, store empty brewer notes as `NULL`, and update the docblock.
 - [x] 8.15 Extend `service.create.test.ts` (tds and variety persisted; an invalid reference writes nothing) and update the old `describe('updateRecipe')` expectations in `service.test.ts:938-975` to the amend semantics.
-- [ ] 8.16 Update `PATCH /:id` in `apps/api/src/modules/recipe/index.ts`:
+- [x] 8.16 Update `PATCH /:id` in `apps/api/src/modules/recipe/index.ts`:
   - Add the `isEmailVerified` gate, returning 403 `EMAIL_NOT_VERIFIED`.
   - Map `VALIDATION_ERROR*` to 400 with details (via `validationError`/`error`), `FORBIDDEN` to 403 and `RECIPE_NOT_FOUND` to 404. Leave 422 and 409 to `errorHandler`.
   - Add full `describeRoute` metadata: description of amend versus bump and absent/null/[], `jsonRequestBody(RecipeUpdateSchema)`, 200 as `resolver(successEnvelope(RecipeDetailOutputSchema))`, and 400/401/403/404/409/422 as `resolver(ErrorEnvelopeSchema)`.
-- [ ] 8.17 Map the `VALIDATION_ERROR*` service errors to 400 in the `POST /` handler, which covers the empty title and invalid references.
-- [ ] 8.18 Extend `apps/api/src/modules/recipe/index.test.ts`:
+- [x] 8.17 Map the `VALIDATION_ERROR*` service errors to 400 in the `POST /` handler, which covers the empty title and invalid references.
+- [x] 8.18 Extend `apps/api/src/modules/recipe/index.test.ts`:
   - A PATCH from an unverified author returns 403.
   - An empty title returns 400 (not 500).
   - A title-only PATCH keeps visibility.
@@ -567,8 +567,8 @@ How to use this task list
   - `POST /` with an unknown `tasteNoteId` returns 400.
   - `POST /` with `tds` and `coffeeVarietyId` returns them in the response.
   - The recipe is listed under `?coffeeVarietyId=` and `/coffee-varieties/:id/recipes` after a bump.
-- [ ] 8.19 Update the `recipeVersions` docblock in `packages/db/src/schema.ts:208` ("current version may be amended by its author; earlier versions are immutable"). This is comment-only; confirm `make db-generate` still reports no changes.
-- [ ] 8.20 Group check: run `make test-shared` and `make test-api`. Confirm the data-loss regression tests named in the `recipe-write` spec pass.
+- [x] 8.19 Update the `recipeVersions` docblock in `packages/db/src/schema.ts:208` ("current version may be amended by its author; earlier versions are immutable"). This is comment-only; confirm `make db-generate` still reports no changes.
+- [x] 8.20 Group check: run `make test-shared` and `make test-api`. Confirm the data-loss regression tests named in the `recipe-write` spec pass.
 
 ## 9. Collection visibility, shared visibility helpers, conflict responses in OpenAPI and error docs (t3, refine D4, OQ1)
 

@@ -9,7 +9,9 @@
 
 import { db } from '@brewform/db';
 import {
+  beans,
   brewMethodEquipmentRules,
+  coffeeVarieties,
   equipment,
   recipeAdditionalPreparations,
   recipeEquipment,
@@ -18,16 +20,17 @@ import {
   recipeVersionPhotos,
   recipeVersions,
   setups,
+  tasteNotes,
   userRecipeFavourites,
   userRecipeLikes,
   userRecipeRatings,
   users,
+  vendors,
 } from '@brewform/db/schema';
 import type {
   AdditionalPreparationCategory,
   BrewMethod,
   DrinkType,
-  EmojiTag,
   Visibility,
 } from '@brewform/shared/types';
 import { encodeCursor } from '@brewform/shared/utils';
@@ -43,11 +46,13 @@ import {
   inArray,
   isNull,
   lte,
+  max,
   not,
   or,
   type SQL,
   sql,
 } from 'drizzle-orm';
+import { toLoggableError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 
 const modelLog = createLogger('recipe-model');
@@ -447,14 +452,235 @@ export async function softDelete(id: string) {
   return result ?? null;
 }
 
-/** Insert a new recipe version row and return it with all database-generated fields. */
-export async function createVersion(data: typeof recipeVersions.$inferInsert) {
-  const [result] = await db.insert(recipeVersions).values(data).returning();
-  return result;
-}
-
 /** A Drizzle transaction handle, as passed to the `db.transaction` callback. */
 type RecipeTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** `recipe_version` columns that the write paths set themselves (identity and ordering). */
+type RecipeVersionKeyColumn = 'id' | 'recipeId' | 'versionNumber' | 'createdAt';
+
+/**
+ * Every value a recipe write path sets on a `recipe_version` row: all columns except `id`,
+ * `recipeId`, `versionNumber` and `createdAt`, each one required (a nullable column takes
+ * `null` for "empty"). Derived from the table, so a new column is a type error in
+ * {@link versionColumnsFrom} until the mapping handles it.
+ */
+export type RecipeVersionColumns = Required<
+  Omit<typeof recipeVersions.$inferInsert, RecipeVersionKeyColumn>
+>;
+
+/**
+ * The single `recipe_version` column mapping shared by create, amend, bump and fork.
+ *
+ * Copies exactly the {@link RecipeVersionColumns} keys out of `resolved` (extra keys such as
+ * relations or `id` are dropped), so every write path sets the same columns and none can
+ * silently skip one (`tds` and the coffee variety used to be missing from three paths). The
+ * drift guard in `model.test.ts` compares these keys with `getTableColumns(recipeVersions)`.
+ *
+ * Pure function, no I/O.
+ *
+ * @param resolved - Pre-resolved values for every version column (the service has already
+ *   merged, sanitized and derived them).
+ * @returns A fresh object holding only the version columns, ready for `insert`/`update`.
+ */
+export function versionColumnsFrom(resolved: RecipeVersionColumns): RecipeVersionColumns {
+  return {
+    productName: resolved.productName,
+    coffeeBrand: resolved.coffeeBrand,
+    coffeeProcessing: resolved.coffeeProcessing,
+    vendorId: resolved.vendorId,
+    roastDate: resolved.roastDate,
+    packageOpenDate: resolved.packageOpenDate,
+    grindDate: resolved.grindDate,
+    brewDate: resolved.brewDate,
+    brewMethod: resolved.brewMethod,
+    drinkType: resolved.drinkType,
+    brewerDetails: resolved.brewerDetails,
+    grinder: resolved.grinder,
+    grindSize: resolved.grindSize,
+    groundWeightGrams: resolved.groundWeightGrams,
+    extractionTimeSeconds: resolved.extractionTimeSeconds,
+    extractionVolumeMl: resolved.extractionVolumeMl,
+    temperatureCelsius: resolved.temperatureCelsius,
+    tds: resolved.tds,
+    brewRatio: resolved.brewRatio,
+    flowRate: resolved.flowRate,
+    preInfusionTimeSeconds: resolved.preInfusionTimeSeconds,
+    beanId: resolved.beanId,
+    coffeeVarietyId: resolved.coffeeVarietyId,
+    coffeeVarietyName: resolved.coffeeVarietyName,
+    personalNotes: resolved.personalNotes,
+    preparationNotes: resolved.preparationNotes,
+    isFavourite: resolved.isFavourite,
+    rating: resolved.rating,
+    emojiTag: resolved.emojiTag,
+  };
+}
+
+/**
+ * Copy every version column of a stored version (for a bump or a fork), through the same
+ * mapping as {@link versionColumnsFrom}. Callers override what must change (for example the
+ * fork resets `rating` and `isFavourite`).
+ *
+ * Pure function, no I/O.
+ *
+ * @param source - A stored `recipe_version` row (relation keys are ignored).
+ * @returns A fresh object holding only the version columns.
+ */
+export function copyVersionColumns(source: RecipeVersionColumns): RecipeVersionColumns {
+  return versionColumnsFrom(source);
+}
+
+/** One additional preparation as written by the recipe write paths (`sortOrder` = array index). */
+export interface AdditionalPreparationInput {
+  name: string;
+  type: AdditionalPreparationCategory;
+  inputAmount: string;
+  preparationType: string;
+}
+
+/** A taste-note link with its resolved intensity (1-3). */
+interface TasteNoteLink {
+  tasteNoteId: string;
+  intensity: number;
+}
+
+/**
+ * Relation rows to write for one version. An absent key writes nothing for that relation;
+ * arrays keep their order (`sortOrder` of preparations and photos is the array index).
+ */
+interface VersionRelations {
+  tasteNotes?: TasteNoteLink[];
+  equipmentIds?: string[];
+  additionalPreparations?: AdditionalPreparationInput[];
+  photoIds?: string[];
+}
+
+/**
+ * Insert the relation rows of one version inside an open transaction. Empty and absent
+ * arrays insert nothing.
+ *
+ * @param tx - The open write transaction.
+ * @param versionId - The version the rows belong to.
+ * @param relations - The rows to insert.
+ */
+async function insertVersionRelations(
+  tx: RecipeTx,
+  versionId: string,
+  relations: VersionRelations,
+): Promise<void> {
+  if (relations.tasteNotes?.length) {
+    await tx.insert(recipeTasteNotes).values(
+      relations.tasteNotes.map((link) => ({
+        recipeVersionId: versionId,
+        tasteNoteId: link.tasteNoteId,
+        intensity: link.intensity,
+      })),
+    );
+  }
+  if (relations.equipmentIds?.length) {
+    await tx
+      .insert(recipeEquipment)
+      .values(
+        relations.equipmentIds.map((equipmentId) => ({ recipeVersionId: versionId, equipmentId })),
+      );
+  }
+  if (relations.additionalPreparations?.length) {
+    await tx.insert(recipeAdditionalPreparations).values(
+      relations.additionalPreparations.map((p, i) => ({
+        recipeVersionId: versionId,
+        name: p.name,
+        type: p.type,
+        inputAmount: p.inputAmount,
+        preparationType: p.preparationType,
+        sortOrder: i,
+      })),
+    );
+  }
+  if (relations.photoIds?.length) {
+    await tx.insert(recipeVersionPhotos).values(
+      relations.photoIds.map((photoId, i) => ({
+        recipeVersionId: versionId,
+        photoId,
+        sortOrder: i,
+      })),
+    );
+  }
+}
+
+/**
+ * Replace the provided relations of one version inside an open transaction: for each key
+ * present in `relations`, delete the version's rows of that relation and insert the new ones
+ * (`[]` leaves none). Absent keys are left untouched.
+ *
+ * @param tx - The open write transaction.
+ * @param versionId - The version whose relations to replace.
+ * @param relations - The replacement rows, per relation.
+ */
+async function replaceVersionRelations(
+  tx: RecipeTx,
+  versionId: string,
+  relations: VersionRelations,
+): Promise<void> {
+  if (relations.tasteNotes) {
+    await tx.delete(recipeTasteNotes).where(eq(recipeTasteNotes.recipeVersionId, versionId));
+  }
+  if (relations.equipmentIds) {
+    await tx.delete(recipeEquipment).where(eq(recipeEquipment.recipeVersionId, versionId));
+  }
+  if (relations.additionalPreparations) {
+    await tx
+      .delete(recipeAdditionalPreparations)
+      .where(eq(recipeAdditionalPreparations.recipeVersionId, versionId));
+  }
+  if (relations.photoIds) {
+    await tx.delete(recipeVersionPhotos).where(eq(recipeVersionPhotos.recipeVersionId, versionId));
+  }
+  await insertVersionRelations(tx, versionId, relations);
+}
+
+/**
+ * Read every relation of one version inside an open transaction, in write order
+ * (preparations and photos by `sortOrder`).
+ *
+ * @param tx - The open write transaction.
+ * @param versionId - The version to read.
+ * @returns The version's taste notes (with intensities), equipment ids, preparations and photo ids.
+ */
+async function readVersionRelations(
+  tx: RecipeTx,
+  versionId: string,
+): Promise<Required<VersionRelations>> {
+  // Sequential on purpose: one transaction is one connection.
+  const tasteNoteRows = await tx
+    .select({ tasteNoteId: recipeTasteNotes.tasteNoteId, intensity: recipeTasteNotes.intensity })
+    .from(recipeTasteNotes)
+    .where(eq(recipeTasteNotes.recipeVersionId, versionId));
+  const equipmentRows = await tx
+    .select({ equipmentId: recipeEquipment.equipmentId })
+    .from(recipeEquipment)
+    .where(eq(recipeEquipment.recipeVersionId, versionId));
+  const preparationRows = await tx
+    .select({
+      name: recipeAdditionalPreparations.name,
+      type: recipeAdditionalPreparations.type,
+      inputAmount: recipeAdditionalPreparations.inputAmount,
+      preparationType: recipeAdditionalPreparations.preparationType,
+    })
+    .from(recipeAdditionalPreparations)
+    .where(eq(recipeAdditionalPreparations.recipeVersionId, versionId))
+    .orderBy(asc(recipeAdditionalPreparations.sortOrder));
+  const photoRows = await tx
+    .select({ photoId: recipeVersionPhotos.photoId })
+    .from(recipeVersionPhotos)
+    .where(eq(recipeVersionPhotos.recipeVersionId, versionId))
+    .orderBy(asc(recipeVersionPhotos.sortOrder));
+  return {
+    tasteNotes: tasteNoteRows,
+    equipmentIds: equipmentRows.map((row) => row.equipmentId),
+    additionalPreparations: preparationRows,
+    photoIds: photoRows.map((row) => row.photoId),
+  };
+}
 
 /** Columns of a new `recipe` row other than the slug, as written by {@link claimRecipeSlug}. */
 type RecipeRowWithoutSlug = Omit<typeof recipes.$inferInsert, 'slug'>;
@@ -505,6 +731,12 @@ async function claimRecipeSlug(
  * claimed does it copy the latest version (taste notes, equipment, additional
  * preparations, version photos) and increment the source recipe's `forkCount`.
  *
+ * The fork's first version copies every version column through
+ * {@link copyVersionColumns} (including `tds`, `coffeeVarietyId` and
+ * `coffeeVarietyName`), with `brewDate` set to now and the source author's
+ * personal assessments reset (`rating: null`, `isFavourite: false`). No user's
+ * private notes (`user_recipe_note`) are copied.
+ *
  * @param sourceId       - UUID of the recipe to fork
  * @param authorId       - UUID of the user creating the fork
  * @param title          - Title for the forked recipe (already sanitized)
@@ -535,34 +767,16 @@ export async function forkRecipe(
     );
     if (!newRecipe) return null;
 
+    // Every version column is copied through the shared mapping (tds and the coffee variety
+    // included); the source author's personal assessments are reset.
     const [newVersion] = await tx
       .insert(recipeVersions)
       .values({
         recipeId: newRecipe.id,
         versionNumber: 1,
-        productName: latestVersion.productName,
-        coffeeBrand: latestVersion.coffeeBrand,
-        coffeeProcessing: latestVersion.coffeeProcessing,
-        vendorId: latestVersion.vendorId,
-        roastDate: latestVersion.roastDate,
-        packageOpenDate: latestVersion.packageOpenDate,
-        grindDate: latestVersion.grindDate,
+        ...copyVersionColumns(latestVersion),
         brewDate: new Date(),
-        brewMethod: latestVersion.brewMethod,
-        drinkType: latestVersion.drinkType,
-        brewerDetails: latestVersion.brewerDetails,
-        grinder: latestVersion.grinder,
-        grindSize: latestVersion.grindSize,
-        groundWeightGrams: latestVersion.groundWeightGrams,
-        extractionTimeSeconds: latestVersion.extractionTimeSeconds,
-        extractionVolumeMl: latestVersion.extractionVolumeMl,
-        temperatureCelsius: latestVersion.temperatureCelsius,
-        brewRatio: latestVersion.brewRatio,
-        flowRate: latestVersion.flowRate,
-        preInfusionTimeSeconds: latestVersion.preInfusionTimeSeconds,
-        beanId: latestVersion.beanId,
-        personalNotes: latestVersion.personalNotes,
-        preparationNotes: latestVersion.preparationNotes,
+        rating: null,
         isFavourite: false,
       })
       .returning();
@@ -670,55 +884,27 @@ export async function forkRecipe(
 }
 
 /**
- * Input for {@link createRecipeWithRelations}. Carries the pre-resolved
- * recipe + first-version fields and the child-relation arrays. The
- * service is responsible for building the slug candidates, sanitization,
- * setup inheritance, and derived-metric computation before calling the helper.
+ * Input for {@link createRecipeWithRelations}. Carries the recipe-level fields, every
+ * first-version column ({@link RecipeVersionColumns}: all `recipe_version` columns except
+ * `id`, `recipeId`, `versionNumber` and `createdAt`, pre-resolved by the service, including
+ * `Date`-cast dates, computed `brewRatio`/`flowRate`, setup-inherited `grinder`/`brewerDetails`,
+ * sanitized notes, `tds` as a decimal string or `null`, and `coffeeVarietyId` with its
+ * server-resolved `coffeeVarietyName`) and the child-relation arrays. The helper re-derives
+ * nothing.
  */
-export interface CreateRecipeWithRelationsInput {
+export interface CreateRecipeWithRelationsInput extends RecipeVersionColumns {
   // recipe-level
   authorId: string;
   /** Slugs to claim, in order; the first free one wins (see {@link claimRecipeSlug}). */
   slugCandidates: readonly string[];
   title: string;
   visibility: Visibility;
-  // version-level (exhaustive — mirrors service.ts:218-247)
-  productName?: string;
-  coffeeBrand?: string;
-  coffeeProcessing?: string;
-  vendorId?: string;
-  roastDate: Date | null;
-  packageOpenDate: Date | null;
-  grindDate: Date | null;
-  brewDate: Date;
-  brewMethod: BrewMethod;
-  drinkType: DrinkType;
-  brewerDetails: string | null | undefined;
-  grinder: string | null | undefined;
-  grindSize?: string;
-  groundWeightGrams?: number;
-  extractionTimeSeconds?: number;
-  extractionVolumeMl?: number;
-  temperatureCelsius?: number;
-  brewRatio: number | null;
-  flowRate: number | null;
-  personalNotes: string;
-  preparationNotes: string;
-  isFavourite: boolean;
-  rating?: number;
-  emojiTag?: EmojiTag;
-  preInfusionTimeSeconds: number | null;
-  beanId: string | null;
   // child relations
   tasteNoteIds?: string[];
+  /** Intensity per taste-note id; ids without an entry get intensity `1`. */
   tasteNoteIntensities?: Record<string, number>;
   equipmentIds?: string[];
-  additionalPreparations?: Array<{
-    name: string;
-    type: AdditionalPreparationCategory;
-    inputAmount: string;
-    preparationType: string;
-  }>;
+  additionalPreparations?: AdditionalPreparationInput[];
   photoIds?: string[];
 }
 
@@ -732,10 +918,12 @@ export interface CreateRecipeWithRelationsInput {
  * slug (soft-deleted holders included) never aborts the transaction and a
  * concurrent create with the same title simply gets the next candidate. There
  * is deliberately no savepoint and no `23505` catch. Then it inserts the first
- * version row (versionNumber 1), and optionally taste notes, equipment,
- * additional preparations, and version photos. Finally it updates
- * `recipes.currentVersionId` and reloads via {@link findById} so the
- * returned shape matches every other read path.
+ * version row (versionNumber 1) with every column from {@link versionColumnsFrom}
+ * (so `tds`, `coffeeVarietyId` and `coffeeVarietyName` are written), and
+ * optionally taste notes (intensity from `tasteNoteIntensities`, default `1`),
+ * equipment, additional preparations, and version photos (`sortOrder` = array
+ * index). Finally it updates `recipes.currentVersionId` and reloads via
+ * {@link findById} so the returned shape matches every other read path.
  *
  * @param input - Pre-resolved recipe + version + relation fields.
  * @returns The inserted recipe with author, versions (with nested
@@ -761,79 +949,18 @@ export async function createRecipeWithRelations(input: CreateRecipeWithRelations
 
     const [version] = await tx
       .insert(recipeVersions)
-      .values({
-        recipeId: r.id,
-        versionNumber: 1,
-        productName: input.productName,
-        coffeeBrand: input.coffeeBrand,
-        coffeeProcessing: input.coffeeProcessing,
-        vendorId: input.vendorId,
-        roastDate: input.roastDate,
-        packageOpenDate: input.packageOpenDate,
-        grindDate: input.grindDate,
-        brewDate: input.brewDate,
-        brewMethod: input.brewMethod,
-        drinkType: input.drinkType,
-        brewerDetails: input.brewerDetails,
-        grinder: input.grinder,
-        grindSize: input.grindSize,
-        groundWeightGrams: input.groundWeightGrams,
-        extractionTimeSeconds: input.extractionTimeSeconds,
-        extractionVolumeMl: input.extractionVolumeMl,
-        temperatureCelsius: input.temperatureCelsius,
-        brewRatio: input.brewRatio,
-        flowRate: input.flowRate,
-        personalNotes: input.personalNotes,
-        preparationNotes: input.preparationNotes,
-        isFavourite: input.isFavourite,
-        rating: input.rating,
-        emojiTag: input.emojiTag,
-        preInfusionTimeSeconds: input.preInfusionTimeSeconds,
-        beanId: input.beanId,
-      })
+      .values({ recipeId: r.id, versionNumber: 1, ...versionColumnsFrom(input) })
       .returning();
 
-    if (input.tasteNoteIds?.length) {
-      await tx.insert(recipeTasteNotes).values(
-        input.tasteNoteIds.map((id) => ({
-          recipeVersionId: version.id,
-          tasteNoteId: id,
-          intensity: input.tasteNoteIntensities?.[id] ?? 1,
-        })),
-      );
-    }
-
-    if (input.equipmentIds?.length) {
-      await tx.insert(recipeEquipment).values(
-        input.equipmentIds.map((id) => ({
-          recipeVersionId: version.id,
-          equipmentId: id,
-        })),
-      );
-    }
-
-    if (input.additionalPreparations?.length) {
-      await tx.insert(recipeAdditionalPreparations).values(
-        input.additionalPreparations.map((p, i) => ({
-          recipeVersionId: version.id,
-          name: p.name,
-          type: p.type,
-          inputAmount: p.inputAmount,
-          preparationType: p.preparationType,
-          sortOrder: i,
-        })),
-      );
-    }
-
-    if (input.photoIds?.length) {
-      await tx.insert(recipeVersionPhotos).values(
-        input.photoIds.map((photoId, i) => ({
-          recipeVersionId: version.id,
-          photoId,
-          sortOrder: i,
-        })),
-      );
-    }
+    await insertVersionRelations(tx, version.id, {
+      tasteNotes: input.tasteNoteIds?.map((id) => ({
+        tasteNoteId: id,
+        intensity: input.tasteNoteIntensities?.[id] ?? 1,
+      })),
+      equipmentIds: input.equipmentIds,
+      additionalPreparations: input.additionalPreparations,
+      photoIds: input.photoIds,
+    });
 
     await tx.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, r.id));
 
@@ -853,6 +980,245 @@ export async function createRecipeWithRelations(input: CreateRecipeWithRelations
     'createRecipeWithRelations completed',
   );
   return findById(created.id);
+}
+
+/** Write mode of {@link updateRecipeWithVersion}. */
+export type RecipeWriteMode = 'amend' | 'bump';
+
+/**
+ * Input for {@link updateRecipeWithVersion}. Everything is pre-resolved by the service: the
+ * merged values of every version column, the sanitized title and the visibility. A relation
+ * key that is absent keeps (amend) or copies (bump) the current version's rows; a present
+ * array replaces them (`[]` removes them all).
+ */
+export interface UpdateRecipeWithVersionInput {
+  recipeId: string;
+  /** The author performing the write (logged only). */
+  authorId: string;
+  /** `amend` updates the current version in place; `bump` creates version `max + 1`. */
+  mode: RecipeWriteMode;
+  /** Sanitized recipe title. */
+  title: string;
+  visibility: Visibility;
+  /** Merged values for every version column. */
+  version: RecipeVersionColumns;
+  tasteNoteIds?: string[];
+  /**
+   * Intensity per taste-note id, used with `tasteNoteIds`. Ids without an entry keep their
+   * intensity on the current version when they were already linked, else `1`.
+   */
+  tasteNoteIntensities?: Record<string, number>;
+  equipmentIds?: string[];
+  additionalPreparations?: AdditionalPreparationInput[];
+  photoIds?: string[];
+}
+
+/**
+ * Read the version a write applies to: the recipe's `currentVersionId`, or the highest
+ * version number when the pointer is unset.
+ *
+ * @param tx - The open write transaction.
+ * @param recipeId - The (locked) recipe.
+ * @param currentVersionId - The recipe's current-version pointer.
+ * @returns The current version row, or `undefined` when the recipe has no version.
+ */
+async function findCurrentVersionRow(
+  tx: RecipeTx,
+  recipeId: string,
+  currentVersionId: string | null,
+) {
+  const [row] = await tx
+    .select()
+    .from(recipeVersions)
+    .where(
+      currentVersionId
+        ? and(eq(recipeVersions.id, currentVersionId), eq(recipeVersions.recipeId, recipeId))
+        : eq(recipeVersions.recipeId, recipeId),
+    )
+    .orderBy(desc(recipeVersions.versionNumber))
+    .limit(1);
+  return row;
+}
+
+/**
+ * Amend the current version of a recipe or bump it to a new version, in ONE transaction.
+ *
+ * 1. Lock the recipe row (`SELECT … FOR UPDATE` via Drizzle's `.for('update')`), so
+ *    concurrent writes to the same recipe run one after the other.
+ * 2. Read the current version and its relations.
+ * 3. `amend`: update the current version's columns and replace each provided relation.
+ *    `bump`: insert version `max(versionNumber) + 1`, then write each relation from the
+ *    payload when provided, otherwise copy it from the current version (taste notes with
+ *    their intensities, equipment, additional preparations and photos with their `sortOrder`).
+ * 4. Update the recipe's `title`, `visibility`, `updatedAt` and, on a bump, `currentVersionId`.
+ *
+ * Any error rolls everything back: no partial version, no orphan version. Earlier versions
+ * are never touched. After commit the full recipe is reloaded through {@link findById}.
+ *
+ * @param input - The pre-resolved write (see {@link UpdateRecipeWithVersionInput}).
+ * @returns The recipe in the {@link findById} shape.
+ * @throws {Error} `RECIPE_NOT_FOUND` when the recipe is missing or soft-deleted.
+ * @throws {Error} `RECIPE_NO_VERSIONS` when the recipe has no version.
+ */
+export async function updateRecipeWithVersion(input: UpdateRecipeWithVersionInput) {
+  const { recipeId, authorId, mode } = input;
+  modelLog.debug({ recipeId, authorId, mode }, 'updateRecipeWithVersion started');
+
+  let written: { versionId: string; versionNumber: number };
+  try {
+    written = await db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select({ id: recipes.id, currentVersionId: recipes.currentVersionId })
+        .from(recipes)
+        .where(and(eq(recipes.id, recipeId), isNull(recipes.deletedAt)))
+        .for('update');
+      if (!locked) throw new Error('RECIPE_NOT_FOUND');
+
+      const current = await findCurrentVersionRow(tx, recipeId, locked.currentVersionId);
+      if (!current) throw new Error('RECIPE_NO_VERSIONS');
+      const previous = await readVersionRelations(tx, current.id);
+
+      const previousIntensity = new Map(
+        previous.tasteNotes.map((link) => [link.tasteNoteId, link.intensity]),
+      );
+      const provided: VersionRelations = {
+        tasteNotes: input.tasteNoteIds?.map((id) => ({
+          tasteNoteId: id,
+          intensity: input.tasteNoteIntensities?.[id] ?? previousIntensity.get(id) ?? 1,
+        })),
+        equipmentIds: input.equipmentIds,
+        additionalPreparations: input.additionalPreparations,
+        photoIds: input.photoIds,
+      };
+      const values = versionColumnsFrom(input.version);
+
+      let target: { versionId: string; versionNumber: number };
+      if (mode === 'amend') {
+        await tx.update(recipeVersions).set(values).where(eq(recipeVersions.id, current.id));
+        await replaceVersionRelations(tx, current.id, provided);
+        target = { versionId: current.id, versionNumber: current.versionNumber };
+      } else {
+        const [{ highest }] = await tx
+          .select({ highest: max(recipeVersions.versionNumber) })
+          .from(recipeVersions)
+          .where(eq(recipeVersions.recipeId, recipeId));
+        const versionNumber = (highest ?? 0) + 1;
+        const [created] = await tx
+          .insert(recipeVersions)
+          .values({ recipeId, versionNumber, ...values })
+          .returning({ id: recipeVersions.id });
+        await insertVersionRelations(tx, created.id, {
+          tasteNotes: provided.tasteNotes ?? previous.tasteNotes,
+          equipmentIds: provided.equipmentIds ?? previous.equipmentIds,
+          additionalPreparations:
+            provided.additionalPreparations ?? previous.additionalPreparations,
+          photoIds: provided.photoIds ?? previous.photoIds,
+        });
+        target = { versionId: created.id, versionNumber };
+      }
+
+      await tx
+        .update(recipes)
+        .set({
+          title: input.title,
+          visibility: input.visibility,
+          updatedAt: new Date(),
+          ...(mode === 'bump' ? { currentVersionId: target.versionId } : {}),
+        })
+        .where(eq(recipes.id, recipeId));
+
+      return target;
+    });
+  } catch (err) {
+    modelLog.error(
+      { err: toLoggableError(err), recipeId, authorId, mode },
+      'updateRecipeWithVersion failed',
+    );
+    throw err;
+  }
+
+  modelLog.debug({ recipeId, authorId, mode, ...written }, 'updateRecipeWithVersion completed');
+  return findById(recipeId);
+}
+
+/**
+ * Of the given taste-note ids, return those that exist and are not soft-deleted.
+ *
+ * @param ids - Candidate taste-note ids.
+ * @returns The existing ids (any order).
+ */
+export async function findExistingTasteNoteIds(ids: string[]): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const rows = await db
+    .select({ id: tasteNotes.id })
+    .from(tasteNotes)
+    .where(and(inArray(tasteNotes.id, ids), isNull(tasteNotes.deletedAt)));
+  return rows.map((row) => row.id);
+}
+
+/**
+ * Of the given equipment ids, return those that exist and are not soft-deleted.
+ *
+ * @param ids - Candidate equipment ids.
+ * @returns The existing ids (any order).
+ */
+export async function findExistingEquipmentIds(ids: string[]): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const rows = await db
+    .select({ id: equipment.id })
+    .from(equipment)
+    .where(and(inArray(equipment.id, ids), isNull(equipment.deletedAt)));
+  return rows.map((row) => row.id);
+}
+
+/**
+ * Find a non-deleted vendor by id.
+ *
+ * @param id - Vendor id.
+ * @returns `{ id }`, or `null` when missing or soft-deleted.
+ */
+export async function findVendor(id: string): Promise<{ id: string } | null> {
+  const [row] = await db
+    .select({ id: vendors.id })
+    .from(vendors)
+    .where(and(eq(vendors.id, id), isNull(vendors.deletedAt)))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * Find a non-deleted bean owned by the given user.
+ *
+ * @param beanId - Bean id.
+ * @param userId - Expected owner.
+ * @returns `{ id }`, or `null` when missing, soft-deleted or owned by someone else.
+ */
+export async function findOwnedBean(
+  beanId: string,
+  userId: string,
+): Promise<{ id: string } | null> {
+  const [row] = await db
+    .select({ id: beans.id })
+    .from(beans)
+    .where(and(eq(beans.id, beanId), eq(beans.userId, userId), isNull(beans.deletedAt)))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * Find a non-deleted coffee variety by id.
+ *
+ * @param id - Coffee variety id.
+ * @returns `{ id, name }` (the name is copied into `recipe_version.coffee_variety_name`), or
+ *   `null` when missing or soft-deleted.
+ */
+export async function findCoffeeVariety(id: string): Promise<{ id: string; name: string } | null> {
+  const [row] = await db
+    .select({ id: coffeeVarieties.id, name: coffeeVarieties.name })
+    .from(coffeeVarieties)
+    .where(and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)))
+    .limit(1);
+  return row ?? null;
 }
 
 /** Atomically increment a recipe's `likeCount` by 1. Returns the updated row or null. */
@@ -1312,25 +1678,6 @@ export async function getUserSetup(setupId: string, userId: string) {
 export async function getUserById(userId: string) {
   const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   return result[0] ?? null;
-}
-
-/** Batch-insert version-photo relations. */
-export async function insertVersionPhotos(versionId: string, photoIds: string[]) {
-  await db.insert(recipeVersionPhotos).values(
-    photoIds.map((photoId, i) => ({
-      recipeVersionId: versionId,
-      photoId,
-      sortOrder: i,
-    })),
-  );
-}
-
-/** Fetch all version-photo relations for a recipe version. */
-export function getVersionPhotos(versionId: string) {
-  return db
-    .select()
-    .from(recipeVersionPhotos)
-    .where(eq(recipeVersionPhotos.recipeVersionId, versionId));
 }
 
 /**

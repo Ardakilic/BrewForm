@@ -1,6 +1,7 @@
 import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import {
+  coffeeVarieties,
   equipment,
   photos,
   recipeAdditionalPreparations,
@@ -23,6 +24,7 @@ describe('createRecipeWithRelations', () => {
   const createdRecipeIds: string[] = [];
   const throwawayRecipeIds: string[] = [];
   const throwawayPhotoIds: string[] = [];
+  const createdVarietyIds: string[] = [];
 
   beforeEach(async () => {
     const userId = crypto.randomUUID();
@@ -90,8 +92,12 @@ describe('createRecipeWithRelations', () => {
 
     await db.delete(tasteNotes).where(eq(tasteNotes.id, tasteNote.id));
     await db.delete(equipment).where(eq(equipment.id, equipmentRow.id));
+    if (createdVarietyIds.length) {
+      await db.delete(coffeeVarieties).where(inArray(coffeeVarieties.id, createdVarietyIds));
+    }
     await db.delete(users).where(eq(users.id, user.id));
 
+    createdVarietyIds.length = 0;
     createdRecipeIds.length = 0;
     throwawayRecipeIds.length = 0;
     throwawayPhotoIds.length = 0;
@@ -120,6 +126,20 @@ describe('createRecipeWithRelations', () => {
       beanId: null,
       brewRatio: null,
       flowRate: null,
+      productName: null,
+      coffeeBrand: null,
+      coffeeProcessing: null,
+      vendorId: null,
+      grindSize: null,
+      groundWeightGrams: null,
+      extractionTimeSeconds: null,
+      extractionVolumeMl: null,
+      temperatureCelsius: null,
+      tds: null,
+      coffeeVarietyId: null,
+      coffeeVarietyName: null,
+      rating: null,
+      emojiTag: null,
       ...overrides,
     };
   }
@@ -184,6 +204,30 @@ describe('createRecipeWithRelations', () => {
     expect(versionRow.emojiTag).toBe('fire');
     expect(versionRow.preInfusionTimeSeconds).toBe(10);
     expect(versionRow.beanId).toBeNull();
+  });
+
+  it('inserts tds, coffeeVarietyId and coffeeVarietyName (round-trip)', async () => {
+    const varietyId = crypto.randomUUID();
+    await db
+      .insert(coffeeVarieties)
+      .values({ id: varietyId, name: `Gesha ${varietyId.slice(0, 8)}`, category: 'variety' });
+    createdVarietyIds.push(varietyId);
+
+    const result = await model.createRecipeWithRelations(
+      buildInput({ tds: '1.35', coffeeVarietyId: varietyId, coffeeVarietyName: 'Gesha' }),
+    );
+    createdRecipeIds.push(result!.id);
+
+    expect(result!.versions[0].tds).toBe('1.35');
+    expect(result!.versions[0].coffeeVarietyId).toBe(varietyId);
+    expect(result!.versions[0].coffeeVarietyName).toBe('Gesha');
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    expect(versionRow.tds).toBe('1.35');
+    expect(versionRow.coffeeVarietyId).toBe(varietyId);
+    expect(versionRow.coffeeVarietyName).toBe('Gesha');
   });
 
   it('inserts taste notes with correct intensity', async () => {
@@ -567,6 +611,20 @@ describe('slug claim (createRecipeWithRelations / forkRecipe)', () => {
       beanId: null,
       brewRatio: null,
       flowRate: null,
+      productName: null,
+      coffeeBrand: null,
+      coffeeProcessing: null,
+      vendorId: null,
+      grindSize: null,
+      groundWeightGrams: null,
+      extractionTimeSeconds: null,
+      extractionVolumeMl: null,
+      temperatureCelsius: null,
+      tds: null,
+      coffeeVarietyId: null,
+      coffeeVarietyName: null,
+      rating: null,
+      emojiTag: null,
     };
   }
 

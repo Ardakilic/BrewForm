@@ -9,11 +9,12 @@
  * All DB access is delegated to `model.ts` — no Drizzle calls from this module.
  */
 
-import type {
-  RecipeCreateSchema,
-  RecipeFilterSchema,
-  RecipeMerge,
-  RecipeUpdateSchema,
+import {
+  type RecipeCreateSchema,
+  type RecipeFilterSchema,
+  type RecipeMerge,
+  type RecipeUpdateSchema,
+  recipeCrossFieldIssues,
 } from '@brewform/shared/schemas';
 import type { BrewMethod } from '@brewform/shared/types';
 import {
@@ -25,7 +26,7 @@ import {
   slugCandidates,
 } from '@brewform/shared/utils';
 import type { z } from 'zod';
-import { ConflictError, ValidationError } from '../../utils/errors.ts';
+import { ConflictError, type ErrorDetail, ValidationError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyFollowersOfNewRecipe } from '../../utils/notify/index.ts';
 import { sanitizeText } from '../../utils/sanitize.ts';
@@ -47,8 +48,9 @@ type RecipeCreateInput = z.infer<typeof RecipeCreateSchema> & {
 
 /**
  * Augmented recipe-update input. Extends the Zod-inferred `RecipeUpdateSchema`
- * shape (which is partial + `bumpVersion`) with the same `photoIds` field
- * the create path supports.
+ * shape (every field optional, clearable fields nullable, plus `bumpVersion`)
+ * with the same `photoIds` field the create path supports. An `undefined` key
+ * means "keep", `null` means "clear", `[]` means "remove all".
  */
 type RecipeUpdateInput = z.infer<typeof RecipeUpdateSchema> & {
   photoIds?: string[];
@@ -92,6 +94,164 @@ function emptyTitleError(): ValidationError {
   return new ValidationError('Title cannot be empty', [
     { field: 'title', message: 'Title cannot be empty' },
   ]);
+}
+
+/** Referenced ids of a recipe write that must exist before anything is written. */
+interface RecipeReferences {
+  /** Taste notes to link (checked when provided). */
+  tasteNoteIds?: string[];
+  /** Equipment to link (checked when provided). */
+  equipmentIds?: string[];
+  /** Vendor to link (checked when non-null). */
+  vendorId?: string | null;
+  /** Coffee variety to link (checked when non-null; its name is resolved). */
+  coffeeVarietyId?: string | null;
+  /** Bean to link: a NEWLY set bean (checked against the author when non-null). */
+  newBeanId?: string | null;
+}
+
+/**
+ * Check that every referenced record exists (soft-deleted rows excluded) and that a newly set
+ * bean belongs to the author, collecting one detail per failing field. Runs before any write,
+ * so a bad reference is a field-level 400 instead of a foreign-key violation; the global
+ * `23503 → 400` mapping stays the backstop.
+ *
+ * @param authorId - The recipe author (owner check for the bean).
+ * @param refs - The ids to check.
+ * @returns The resolved coffee-variety name (`null` when no variety is set).
+ * @throws {ValidationError} `400 VALIDATION_ERROR` with a detail per invalid field.
+ */
+async function validateReferences(
+  authorId: string,
+  refs: RecipeReferences,
+): Promise<{ coffeeVarietyName: string | null }> {
+  const details: ErrorDetail[] = [];
+
+  if (refs.tasteNoteIds?.length) {
+    const existing = new Set(await model.findExistingTasteNoteIds(refs.tasteNoteIds));
+    const missing = refs.tasteNoteIds.filter((id) => !existing.has(id));
+    if (missing.length) {
+      details.push({
+        field: 'tasteNoteIds',
+        message: `Unknown taste notes: ${missing.join(', ')}`,
+      });
+    }
+  }
+  if (refs.equipmentIds?.length) {
+    const existing = new Set(await model.findExistingEquipmentIds(refs.equipmentIds));
+    const missing = refs.equipmentIds.filter((id) => !existing.has(id));
+    if (missing.length) {
+      details.push({ field: 'equipmentIds', message: `Unknown equipment: ${missing.join(', ')}` });
+    }
+  }
+  if (refs.vendorId && !(await model.findVendor(refs.vendorId))) {
+    details.push({ field: 'vendorId', message: 'Vendor does not exist' });
+  }
+  let coffeeVarietyName: string | null = null;
+  if (refs.coffeeVarietyId) {
+    const variety = await model.findCoffeeVariety(refs.coffeeVarietyId);
+    if (variety) coffeeVarietyName = variety.name;
+    else details.push({ field: 'coffeeVarietyId', message: 'Coffee variety does not exist' });
+  }
+  if (refs.newBeanId && !(await model.findOwnedBean(refs.newBeanId, authorId))) {
+    details.push({ field: 'beanId', message: 'Bean does not exist or is not yours' });
+  }
+
+  if (details.length) {
+    logger.debug(
+      { authorId, fields: details.map((d) => d.field) },
+      'recipe write rejected: invalid references',
+    );
+    throw new ValidationError('Invalid references', details);
+  }
+  return { coffeeVarietyName };
+}
+
+/**
+ * Throw a `400 VALIDATION_ERROR` when the values break a cross-field rule (date order,
+ * pre-infusion vs extraction), with the same `field`/`message` details as the schemas.
+ *
+ * @param values - Complete values (a create payload or an update merged over the stored version).
+ * @throws {ValidationError} When at least one rule is broken.
+ */
+function assertCrossFieldRules(values: Parameters<typeof recipeCrossFieldIssues>[0]): void {
+  const issues = recipeCrossFieldIssues(values);
+  if (issues.length) throw new ValidationError('Validation failed', issues);
+}
+
+/**
+ * Format a stored timestamp as the `YYYY-MM-DD` day the payload schemas use (UTC), so stored
+ * and submitted dates compare consistently in {@link recipeCrossFieldIssues}.
+ *
+ * @param date - A stored date, or `null`.
+ */
+function toIsoDay(date: Date | null): string | null {
+  return date ? date.toISOString().slice(0, 10) : null;
+}
+
+/**
+ * Merge one update value over the stored value: `undefined` (absent key) keeps the stored
+ * value, anything else (including `null`, which clears) replaces it.
+ *
+ * @param value - The payload value.
+ * @param stored - The stored value.
+ */
+function mergeValue<T>(value: T | null | undefined, stored: T | null): T | null {
+  return value === undefined ? stored : value;
+}
+
+/**
+ * Merge an update date (`YYYY-MM-DD`) over a stored timestamp: absent keeps, `null` clears,
+ * a string replaces.
+ *
+ * @param value - The payload date.
+ * @param stored - The stored timestamp.
+ */
+function mergeDate(value: string | null | undefined, stored: Date | null): Date | null {
+  if (value === undefined) return stored;
+  return value === null ? null : new Date(value);
+}
+
+/**
+ * Store a TDS reading as the decimal string Drizzle's `numeric` column expects; Postgres rounds
+ * it to two decimals.
+ *
+ * @param tds - The submitted reading.
+ */
+function tdsToDecimal(tds: number | null | undefined): string | null {
+  return tds == null ? null : String(tds);
+}
+
+/**
+ * Sanitize brewer notes (`recipe_version.personal_notes`); notes that are empty after
+ * sanitization are stored as `NULL`.
+ *
+ * @param notes - The submitted notes.
+ */
+function sanitizeBrewerNotes(notes: string | null | undefined): string | null {
+  return sanitizeText(notes) || null;
+}
+
+/**
+ * Compute the derived `brewRatio`/`flowRate` from measurements (never accepted from clients).
+ *
+ * @param m - Ground weight, extraction volume and extraction time (any may be missing).
+ */
+function derivedMetrics(m: {
+  groundWeightGrams?: number | null;
+  extractionVolumeMl?: number | null;
+  extractionTimeSeconds?: number | null;
+}): { brewRatio: number | null; flowRate: number | null } {
+  return {
+    brewRatio:
+      m.groundWeightGrams && m.extractionVolumeMl
+        ? computeBrewRatio(m.groundWeightGrams, m.extractionVolumeMl)
+        : null,
+    flowRate:
+      m.extractionVolumeMl && m.extractionTimeSeconds
+        ? computeFlowRate(m.extractionVolumeMl, m.extractionTimeSeconds)
+        : null,
+  };
 }
 
 /** Retrieve a recipe by slug or UUID. Throws `RECIPE_NOT_FOUND` if neither matches. */
@@ -181,27 +341,39 @@ async function validateEquipmentCompatibility(
 /**
  * Create a new recipe with its first version and all related entities.
  *
- * Orchestration steps:
- * 1. Validate equipment compatibility against the selected brew method
- * 2. Sanitize the title and build the slug candidates (bare base, then random
+ * Orchestration steps (every validation runs before the first write, so a rejected request
+ * writes nothing):
+ * 1. Validate referenced records (taste notes, equipment, vendor, coffee variety, and the
+ *    author's own bean) and resolve the coffee-variety name server-side
+ * 2. Validate equipment compatibility against the selected brew method
+ * 3. Sanitize the title and build the slug candidates (bare base, then random
  *    suffixes; reserved, UUID-shaped and non-Latin bases are always suffixed)
- * 3. Inherit `grinder` and `brewerDetails` from the user's setup when `setupId`
+ * 4. Inherit `grinder` and `brewerDetails` from the user's setup when `setupId`
  *    is provided (falling back to explicitly supplied values)
- * 4. Compute derived metrics (`brewRatio`, `flowRate`) from raw measurements
- * 5. Claim the first free slug and insert recipe, version, taste notes,
+ * 5. Compute derived metrics (`brewRatio`, `flowRate`) from raw measurements, store `tds` as a
+ *    decimal string and empty brewer notes as `NULL`
+ * 6. Claim the first free slug and insert recipe, version, taste notes,
  *    equipment, additional preparations, and version photos inside a single
  *    transaction (concurrent creates with the same title get distinct slugs)
- * 6. If visibility is `'public'`, asynchronously notify the author's followers
- * 7. Asynchronously evaluate badge eligibility for the author
+ * 7. If visibility is `'public'`, asynchronously notify the author's followers
+ * 8. Asynchronously evaluate badge eligibility for the author
  *
  * @param authorId - UUID of the authenticated user creating the recipe.
  * @param data     - Creation payload (validated Zod schema from `@brewform/shared`).
  * @returns The complete recipe object with version, relations, and author summary.
- * @throws {ValidationError} `400 VALIDATION_ERROR` when the title is empty after sanitization.
+ * @throws {ValidationError} `400 VALIDATION_ERROR` when the title is empty after sanitization
+ *   or a referenced record does not exist.
  * @throws {ConflictError} `409 SLUG_CONFLICT` when every slug candidate is taken.
  */
 export async function createRecipe(authorId: string, data: RecipeCreateInput) {
   logger.debug({ authorId }, 'createRecipe started');
+  const { coffeeVarietyName } = await validateReferences(authorId, {
+    tasteNoteIds: data.tasteNoteIds,
+    equipmentIds: data.equipmentIds,
+    vendorId: data.vendorId,
+    coffeeVarietyId: data.coffeeVarietyId,
+    newBeanId: data.beanId,
+  });
   await validateEquipmentCompatibility(data.brewMethod, data.equipmentIds ?? []);
 
   const safeTitle = sanitizeText(data.title);
@@ -218,46 +390,39 @@ export async function createRecipe(authorId: string, data: RecipeCreateInput) {
     }
   }
 
-  const brewRatio =
-    data.groundWeightGrams && data.extractionVolumeMl
-      ? computeBrewRatio(data.groundWeightGrams, data.extractionVolumeMl)
-      : null;
-  const flowRate =
-    data.extractionVolumeMl && data.extractionTimeSeconds
-      ? computeFlowRate(data.extractionVolumeMl, data.extractionTimeSeconds)
-      : null;
-
   const finalRecipe = await model.createRecipeWithRelations({
     authorId,
     slugCandidates: candidates,
     title: safeTitle,
     visibility: data.visibility || 'draft',
-    productName: data.productName,
-    coffeeBrand: data.coffeeBrand,
-    coffeeProcessing: data.coffeeProcessing,
-    vendorId: data.vendorId,
+    productName: data.productName ?? null,
+    coffeeBrand: data.coffeeBrand ?? null,
+    coffeeProcessing: data.coffeeProcessing ?? null,
+    vendorId: data.vendorId ?? null,
     roastDate: data.roastDate ? new Date(data.roastDate) : null,
     packageOpenDate: data.packageOpenDate ? new Date(data.packageOpenDate) : null,
     grindDate: data.grindDate ? new Date(data.grindDate) : null,
     brewDate: data.brewDate ? new Date(data.brewDate) : new Date(),
     brewMethod: data.brewMethod,
     drinkType: data.drinkType,
-    brewerDetails,
-    grinder,
-    grindSize: data.grindSize,
-    groundWeightGrams: data.groundWeightGrams,
-    extractionTimeSeconds: data.extractionTimeSeconds,
-    extractionVolumeMl: data.extractionVolumeMl,
-    temperatureCelsius: data.temperatureCelsius,
-    brewRatio,
-    flowRate,
-    personalNotes: sanitizeText(data.personalNotes),
-    preparationNotes: sanitizeText(data.preparationNotes),
-    isFavourite: data.isFavourite || false,
-    rating: data.rating,
-    emojiTag: data.emojiTag,
+    brewerDetails: brewerDetails ?? null,
+    grinder: grinder ?? null,
+    grindSize: data.grindSize ?? null,
+    groundWeightGrams: data.groundWeightGrams ?? null,
+    extractionTimeSeconds: data.extractionTimeSeconds ?? null,
+    extractionVolumeMl: data.extractionVolumeMl ?? null,
+    temperatureCelsius: data.temperatureCelsius ?? null,
+    tds: tdsToDecimal(data.tds),
+    ...derivedMetrics(data),
     preInfusionTimeSeconds: data.preInfusionTimeSeconds ?? null,
     beanId: data.beanId ?? null,
+    coffeeVarietyId: data.coffeeVarietyId ?? null,
+    coffeeVarietyName,
+    personalNotes: sanitizeBrewerNotes(data.personalNotes),
+    preparationNotes: sanitizeText(data.preparationNotes),
+    isFavourite: data.isFavourite || false,
+    rating: data.rating ?? null,
+    emojiTag: data.emojiTag ?? null,
     tasteNoteIds: data.tasteNoteIds,
     tasteNoteIntensities: data.tasteNoteIntensities,
     equipmentIds: data.equipmentIds,
@@ -286,117 +451,160 @@ export async function createRecipe(authorId: string, data: RecipeCreateInput) {
 }
 
 /**
- * Update an existing recipe, optionally creating a new version.
+ * Update a recipe: amend its current version in place (`bumpVersion: false`) or create a new
+ * version (`bumpVersion: true`). Earlier versions are never modified.
  *
- * When `data.bumpVersion` is truthy, a new version row is created with any
- * supplied fields merged over the latest version's values. Derived metrics
- * (`brewRatio`, `flowRate`) are recomputed when raw measurements change.
- * The recipe's `currentVersionId` is updated to point to the new version.
+ * Payload semantics (decided by key presence, never by comparing with a schema default): an
+ * absent key keeps the stored value, `null` clears it, and a relation array replaces the rows
+ * (`[]` removes them all). On a bump, every value and relation the payload does not provide is
+ * carried forward from the current version (`isFavourite`, `tds`, the coffee variety, taste
+ * notes with intensities, equipment, preparations and photos included), and `brewDate` is the
+ * payload value or now; on an amend `brewDate` changes only when provided. An omitted
+ * `visibility` keeps the recipe's visibility.
  *
- * When `bumpVersion` is falsy, only top-level recipe fields (title, visibility)
- * are updated — no new version is created.
+ * Steps:
+ * 1. Load the recipe and check the author.
+ * 2. Merge the payload over the current version and recompute `brewRatio`/`flowRate`;
+ *    `setupId` fills `grinder`/`brewerDetails` from the author's setup only when those keys
+ *    are absent from the payload.
+ * 3. Validate before any write: the cross-field rules on the merged values, the referenced
+ *    records (a bean only when newly set), equipment compatibility on the merged brew method
+ *    and equipment set (when either changes), and the sanitized title; normalize `tds` to a
+ *    decimal string, store empty brewer notes as `NULL` and resolve `coffeeVarietyName`.
+ * 4. Write everything in one transaction through {@link model.updateRecipeWithVersion}.
  *
+ * Sends no notification (unchanged).
+ *
+ * @param recipeId - The recipe to update.
+ * @param authorId - The authenticated caller (must be the author).
+ * @param data - The validated update payload.
+ * @returns The updated recipe in the `findById` shape.
  * @throws `RECIPE_NOT_FOUND` if the recipe does not exist.
  * @throws `FORBIDDEN` if the requesting user is not the recipe author.
+ * @throws {ValidationError} `400 VALIDATION_ERROR` (with details) for an empty title, a
+ *   cross-field violation on the merged values or an invalid reference.
+ * @throws `EQUIPMENT_INCOMPATIBLE` (422) when the merged equipment does not fit the brew method.
  */
 export async function updateRecipe(recipeId: string, authorId: string, data: RecipeUpdateInput) {
-  logger.debug({ recipeId, authorId }, 'updateRecipe started');
+  const mode: model.RecipeWriteMode = data.bumpVersion ? 'bump' : 'amend';
+  logger.debug({ recipeId, authorId, mode }, 'updateRecipe started');
   const recipe = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   if (recipe.authorId !== authorId) throw new Error('FORBIDDEN');
+  const current =
+    recipe.versions.find((v) => v.id === recipe.currentVersionId) ?? recipe.versions[0];
+  if (!current) throw new Error('RECIPE_NO_VERSIONS');
 
-  if (data.bumpVersion) {
-    const latestVersion = recipe.versions?.[0];
-    if (!latestVersion) throw new Error('RECIPE_NO_VERSIONS');
-    const newVersionNumber = latestVersion.versionNumber + 1;
-
-    if (data.brewMethod || data.equipmentIds) {
-      const existingEquipmentIds = latestVersion.equipment?.map((e) => e.equipmentId) ?? [];
-      await validateEquipmentCompatibility(
-        data.brewMethod ?? latestVersion.brewMethod,
-        data.equipmentIds ?? existingEquipmentIds,
-      );
-    }
-
-    const brewRatio =
-      data.groundWeightGrams || data.extractionVolumeMl
-        ? computeBrewRatio(
-            data.groundWeightGrams ?? latestVersion.groundWeightGrams ?? 0,
-            data.extractionVolumeMl ?? latestVersion.extractionVolumeMl ?? 0,
-          )
-        : latestVersion.brewRatio;
-    const flowRate =
-      data.extractionVolumeMl || data.extractionTimeSeconds
-        ? computeFlowRate(
-            data.extractionVolumeMl ?? latestVersion.extractionVolumeMl ?? 0,
-            data.extractionTimeSeconds ?? latestVersion.extractionTimeSeconds ?? 0,
-          )
-        : latestVersion.flowRate;
-
-    const version = await model.createVersion({
-      recipeId: recipe.id,
-      versionNumber: newVersionNumber,
-      productName: data.productName ?? latestVersion.productName,
-      coffeeBrand: data.coffeeBrand ?? latestVersion.coffeeBrand,
-      coffeeProcessing: data.coffeeProcessing ?? latestVersion.coffeeProcessing,
-      vendorId: data.vendorId ?? latestVersion.vendorId,
-      roastDate: data.roastDate ? new Date(data.roastDate) : latestVersion.roastDate,
-      packageOpenDate: data.packageOpenDate
-        ? new Date(data.packageOpenDate)
-        : latestVersion.packageOpenDate,
-      grindDate: data.grindDate ? new Date(data.grindDate) : latestVersion.grindDate,
-      brewDate: new Date(),
-      brewMethod: data.brewMethod ?? latestVersion.brewMethod,
-      drinkType: data.drinkType ?? latestVersion.drinkType,
-      brewerDetails: data.brewerDetails ?? latestVersion.brewerDetails,
-      grinder: data.grinder ?? latestVersion.grinder,
-      grindSize: data.grindSize ?? latestVersion.grindSize,
-      groundWeightGrams: data.groundWeightGrams ?? latestVersion.groundWeightGrams,
-      extractionTimeSeconds: data.extractionTimeSeconds ?? latestVersion.extractionTimeSeconds,
-      extractionVolumeMl: data.extractionVolumeMl ?? latestVersion.extractionVolumeMl,
-      temperatureCelsius: data.temperatureCelsius ?? latestVersion.temperatureCelsius,
-      brewRatio,
-      flowRate,
-      personalNotes: sanitizeText(data.personalNotes ?? latestVersion.personalNotes),
-      preparationNotes: sanitizeText(data.preparationNotes ?? latestVersion.preparationNotes),
-      isFavourite: data.isFavourite ?? latestVersion.isFavourite,
-      rating: data.rating ?? latestVersion.rating,
-      emojiTag: data.emojiTag ?? latestVersion.emojiTag,
-      preInfusionTimeSeconds: data.preInfusionTimeSeconds ?? latestVersion.preInfusionTimeSeconds,
-      beanId: data.beanId ?? latestVersion.beanId,
-    });
-
-    const safeTitle = sanitizeText(data.title ?? recipe.title);
-    if (!safeTitle.trim()) throw emptyTitleError();
-
-    if (data.photoIds?.length) {
-      await model.insertVersionPhotos(version.id, data.photoIds);
-    } else {
-      const previousPhotos = await model.getVersionPhotos(latestVersion.id);
-      if (previousPhotos.length) {
-        await model.insertVersionPhotos(
-          version.id,
-          previousPhotos.map((vp) => vp.photoId),
-        );
+  // 2. Merge (absent keeps, null clears).
+  let grinder = mergeValue(data.grinder, current.grinder);
+  let brewerDetails = mergeValue(data.brewerDetails, current.brewerDetails);
+  if (data.setupId) {
+    const setup = await model.getUserSetup(data.setupId, authorId);
+    if (setup) {
+      if (data.grinder === undefined && setup.grinder) grinder = setup.grinder;
+      if (data.brewerDetails === undefined && setup.brewerDetails) {
+        brewerDetails = setup.brewerDetails;
       }
     }
-
-    await model.update(recipe.id, {
-      title: safeTitle,
-      visibility: data.visibility ?? recipe.visibility,
-      currentVersionId: version.id,
-    });
-  } else {
-    const safeTitle = sanitizeText(data.title ?? recipe.title);
-    if (!safeTitle.trim()) throw emptyTitleError();
-    await model.update(recipe.id, {
-      title: safeTitle,
-      visibility: data.visibility ?? recipe.visibility,
-    });
   }
+  const measurements = {
+    groundWeightGrams: mergeValue(data.groundWeightGrams, current.groundWeightGrams),
+    extractionTimeSeconds: mergeValue(data.extractionTimeSeconds, current.extractionTimeSeconds),
+    extractionVolumeMl: mergeValue(data.extractionVolumeMl, current.extractionVolumeMl),
+  };
+  const roastDate = mergeDate(data.roastDate, current.roastDate);
+  const packageOpenDate = mergeDate(data.packageOpenDate, current.packageOpenDate);
+  const grindDate = mergeDate(data.grindDate, current.grindDate);
+  const preInfusionTimeSeconds = mergeValue(
+    data.preInfusionTimeSeconds,
+    current.preInfusionTimeSeconds,
+  );
+  const brewMethod = data.brewMethod ?? current.brewMethod;
+  const beanId = mergeValue(data.beanId, current.beanId);
+  const coffeeVarietyId = mergeValue(data.coffeeVarietyId, current.coffeeVarietyId);
 
-  logger.debug({ recipeId, authorId }, 'updateRecipe completed');
-  return model.findById(recipeId);
+  // 3. Validate everything before the first write.
+  assertCrossFieldRules({
+    roastDate: toIsoDay(roastDate),
+    packageOpenDate: toIsoDay(packageOpenDate),
+    grindDate: toIsoDay(grindDate),
+    preInfusionTimeSeconds,
+    extractionTimeSeconds: measurements.extractionTimeSeconds,
+  });
+  const references = await validateReferences(authorId, {
+    tasteNoteIds: data.tasteNoteIds,
+    equipmentIds: data.equipmentIds,
+    vendorId: data.vendorId,
+    coffeeVarietyId: data.coffeeVarietyId,
+    newBeanId: data.beanId !== undefined && data.beanId !== current.beanId ? data.beanId : null,
+  });
+  if (data.brewMethod !== undefined || data.equipmentIds !== undefined) {
+    await validateEquipmentCompatibility(
+      brewMethod,
+      data.equipmentIds ?? current.equipment.map((e) => e.equipmentId),
+    );
+  }
+  const title = data.title !== undefined ? sanitizeText(data.title) : recipe.title;
+  if (!title.trim()) throw emptyTitleError();
+  const coffeeVarietyName =
+    data.coffeeVarietyId === undefined ? current.coffeeVarietyName : references.coffeeVarietyName;
+
+  // 4. One transactional write.
+  // A bump records a new brew (payload date or now); an amend keeps the stored date unless given.
+  let brewDate = mode === 'bump' ? new Date() : current.brewDate;
+  if (data.brewDate) brewDate = new Date(data.brewDate);
+  const updated = await model.updateRecipeWithVersion({
+    recipeId,
+    authorId,
+    mode,
+    title,
+    visibility: data.visibility ?? recipe.visibility,
+    version: {
+      productName: mergeValue(data.productName, current.productName),
+      coffeeBrand: mergeValue(data.coffeeBrand, current.coffeeBrand),
+      coffeeProcessing: mergeValue(data.coffeeProcessing, current.coffeeProcessing),
+      vendorId: mergeValue(data.vendorId, current.vendorId),
+      roastDate,
+      packageOpenDate,
+      grindDate,
+      brewDate,
+      brewMethod,
+      drinkType: data.drinkType ?? current.drinkType,
+      brewerDetails,
+      grinder,
+      grindSize: mergeValue(data.grindSize, current.grindSize),
+      ...measurements,
+      temperatureCelsius: mergeValue(data.temperatureCelsius, current.temperatureCelsius),
+      tds: data.tds === undefined ? current.tds : tdsToDecimal(data.tds),
+      ...derivedMetrics(measurements),
+      preInfusionTimeSeconds,
+      beanId,
+      coffeeVarietyId,
+      coffeeVarietyName: coffeeVarietyId === null ? null : coffeeVarietyName,
+      personalNotes:
+        data.personalNotes === undefined
+          ? current.personalNotes
+          : sanitizeBrewerNotes(data.personalNotes),
+      preparationNotes:
+        data.preparationNotes === undefined
+          ? current.preparationNotes
+          : sanitizeText(data.preparationNotes),
+      isFavourite: data.isFavourite ?? current.isFavourite,
+      rating: mergeValue(data.rating, current.rating),
+      emojiTag: mergeValue(data.emojiTag, current.emojiTag),
+    },
+    tasteNoteIds: data.tasteNoteIds,
+    tasteNoteIntensities: data.tasteNoteIntensities,
+    equipmentIds: data.equipmentIds,
+    additionalPreparations: data.additionalPreparations,
+    photoIds: data.photoIds,
+  });
+
+  const versionNumber = updated?.versions.find(
+    (v) => v.id === updated.currentVersionId,
+  )?.versionNumber;
+  logger.debug({ recipeId, authorId, mode, versionNumber }, 'updateRecipe completed');
+  return updated;
 }
 
 /** Soft-delete a recipe. Throws `RECIPE_NOT_FOUND` or `FORBIDDEN` on failure. */

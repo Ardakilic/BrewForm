@@ -20,10 +20,11 @@
  * once a path is chosen, the duplicated inline copy in this file should
  * be removed in favour of importing the real implementations.
  *
- * The final `upsertUserRating — concurrent first rating` block is the
- * exception: it is DB-backed (`brewform_test`) and uses the real schema and
- * `db`, imported under `*Table`/`realDb` aliases so they do not clash with the
- * mock surface above.
+ * The final `upsertUserRating — concurrent first rating` and `forkRecipe —
+ * version columns` blocks are the exception: they are DB-backed
+ * (`brewform_test`) and use the real schema and `db`, imported under
+ * `*Table`/`realDb` aliases so they do not clash with the mock surface above.
+ * The version-column drift guard is a pure check against the real table.
  */
 
 import '../../test-setup.ts';
@@ -31,12 +32,15 @@ import { db as realDb } from '@brewform/db';
 import {
   userRecipeRatings as ratingsTable,
   recipes as recipesTable,
+  recipeVersions as recipeVersionsTable,
   users as usersTable,
 } from '@brewform/db/schema';
-import { eq as drizzleEq } from 'drizzle-orm';
+import { eq as drizzleEq, getTableColumns } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import * as recipeModel from './model.ts';
 import * as recipeService from './service.ts';
 import { rankRecipes } from './service.ts';
+import { RecipeWriteFixtures } from './test-helpers.ts';
 
 type MockCondition = {
   type: string;
@@ -667,5 +671,99 @@ describe('upsertUserRating — concurrent first rating', () => {
       .from(ratingsTable)
       .where(drizzleEq(ratingsTable.recipeId, recipeId));
     expect(rows).toEqual([{ rating: 9 }]);
+  });
+});
+
+/** `recipe_version` columns every write path leaves to the database or sets itself. */
+const VERSION_KEY_COLUMNS = ['id', 'recipeId', 'versionNumber', 'createdAt'];
+
+/**
+ * Drift guard (recipe-write, "Version-write paths share one column mapping"): a column added to
+ * `recipeVersions` without updating `versionColumnsFrom` fails here and is named in the diff.
+ */
+describe('version-column mapping drift guard', () => {
+  const tableKeys = Object.keys(getTableColumns(recipeVersionsTable));
+  const expected = tableKeys.filter((key) => !VERSION_KEY_COLUMNS.includes(key)).sort();
+  /** One distinct marker value per table column (plus a relation key that must be dropped). */
+  const sample = {
+    ...Object.fromEntries(tableKeys.map((key) => [key, `value:${key}`])),
+    tasteNotes: ['dropped'],
+  } as unknown as recipeModel.RecipeVersionColumns;
+
+  it('versionColumnsFrom maps every recipe_version column except id, recipeId, versionNumber, createdAt', () => {
+    const mapped = recipeModel.versionColumnsFrom(sample) as Record<string, unknown>;
+    const missing = expected.filter((key) => !(key in mapped));
+    expect(missing).toEqual([]);
+    expect(Object.keys(mapped).sort()).toEqual(expected);
+    for (const key of expected) expect(mapped[key]).toBe(`value:${key}`);
+  });
+
+  it('copyVersionColumns uses the same keys and drops identity and relation keys', () => {
+    const copied = recipeModel.copyVersionColumns(sample) as Record<string, unknown>;
+    expect(Object.keys(copied).sort()).toEqual(expected);
+    expect('id' in copied).toBe(false);
+    expect('tasteNotes' in copied).toBe(false);
+  });
+});
+
+/** recipe-write, "Fork copies every version-level value": tds and the coffee variety survive. */
+describe('forkRecipe — version columns', () => {
+  const fixtures = new RecipeWriteFixtures();
+
+  afterEach(async () => {
+    await fixtures.cleanup();
+  });
+
+  it('copies tds and the coffee variety and resets rating and isFavourite', async () => {
+    const author = await fixtures.user('fork-cols-a');
+    const forker = await fixtures.user('fork-cols-b');
+    const variety = await fixtures.variety('Pink Bourbon');
+    const source = await recipeModel.createRecipeWithRelations({
+      authorId: author.id,
+      slugCandidates: [`fork-cols-${crypto.randomUUID().slice(0, 8)}`],
+      title: 'Fork columns',
+      visibility: 'public',
+      productName: 'Finca',
+      coffeeBrand: null,
+      coffeeProcessing: null,
+      vendorId: null,
+      roastDate: null,
+      packageOpenDate: null,
+      grindDate: null,
+      brewDate: new Date(),
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      brewerDetails: null,
+      grinder: null,
+      grindSize: null,
+      groundWeightGrams: null,
+      extractionTimeSeconds: null,
+      extractionVolumeMl: null,
+      temperatureCelsius: null,
+      tds: '1.30',
+      brewRatio: null,
+      flowRate: null,
+      preInfusionTimeSeconds: null,
+      beanId: null,
+      coffeeVarietyId: variety.id,
+      coffeeVarietyName: variety.name,
+      personalNotes: 'Bright',
+      preparationNotes: 'Bloom',
+      isFavourite: true,
+      rating: 8,
+      emojiTag: 'fire',
+    });
+
+    const fork = await recipeModel.forkRecipe(source!.id, forker.id, 'Fork of columns', [
+      `fork-cols-fork-${crypto.randomUUID().slice(0, 8)}`,
+    ]);
+    const forkVersion = fork!.versions[0];
+    expect(forkVersion.tds).toBe('1.30');
+    expect(forkVersion.coffeeVarietyId).toBe(variety.id);
+    expect(forkVersion.coffeeVarietyName).toBe(variety.name);
+    expect(forkVersion.productName).toBe('Finca');
+    expect(forkVersion.emojiTag).toBe('fire');
+    expect(forkVersion.rating).toBeNull();
+    expect(forkVersion.isFavourite).toBe(false);
   });
 });

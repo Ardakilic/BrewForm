@@ -231,7 +231,10 @@ export const recipes = pgTable(
   ],
 );
 
-/** Immutable recipe versions; unique on (`recipeId`, `versionNumber`), rating CHECK 1–10. */
+/**
+ * Recipe versions: the current version may be amended by its author; earlier versions are
+ * immutable. Unique on (`recipeId`, `versionNumber`), rating CHECK 1–10.
+ */
 export const recipeVersions = pgTable(
   'recipe_version',
   {

@@ -888,19 +888,33 @@ describe('Recipe Service — DB integration', () => {
   });
 
   describe('updateRecipe', () => {
-    it('should update top-level fields without bumping the version', async () => {
+    it('should amend the current version in place without bumping the version', async () => {
       const recipe = await makeRecipe(author.id, 'Update Title');
       const updated = await service.updateRecipe(recipe.id, author.id, {
         bumpVersion: false,
         title: 'Updated Title',
         visibility: 'unlisted',
+        productName: 'Amended Bean',
+        grindSize: 'medium',
       });
       expect(updated?.title).toBe('Updated Title');
       expect(updated?.visibility).toBe('unlisted');
       expect(updated?.versions?.length).toBe(1);
+      expect(updated?.versions?.[0]?.productName).toBe('Amended Bean');
+      expect(updated?.versions?.[0]?.grindSize).toBe('medium');
+      expect(updated?.currentVersionId).toBe(updated?.versions?.[0]?.id);
     });
 
-    it('should create a new version when bumpVersion is set', async () => {
+    it('should keep the stored visibility when the payload omits it', async () => {
+      const recipe = await makeRecipe(author.id, 'Update Keep Visibility', 'public');
+      const updated = await service.updateRecipe(recipe.id, author.id, {
+        bumpVersion: false,
+        title: 'Renamed',
+      });
+      expect(updated?.visibility).toBe('public');
+    });
+
+    it('should create a new version carrying the payload when bumpVersion is set', async () => {
       const recipe = await makeRecipe(author.id, 'Update Bump');
       const updated = await service.updateRecipe(recipe.id, author.id, {
         bumpVersion: true,
@@ -908,6 +922,9 @@ describe('Recipe Service — DB integration', () => {
       });
       expect(updated?.versions?.length).toBe(2);
       expect(updated?.versions?.[0]?.versionNumber).toBe(2);
+      expect(updated?.versions?.[0]?.productName).toBe('New Bean');
+      expect(updated?.versions?.[1]?.productName).toBeNull();
+      expect(updated?.currentVersionId).toBe(updated?.versions?.[0]?.id);
     });
 
     it('should throw FORBIDDEN for a non-author', async () => {

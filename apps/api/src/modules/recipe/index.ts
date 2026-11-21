@@ -22,6 +22,7 @@ import { z } from 'zod';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import type { AppEnv } from '../../types/hono.ts';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
+import { AppError } from '../../utils/errors.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import {
   cursorPaginated,
@@ -47,6 +48,25 @@ function authGuard(c: Context<AppEnv>, next: Next) {
 /** Proxy that resolves optionalAuthMiddleware at request time (supports test mocking via deps). */
 function optionalAuthGuard(c: Context<AppEnv>, next: Next) {
   return deps.optionalAuthMiddleware(c, next);
+}
+
+/**
+ * Map a service validation failure to a `400 VALIDATION_ERROR` envelope with its field
+ * details: a typed `VALIDATION_ERROR` {@link AppError} (empty title, cross-field rules on merged
+ * values, invalid references) or a legacy `VALIDATION_ERROR…` message.
+ *
+ * @param c - The request context.
+ * @param err - The caught error.
+ * @returns The 400 response, or `null` when `err` is not a validation failure.
+ */
+function validationFailure(c: Context<AppEnv>, err: unknown): Response | null {
+  if (err instanceof AppError && err.code === 'VALIDATION_ERROR') {
+    return error(c, 'VALIDATION_ERROR', err.message, 400, err.details);
+  }
+  if (err instanceof Error && err.message.startsWith('VALIDATION_ERROR')) {
+    return error(c, 'VALIDATION_ERROR', 'Validation failed', 400);
+  }
+  return null;
 }
 
 /** Hono sub-router for recipe endpoints, mounted at `/api/v1/recipes`. */
@@ -597,7 +617,12 @@ recipe.post(
   describeRoute({
     tags: ['Recipes'],
     summary: 'Create a recipe',
-    description: 'Creates a recipe with its first version and all child relations.',
+    description:
+      'Creates a recipe with its first version and all child relations. `tds` is stored as a ' +
+      'two-decimal string; `coffeeVarietyId` links a catalogue variety whose name is copied ' +
+      'server-side; `brewRatio` and `flowRate` are derived from the measurements. Every ' +
+      'referenced id (taste notes, equipment, vendor, coffee variety, and a bean owned by the ' +
+      'caller) is checked before anything is written.',
     security: [{ bearerAuth: [] }],
     requestBody: jsonRequestBody(RecipeCreateSchema),
     responses: {
@@ -610,7 +635,9 @@ recipe.post(
         },
       },
       400: {
-        description: 'Validation error',
+        description:
+          'Validation error: invalid body, duplicate relation ids, a title that is empty after ' +
+          'sanitization, or an unknown/inaccessible referenced record (with field details)',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       401: {
@@ -635,6 +662,8 @@ recipe.post(
       const r = await service.createRecipe(authorId, body);
       return success(c, r, 201);
     } catch (err: unknown) {
+      const invalid = validationFailure(c, err);
+      if (invalid) return invalid;
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not authorized', 403);
       throw err;
@@ -702,16 +731,70 @@ recipe.patch(
   describeRoute({
     tags: ['Recipes'],
     summary: 'Update a recipe',
+    description:
+      'Updates a recipe owned by the caller (verified email required). With `bumpVersion: false` ' +
+      '(the default) the current version is amended in place; with `bumpVersion: true` a new ' +
+      'version is created that carries forward every value and relation the body does not ' +
+      'provide (taste notes with intensities, equipment, preparations, photos, `tds`, coffee ' +
+      'variety, `isFavourite`), and `brewDate` is the body value or now. Earlier versions are ' +
+      'never modified. Body semantics: an absent key keeps the stored value, `null` clears a ' +
+      'clearable field, and a relation array replaces the rows (`[]` removes them all). An ' +
+      'omitted `visibility` or `isFavourite` is kept. Cross-field rules are checked on the ' +
+      'payload and on the merged result; referenced ids are checked before anything is written.',
     security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'id',
+        in: 'path',
+        required: true,
+        description: 'Recipe UUID',
+        schema: { type: 'string', format: 'uuid' },
+      },
+    ],
+    requestBody: jsonRequestBody(RecipeUpdateSchema),
     responses: {
-      200: { description: 'Recipe updated' },
-      404: { description: 'Recipe not found' },
-      403: { description: 'Not the recipe owner' },
+      200: {
+        description: 'Recipe updated',
+        content: {
+          'application/json': {
+            schema: resolver(successEnvelope(RecipeDetailOutputSchema)),
+          },
+        },
+      },
+      400: {
+        description:
+          'Validation error: invalid body, null on a required field, a cross-field violation ' +
+          '(payload or merged values), an empty title, or an unknown referenced record',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      401: {
+        description: 'Authentication required',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      403: {
+        description: 'Email not verified (EMAIL_NOT_VERIFIED) or not the author (FORBIDDEN)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      404: {
+        description: 'Recipe not found',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      409: {
+        description: 'Conflict with existing data',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      422: {
+        description: 'Equipment incompatible with the brew method',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
     },
   }),
   authGuard,
   zValidator('json', RecipeUpdateSchema, zodValidationHook),
   async (c) => {
+    if (!isEmailVerified(c)) {
+      return error(c, 'EMAIL_NOT_VERIFIED', 'Please verify your email to perform this action', 403);
+    }
     const recipeId = c.req.param('id')!;
     const authorId = c.get('userId') as string;
     const body = c.req.valid('json');
@@ -719,6 +802,8 @@ recipe.patch(
       const r = await service.updateRecipe(recipeId, authorId, body);
       return success(c, r);
     } catch (err: unknown) {
+      const invalid = validationFailure(c, err);
+      if (invalid) return invalid;
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your recipe', 403);

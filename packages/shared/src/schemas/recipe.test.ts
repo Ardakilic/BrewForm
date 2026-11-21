@@ -10,6 +10,7 @@ import {
   RecipeNotesSchema,
   RecipeRateSchema,
   RecipeUpdateSchema,
+  recipeCrossFieldIssues,
 } from './recipe.ts';
 
 describe('RecipeCreateSchema', () => {
@@ -256,6 +257,368 @@ describe('RecipeUpdateSchema', () => {
       bumpVersion: true,
     });
     expect(result.success).toBe(true);
+  });
+});
+
+/**
+ * Wave 6 (recipe-write): the update schema must inject no defaults, so an
+ * omitted key means "keep", `null` means "clear" and `[]` means "remove all".
+ */
+describe('RecipeUpdateSchema — absent, null and [] semantics', () => {
+  /** Fields that accept `null` on update (null clears the stored value). */
+  const CLEARABLE_FIELDS = [
+    'productName',
+    'coffeeBrand',
+    'coffeeProcessing',
+    'vendorId',
+    'roastDate',
+    'packageOpenDate',
+    'grindDate',
+    'brewerDetails',
+    'grinder',
+    'grindSize',
+    'groundWeightGrams',
+    'extractionTimeSeconds',
+    'extractionVolumeMl',
+    'temperatureCelsius',
+    'tds',
+    'preInfusionTimeSeconds',
+    'beanId',
+    'coffeeVarietyId',
+    'personalNotes',
+    'rating',
+    'emojiTag',
+  ] as const;
+
+  /** Fields for which `null` is a validation error on update. */
+  const NON_NULLABLE_FIELDS = [
+    'title',
+    'brewMethod',
+    'drinkType',
+    'preparationNotes',
+    'visibility',
+    'isFavourite',
+    'brewDate',
+    'tasteNoteIds',
+    'equipmentIds',
+    'additionalPreparations',
+  ] as const;
+
+  it('parses a title-only payload without injecting visibility or isFavourite', () => {
+    const result = RecipeUpdateSchema.parse({ title: 'x' });
+    expect(result).toEqual({ title: 'x', bumpVersion: false });
+    expect('visibility' in result).toBe(false);
+    expect('isFavourite' in result).toBe(false);
+  });
+
+  it('parses an empty payload to the bump flag only (drift guard against update defaults)', () => {
+    expect(Object.keys(RecipeUpdateSchema.parse({}))).toEqual(['bumpVersion']);
+  });
+
+  it.each(CLEARABLE_FIELDS)('accepts null for the clearable field %s', (field) => {
+    const result = RecipeUpdateSchema.safeParse({ [field]: null });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect((result.data as Record<string, unknown>)[field]).toBeNull();
+    }
+  });
+
+  it.each(NON_NULLABLE_FIELDS)('rejects null for the required field %s', (field) => {
+    const result = RecipeUpdateSchema.safeParse({ [field]: null });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === field)).toBe(true);
+    }
+  });
+
+  it('accepts an empty array for the relation fields', () => {
+    const result = RecipeUpdateSchema.safeParse({
+      tasteNoteIds: [],
+      equipmentIds: [],
+      additionalPreparations: [],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.tasteNoteIds).toEqual([]);
+      expect(result.data.equipmentIds).toEqual([]);
+      expect(result.data.additionalPreparations).toEqual([]);
+    }
+  });
+
+  it('rejects tasteNoteIntensities without tasteNoteIds', () => {
+    const id = crypto.randomUUID();
+    const result = RecipeUpdateSchema.safeParse({ tasteNoteIntensities: { [id]: 2 } });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === 'tasteNoteIntensities')).toBe(true);
+    }
+  });
+
+  it('accepts tasteNoteIntensities together with tasteNoteIds', () => {
+    const id = crypto.randomUUID();
+    const result = RecipeUpdateSchema.safeParse({
+      tasteNoteIds: [id],
+      tasteNoteIntensities: { [id]: 2 },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('applies the grind-before-roast rule to updates', () => {
+    const result = RecipeUpdateSchema.safeParse({
+      roastDate: '2026-11-10',
+      grindDate: '2026-11-01',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['grindDate'],
+          message: 'Grind date cannot be earlier than roast date',
+        }),
+      );
+    }
+  });
+
+  it('applies the package-open-before-roast rule to updates', () => {
+    const result = RecipeUpdateSchema.safeParse({
+      roastDate: '2026-11-10',
+      packageOpenDate: '2026-11-01',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === 'packageOpenDate')).toBe(true);
+    }
+  });
+
+  it('applies the grind-before-package-open rule to updates', () => {
+    const result = RecipeUpdateSchema.safeParse({
+      packageOpenDate: '2026-11-10',
+      grindDate: '2026-11-01',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['grindDate'],
+          message: 'Grind date cannot be earlier than package open date',
+        }),
+      );
+    }
+  });
+
+  it('applies the pre-infusion-shorter-than-extraction rule to updates', () => {
+    const result = RecipeUpdateSchema.safeParse({
+      preInfusionTimeSeconds: 30,
+      extractionTimeSeconds: 20,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['preInfusionTimeSeconds'],
+          message: 'Pre-infusion time must be less than extraction time',
+        }),
+      );
+    }
+  });
+
+  it('rejects pre-infusion with an explicitly cleared extraction time', () => {
+    const result = RecipeUpdateSchema.safeParse({
+      preInfusionTimeSeconds: 5,
+      extractionTimeSeconds: null,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['preInfusionTimeSeconds'],
+          message: 'Extraction time is required when pre-infusion time is specified',
+        }),
+      );
+    }
+  });
+
+  it('accepts pre-infusion alone (the stored extraction time is checked on the merged values)', () => {
+    const result = RecipeUpdateSchema.safeParse({ preInfusionTimeSeconds: 5 });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('recipeCrossFieldIssues', () => {
+  it('returns no issues for consistent or absent values', () => {
+    expect(recipeCrossFieldIssues({})).toEqual([]);
+    expect(
+      recipeCrossFieldIssues({
+        roastDate: '2026-11-01',
+        packageOpenDate: '2026-11-05',
+        grindDate: '2026-11-05',
+        preInfusionTimeSeconds: 5,
+        extractionTimeSeconds: 30,
+      }),
+    ).toEqual([]);
+  });
+
+  it('flags a grind date before the roast date', () => {
+    expect(recipeCrossFieldIssues({ roastDate: '2026-11-10', grindDate: '2026-11-01' })).toEqual([
+      { field: 'grindDate', message: 'Grind date cannot be earlier than roast date' },
+    ]);
+  });
+
+  it('flags a package-open date before the roast date', () => {
+    expect(
+      recipeCrossFieldIssues({ roastDate: '2026-11-10', packageOpenDate: '2026-11-01' }),
+    ).toEqual([
+      { field: 'packageOpenDate', message: 'Package open date cannot be earlier than roast date' },
+    ]);
+  });
+
+  it('flags a grind date before the package-open date', () => {
+    expect(
+      recipeCrossFieldIssues({ packageOpenDate: '2026-11-10', grindDate: '2026-11-01' }),
+    ).toEqual([
+      { field: 'grindDate', message: 'Grind date cannot be earlier than package open date' },
+    ]);
+  });
+
+  it('flags a pre-infusion time that is not shorter than the extraction time', () => {
+    expect(
+      recipeCrossFieldIssues({ preInfusionTimeSeconds: 30, extractionTimeSeconds: 30 }),
+    ).toEqual([
+      {
+        field: 'preInfusionTimeSeconds',
+        message: 'Pre-infusion time must be less than extraction time',
+      },
+    ]);
+  });
+
+  it('requires an extraction time with pre-infusion in complete mode (absent or null)', () => {
+    const expected = [
+      {
+        field: 'preInfusionTimeSeconds',
+        message: 'Extraction time is required when pre-infusion time is specified',
+      },
+    ];
+    expect(recipeCrossFieldIssues({ preInfusionTimeSeconds: 5 })).toEqual(expected);
+    expect(
+      recipeCrossFieldIssues({ preInfusionTimeSeconds: 5, extractionTimeSeconds: null }),
+    ).toEqual(expected);
+  });
+
+  it('in partial mode requires the extraction time only when it is explicitly cleared', () => {
+    expect(recipeCrossFieldIssues({ preInfusionTimeSeconds: 5 }, 'partial')).toEqual([]);
+    expect(
+      recipeCrossFieldIssues({ preInfusionTimeSeconds: 5, extractionTimeSeconds: null }, 'partial'),
+    ).toHaveLength(1);
+  });
+
+  it('ignores null dates (cleared values)', () => {
+    expect(recipeCrossFieldIssues({ roastDate: null, grindDate: '2026-11-01' })).toEqual([]);
+  });
+
+  it('reports every violation in rule order', () => {
+    const issues = recipeCrossFieldIssues({
+      roastDate: '2026-11-10',
+      packageOpenDate: '2026-11-05',
+      grindDate: '2026-11-01',
+      preInfusionTimeSeconds: 40,
+      extractionTimeSeconds: 30,
+    });
+    expect(issues.map((i) => i.field)).toEqual([
+      'grindDate',
+      'packageOpenDate',
+      'grindDate',
+      'preInfusionTimeSeconds',
+    ]);
+  });
+
+  it('is what RecipeCreateSchema reports (same messages and paths)', () => {
+    const payload = {
+      title: 'T',
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: 'P',
+      roastDate: '2026-11-10',
+      grindDate: '2026-11-01',
+      preInfusionTimeSeconds: 5,
+    };
+    const result = RecipeCreateSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((i) => ({ field: i.path[0], message: i.message }))).toEqual(
+        recipeCrossFieldIssues(payload),
+      );
+    }
+  });
+});
+
+describe('Recipe create/update payload fields (wave 6)', () => {
+  const base = {
+    title: 'Fields',
+    brewMethod: 'v60',
+    drinkType: 'pour_over',
+    preparationNotes: 'Bloom',
+  };
+
+  it('accepts an optional coffeeVarietyId on create', () => {
+    const id = crypto.randomUUID();
+    const parsed = RecipeCreateSchema.parse({ ...base, coffeeVarietyId: id });
+    expect(parsed.coffeeVarietyId).toBe(id);
+    expect('coffeeVarietyId' in RecipeCreateSchema.parse(base)).toBe(false);
+  });
+
+  it('rejects a non-UUID coffeeVarietyId on create and update', () => {
+    expect(RecipeCreateSchema.safeParse({ ...base, coffeeVarietyId: 'gesha' }).success).toBe(false);
+    expect(RecipeUpdateSchema.safeParse({ coffeeVarietyId: 'gesha' }).success).toBe(false);
+  });
+
+  it('strips client-sent brewRatio and flowRate (derived server-side)', () => {
+    const created = RecipeCreateSchema.parse({ ...base, brewRatio: 15, flowRate: 2 });
+    expect('brewRatio' in created).toBe(false);
+    expect('flowRate' in created).toBe(false);
+    const updated = RecipeUpdateSchema.parse({ brewRatio: 15, flowRate: 2 });
+    expect(updated).toEqual({ bumpVersion: false });
+  });
+
+  it('never accepts coffeeVarietyName from clients', () => {
+    const created = RecipeCreateSchema.parse({ ...base, coffeeVarietyName: 'Gesha' });
+    expect('coffeeVarietyName' in created).toBe(false);
+  });
+});
+
+describe('Recipe payloads reject duplicate relation ids', () => {
+  const base = {
+    title: 'Dup',
+    brewMethod: 'v60',
+    drinkType: 'pour_over',
+    preparationNotes: 'Bloom',
+  };
+
+  it.each(['tasteNoteIds', 'equipmentIds'] as const)('rejects duplicate %s on create', (field) => {
+    const id = crypto.randomUUID();
+    const result = RecipeCreateSchema.safeParse({ ...base, [field]: [id, id] });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({ path: [field], message: 'Duplicate ids are not allowed' }),
+      );
+    }
+  });
+
+  it.each(['tasteNoteIds', 'equipmentIds'] as const)('rejects duplicate %s on update', (field) => {
+    const id = crypto.randomUUID();
+    const result = RecipeUpdateSchema.safeParse({ [field]: [id, id] });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({ path: [field], message: 'Duplicate ids are not allowed' }),
+      );
+    }
+  });
+
+  it('accepts distinct ids on create and update', () => {
+    const ids = [crypto.randomUUID(), crypto.randomUUID()];
+    expect(RecipeCreateSchema.safeParse({ ...base, tasteNoteIds: ids }).success).toBe(true);
+    expect(RecipeUpdateSchema.safeParse({ equipmentIds: ids }).success).toBe(true);
   });
 });
 

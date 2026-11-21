@@ -64,6 +64,8 @@ export { NotificationQuerySchema } from './notification.ts';
 export { PhotoUploadSchema } from './photo.ts';
 export type {
   RecipeCreate,
+  RecipeCrossFieldIssue,
+  RecipeCrossFieldValues,
   RecipeFork,
   RecipeMerge,
   RecipeNotes,
@@ -78,7 +80,9 @@ export {
   RecipeMergeSchema,
   RecipeNotesSchema,
   RecipeRateSchema,
+  RecipeUpdateObjectSchema,
   RecipeUpdateSchema,
+  recipeCrossFieldIssues,
 } from './recipe.ts';
 export { ReportCreateSchema, ReportFilterSchema } from './report.ts';
 export type { PaginatedResponse, PaginationMeta } from './response.ts';

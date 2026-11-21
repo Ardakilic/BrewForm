@@ -1,6 +1,7 @@
 import '../../test-setup.ts';
 import { db } from '@brewform/db';
 import {
+  coffeeVarieties,
   equipment,
   recipeAdditionalPreparations,
   recipeEquipment,
@@ -15,6 +16,7 @@ import {
 import { RecipeCreateSchema } from '@brewform/shared/schemas';
 import { eq, inArray } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ValidationError } from '../../utils/errors.ts';
 import { evaluateBadges } from '../badge/service.ts';
 import * as service from './service.ts';
 
@@ -22,6 +24,7 @@ describe('createRecipe (integration)', () => {
   let userId: string;
   let tasteNoteId: string;
   let equipmentId: string;
+  let variety: { id: string; name: string };
   const createdRecipeIds: string[] = [];
 
   beforeEach(async () => {
@@ -48,6 +51,11 @@ describe('createRecipe (integration)', () => {
       isSystem: false,
       createdBy: userId,
     });
+
+    variety = { id: crypto.randomUUID(), name: `Gesha ${tasteNoteId.slice(0, 8)}` };
+    await db
+      .insert(coffeeVarieties)
+      .values({ id: variety.id, name: variety.name, category: 'variety' });
   });
 
   afterEach(async () => {
@@ -76,6 +84,7 @@ describe('createRecipe (integration)', () => {
 
     await db.delete(tasteNotes).where(eq(tasteNotes.id, tasteNoteId));
     await db.delete(equipment).where(eq(equipment.id, equipmentId));
+    await db.delete(coffeeVarieties).where(eq(coffeeVarieties.id, variety.id));
     // `createRecipe` triggers `evaluateBadges()` as a non-awaited (fire-and-forget) side effect
     // (see apps/api/src/modules/recipe/service.ts), which asynchronously inserts `user_badge` rows.
     // Awaiting it here drains that in-flight insert (its own write is idempotent via
@@ -167,6 +176,64 @@ describe('createRecipe (integration)', () => {
 
     expect(result!.versions[0].tasteNotes.length).toBe(1);
     expect(result!.versions[0].tasteNotes[0].intensity).toBe(3);
+  });
+
+  it('persists tds (rounded to two decimals) and the coffee variety with its server-side name', async () => {
+    const data = RecipeCreateSchema.parse({
+      title: 'TDS Variety Recipe',
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: 'Bloom 45s',
+      tds: 1.355,
+      coffeeVarietyId: variety.id,
+    });
+
+    const result = await service.createRecipe(userId, data);
+    createdRecipeIds.push(result!.id);
+
+    expect(result!.versions[0].tds).toBe('1.36');
+    expect(result!.versions[0].coffeeVarietyId).toBe(variety.id);
+    expect(result!.versions[0].coffeeVarietyName).toBe(variety.name);
+  });
+
+  it('stores brewer notes that are empty after sanitization as NULL', async () => {
+    const data = RecipeCreateSchema.parse({
+      title: 'Empty Notes Recipe',
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: 'Bloom 45s',
+      personalNotes: '<i></i>',
+    });
+
+    const result = await service.createRecipe(userId, data);
+    createdRecipeIds.push(result!.id);
+    expect(result!.versions[0].personalNotes).toBeNull();
+  });
+
+  it.each([
+    ['coffeeVarietyId', () => ({ coffeeVarietyId: crypto.randomUUID() })],
+    ['tasteNoteIds', () => ({ tasteNoteIds: [crypto.randomUUID()] })],
+    ['equipmentIds', () => ({ equipmentIds: [crypto.randomUUID()] })],
+    ['vendorId', () => ({ vendorId: crypto.randomUUID() })],
+    ['beanId', () => ({ beanId: crypto.randomUUID() })],
+  ] as const)('rejects an unknown %s and writes nothing', async (field, extra) => {
+    const title = `Invalid Ref ${crypto.randomUUID().slice(0, 8)}`;
+    const data = RecipeCreateSchema.parse({
+      title,
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: 'Bloom 45s',
+      ...extra(),
+    });
+
+    const err = await service.createRecipe(userId, data).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(ValidationError);
+    expect((err as ValidationError).details?.map((d) => d.field)).toEqual([field]);
+    const rows = await db.select({ id: recipes.id }).from(recipes).where(eq(recipes.title, title));
+    expect(rows).toHaveLength(0);
   });
 
   it('throws on empty title', async () => {
