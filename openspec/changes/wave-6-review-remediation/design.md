@@ -520,5 +520,7 @@ Existing entries that stay open with updated text: D99.58 (the `Sitemap:` URL on
 | Group-20 V1 bean card dates overlap at 320 px | found during apply (task 20.4) | 16.9, 16.12 |
 | Group-20 V2 print hides the equipment list and taste chips (already on `main`) | found during apply (task 20.4) | 16.10, 16.12 |
 | Group-20 V4 small flow rates show "0 ml/s" | found during apply (task 20.4) | 16.11, 16.12 |
+| Group-20 re-check: bean ages read "83d" under `tr` | found during apply (task 20.5); Extras E9 | 15.9, 15.10 |
+| Group-20 re-check: the admin sidebar column still prints | found during apply (task 20.5) | 16.13, 16.14 |
 | Group-20 V3 (pre-infusion title hidden in en) and V5 (12 h axis skips 10h) | follow the `chart-rendering` rules; recorded for the reviewer, no change | 20.5, 22.3 |
 | Wave-6 29.14 post-merge part | r5 decision 3; Migration Plan 10 | 1.3, 22.7 |
