@@ -17,7 +17,7 @@ import { resetRateLimitBackend } from './utils/rate-limit/registry.ts';
 describe('main app rate-limit wiring', () => {
   beforeEach(() => {
     resetRateLimitBackend();
-    vi.spyOn(rateLimitLog, 'warn').mockImplementation(() => {});
+    vi.spyOn(rateLimitLog, 'warn').mockImplementation(() => undefined);
   });
 
   afterEach(() => {

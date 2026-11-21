@@ -112,7 +112,9 @@ const baseHandleError = (RateLimiterRedis.prototype as unknown as { _handleError
  */
 class ObservedRateLimiterRedis extends RateLimiterRedis {
   /** Called with the store error each time a decision falls back to insurance. */
-  onStoreError: (err: unknown) => void = () => {};
+  onStoreError: (err: unknown) => void = () => {
+    // Default no-op until the backend installs its degraded-mode tracker right after construction.
+  };
 
   /**
    * Intercept the library's error funnel, then delegate to it unchanged.

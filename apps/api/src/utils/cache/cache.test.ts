@@ -87,7 +87,7 @@ function createFakeRedisClient(): RedisClient & { store: Map<string, string> } {
       // A Readable stream is an AsyncIterable, like ioredis's real scanStream.
       return Readable.from(keys.length > 0 ? [keys] : []);
     },
-    disconnect: () => {},
+    disconnect: () => undefined,
   };
 }
 

@@ -63,7 +63,7 @@ describe('rate-limit registry', () => {
     await deleteRateLimitCounter(POLICIES.authLoginFailAccount, 'hash');
     expect(await limiter.get('hash')).toBeNull();
 
-    const error = vi.spyOn(log, 'error').mockImplementation(() => {});
+    const error = vi.spyOn(log, 'error').mockImplementation(() => undefined);
     setRateLimitBackend({
       kind: 'redis',
       limiter: () => {

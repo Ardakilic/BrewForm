@@ -251,7 +251,7 @@ describe('Photo Routes — authenticated upload', () => {
             'HTTP 403: <Error><Code>AccessDenied</Code><Message>Access Denied</Message><BucketName>brewform-uploads</BucketName></Error>',
           ),
         ),
-      delete: async () => {},
+      delete: () => Promise.resolve(),
     };
 
     const res = await postUpload(

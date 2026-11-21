@@ -119,8 +119,8 @@ describe('createRedisBackend', () => {
   });
 
   it('keeps enforcing limits through the insurance limiter while the store is down', async () => {
-    const warn = vi.spyOn(log, 'warn').mockImplementation(() => {});
-    const info = vi.spyOn(log, 'info').mockImplementation(() => {});
+    const warn = vi.spyOn(log, 'warn').mockImplementation(() => undefined);
+    const info = vi.spyOn(log, 'info').mockImplementation(() => undefined);
     const client = createDeadClient();
     const backend = createRedisBackend(client as unknown as RedisLimiterClient);
     const limiter = backend.limiter(testPolicy('redis-down', 3));
@@ -144,7 +144,7 @@ describe('createRedisBackend', () => {
   });
 
   it('enters degraded mode on a client error event, once per outage', () => {
-    const warn = vi.spyOn(log, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(log, 'warn').mockImplementation(() => undefined);
     const client = createDeadClient();
     const backend = createRedisBackend(client as unknown as RedisLimiterClient);
     client.emit('error', new Error('connect ECONNREFUSED'));

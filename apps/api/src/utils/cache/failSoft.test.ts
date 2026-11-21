@@ -34,7 +34,7 @@ describe('FailSoftCacheProvider', () => {
   });
 
   it('turns a failed get into a miss and failed writes into no-ops', async () => {
-    vi.spyOn(log, 'warn').mockImplementation(() => {});
+    vi.spyOn(log, 'warn').mockImplementation(() => undefined);
     const backend = createToggleBackend();
     const cache = new FailSoftCacheProvider(backend);
     backend.state.failing = true;
@@ -46,8 +46,8 @@ describe('FailSoftCacheProvider', () => {
   });
 
   it('logs one warn per outage and one info with droppedOps on the next success', async () => {
-    const warn = vi.spyOn(log, 'warn').mockImplementation(() => {});
-    const info = vi.spyOn(log, 'info').mockImplementation(() => {});
+    const warn = vi.spyOn(log, 'warn').mockImplementation(() => undefined);
+    const info = vi.spyOn(log, 'info').mockImplementation(() => undefined);
     const backend = createToggleBackend();
     const cache = new FailSoftCacheProvider(backend);
     backend.state.failing = true;
@@ -64,8 +64,8 @@ describe('FailSoftCacheProvider', () => {
   });
 
   it('flushes the cache namespace once, asynchronously, after an outage that dropped an invalidation', async () => {
-    vi.spyOn(log, 'warn').mockImplementation(() => {});
-    const info = vi.spyOn(log, 'info').mockImplementation(() => {});
+    vi.spyOn(log, 'warn').mockImplementation(() => undefined);
+    const info = vi.spyOn(log, 'info').mockImplementation(() => undefined);
     const backend = createToggleBackend();
     const cache = new FailSoftCacheProvider(backend);
     backend.state.failing = true;
@@ -86,8 +86,8 @@ describe('FailSoftCacheProvider', () => {
   });
 
   it('does not flush after an outage with only reads', async () => {
-    vi.spyOn(log, 'warn').mockImplementation(() => {});
-    vi.spyOn(log, 'info').mockImplementation(() => {});
+    vi.spyOn(log, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(log, 'info').mockImplementation(() => undefined);
     const backend = createToggleBackend();
     const cache = new FailSoftCacheProvider(backend);
     backend.state.failing = true;

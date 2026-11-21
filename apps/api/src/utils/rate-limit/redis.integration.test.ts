@@ -128,7 +128,7 @@ describe.skipIf(!url)('redis rate-limit backend against Valkey', () => {
   });
 
   it('answers every check within 1 s through insurance when the store is unreachable', async () => {
-    vi.spyOn(log, 'warn').mockImplementation(() => {});
+    vi.spyOn(log, 'warn').mockImplementation(() => undefined);
     const dead = createRedisClient('redis://127.0.0.1:1', { connectionName: 'brewform-rl-dead' });
     const backend = createRedisBackend(dead);
     const policy = uniquePolicy(3, 60);

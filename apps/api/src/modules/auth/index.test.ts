@@ -648,7 +648,7 @@ describe('Auth Routes — registration conflicts (DB integration)', () => {
       vi.spyOn(logger, 'error'),
     ]);
     // Hono's default handler and stray debugging both go through console.error.
-    logSpies.push(vi.spyOn(console, 'error').mockImplementation(() => {}));
+    logSpies.push(vi.spyOn(console, 'error').mockImplementation(() => undefined));
   });
 
   afterEach(() => {
@@ -1019,7 +1019,7 @@ describe('Auth Routes — rate limiting (DB integration)', () => {
 
   beforeEach(() => {
     resetRateLimitBackend();
-    vi.spyOn(rateLimitLog, 'warn').mockImplementation(() => {});
+    vi.spyOn(rateLimitLog, 'warn').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -1199,7 +1199,7 @@ describe('Auth Routes — rate limiting (DB integration)', () => {
 
   it('logs the registration-disabled warning without an ip field', async () => {
     const original = process.env.ENABLE_REGISTRATION;
-    const warn = vi.spyOn(authRouteLog, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(authRouteLog, 'warn').mockImplementation(() => undefined);
     try {
       process.env.ENABLE_REGISTRATION = 'false';
       reloadConfig();

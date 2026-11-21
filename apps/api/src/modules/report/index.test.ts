@@ -80,8 +80,8 @@ function postReport(
 describe('POST /api/v1/reports — rate limit', () => {
   beforeEach(() => {
     resetRateLimitBackend();
-    vi.spyOn(rateLimitLog, 'warn').mockImplementation(() => {});
-    vi.spyOn(clientIpLog, 'warn').mockImplementation(() => {});
+    vi.spyOn(rateLimitLog, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(clientIpLog, 'warn').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -183,7 +183,7 @@ describe('POST /api/v1/reports — per-user and admin routes (DB integration)', 
 
   beforeEach(() => {
     resetRateLimitBackend();
-    vi.spyOn(rateLimitLog, 'warn').mockImplementation(() => {});
+    vi.spyOn(rateLimitLog, 'warn').mockImplementation(() => undefined);
   });
 
   afterEach(() => {

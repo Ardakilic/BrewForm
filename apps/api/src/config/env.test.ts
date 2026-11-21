@@ -469,7 +469,7 @@ describe('loadEnv failure output', () => {
   it('should name the failing variables without printing their values', () => {
     const keys = ['JWT_SECRET', 'STORAGE_DRIVER', 'S3_ENDPOINT'] as const;
     const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
       process.env.JWT_SECRET = 'tooshort';
       process.env.STORAGE_DRIVER = 's3';

@@ -37,7 +37,7 @@ function smallPolicy(points: number, mode: RateLimitPolicy['mode'] = 'count'): R
 
 /** Spy on every level of the middleware logger (and silence the client-IP hint). */
 function spyLogs() {
-  vi.spyOn(clientIpLog, 'warn').mockImplementation(() => {});
+  vi.spyOn(clientIpLog, 'warn').mockImplementation(() => undefined);
   return {
     debug: vi.spyOn(log, 'debug'),
     info: vi.spyOn(log, 'info'),

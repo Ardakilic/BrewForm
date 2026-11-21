@@ -85,7 +85,7 @@ describe('createShutdownHandler', () => {
   });
 
   it('ignores a second signal while shutting down (debug log, nothing closed twice)', async () => {
-    let releaseServer: () => void = () => {};
+    let releaseServer: () => void = () => undefined;
     const { deps, events } = recordingDeps({
       closeServer: vi.fn(
         () =>

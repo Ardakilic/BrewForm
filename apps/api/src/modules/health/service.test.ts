@@ -18,7 +18,7 @@ import {
 /** Build readiness deps for a healthy memory-backed setup; every function is a spy. */
 function healthyDeps(overrides: Partial<HealthDeps> = {}) {
   return {
-    ping: vi.fn(async () => {}),
+    ping: vi.fn(() => Promise.resolve()),
     getCacheStatus: vi.fn(() => 'memory' as const),
     getRateLimitStoreStatus: vi.fn(() => 'memory' as const),
     checkStorageHealth: vi.fn(async () => 'ok' as const),
@@ -30,7 +30,7 @@ function healthyDeps(overrides: Partial<HealthDeps> = {}) {
 
 /** A promise that never settles (a hung database). */
 function never(): Promise<never> {
-  return new Promise<never>(() => {});
+  return new Promise<never>(() => undefined);
 }
 
 beforeEach(() => {
@@ -214,7 +214,7 @@ describe('defaultHealthDeps wiring', () => {
   function wiredDeps(): HealthDeps {
     return {
       ...defaultHealthDeps,
-      ping: async () => {},
+      ping: () => Promise.resolve(),
       log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn() },
     };
   }

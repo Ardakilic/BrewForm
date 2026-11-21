@@ -39,7 +39,7 @@ describe('createRedisClient', () => {
   });
 
   it('logs error events once per disconnect cycle and never logs the URL', () => {
-    const errorSpy = vi.spyOn(log, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(log, 'error').mockImplementation(() => undefined);
     const url = 'redis://:super-secret-password@valkey:6379';
     const client = createRedisClient(url, { lazyConnect: true });
     try {

@@ -48,8 +48,8 @@ const VALID = {
 describe('POST /api/v1/contact', () => {
   beforeEach(() => {
     resetRateLimitBackend();
-    vi.spyOn(rateLimitLog, 'warn').mockImplementation(() => {});
-    vi.spyOn(clientIpLog, 'warn').mockImplementation(() => {});
+    vi.spyOn(rateLimitLog, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(clientIpLog, 'warn').mockImplementation(() => undefined);
   });
 
   afterEach(() => {

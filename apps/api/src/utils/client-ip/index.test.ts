@@ -48,7 +48,7 @@ describe('getClientIp', () => {
 
   describe('none mode', () => {
     it('returns the socket peer and ignores X-Forwarded-For, X-Real-IP and CF-Connecting-IP', async () => {
-      vi.spyOn(log, 'warn').mockImplementation(() => {});
+      vi.spyOn(log, 'warn').mockImplementation(() => undefined);
       const ip = await ipFor(NONE, '203.0.113.7', {
         'x-forwarded-for': '1.2.3.4',
         'x-real-ip': '5.6.7.8',
@@ -70,7 +70,7 @@ describe('getClientIp', () => {
     });
 
     it('warns once per process, with empty context, when X-Forwarded-For arrives', async () => {
-      const warn = vi.spyOn(log, 'warn').mockImplementation(() => {});
+      const warn = vi.spyOn(log, 'warn').mockImplementation(() => undefined);
       await ipFor(NONE, '203.0.113.7', { 'x-forwarded-for': '9.9.9.9' });
       await ipFor(NONE, '203.0.113.8', { 'x-forwarded-for': '8.8.8.8' });
       expect(warn).toHaveBeenCalledTimes(1);
@@ -81,7 +81,7 @@ describe('getClientIp', () => {
     });
 
     it('does not warn when no forwarding header is present', async () => {
-      const warn = vi.spyOn(log, 'warn').mockImplementation(() => {});
+      const warn = vi.spyOn(log, 'warn').mockImplementation(() => undefined);
       await ipFor(NONE, '203.0.113.7');
       expect(warn).not.toHaveBeenCalled();
     });

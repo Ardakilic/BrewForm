@@ -107,7 +107,7 @@ describe('healthcheck.mjs', () => {
   });
 
   it('exits 1 within 5 s when the server never answers', async () => {
-    const { port } = await startServer(() => {});
+    const { port } = await startServer(() => undefined);
     const run = await runProbe(port);
     expect(run.code).toBe(1);
     expect(run.elapsedMs).toBeLessThan(5000);
