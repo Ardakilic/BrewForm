@@ -35,9 +35,10 @@ import {
   recipeVersions as recipeVersionsTable,
   users as usersTable,
 } from '@brewform/db/schema';
-import { eq as drizzleEq, getTableColumns } from 'drizzle-orm';
+import { and as drizzleAnd, eq as drizzleEq, getTableColumns } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
+import { NoteFixtures } from '../recipe-note/test-helpers.ts';
 import * as recipeModel from './model.ts';
 import * as recipeService from './service.ts';
 import { RecipeWriteFixtures } from './test-helpers.ts';
@@ -620,6 +621,78 @@ describe('decrementComments — by a bound amount', () => {
       .from(recipesTable)
       .where(drizzleEq(recipesTable.id, recipeId));
     expect(row.commentCount).toBe(1);
+  });
+});
+
+/**
+ * E11 (account-deletion, "A deleted account has no public identity"): a recipe whose author
+ * soft-deleted the account stays readable and listed, with `author: null`, and the `author`
+ * filter no longer matches that account.
+ */
+describe('deleted recipe authors (E11)', () => {
+  const fixtures = new NoteFixtures();
+
+  afterEach(async () => {
+    await fixtures.cleanup();
+  });
+
+  /** Soft-delete a user the way account deletion does (only the user row). */
+  async function softDeleteUser(id: string): Promise<void> {
+    await realDb
+      .update(usersTable)
+      .set({ deletedAt: new Date() })
+      .where(drizzleEq(usersTable.id, id));
+  }
+
+  it('findById, findBySlug and findListPage keep the recipe with author: null', async () => {
+    const author = await fixtures.user('e11-recipe');
+    const { recipe } = await fixtures.recipe(author.id);
+    const scope = { where: drizzleEq(recipesTable.authorId, author.id), page: 1, perPage: 10 };
+    const before = await recipeModel.findListPage(scope);
+    expect(before.recipes[0].author).not.toBeNull();
+
+    await softDeleteUser(author.id);
+
+    const byId = await recipeModel.findById(recipe.id);
+    expect(byId!.id).toBe(recipe.id);
+    expect(byId!.author).toBeNull();
+    const bySlug = await recipeModel.findBySlug(recipe.slug);
+    expect(bySlug!.id).toBe(recipe.id);
+    expect(bySlug!.author).toBeNull();
+    const after = await recipeModel.findListPage(scope);
+    expect(after.total).toBe(before.total);
+    expect(after.recipes.map((r) => r.id)).toEqual([recipe.id]);
+    expect(after.recipes[0].author).toBeNull();
+  });
+
+  it('a live author is still returned by findById', async () => {
+    const author = await fixtures.user('e11-live');
+    const { recipe } = await fixtures.recipe(author.id);
+    const byId = await recipeModel.findById(recipe.id);
+    expect(byId!.author).toEqual({
+      id: author.id,
+      username: author.username,
+      displayName: null,
+      avatarUrl: null,
+    });
+  });
+
+  it('the author filter with the deleted username no longer finds the recipe', async () => {
+    const author = await fixtures.user('e11-filter');
+    const { recipe } = await fixtures.recipe(author.id);
+    const where = () =>
+      drizzleAnd(
+        drizzleEq(recipesTable.authorId, author.id),
+        ...recipeModel.buildRecipeFilters({ author: author.username }),
+      );
+    const live = await recipeModel.findListPage({ where: where(), page: 1, perPage: 10 });
+    expect(live.recipes.map((r) => r.id)).toEqual([recipe.id]);
+
+    await softDeleteUser(author.id);
+
+    const gone = await recipeModel.findListPage({ where: where(), page: 1, perPage: 10 });
+    expect(gone.recipes).toEqual([]);
+    expect(gone.total).toBe(0);
   });
 });
 

@@ -279,3 +279,30 @@ describe('RecipeDetailOutputSchema', () => {
     if (result.success) expect(result.data).toEqual(wire(detailPayload));
   });
 });
+
+describe('E11 — a deleted account is returned as author: null', () => {
+  it('RecipeWithAuthorOutputSchema accepts author: null', () => {
+    const payload = { ...recipeRow, author: null };
+    expect(RecipeWithAuthorOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+
+  it('RecipeWithVersionsOutputSchema accepts author: null', () => {
+    const payload = { ...recipeRow, author: null, versions: [versionRow] };
+    expect(RecipeWithVersionsOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+
+  it('FeedRecipeOutputSchema and RecipeListItemOutputSchema accept author: null', () => {
+    const payload = { ...recipeRow, author: null };
+    expect(FeedRecipeOutputSchema.safeParse(wire(payload)).success).toBe(true);
+    expect(RecipeListItemOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+
+  it('RecipeDetailOutputSchema accepts author: null', () => {
+    const payload = { ...detailPayload, author: null };
+    expect(RecipeDetailOutputSchema.safeParse(wire(payload)).success).toBe(true);
+  });
+
+  it('still rejects a missing author key', () => {
+    expect(RecipeWithAuthorOutputSchema.safeParse(wire({ ...recipeRow })).success).toBe(false);
+  });
+});

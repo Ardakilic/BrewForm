@@ -25,7 +25,10 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 const mockUseTranslation = vi.mocked(useTranslation);
 
 const enT = (key: string) => {
-  const map: Record<string, string> = { 'recipe.card.by': 'by' };
+  const map: Record<string, string> = {
+    'recipe.card.by': 'by',
+    'common.deletedUser': 'Deleted user',
+  };
   return map[key] ?? key;
 };
 
@@ -115,18 +118,14 @@ describe('RecipeCard', () => {
     expect(screen.getByText(/🍴 1/)).toBeInTheDocument();
   });
 
-  it('should render "unknown" when author is null', () => {
-    // `author: null` tests RecipeCard's defensive fallback; the shared
-    // schema types `author` as non-nullable, so cast to satisfy the
-    // type-checker.
-    renderWithRouter(
-      <RecipeCard recipe={{ ...makeRecipe(), author: null } as unknown as RecipeListItemOutput} />,
-    );
-    // The "by unknown" text is in a <p> tag; there's no author button
-    expect(screen.queryByRole('button', { name: /alice/i })).not.toBeInTheDocument();
+  it('should render "Deleted user" without a button when author is null (deleted account)', () => {
+    renderWithRouter(<RecipeCard recipe={{ ...makeRecipe(), author: null }} />);
+    // The "by Deleted user" text is in a <p> tag; there's no author button
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
     const paragraph = document.querySelector('p.mt-1');
     expect(paragraph).not.toBeNull();
-    expect(paragraph!.textContent).toContain('unknown');
+    expect(paragraph!.textContent).toBe('by Deleted user');
+    expect(paragraph!.textContent).not.toContain('unknown');
   });
 
   it('hides the author line entirely when hideAuthor is set', () => {
@@ -134,7 +133,7 @@ describe('RecipeCard', () => {
     expect(screen.queryByRole('button', { name: 'Alice' })).not.toBeInTheDocument();
     // The "by <author>" paragraph (className "mt-1 ...") is not rendered
     expect(document.querySelector('p.mt-1')).toBeNull();
-    expect(screen.queryByText('unknown')).not.toBeInTheDocument();
+    expect(screen.queryByText('Deleted user')).not.toBeInTheDocument();
   });
 
   it('renders the brew-method/drink-type/rating strip when a version is passed', () => {

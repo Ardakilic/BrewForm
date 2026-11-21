@@ -22,6 +22,13 @@ describe('RecipeJsonLd', () => {
     expect(recipe.author.name).toBe('Barista');
   });
 
+  it('omits the author when authorName is empty (deleted account)', () => {
+    const { container } = render(<RecipeJsonLd {...baseProps} authorName="" />);
+    const scripts = container.querySelectorAll('script[type="application/ld+json"]');
+    const recipe = JSON.parse(scripts[0].textContent || '');
+    expect(recipe).not.toHaveProperty('author');
+  });
+
   it('includes cookTime (but NOT totalTime) when extractionTimeSeconds provided', () => {
     const { container } = render(<RecipeJsonLd {...baseProps} extractionTimeSeconds={150} />);
     const scripts = container.querySelectorAll('script[type="application/ld+json"]');

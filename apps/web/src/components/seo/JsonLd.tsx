@@ -2,7 +2,8 @@ interface RecipeJsonLdProps {
   title: string;
   description: string;
   slug: string;
-  authorName: string;
+  /** The author's display name; empty or absent (deleted account) omits `author`. */
+  authorName?: string;
   authorUsername?: string;
   datePublished: string;
   image?: string;
@@ -43,7 +44,8 @@ function formatBrewMethod(method: string): string {
 /**
  * Emits a schema.org `Recipe` JSON-LD script tag built from recipe data
  * (ingredients, instructions, timings, keywords, optional aggregate
- * rating) for search-engine rich results.
+ * rating) for search-engine rich results. `author` is omitted when
+ * `authorName` is empty (the account was deleted).
  */
 export function RecipeJsonLd(props: RecipeJsonLdProps) {
   const {
@@ -104,11 +106,15 @@ export function RecipeJsonLd(props: RecipeJsonLdProps) {
     '@type': 'Recipe',
     name: title,
     description,
-    author: {
-      '@type': 'Person',
-      name: authorName,
-      ...(authorUsername ? { url: `${globalThis.location.origin}/u/${authorUsername}` } : {}),
-    },
+    ...(authorName
+      ? {
+          author: {
+            '@type': 'Person',
+            name: authorName,
+            ...(authorUsername ? { url: `${globalThis.location.origin}/u/${authorUsername}` } : {}),
+          },
+        }
+      : {}),
     url: `${globalThis.location.origin}/recipes/${slug}`,
     datePublished,
     keywords: keywords.join(', '),

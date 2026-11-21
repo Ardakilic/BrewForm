@@ -737,6 +737,18 @@ describe('createComment — replies stay inside their recipe thread (#5)', () =>
     expect(mentionCalls).toEqual([]);
   });
 
+  it('stores no @ prefix when the direct target reply has no visible author (deleted account)', async () => {
+    stubThread({
+      top: makeComment('top'),
+      direct: { ...makeComment('direct', 'top', 'gone'), author: null },
+    });
+
+    await realCreateComment(CALLER, RECIPE_ID, 'hello there', false, 'direct');
+    expect(createCalls).toHaveLength(1);
+    expect(createCalls[0].content).toBe('hello there');
+    expect(createCalls[0].parentCommentId).toBe('top');
+  });
+
   it('still accepts a reply whose whole chain is on the request recipe', async () => {
     stubThread({
       top: makeComment('top'),

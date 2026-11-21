@@ -106,7 +106,7 @@ recipe.get(
     tags: ['Recipes'],
     summary: 'List recipes',
     description:
-      'Paginated, filterable list of recipes. Supports cursor-based pagination when `cursor` is provided with `sortBy=createdAt`. When offset pagination is active, `meta.pagination` replaces `meta.cursor`.',
+      'Paginated, filterable list of recipes. Supports cursor-based pagination when `cursor` is provided with `sortBy=createdAt`. When offset pagination is active, `meta.pagination` replaces `meta.cursor`. An author (or owner) whose account was deleted is returned as `null`.',
     parameters: [
       { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
       {
@@ -587,7 +587,7 @@ recipe.get(
     tags: ['Recipes'],
     summary: 'Get a recipe by slug or id',
     description:
-      "Drafts and private recipes are visible only to their author; unlisted recipes open for anyone with the link. A non-public recipe's response carries `X-Robots-Tag: noindex, nofollow`. `forkedFrom`, `forkedFromId` and `forkedFromSlug` are `null` unless the fork source is public (the source's own author also sees it).",
+      "Drafts and private recipes are visible only to their author; unlisted recipes open for anyone with the link. A non-public recipe's response carries `X-Robots-Tag: noindex, nofollow`. `forkedFrom`, `forkedFromId` and `forkedFromSlug` are `null` unless the fork source is public (the source's own author also sees it). An author (or owner) whose account was deleted is returned as `null`.",
     responses: {
       200: { description: 'Recipe payload', headers: ROBOTS_TAG_RESPONSE_HEADERS },
       404: { description: 'Recipe not found' },

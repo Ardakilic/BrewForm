@@ -10,13 +10,17 @@ Every text colour token in `apps/web/src/styles/globals.css` SHALL measure at le
 - `--accent-primary`, `--accent-secondary` and `--success` are allowed on `--bg-primary` and
   `--bg-secondary`; `--error` also on `--error-bg`, `--warning` also on `--warning-bg` (defined in
   all three themes); each `--diff-*-text` on its `--diff-*-bg` and `--accent-secondary` on
-  `--diff-highlight`, composited over `--bg-primary` and `--bg-secondary`.
+  `--diff-highlight`, composited over `--bg-primary` and `--bg-secondary`. Error-coloured text on
+  a raised surface (the reply delete button on `--bg-tertiary`) uses `--error-on-raised`, which is
+  allowed on all three surfaces.
 - Text on an accent or status fill (`--accent-primary`, `--accent-secondary`, `--error`,
   `--success`, `--warning`, `--text-secondary`) uses `var(--bg-primary)`; production `.tsx` SHALL
   NOT contain a `white`, `black`, `#fff` or `#000` colour literal or a `text-white`/`text-black`
   class, and no single element SHALL combine a `--bg-tertiary` background with a `--text-tertiary`
   text colour (both enforced by `apps/web/src/styles/theme-usage.test.ts`). Every `var(--…)`
-  colour a component uses SHALL be defined in all three theme blocks.
+  colour a component uses SHALL be defined in all three theme blocks (also enforced by
+  `theme-usage.test.ts`; Tailwind `@theme` tokens and the runtime variables of third-party
+  components are exempt).
 
 #### Scenario: Token matrix passes in every theme
 - **WHEN** the contrast unit test parses the light, dark and coffee blocks of `globals.css`

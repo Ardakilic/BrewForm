@@ -1525,11 +1525,14 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
     fields: [comments.authorId],
     references: [users.id],
   }),
+  // Self-relation: both sides name `commentReplies`, or Drizzle cannot pair the
+  // `many` side with its `one` side on the same table (relational `with: { replies }`).
   parentComment: one(comments, {
     fields: [comments.parentCommentId],
     references: [comments.id],
+    relationName: 'commentReplies',
   }),
-  replies: many(comments),
+  replies: many(comments, { relationName: 'commentReplies' }),
 }));
 
 /** Drizzle relations for the user_follows join table: follower and followed user. */

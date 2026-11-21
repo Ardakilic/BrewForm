@@ -31,7 +31,8 @@ export interface RecipeCardVersion {
  * subset of `RecipeListItemOutput` / `RecipeWithAuthorOutput` /
  * `RecipeWithVersionsOutput` so one card serves every recipe-list surface.
  * `forkCount` is optional (the public-profile projection omits it) and
- * `author` is optional (hidden entirely with `hideAuthor`).
+ * `author` is optional (hidden entirely with `hideAuthor`); `null` means the
+ * account was deleted and renders as "Deleted user" without a link.
  */
 export interface RecipeCardRecipe {
   id: string;
@@ -76,7 +77,8 @@ export function RecipeCard({ recipe, hideAuthor, version }: RecipeCardProps) {
       </h3>
       {!hideAuthor && (
         <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          {t('recipe.card.by')} {author ? <AuthorButton author={author} /> : 'unknown'}
+          {t('recipe.card.by')}{' '}
+          {author ? <AuthorButton author={author} /> : <span>{t('common.deletedUser')}</span>}
         </p>
       )}
       {version && (

@@ -57,6 +57,7 @@ import {
 import { union } from 'drizzle-orm/pg-core';
 import { toLoggableError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
+import { visibleIdentity } from '../../utils/public-identity/index.ts';
 import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
 
 const modelLog = createLogger('recipe-model');
@@ -272,7 +273,8 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
     );
   }
 
-  // F11: author username/displayName substring filter (literal, escaped pattern)
+  // F11: author username/displayName substring filter (literal, escaped pattern). Only live
+  // accounts match: a deleted account has no public identity (E11).
   const authorTerm = normalizeSearchTerm(filters.author);
   if (authorTerm) {
     const pattern = toContainsPattern(authorTerm);
@@ -282,7 +284,12 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
         db
           .select({ id: users.id })
           .from(users)
-          .where(or(ilike(users.username, pattern), ilike(users.displayName, pattern))),
+          .where(
+            and(
+              isNull(users.deletedAt),
+              or(ilike(users.username, pattern), ilike(users.displayName, pattern)),
+            ),
+          ),
       ),
     );
   }
@@ -412,6 +419,15 @@ export async function create(data: typeof recipes.$inferInsert) {
   return recipe;
 }
 
+/** Author columns of the recipe detail reads; `deletedAt` feeds {@link visibleIdentity}. */
+const DETAIL_AUTHOR_COLUMNS = {
+  id: true,
+  username: true,
+  displayName: true,
+  avatarUrl: true,
+  deletedAt: true,
+} as const;
+
 /**
  * Fetch a recipe by its UUID primary key, excluding soft-deleted rows.
  *
@@ -419,12 +435,16 @@ export async function create(data: typeof recipes.$inferInsert) {
  * photos, bean), photos, and forked-from recipe. The fork source is loaded unfiltered with
  * its `visibility`, `authorId` and `deletedAt`, so the service can decide whether the viewer
  * may see it (`resolveForkAttribution`); never return that relation to a client as is.
+ * The `author` is `null` when the account was deleted ({@link visibleIdentity}).
+ *
+ * @param id - The recipe id
+ * @returns The recipe with its relations, or `undefined` when missing or soft-deleted
  */
-export function findById(id: string) {
-  return db.query.recipes.findFirst({
+export async function findById(id: string) {
+  const row = await db.query.recipes.findFirst({
     where: and(eq(recipes.id, id), isNull(recipes.deletedAt)),
     with: {
-      author: { columns: { id: true, username: true, displayName: true, avatarUrl: true } },
+      author: { columns: DETAIL_AUTHOR_COLUMNS },
       versions: {
         orderBy: desc(recipeVersions.versionNumber),
         with: {
@@ -448,6 +468,7 @@ export function findById(id: string) {
       },
     },
   });
+  return row && { ...row, author: visibleIdentity(row.author) };
 }
 
 /**
@@ -455,13 +476,17 @@ export function findById(id: string) {
  *
  * Loads the same relation tree as {@link findById}: author, versions (with taste notes,
  * equipment, preparations, photos, bean), photos, and forked-from recipe (with the source's
- * visibility state, for `resolveForkAttribution`).
+ * visibility state, for `resolveForkAttribution`). The `author` is `null` when the account
+ * was deleted ({@link visibleIdentity}).
+ *
+ * @param slug - The recipe slug
+ * @returns The recipe with its relations, or `undefined` when missing or soft-deleted
  */
-export function findBySlug(slug: string) {
-  return db.query.recipes.findFirst({
+export async function findBySlug(slug: string) {
+  const row = await db.query.recipes.findFirst({
     where: and(eq(recipes.slug, slug), isNull(recipes.deletedAt)),
     with: {
-      author: { columns: { id: true, username: true, displayName: true, avatarUrl: true } },
+      author: { columns: DETAIL_AUTHOR_COLUMNS },
       versions: {
         orderBy: desc(recipeVersions.versionNumber),
         with: {
@@ -485,6 +510,7 @@ export function findBySlug(slug: string) {
       },
     },
   });
+  return row && { ...row, author: visibleIdentity(row.author) };
 }
 
 /** A Drizzle database handle that list queries run on: the shared `db`, or a test instance. */
@@ -516,7 +542,10 @@ function listPageWhere(where: SQL | undefined): SQL {
   return where ? (and(isNull(recipes.deletedAt), where) as SQL) : isNull(recipes.deletedAt);
 }
 
-/** Columns of one list item: the recipe row plus the `{ id, username, displayName }` author. */
+/**
+ * Columns of one list item: the recipe row plus the `{ id, username, displayName }` author,
+ * which is `null` when the account was deleted (the join matches only live accounts).
+ */
 const listItemSelection = {
   ...getTableColumns(recipes),
   author: { id: users.id, username: users.username, displayName: users.displayName },
@@ -525,8 +554,10 @@ const listItemSelection = {
 /**
  * Build the bounded page query shared by every offset-paginated recipe listing
  * (`/recipes`, `/recipes/starred`, the offset feed): one core `select` over `recipe`
- * with the author mini-projection (`innerJoin(users)`), ordered, limited and offset
- * in SQL. It never loads `recipe_version` rows into the API process.
+ * with the nullable author mini-projection (`leftJoin(users)` on a live account, so a
+ * deleted account's recipe stays listed with `author: null`; every recipe has an
+ * `author_id`, so no row appears or disappears), ordered, limited and offset in SQL.
+ * It never loads `recipe_version` rows into the API process.
  *
  * - **Relevance (only when `search` is non-empty after trimming):** a grouped
  *   subquery scores each matching version as `2 × productName match + 1 ×
@@ -557,7 +588,7 @@ export function buildListPageQuery(opts: ListPageOptions, executor: ListQueryExe
   let query = executor
     .select(listItemSelection)
     .from(recipes)
-    .innerJoin(users, eq(recipes.authorId, users.id))
+    .leftJoin(users, and(eq(recipes.authorId, users.id), isNull(users.deletedAt)))
     .$dynamic();
 
   if (term) {
@@ -1761,7 +1792,8 @@ function buildCursorWhere(cursor: { createdAt: string; id: string }, sortOrder: 
  * an additional round-trip. The cursor filter is combined with the caller's
  * existing `where` conditions via `and()`. The page rows pass through
  * {@link maskUnlistableForkSources}, so a fork of a non-public source carries
- * `forkedFromId: null` (capability `recipe-visibility`).
+ * `forkedFromId: null` (capability `recipe-visibility`). The author of a deleted
+ * account is `null` ({@link visibleIdentity}, applied before the fork mask).
  *
  * @param where       - Existing list WHERE conditions (visibility, filters, etc.)
  * @param cursor      - Decoded `{ createdAt, id }` cursor.
@@ -1795,7 +1827,7 @@ export async function findCursor(
       orderBy,
       limit: perPage + 1,
       with: {
-        author: { columns: { id: true, username: true, displayName: true } },
+        author: { columns: { id: true, username: true, displayName: true, deletedAt: true } },
       },
     }),
     includeTotal
@@ -1807,7 +1839,9 @@ export async function findCursor(
   ]);
 
   const hasMore = rows.length > perPage;
-  const recipesPage = await maskUnlistableForkSources(rows.slice(0, perPage));
+  const recipesPage = await maskUnlistableForkSources(
+    rows.slice(0, perPage).map((row) => ({ ...row, author: visibleIdentity(row.author) })),
+  );
   const nextCursor = hasMore
     ? encodeCursor({
         createdAt: (recipesPage[recipesPage.length - 1].createdAt as Date).toISOString(),

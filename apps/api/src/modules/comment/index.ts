@@ -125,7 +125,10 @@ comment.get(
   describeRoute({
     tags: ['Comments'],
     summary: 'List comments for a recipe',
-    description: 'Paginated list of top-level comments with their replies.',
+    description:
+      'Paginated list of top-level comments with at most 20 replies each (oldest first); ' +
+      '`hasMoreReplies` is true when a comment has more.' +
+      ' An author (or owner) whose account was deleted is returned as `null`.',
     parameters: [
       { name: 'recipeId', in: 'path', required: true, schema: { type: 'string' } },
       { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },

@@ -135,10 +135,7 @@ describe('HomePage — i18n', () => {
     expect(authorButtons).toHaveLength(2);
   });
 
-  it('renders "unknown" author when author is null', async () => {
-    // `author: null` tests RecipeCard's defensive fallback; the shared
-    // schema types `author` as non-nullable (recipes.authorId is NOT NULL
-    // and users are soft-deleted), so cast to satisfy the type-checker.
+  it('renders "Deleted user" when author is null (the account was deleted)', async () => {
     mockRecipeApi.list.mockResolvedValue({
       success: true,
       data: [
@@ -149,7 +146,7 @@ describe('HomePage — i18n', () => {
           title: 'Anonymous Recipe',
           likeCount: 3,
           author: null,
-        } as unknown as RecipeListItemOutput,
+        },
       ],
       meta: { requestId: 'test', pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
     });
@@ -158,8 +155,8 @@ describe('HomePage — i18n', () => {
 
     const titles = await screen.findAllByText('Anonymous Recipe');
     expect(titles).toHaveLength(2);
-    const unknowns = screen.getAllByText('unknown', { exact: false });
-    expect(unknowns).toHaveLength(2);
+    expect(screen.getAllByText('Deleted user')).toHaveLength(2);
+    expect(screen.queryByText('unknown', { exact: false })).not.toBeInTheDocument();
   });
 
   it('extracts data from the response envelope for both latest and popular sections', async () => {

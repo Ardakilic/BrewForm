@@ -101,7 +101,9 @@ export async function updateProfile(
  * First soft-deletes and scrubs every private recipe note the user owns
  * (`recipeNoteService.deleteAllNotesForUser`), so a failure there leaves the
  * account intact rather than deleted with private text still stored; then
- * soft-deletes the user row. Further account anonymisation is out of scope.
+ * soft-deletes the user row. Display surfaces stop showing the account's identity
+ * (`visibleIdentity`); releasing its identifiers and clearing the row's profile data
+ * stay in D99.26.
  *
  * @param userId - The authenticated user's id.
  */

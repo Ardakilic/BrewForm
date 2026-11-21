@@ -1,3 +1,4 @@
+import { MAX_REPLIES_PER_COMMENT } from '@brewform/shared/constants';
 import type { CommentWithAuthorOutput, CommentWithRepliesOutput } from '@brewform/shared/schemas';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useFetcher } from 'react-router';
@@ -76,23 +77,34 @@ function mergeFirstPage(
   return [...fresh, ...prev.filter((c) => !freshIds.has(c.id))];
 }
 
+/** The author's username for a profile link or a reply mention; `null` for a deleted account. */
 function getAuthorUsername(comment: CommentWithAuthorOutput): string | null {
   return comment.author?.username || null;
 }
 
-function getAuthorName(comment: CommentWithAuthorOutput): string {
-  return comment.author?.displayName || comment.author?.username || 'Unknown';
+/**
+ * The display name of a comment's author: display name, then username, and `deletedLabel`
+ * ("Deleted user") when the API returned `author: null` for a deleted account.
+ */
+function getAuthorName(comment: CommentWithAuthorOutput, deletedLabel: string): string {
+  return comment.author?.displayName || comment.author?.username || deletedLabel;
 }
 
+/**
+ * The author of a comment: a profile link for a live account, plain text (no link) with the
+ * "Deleted user" label when the account was deleted.
+ */
 function AuthorLink({
   comment,
+  deletedLabel,
   className,
 }: {
   comment: CommentWithAuthorOutput;
+  deletedLabel: string;
   className?: string;
 }) {
   const username = getAuthorUsername(comment);
-  const name = getAuthorName(comment);
+  const name = getAuthorName(comment, deletedLabel);
   if (username) {
     return (
       <Link
@@ -215,6 +227,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
             }
           : null,
         replies: [],
+        hasMoreReplies: false,
       };
       setComments((prev) => [comment, ...prev]);
       setTotal((n) => n + 1);
@@ -233,6 +246,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
             }
           : null,
         replies: [],
+        hasMoreReplies: false,
       };
       setComments((prev) =>
         prev.map((c) =>
@@ -330,6 +344,8 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
     return comment.authorId === recipeAuthorId;
   }
 
+  const deletedLabel = t('common.deletedUser');
+
   function renderComment(comment: CommentWithRepliesOutput) {
     const isReplyOpen = replyingToId === comment.id;
     const userCanReply = canReplyToComment(comment);
@@ -339,11 +355,15 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
       <article
         key={comment.id}
         className="rounded-lg p-4 bg-[color:var(--bg-secondary)] border border-[color:var(--border-primary)]"
-        aria-label={`${t('comment.commentBy')} ${getAuthorName(comment)}`}
+        aria-label={`${t('comment.commentBy')} ${getAuthorName(comment, deletedLabel)}`}
       >
         {/* Comment header */}
         <div className="flex items-center gap-2 mb-2">
-          <AuthorLink comment={comment} className="font-medium text-sm" />
+          <AuthorLink
+            comment={comment}
+            deletedLabel={deletedLabel}
+            className="font-medium text-sm"
+          />
           {isRecipeAuthor(comment) && <span className="badge text-xs">{t('comment.op')}</span>}
           <span className="text-xs text-[color:var(--text-tertiary)]">
             {formatDate(comment.createdAt, locale)}
@@ -372,7 +392,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
             type="button"
             onClick={() => handleDelete(comment.id)}
             disabled={deleteFetcher.state !== 'idle'}
-            className="mt-2 ml-2 text-xs text-[color:var(--danger)] bg-transparent border-none cursor-pointer p-0"
+            className="mt-2 ml-2 text-xs text-[color:var(--error)] bg-transparent border-none cursor-pointer p-0"
           >
             {t('common.delete')}
           </button>
@@ -427,10 +447,17 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
                 <article
                   key={reply.id}
                   className="rounded p-3 bg-[color:var(--bg-tertiary)] border border-[color:var(--border-primary)]"
-                  aria-label={t('comment.replyBy').replace('{name}', getAuthorName(reply))}
+                  aria-label={t('comment.replyBy').replace(
+                    '{name}',
+                    getAuthorName(reply, deletedLabel),
+                  )}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <AuthorLink comment={reply} className="font-medium text-xs" />
+                    <AuthorLink
+                      comment={reply}
+                      deletedLabel={deletedLabel}
+                      className="font-medium text-xs"
+                    />
                     {isRecipeAuthor(reply) && (
                       <span className="badge text-xs">{t('comment.op')}</span>
                     )}
@@ -460,7 +487,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
                       type="button"
                       onClick={() => handleDelete(reply.id)}
                       disabled={deleteFetcher.state !== 'idle'}
-                      className="mt-1 ml-2 text-xs text-[color:var(--danger)] bg-transparent border-none cursor-pointer p-0"
+                      className="mt-1 ml-2 text-xs text-[color:var(--error-on-raised)] bg-transparent border-none cursor-pointer p-0"
                     >
                       {t('common.delete')}
                     </button>
@@ -468,6 +495,11 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
                 </article>
               );
             })}
+            {comment.hasMoreReplies && (
+              <p className="text-xs text-[color:var(--text-secondary)]">
+                {t('comment.repliesTruncated').replace('{count}', String(MAX_REPLIES_PER_COMMENT))}
+              </p>
+            )}
           </div>
         )}
       </article>

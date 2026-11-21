@@ -69,6 +69,7 @@ const enT = (key: string) => {
   const map: Record<string, string> = {
     'collection.detail.recipes': 'recipes',
     'collection.detail.noRecipes': 'This collection has no recipes yet.',
+    'common.deletedUser': 'Deleted user',
   };
   return map[key] ?? key;
 };
@@ -142,6 +143,15 @@ describe('CollectionDetailPage', () => {
     expect(authorLink!.getAttribute('href')).toBe('/u/alice');
     // Sanity check: must NOT be /users/alice
     expect(authorLink!.getAttribute('href')).not.toBe('/users/alice');
+  });
+
+  it('renders "Deleted user" without a profile link when the owner account was deleted', async () => {
+    mockCollectionGet.mockResolvedValue({ ...mockCollection, author: null });
+    renderDetailPage();
+
+    expect(await screen.findByText('Deleted user')).toBeInTheDocument();
+    expect(screen.getByText('Deleted user').closest('a')).toBeNull();
+    expect(document.querySelector('a[href^="/u/"]')).toBeNull();
   });
 
   it('renders the collection name and recipe count', async () => {

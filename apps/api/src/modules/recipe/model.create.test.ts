@@ -495,10 +495,10 @@ describe('createRecipeWithRelations', () => {
 
     expect(result).toBeDefined();
     expect(result!.author).toBeDefined();
-    expect(result!.author.id).toBe(user.id);
-    expect(result!.author.username).toBeDefined();
-    expect(result!.author.displayName).toBeDefined();
-    expect(result!.author.avatarUrl).toBeDefined();
+    expect(result!.author!.id).toBe(user.id);
+    expect(result!.author!.username).toBeDefined();
+    expect(result!.author!.displayName).toBeDefined();
+    expect(result!.author!.avatarUrl).toBeDefined();
     expect(Array.isArray(result!.versions)).toBe(true);
     expect(result!.versions.length).toBe(1);
 

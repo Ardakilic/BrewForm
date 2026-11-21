@@ -37,10 +37,11 @@ export type RecipeRow = z.infer<typeof RecipeRowSchema>;
 /**
  * Recipe enriched with the mini author projection
  * (`{ username, displayName, avatarUrl }`), as returned by
- * `equipment/model.ts getRecipesUsingEquipment`.
+ * `equipment/model.ts getRecipesUsingEquipment`. `author` is `null` when the account
+ * was deleted.
  */
 export const RecipeWithAuthorOutputSchema = RecipeRowSchema.extend({
-  author: RecipeAuthorMiniSchema,
+  author: RecipeAuthorMiniSchema.nullable(),
 });
 
 /** Inferred type of {@link RecipeWithAuthorOutputSchema}. */
@@ -102,10 +103,11 @@ export type RecipeVersionRow = z.infer<typeof RecipeVersionRowSchema>;
 
 /**
  * Recipe with author + full `versions[]` (each with `versionPhotos[]`), as
- * returned by `coffee-variety/model.ts getRecipesUsingVariety`.
+ * returned by `coffee-variety/model.ts getRecipesUsingVariety`. `author` is `null`
+ * when the account was deleted.
  */
 export const RecipeWithVersionsOutputSchema = RecipeRowSchema.extend({
-  author: RecipeAuthorMiniSchema,
+  author: RecipeAuthorMiniSchema.nullable(),
   versions: z.array(RecipeVersionRowSchema),
 });
 
@@ -115,14 +117,16 @@ export type RecipeWithVersionsOutput = z.infer<typeof RecipeWithVersionsOutputSc
 /**
  * Feed recipe (follow `/feed` → `recipe/model.ts getFeed → findMany`). The feed
  * author projection is `{ id, username, displayName }` only (no `avatarUrl`),
- * and no `versions` are loaded.
+ * `null` when the account was deleted, and no `versions` are loaded.
  */
 export const FeedRecipeOutputSchema = RecipeRowSchema.extend({
-  author: z.object({
-    id: z.string(),
-    username: z.string(),
-    displayName: z.string().nullable(),
-  }),
+  author: z
+    .object({
+      id: z.string(),
+      username: z.string(),
+      displayName: z.string().nullable(),
+    })
+    .nullable(),
 });
 
 /** Inferred type of {@link FeedRecipeOutputSchema}. */
@@ -130,7 +134,8 @@ export type FeedRecipeOutput = z.infer<typeof FeedRecipeOutputSchema>;
 
 /**
  * Recipe list-item payload (`recipe/model.ts findMany` / `findCursor`): full recipe
- * row plus mini author projection `{ id, username, displayName }`. No per-user
+ * row plus mini author projection `{ id, username, displayName }` (`null` when the
+ * account was deleted). No per-user
  * overlay (the list endpoint does not compute like/favourite/rating state).
  *
  * Structurally identical to `FeedRecipeOutputSchema` — kept as a distinct export
@@ -258,7 +263,7 @@ const RecipeDetailFlatEquipmentSchema = z.object({
 /**
  * Recipe detail payload (`recipe/model.ts findById` + per-request overlay
  * computed by the GET /:slugOrId route handler): full recipe row plus author
- * (with `id`), versions (each with nested taste notes, equipment, additional
+ * (with `id`; `null` when the account was deleted), versions (each with nested taste notes, equipment, additional
  * preparations, version photos, and bean), photos, and forked-from. The overlay
  * fields (`currentVersion`, flattened `tasteNotes`/`equipment`, `bean`,
  * `versionCount`, `forkedFromSlug`, `userLiked`, `userFavourited`,
@@ -267,7 +272,8 @@ const RecipeDetailFlatEquipmentSchema = z.object({
  * `getRecipeRatingStats`/`getUserRating` and a taste-note root map.
  */
 export const RecipeDetailOutputSchema = RecipeRowSchema.extend({
-  author: RecipeDetailAuthorOutputSchema,
+  // `null` when the account was deleted.
+  author: RecipeDetailAuthorOutputSchema.nullable(),
   versions: z.array(RecipeDetailVersionOutputSchema),
   photos: z.array(PhotoOutputSchema),
   forkedFrom: RecipeForkedFromMiniSchema,

@@ -198,7 +198,7 @@ follow.get(
     tags: ['Follow'],
     summary: 'Get the followed-users feed',
     description:
-      'Paginated feed of recipes from users the authenticated user follows. Supports cursor-based pagination when `cursor` is provided. When offset pagination is active, `meta.pagination` replaces `meta.cursor`.',
+      'Paginated feed of recipes from users the authenticated user follows. Supports cursor-based pagination when `cursor` is provided. When offset pagination is active, `meta.pagination` replaces `meta.cursor`. An author (or owner) whose account was deleted is returned as `null`.',
     security: [{ bearerAuth: [] }],
     parameters: [
       { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },

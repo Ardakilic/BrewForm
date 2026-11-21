@@ -43,7 +43,8 @@ function hasLiveRecipe(
 /**
  * Map a model.findById result (with `user` and `items` relations) to the CollectionDetailOutput
  * wire shape. Converts Date timestamps to ISO strings and projects the user to the
- * RecipeAuthorMini shape.
+ * RecipeAuthorMini shape; the owner and each item recipe's author are `null` when that
+ * account was deleted.
  *
  * This is the viewer-independent shape that is cached: it excludes items whose
  * recipe is missing or already soft-deleted at fill time, and keeps every other
@@ -70,13 +71,14 @@ function toDetailOutput(collection: CollectionWithRelations) {
       collection.deletedAt instanceof Date
         ? collection.deletedAt.toISOString()
         : (collection.deletedAt ?? null),
+    // `null` when the owner's account was deleted (the model masks it).
     author: collection.user
       ? {
           username: collection.user.username,
           displayName: collection.user.displayName,
           avatarUrl: collection.user.avatarUrl,
         }
-      : { username: '', displayName: null, avatarUrl: null },
+      : null,
     items: liveItems.map((item) => ({
       id: item.id,
       collectionId: item.collectionId,
@@ -113,7 +115,7 @@ function toDetailOutput(collection: CollectionWithRelations) {
               username: item.recipe.author.username,
               displayName: item.recipe.author.displayName,
             }
-          : { id: '', username: '', displayName: null },
+          : null,
         // Projected from the latest recipe version (versions is limited to 1
         // in the model query). Null when the recipe has no versions yet.
         brewMethod: item.recipe.versions?.[0]?.brewMethod ?? null,
@@ -212,7 +214,8 @@ type PublicCollectionRow = Awaited<ReturnType<typeof model.findAllPublic>>['coll
 
 /**
  * Map a model.findAllPublic row to the PublicCollectionListItemOutput wire
- * shape: ISO timestamps, recipeCount, and the owner `author` projection.
+ * shape: ISO timestamps, recipeCount, and the owner `author` projection (`null`
+ * when the owner's account was deleted).
  */
 function toPublicListItemOutput(c: PublicCollectionRow) {
   return {
@@ -225,13 +228,14 @@ function toPublicListItemOutput(c: PublicCollectionRow) {
     updatedAt: c.updatedAt instanceof Date ? c.updatedAt.toISOString() : c.updatedAt,
     deletedAt: c.deletedAt instanceof Date ? c.deletedAt.toISOString() : (c.deletedAt ?? null),
     recipeCount: c.recipeCount,
+    // `null` when the owner's account was deleted (the model masks it).
     author: c.user
       ? {
           username: c.user.username,
           displayName: c.user.displayName,
           avatarUrl: c.user.avatarUrl,
         }
-      : { username: '', displayName: null, avatarUrl: null },
+      : null,
   };
 }
 

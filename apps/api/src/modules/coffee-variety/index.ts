@@ -289,7 +289,9 @@ router.get(
   describeRoute({
     tags: ['Coffee Varieties'],
     summary: 'List recipes using a coffee variety',
-    description: 'Paginated list of recipes that use the given coffee variety.',
+    description:
+      'Paginated list of recipes that use the given coffee variety.' +
+      ' An author (or owner) whose account was deleted is returned as `null`.',
     parameters: [
       { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
       { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },

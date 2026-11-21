@@ -399,7 +399,9 @@ const commentWithAuthorArb = fc.record({
 });
 
 const commentWithRepliesArb = commentWithAuthorArb.chain((base) =>
-  fc.array(commentWithAuthorArb).map((replies) => ({ ...base, replies })),
+  fc
+    .tuple(fc.array(commentWithAuthorArb), fc.boolean())
+    .map(([replies, hasMoreReplies]) => ({ ...base, replies, hasMoreReplies })),
 );
 
 const tasteNoteArb = fc.record({

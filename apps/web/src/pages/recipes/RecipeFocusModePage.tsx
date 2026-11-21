@@ -88,7 +88,8 @@ export function RecipeFocusModePage() {
           </h1>
           {/* Author byline */}
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {t('recipe.focusMode.by')} {recipe.author?.displayName || recipe.author?.username}
+            {t('recipe.focusMode.by')}{' '}
+            {recipe.author?.displayName || recipe.author?.username || t('common.deletedUser')}
           </p>
         </div>
 

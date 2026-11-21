@@ -47,10 +47,26 @@ describe('MetadataBadges — author badge (Req 2.1)', () => {
     expect(screen.getByRole('link', { name: 'Jane Doe' })).toHaveAttribute('href', '/u/jdoe');
   });
 
-  it('renders without author badge when author is null', () => {
+  it('renders a "Deleted user" pill without a link when author is null (deleted account)', () => {
     render(<MetadataBadges {...baseProps} author={null} />);
-    expect(screen.queryByRole('link', { name: /jane doe/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /jdoe/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    const pill = screen.getByText(t('common.deletedUser'));
+    expect(pill.tagName).toBe('SPAN');
+    expect(pill.className).toContain('rounded-full');
+  });
+
+  it('renders the Turkish "Deleted user" pill under the tr provider', () => {
+    localStorage.setItem('brewform_locale', 'tr');
+    try {
+      render(
+        <I18nProvider>
+          <MetadataBadges {...baseProps} author={null} />
+        </I18nProvider>,
+      );
+      expect(screen.getByText(t('common.deletedUser', 'tr'))).toBeInTheDocument();
+    } finally {
+      localStorage.clear();
+    }
   });
 });
 

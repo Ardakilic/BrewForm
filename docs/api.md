@@ -42,6 +42,10 @@ Every JSON response follows one envelope.
 
 List routes add pagination metadata to `meta` (see [Pagination](#pagination)).
 
+Author and owner projections are `null` for a deleted account (non-admin routes). The account's
+comments, recipes and collections stay listed; only the identity (`username`, `displayName`,
+`avatarUrl`, `id`) is withheld. Admin routes keep it for moderation.
+
 ### Error
 
 ```json

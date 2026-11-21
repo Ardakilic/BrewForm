@@ -109,7 +109,7 @@ describe('createRecipe (integration)', () => {
     expect(result).toBeDefined();
     createdRecipeIds.push(result!.id);
 
-    expect(result!.author.id).toBe(userId);
+    expect(result!.author!.id).toBe(userId);
     expect(result!.versions.length).toBe(1);
     expect(result!.versions[0].versionNumber).toBe(1);
     expect(result!.currentVersionId).toBe(result!.versions[0].id);

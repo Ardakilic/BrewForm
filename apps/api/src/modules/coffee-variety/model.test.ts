@@ -393,6 +393,20 @@ describe('Coffee Variety Model', () => {
       await db.delete(coffeeVarieties).where(eq(coffeeVarieties.id, otherVarietyId));
     });
 
+    it('lists the recipe of a soft-deleted author with author: null (E11)', async () => {
+      const live = await model.getRecipesUsingVariety(varietyId, 1, 10);
+      expect(live.data[0].author).toEqual({
+        username: `testuser-${userId}`,
+        displayName: null,
+        avatarUrl: null,
+      });
+      await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
+      const result = await model.getRecipesUsingVariety(varietyId, 1, 10);
+      expect(result.total).toBe(1);
+      expect(result.data[0].id).toBe(recipeId);
+      expect(result.data[0].author).toBeNull();
+    });
+
     it('should not include soft-deleted recipes', async () => {
       await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, recipeId));
 

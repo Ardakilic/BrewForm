@@ -473,6 +473,30 @@ describe('findCursor — sub-millisecond created_at', () => {
   });
 });
 
+describe('findCursor — deleted author (E11)', () => {
+  it('returns the recipe of a soft-deleted account with author: null', async () => {
+    const author = await createUser('cursor-gone');
+    const recipe = await createRecipe(
+      author.id,
+      'Gone author',
+      new Date('2026-02-01T00:00:00.000Z'),
+    );
+    try {
+      await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, author.id));
+      const result = await model.findCursor(
+        eq(recipes.authorId, author.id),
+        { createdAt: '2099-01-01T00:00:00.000Z', id: 'ffffffff-ffff-ffff-ffff-ffffffffffff' },
+        10,
+      );
+      expect(result.recipes.map((r) => r.id)).toEqual([recipe.id]);
+      expect(result.recipes[0].author).toBeNull();
+    } finally {
+      await db.delete(recipes).where(eq(recipes.id, recipe.id));
+      await db.delete(users).where(eq(users.id, author.id));
+    }
+  });
+});
+
 describe('Recipe model — list filters (DB)', () => {
   let author: typeof users.$inferSelect;
   let other: typeof users.$inferSelect;

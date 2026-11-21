@@ -2,6 +2,7 @@ import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions } from '@brewform/db/schema';
 import type { CoffeeVarietyCategory } from '@brewform/shared';
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
+import { visibleIdentity } from '../../utils/public-identity/index.ts';
 import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
 import { listableRecipeCondition, maskUnlistableForkSources } from '../recipe/model.ts';
 
@@ -94,6 +95,7 @@ export async function softDelete(id: string) {
  * and `private` recipes are never listed or counted, for any viewer. The rows
  * pass through `maskUnlistableForkSources`, so a fork of a non-public source
  * carries `forkedFromId: null`.
+ * The `author` of a deleted account is `null` (`visibleIdentity`); the recipe stays listed.
  */
 export async function getRecipesUsingVariety(varietyId: string, page: number, perPage: number) {
   const offset = (page - 1) * perPage;
@@ -102,7 +104,9 @@ export async function getRecipesUsingVariety(varietyId: string, page: number, pe
   const [data, countResult] = await Promise.all([
     db.query.recipes.findMany({
       with: {
-        author: { columns: { username: true, displayName: true, avatarUrl: true } },
+        author: {
+          columns: { username: true, displayName: true, avatarUrl: true, deletedAt: true },
+        },
         versions: {
           with: { versionPhotos: { with: { photo: true } } },
           orderBy: desc(recipeVersions.createdAt),
@@ -129,5 +133,6 @@ export async function getRecipesUsingVariety(varietyId: string, page: number, pe
       .where(and(eq(recipeVersions.coffeeVarietyId, varietyId), recipeConditions)),
   ]);
 
-  return { data: await maskUnlistableForkSources(data), total: Number(countResult[0]?.count ?? 0) };
+  const rows = data.map((row) => ({ ...row, author: visibleIdentity(row.author) }));
+  return { data: await maskUnlistableForkSources(rows), total: Number(countResult[0]?.count ?? 0) };
 }

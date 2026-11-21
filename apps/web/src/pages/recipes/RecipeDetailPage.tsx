@@ -87,6 +87,10 @@ export function RecipeDetailPage() {
   const recipeUrl = `${globalThis.location.origin}/recipes/${recipe.slug}`;
   const tasteNotes = Array.isArray(recipe.tasteNotes) ? recipe.tasteNotes : [];
   const equipment = Array.isArray(recipe.equipment) ? recipe.equipment : [];
+  // `author` is null when the account was deleted: no name in the SEO text or the JSON-LD.
+  const authorName = recipe.author
+    ? recipe.author.displayName || recipe.author.username
+    : undefined;
 
   return (
     <article aria-label={recipe.title}>
@@ -94,9 +98,9 @@ export function RecipeDetailPage() {
         title={recipe.title}
         description={
           v?.personalNotes ||
-          `${v?.brewMethod ?? ''} ${v?.drinkType ?? ''} recipe by ${
-            recipe.author?.displayName || recipe.author?.username
-          }`
+          t('recipe.seo.byAuthor')
+            .replace('{subject}', `${v?.brewMethod ?? ''} ${v?.drinkType ?? ''}`.trim())
+            .replace('{name}', authorName ?? t('common.deletedUser'))
         }
         image={recipe.photos?.[0]?.url}
         url={recipeUrl}
@@ -111,7 +115,7 @@ export function RecipeDetailPage() {
             [v?.brewMethod, v?.drinkType, 'recipe'].filter(Boolean).join(' ')
           }
           slug={recipe.slug}
-          authorName={recipe.author?.displayName || recipe.author?.username || ''}
+          authorName={authorName}
           authorUsername={recipe.author?.username}
           datePublished={recipe.createdAt}
           image={recipe.photos?.[0]?.url}

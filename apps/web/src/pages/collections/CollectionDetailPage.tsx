@@ -15,7 +15,8 @@ const log = createLogger('CollectionDetailPage');
 
 /**
  * Page component for `/collections/:id` — displays the collection header
- * (name, description, visibility badge, owner link), the reorderable recipe
+ * (name, description, visibility badge, owner link, or "Deleted user" as plain text when
+ * the owner's account was deleted), the reorderable recipe
  * list, and edit/delete buttons for the owner. The collection comes from the route loader
  * (`CollectionDetailPage.data.ts`); the list's remove and reorder submit to that module's
  * actions. Head rules: the title is `<name> | BrewForm`, and every collection that is not
@@ -67,9 +68,13 @@ export function CollectionDetailPage() {
           </p>
         )}
         <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          <Link to={`/u/${collection.author.username}`} className="hover:underline">
-            {collection.author.displayName || collection.author.username}
-          </Link>
+          {collection.author ? (
+            <Link to={`/u/${collection.author.username}`} className="hover:underline">
+              {collection.author.displayName || collection.author.username}
+            </Link>
+          ) : (
+            <span>{t('common.deletedUser')}</span>
+          )}
           <span>
             {t('collection.detail.recipes')}: {collection.recipeCount}
           </span>

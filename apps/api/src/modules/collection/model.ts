@@ -2,6 +2,7 @@ import { db } from '@brewform/db';
 import { collectionItems, collections, recipes, recipeVersions } from '@brewform/db/schema';
 import type { Visibility } from '@brewform/shared/types';
 import { and, asc, count, desc, eq, inArray, isNull, max, or, type SQL } from 'drizzle-orm';
+import { visibleIdentity } from '../../utils/public-identity/index.ts';
 import { listableRecipeCondition } from '../recipe/model.ts';
 
 /**
@@ -48,18 +49,26 @@ async function countListableItems(
  * The service drops deleted recipes when it builds the viewer-independent
  * cached shape and filters per viewer with fresh state from
  * {@link getRecipeVisibilityStates} (capability `recipe-collections`).
+ *
+ * The owner `user` and each item recipe's `author` are `null` when that account was
+ * deleted ({@link visibleIdentity}); the collection and its items stay.
+ *
+ * @param id - The collection id
+ * @returns The collection with `user` and `items`, or `undefined` when missing or soft-deleted
  */
-export function findById(id: string) {
-  return db.query.collections.findFirst({
+export async function findById(id: string) {
+  const row = await db.query.collections.findFirst({
     where: and(eq(collections.id, id), isNull(collections.deletedAt)),
     with: {
-      user: { columns: { id: true, username: true, displayName: true, avatarUrl: true } },
+      user: {
+        columns: { id: true, username: true, displayName: true, avatarUrl: true, deletedAt: true },
+      },
       items: {
         orderBy: asc(collectionItems.sortOrder),
         with: {
           recipe: {
             with: {
-              author: { columns: { id: true, username: true, displayName: true } },
+              author: { columns: { id: true, username: true, displayName: true, deletedAt: true } },
               // Load the latest recipe version (highest versionNumber) to
               // project brewMethod/drinkType on the collection detail output.
               versions: {
@@ -73,6 +82,16 @@ export function findById(id: string) {
       },
     },
   });
+  return (
+    row && {
+      ...row,
+      user: visibleIdentity(row.user),
+      items: row.items.map((item) => ({
+        ...item,
+        recipe: item.recipe && { ...item.recipe, author: visibleIdentity(item.recipe.author) },
+      })),
+    }
+  );
 }
 
 /**
@@ -168,12 +187,18 @@ export function findPublicByUserId(
 /**
  * A public-collection list row as returned by {@link findAllPublic}: the base
  * collection columns plus a computed `recipeCount` and the owner's mini author
- * relation (`user`). Exported so the service layer consumes model rows already
- * typed, instead of widening to `Record<string, unknown>` and re-asserting.
+ * relation (`user`, `null` when the owner's account was deleted). Exported so the
+ * service layer consumes model rows already typed, instead of widening to
+ * `Record<string, unknown>` and re-asserting.
  */
 export type PublicCollectionRow = typeof collections.$inferSelect & {
   recipeCount: number;
-  user: { username: string; displayName: string | null; avatarUrl: string | null } | null;
+  user: {
+    id: string;
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
 };
 
 /**
@@ -186,7 +211,8 @@ export type PublicCollectionRow = typeof collections.$inferSelect & {
  * @param perPage - Page size.
  * @returns `{ collections: PublicCollectionRow[]; total: number }` where each
  *          collection row includes `recipeCount` and a nested `user` relation
- *          (id, username, displayName, avatarUrl) for the owner.
+ *          (id, username, displayName, avatarUrl) for the owner, `null` when the
+ *          owner's account was deleted ({@link visibleIdentity}).
  */
 export async function findAllPublic(
   page: number,
@@ -201,7 +227,15 @@ export async function findAllPublic(
       limit: perPage,
       offset: (page - 1) * perPage,
       with: {
-        user: { columns: { id: true, username: true, displayName: true, avatarUrl: true } },
+        user: {
+          columns: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+            deletedAt: true,
+          },
+        },
       },
     }),
     db.select({ count: count() }).from(collections).where(where),
@@ -215,6 +249,7 @@ export async function findAllPublic(
 
   const collectionsWithCount = data.map((c) => ({
     ...c,
+    user: visibleIdentity(c.user),
     recipeCount: countMap.get(c.id) ?? 0,
   }));
 

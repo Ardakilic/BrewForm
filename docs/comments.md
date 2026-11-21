@@ -58,6 +58,12 @@ one — never deeper.
 
 ## Reply-Flattening Behaviour
 
+A reply stays inside its recipe's thread: a `parentCommentId` whose comment belongs to another
+recipe is answered exactly like a missing parent (404 `COMMENT_NOT_FOUND`, "Parent comment not
+found"), before any write or side effect. The same check runs on the Top_Level_Comment that the
+flattening below resolves, so a chain stored under another recipe before this rule is rejected
+too, and the list only loads replies stored under the listed recipe.
+
 When a caller provides a `parentCommentId` that references a Reply rather than a Top_Level_Comment,
 `Comment_Service.createComment` applies the following flattening algorithm:
 
@@ -87,8 +93,8 @@ Example: if a user replies to a comment authored by `alice`, the stored content 
 @alice <original content>
 ```
 
-If the directly targeted comment's author has no username (a data-integrity edge case), the prefix
-is omitted and the content is stored as-is.
+If the directly targeted comment's author has no username, or the account was deleted (the author
+comes back as `null`), the prefix is omitted and the content is stored as-is.
 
 ## Admin Moderation Capabilities
 
@@ -125,9 +131,12 @@ view the recipe may post them.
 ### Admin Delete
 
 An admin may delete **any comment**, regardless of authorship. Deletion is a soft-delete: the
-`deletedAt` timestamp is set to the current time rather than removing the row, and the recipe's
-`commentCount` is decremented. Soft-deleted comments are excluded from all subsequent read and
-listing responses.
+`deletedAt` timestamp is set to the current time rather than removing the row. Deleting a
+top-level comment also soft-deletes its live replies, and the recipe's `commentCount` drops by the
+number of comments removed (1 plus those replies); deleting a reply removes one. The counter
+changes only when this request's own soft delete changed the row, so two concurrent deletes of one
+comment lower it once (the second answers 404). Soft-deleted comments are excluded from all
+subsequent read and listing responses. Authors and admins go through the same function.
 
 The `isAdmin` flag is forwarded to `Comment_Service.deleteComment`:
 
@@ -191,7 +200,7 @@ Markdown source; rendering is purely a display concern.
 | Service error            | Response                     | Condition                                                                 |
 | ------------------------ | ---------------------------- | ------------------------------------------------------------------------- |
 | `RECIPE_NOT_FOUND`       | 404 `NOT_FOUND`              | The recipe does not exist or the caller cannot view it (create and list)  |
-| `COMMENT_NOT_FOUND`      | 404 `NOT_FOUND`              | `findById` returns `null` for `parentCommentId` or `id`                   |
+| `COMMENT_NOT_FOUND`      | 404 `NOT_FOUND`              | `findById` returns `null` for `parentCommentId` or `id`, the parent (or its resolved top-level comment) is on another recipe, or a concurrent delete won |
 | `FORBIDDEN`              | 403 `FORBIDDEN`              | Non-admin, non-recipe-owner attempts to reply; non-admin, non-author attempts to delete |
 | `COMMENT_DEPTH_EXCEEDED` | 400 `BAD_REQUEST`            | `parentCommentId` chain exceeds 100 hops without reaching a Top_Level_Comment |
 | —                        | 403 `EMAIL_NOT_VERIFIED`     | The caller's email is not verified (create)                               |
@@ -202,8 +211,8 @@ Markdown source; rendering is purely a display concern.
 | Method   | Endpoint                              | Description                                      |
 | -------- | ------------------------------------- | ------------------------------------------------ |
 | `POST`   | `/api/v1/comments/recipe/:recipeId`   | Create a top-level comment or a reply. Requires authentication and a verified email. Pass `parentCommentId` in the request body to create a reply. |
-| `GET`    | `/api/v1/comments/recipe/:recipeId`   | List top-level comments for a recipe (newest first), each with its replies (oldest first) nested under a `replies` array. Supports `page` and `perPage` query parameters. Anonymous callers allowed. |
-| `DELETE` | `/api/v1/comments/:id`                | Soft-delete a comment. The caller must be the comment's author or an admin. |
+| `GET`    | `/api/v1/comments/recipe/:recipeId`   | List top-level comments for a recipe (newest first), each with at most 20 replies (oldest first) nested under a `replies` array and `hasMoreReplies` (true when the comment has more; the web shows "Showing the first 20 replies."). Supports `page` and `perPage` query parameters. Anonymous callers allowed. An author whose account was deleted is `null` (the comment stays listed and counted). |
+| `DELETE` | `/api/v1/comments/:id`                | Soft-delete a comment. The caller must be the comment's author or an admin. Deleting a top-level comment also soft-deletes its replies, and `commentCount` drops by the number of comments removed. |
 
 Full request and response shapes are in the generated [api-reference.md](api-reference.md).
 

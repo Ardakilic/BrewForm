@@ -89,6 +89,17 @@ describe('Crawler Middleware', () => {
     }
   });
 
+  it('names "BrewForm user" in the description when the author account was deleted (E11)', async () => {
+    deps.getRecipeMeta = async () => ({ ...publicMeta, productName: null, author: null });
+    const res = await app.request('/recipes/v60-ethiopian', {
+      headers: { 'User-Agent': 'Twitterbot/1.0' },
+    });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('V60 recipe by BrewForm user');
+    expect(html).not.toContain('barista');
+  });
+
   it('falls through when getRecipeMeta throws', async () => {
     const orig = deps.getRecipeMeta;
     try {

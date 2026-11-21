@@ -433,7 +433,7 @@ describe('Equipment Service', () => {
       expect(result.total).toBe(1);
       expect(result.data.length).toBe(1);
       expect(result.data[0].id).toBe(linkedId);
-      expect(result.data[0].author.username).toBe(`testuser-${userId}`);
+      expect(result.data[0].author!.username).toBe(`testuser-${userId}`);
     });
 
     it('should paginate the recipe results', async () => {

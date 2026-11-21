@@ -7,6 +7,7 @@ import {
   recipeVersions,
 } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, ilike, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { visibleIdentity } from '../../utils/public-identity/index.ts';
 import { normalizeSearchTerm, toContainsPattern } from '../../utils/search.ts';
 import { listableRecipeCondition, maskUnlistableForkSources } from '../recipe/model.ts';
 
@@ -138,6 +139,7 @@ export async function findManyWithFilters(params: {
  * `private` recipes are never listed or counted, for any viewer. The rows pass
  * through `maskUnlistableForkSources`, so a fork of a non-public source carries
  * `forkedFromId: null`.
+ * The `author` of a deleted account is `null` (`visibleIdentity`); the recipe stays listed.
  */
 export async function getRecipesUsingEquipment(equipmentId: string, page: number, perPage: number) {
   const offset = (page - 1) * perPage;
@@ -155,7 +157,9 @@ export async function getRecipesUsingEquipment(equipmentId: string, page: number
   const [data, countResult] = await Promise.all([
     db.query.recipes.findMany({
       with: {
-        author: { columns: { username: true, displayName: true, avatarUrl: true } },
+        author: {
+          columns: { username: true, displayName: true, avatarUrl: true, deletedAt: true },
+        },
       },
       where: and(recipeConditions, equipmentExists),
       orderBy: desc(recipes.createdAt),
@@ -169,7 +173,8 @@ export async function getRecipesUsingEquipment(equipmentId: string, page: number
       .innerJoin(recipeEquipment, eq(recipeVersions.id, recipeEquipment.recipeVersionId))
       .where(and(eq(recipeEquipment.equipmentId, equipmentId), recipeConditions)),
   ]);
-  return { data: await maskUnlistableForkSources(data), total: Number(countResult[0]?.count ?? 0) };
+  const rows = data.map((row) => ({ ...row, author: visibleIdentity(row.author) }));
+  return { data: await maskUnlistableForkSources(rows), total: Number(countResult[0]?.count ?? 0) };
 }
 
 /** Insert an equipment delete request for admin review. */

@@ -18,9 +18,12 @@ export interface CollectionCardAuthor {
   avatarUrl: string | null;
 }
 
-/** Collection with an optional author projection (from the public-browse endpoint). */
+/**
+ * Collection with an optional author projection (from the public-browse endpoint): absent on
+ * the owner's own lists, `null` when the owner's account was deleted.
+ */
 type CollectionWithOptionalAuthor = CollectionListItemOutput & {
-  author?: CollectionCardAuthor;
+  author?: CollectionCardAuthor | null;
 };
 
 /** Props for {@link CollectionCard}. */
@@ -34,7 +37,8 @@ interface CollectionCardProps {
  * Card component displaying a collection's name, visibility badge, and recipe
  * count. Links to the collection's detail page. When `showAuthor` is set and the
  * collection carries an `author` projection (e.g. from the public browse
- * endpoint), a "by @username" button is rendered below the description.
+ * endpoint), a "by @username" button is rendered below the description; an
+ * `author` of `null` (deleted account) renders "by Deleted user" as plain text.
  *
  * Uses the shared {@link AuthorButton} (a `<button>` with `useNavigate` +
  * `stopPropagation`) instead of a nested `<Link>` to avoid invalid nested `<a>`
@@ -69,6 +73,11 @@ export function CollectionCard({ collection, showAuthor }: CollectionCardProps) 
       {showAuthor && author && (
         <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
           {t('common.by')} <AuthorButton author={author} />
+        </p>
+      )}
+      {showAuthor && author === null && (
+        <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
+          {t('common.by')} {t('common.deletedUser')}
         </p>
       )}
       <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>

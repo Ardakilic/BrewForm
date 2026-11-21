@@ -639,6 +639,22 @@ describe('getRecipesUsingEquipment', () => {
     expect(result.total).toBe(1);
   });
 
+  it('lists the recipe of a soft-deleted author with author: null (E11)', async () => {
+    const { recipeId } = await insertRecipe('public', true);
+    const live = await model.getRecipesUsingEquipment(equipmentId, 1, 10);
+    expect(live.data.find((r) => r.id === recipeId)!.author).toEqual({
+      username: `testuser-${userId}`,
+      displayName: null,
+      avatarUrl: null,
+    });
+    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
+    const result = await model.getRecipesUsingEquipment(equipmentId, 1, 10);
+    expect(result.total).toBe(1);
+    const listed = result.data.find((r) => r.id === recipeId);
+    expect(listed).toBeDefined();
+    expect(listed!.author).toBeNull();
+  });
+
   it('should exclude soft-deleted recipes', async () => {
     await insertRecipe('public', true);
     const { recipeId } = await insertRecipe('public', true, true);
@@ -675,7 +691,7 @@ describe('getRecipesUsingEquipment', () => {
     expect(result.data.length).toBe(1);
     const recipe = result.data[0];
     expect(recipe.author).toBeDefined();
-    expect(recipe.author.username).toBe(`testuser-${userId}`);
+    expect(recipe.author!.username).toBe(`testuser-${userId}`);
   });
 
   it('should return matching total count in the count branch', async () => {

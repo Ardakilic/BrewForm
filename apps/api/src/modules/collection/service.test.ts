@@ -151,7 +151,7 @@ describe('collection service — createCollection', () => {
     expect(result!.visibility).toBe('public');
     expect(result!.userId).toBe(user.id);
     expect(result!.author).toBeDefined();
-    expect(result!.author.username).toBe(user.username);
+    expect(result!.author!.username).toBe(user.username);
     expect(Array.isArray(result!.items)).toBe(true);
     expect(result!.items.length).toBe(0);
     expect(result!.recipeCount).toBe(0);
@@ -669,6 +669,52 @@ describe('collection service — listAllPublicCollections', () => {
         expect(page2.collections.length).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe('collection service — deleted accounts (E11)', () => {
+  let originalCache: CacheProvider;
+  const userIds: string[] = [];
+  const colIds: string[] = [];
+
+  beforeEach(() => {
+    // A fresh cache, so no list or detail cached by an earlier test hides the new rows.
+    originalCache = cacheProvider;
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  afterEach(async () => {
+    setCacheProvider(originalCache);
+    await cleanupCollections(colIds);
+    colIds.length = 0;
+    await cleanupUsers(userIds);
+    userIds.length = 0;
+  });
+
+  it('detail and public list carry author: null for a deleted owner and recipe author', async () => {
+    const owner = await createUser('svc-gone-owner');
+    const recipeAuthor = await createUser('svc-gone-author');
+    userIds.push(owner.id, recipeAuthor.id);
+    const recipe = await createRecipe(recipeAuthor.id);
+    const col = await createCollectionRow(owner.id, 'E11 gone owner', 'public');
+    colIds.push(col.id);
+    await db
+      .insert(collectionItems)
+      .values({ collectionId: col.id, recipeId: recipe.id, sortOrder: 0 });
+    await db
+      .update(users)
+      .set({ deletedAt: new Date() })
+      .where(inArray(users.id, [owner.id, recipeAuthor.id]));
+
+    const detail = await service.getCollection(null, col.id);
+    expect(detail.author).toBeNull();
+    expect(detail.items).toHaveLength(1);
+    expect(detail.items[0].recipe.author).toBeNull();
+
+    const list = await service.listAllPublicCollections(1, 100);
+    const listed = list.collections.find((c) => c.id === col.id);
+    expect(listed).toBeDefined();
+    expect(listed!.author).toBeNull();
   });
 });
 

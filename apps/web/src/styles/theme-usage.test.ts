@@ -14,6 +14,12 @@
  *    card surfaces, and `--text-secondary` is the lowest text level on raised
  *    ones.
  *
+ * 3. a `var(--name)` reference (in a production `.ts`/`.tsx` file or in
+ *    `styles/globals.css`) to a custom property that is not defined in each of the
+ *    light (`:root`), `.dark` and `.coffee` theme blocks of `globals.css`. Tokens
+ *    of the Tailwind `@theme` block (fonts, animations) and the listed runtime
+ *    variables of third-party components are exempt.
+ *
  * A child inside a raised container cannot be found by a scan; the AGENTS.md
  * "Theme colours" rule covers that case. Like the other source scans, this file
  * uses Node APIs and is listed in `apps/web/tsconfig.json` → `exclude`.
@@ -180,5 +186,118 @@ describe('theme usage guard — production sources', () => {
 
   it.each(files)('%s uses theme tokens for text on fills and raised surfaces', (file) => {
     expect(findThemeViolations(readSource(file))).toEqual([]);
+  });
+});
+
+// ─── Every referenced custom property is defined in every theme ──────────────
+
+/** `globals.css` with its comments removed (they may hold quotes that confuse the bracket matcher). */
+const GLOBALS_CSS = readSource('styles/globals.css').replace(/\/\*[\s\S]*?\*\//g, '');
+
+const THEME_SELECTORS = { light: ':root', dark: '.dark', coffee: '.coffee' } as const;
+
+/**
+ * Custom properties set at runtime by third-party components, never by a theme. Each entry
+ * names its source; anything else referenced with `var(--…)` must be a theme token.
+ */
+const RUNTIME_VARIABLES: ReadonlyMap<string, string> = new Map([
+  ['--anchor-width', 'Base UI popup positioner: the width of the anchor element (a length)'],
+  ['--transform-origin', 'Base UI popup positioner: the popup transform origin (a position)'],
+]);
+
+/** The custom-property names declared directly in the CSS block opened by `selector {`. */
+function declaredProperties(css: string, selector: string): Set<string> {
+  const open = css.indexOf(`${selector} {`);
+  if (open < 0) throw new Error(`Block ${selector} not found in globals.css`);
+  const brace = css.indexOf('{', open);
+  const close = matchBracket(css, brace);
+  if (close < 0) throw new Error(`Block ${selector} is not closed in globals.css`);
+  const names = new Set<string>();
+  for (const match of css.slice(brace, close).matchAll(/(--[a-zA-Z0-9-]+)\s*:/g)) {
+    names.add(match[1]);
+  }
+  return names;
+}
+
+/** Every `var(--name)` reference in comment-stripped source, as `name → first line`. */
+function referencedProperties(source: string): Map<string, number> {
+  const code = stripComments(source);
+  const names = new Map<string, number>();
+  for (const match of code.matchAll(/var\(\s*(--[a-zA-Z0-9-]+)/g)) {
+    if (!names.has(match[1])) names.set(match[1], lineAt(code, match.index ?? 0));
+  }
+  return names;
+}
+
+/**
+ * Lists `file:line --name (missing in …)` for every referenced custom property that is not a
+ * `@theme` token or a {@link RUNTIME_VARIABLES} entry and is missing from a theme block.
+ */
+function findUndefinedThemeTokens(
+  sources: ReadonlyArray<readonly [string, string]>,
+  css: string,
+): string[] {
+  const themeTokens = declaredProperties(css, '@theme');
+  const themes = Object.entries(THEME_SELECTORS).map(
+    ([theme, selector]) => [theme, declaredProperties(css, selector)] as const,
+  );
+  const problems: string[] = [];
+  for (const [file, source] of sources) {
+    for (const [name, line] of referencedProperties(source)) {
+      if (themeTokens.has(name) || RUNTIME_VARIABLES.has(name)) continue;
+      const missing = themes.filter(([, names]) => !names.has(name)).map(([theme]) => theme);
+      if (missing.length > 0)
+        problems.push(`${file}:${line} ${name} (missing in ${missing.join(', ')})`);
+    }
+  }
+  return problems;
+}
+
+describe('theme token definitions — detector self-test', () => {
+  const css = `@theme { --font-sans: x; @keyframes k { from { opacity: 0; } } }
+:root { --a: #fff; --b: #000; }
+.dark { --a: #000; --b: #fff; }
+.coffee { --a: #111; }`;
+
+  it('reports a token missing from one theme and an undefined token', () => {
+    expect(
+      findUndefinedThemeTokens(
+        [['x.tsx', "<p style={{ color: 'var(--b)', background: 'var(--nope)' }} />"]],
+        css,
+      ),
+    ).toEqual([
+      'x.tsx:1 --b (missing in coffee)',
+      'x.tsx:1 --nope (missing in light, dark, coffee)',
+    ]);
+  });
+
+  it('accepts tokens of every theme, @theme tokens, runtime variables and comments', () => {
+    expect(
+      findUndefinedThemeTokens(
+        [
+          [
+            'y.tsx',
+            '// var(--gone)\n<p className="text-[color:var(--a)] font-[var(--font-sans)] min-w-[var(--anchor-width)]" />',
+          ],
+        ],
+        css,
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('theme token definitions — production sources', () => {
+  it('parses every theme block of globals.css', () => {
+    for (const selector of Object.values(THEME_SELECTORS)) {
+      expect(declaredProperties(GLOBALS_CSS, selector).has('--text-primary')).toBe(true);
+    }
+  });
+
+  it('defines every var(--…) token the app references in the light, dark and coffee themes', () => {
+    const sources = [
+      ...listSourceFiles().map((file) => [file, readSource(file)] as const),
+      ['styles/globals.css', GLOBALS_CSS] as const,
+    ];
+    expect(findUndefinedThemeTokens(sources, GLOBALS_CSS)).toEqual([]);
   });
 });

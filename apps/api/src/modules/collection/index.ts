@@ -121,7 +121,9 @@ collection.get(
   describeRoute({
     tags: ['Collections'],
     summary: 'Browse all public collections',
-    description: 'Paginated list of all public collections across all users.',
+    description:
+      'Paginated list of all public collections across all users.' +
+      ' An author (or owner) whose account was deleted is returned as `null`.',
     parameters: [
       { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
       {
@@ -167,7 +169,7 @@ collection.get(
     tags: ['Collections'],
     summary: 'Get a collection',
     description:
-      "Fetch a single collection by ID. Public/unlisted collections are visible to all; private/draft only to the owner. A non-public collection's response carries `X-Robots-Tag: noindex, nofollow`.",
+      "Fetch a single collection by ID. Public/unlisted collections are visible to all; private/draft only to the owner. A non-public collection's response carries `X-Robots-Tag: noindex, nofollow`. An author (or owner) whose account was deleted is returned as `null`.",
     parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {

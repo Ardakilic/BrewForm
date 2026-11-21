@@ -125,7 +125,7 @@ describe('collection model — findById', () => {
     expect(found!.id).toBe(col.id);
     expect(found!.name).toBe('My Col');
     expect(found!.user).toBeDefined();
-    expect(found!.user.username).toBe(user.username);
+    expect(found!.user!.username).toBe(user.username);
     expect(Array.isArray(found!.items)).toBe(true);
     expect(found!.items.length).toBe(0);
   });
@@ -139,6 +139,66 @@ describe('collection model — findById', () => {
     await db.update(collections).set({ deletedAt: new Date() }).where(eq(collections.id, col.id));
     const found = await model.findById(col.id);
     expect(found).toBeUndefined();
+  });
+});
+
+/**
+ * E11: a soft-deleted owner or recipe author keeps the collection and the item, but the
+ * projection is `null` on findById (owner `user`, item `recipe.author`) and findAllPublic.
+ */
+describe('collection model — deleted accounts (E11)', () => {
+  const userIds: string[] = [];
+  const colIds: string[] = [];
+
+  afterEach(async () => {
+    await cleanupCollections(colIds);
+    colIds.length = 0;
+    await cleanupUsers(userIds);
+    userIds.length = 0;
+  });
+
+  it('masks the deleted owner and the deleted recipe author', async () => {
+    const owner = await createUser('col-gone-owner');
+    const recipeAuthor = await createUser('col-gone-author');
+    userIds.push(owner.id, recipeAuthor.id);
+    const recipe = await createRecipe(recipeAuthor.id);
+    const col = await createCollectionRow(owner.id, 'Gone owner', 'public');
+    colIds.push(col.id);
+    await db
+      .insert(collectionItems)
+      .values({ collectionId: col.id, recipeId: recipe.id, sortOrder: 0 });
+    await db
+      .update(users)
+      .set({ deletedAt: new Date() })
+      .where(inArray(users.id, [owner.id, recipeAuthor.id]));
+
+    const found = await model.findById(col.id);
+    expect(found!.id).toBe(col.id);
+    expect(found!.user).toBeNull();
+    expect(found!.items).toHaveLength(1);
+    expect(found!.items[0].recipe.id).toBe(recipe.id);
+    expect(found!.items[0].recipe.author).toBeNull();
+
+    const publicList = await model.findAllPublic(1, 100);
+    const listed = publicList.collections.find((c) => c.id === col.id);
+    expect(listed).toBeDefined();
+    expect(listed!.user).toBeNull();
+  });
+
+  it('still joins a live owner on findAllPublic', async () => {
+    const owner = await createUser('col-live-owner');
+    userIds.push(owner.id);
+    const col = await createCollectionRow(owner.id, 'Live owner', 'public');
+    colIds.push(col.id);
+
+    const publicList = await model.findAllPublic(1, 100);
+    const listed = publicList.collections.find((c) => c.id === col.id);
+    expect(listed!.user).toEqual({
+      id: owner.id,
+      username: owner.username,
+      displayName: null,
+      avatarUrl: null,
+    });
   });
 });
 

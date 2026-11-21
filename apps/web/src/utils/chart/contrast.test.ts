@@ -16,8 +16,9 @@
  *   backgrounds they are drawn on: the pre-infusion zone, the card and the
  *   accent gradient composited over both;
  * - every allowed text/surface pair of `TEXT_PAIRS` ≥ 4.5:1 (`--text-tertiary`
- *   only on page and card surfaces, the diff texts on their translucent
- *   backgrounds, and `var(--bg-primary)` text on accent and status fills).
+ *   and `--error` only on page and card surfaces, `--error-on-raised` also on
+ *   raised ones, the diff texts on their translucent backgrounds, and
+ *   `var(--bg-primary)` text on accent and status fills).
  * Locked values make any token edit visible in review.
  */
 import { readFileSync } from 'node:fs';
@@ -138,6 +139,7 @@ describe('chart token contrast against --bg-secondary', () => {
           '--rating-star',
           '--error',
           '--error-bg',
+          '--error-on-raised',
           '--success',
           '--warning',
           '--warning-bg',
@@ -218,6 +220,8 @@ const over = (overlay: string, base: string) => `${overlay} over ${base}`;
  * Every text colour token and the surfaces it is allowed on (≥ 4.5:1 in every
  * theme). `--text-tertiary` stays off `--bg-tertiary` (chips, popups, reply
  * boxes, hover states), where `--text-secondary` is the lowest text level.
+ * `--error` stays off `--bg-tertiary` too (3.71:1 in dark); error-coloured text
+ * on a raised surface (the reply delete button) uses `--error-on-raised`.
  */
 const TEXT_PAIRS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['--text-primary', [BP, BS, BT]],
@@ -227,6 +231,7 @@ const TEXT_PAIRS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['--accent-secondary', [BP, BS, over('--diff-highlight', BP), over('--diff-highlight', BS)]],
   ['--success', [BP, BS]],
   ['--error', [BP, BS, '--error-bg']],
+  ['--error-on-raised', [BP, BS, BT]],
   ['--warning', [BP, BS, '--warning-bg']],
   ['--diff-added-text', [over('--diff-added-bg', BP), over('--diff-added-bg', BS)]],
   ['--diff-removed-text', [over('--diff-removed-bg', BP), over('--diff-removed-bg', BS)]],
@@ -274,6 +279,16 @@ describe('theme text tokens meet 4.5:1 on the surfaces they are allowed on', () 
       });
     });
   }
+
+  it('matches the locked --error-on-raised on --bg-tertiary ratios (5.15 / 5.41 / 5.13)', () => {
+    const ratio = (selector: string) => {
+      const t = themeTokens(selector);
+      return contrast(t['--error-on-raised'], t['--bg-tertiary']);
+    };
+    expect(ratio(':root')).toBeCloseTo(5.15, 1);
+    expect(ratio('.dark')).toBeCloseTo(5.41, 1);
+    expect(ratio('.coffee')).toBeCloseTo(5.13, 1);
+  });
 
   it('matches the locked --text-tertiary on --bg-secondary ratios (4.73 / 5.00 / 5.30)', () => {
     const ratio = (selector: string) => {

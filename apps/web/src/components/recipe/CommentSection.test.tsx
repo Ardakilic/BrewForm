@@ -112,6 +112,7 @@ function makePaginationInitialData(options: {
       deletedAt: null,
       author: null,
       replies: [],
+      hasMoreReplies: false,
     }),
   );
   return {
@@ -148,7 +149,9 @@ const enT = (key: string) => {
     'comment.replyPosted': 'Reply posted',
     'comment.error': 'Failed to post comment. Please try again.',
     'comment.deleteFailed': 'Failed to delete comment. Please try again.',
+    'comment.repliesTruncated': 'Showing the first {count} replies.',
     'common.delete': 'Delete',
+    'common.deletedUser': 'Deleted user',
   };
   return map[key] ?? key;
 };
@@ -172,7 +175,9 @@ const trT = (key: string) => {
     'comment.replyLabel': 'Yanıt',
     'comment.posted': 'Yorum gönderildi',
     'comment.replyPosted': 'Yanıt gönderildi',
+    'comment.repliesTruncated': 'İlk {count} yanıt gösteriliyor.',
     'common.delete': 'Sil',
+    'common.deletedUser': 'Silinmiş kullanıcı',
   };
   return map[key] ?? key;
 };
@@ -224,6 +229,7 @@ const topLevelComment: CommentWithRepliesOutput = {
   deletedAt: null,
   author: { id: 'user-2', username: 'bob', displayName: 'Bob', avatarUrl: null },
   replies: [],
+  hasMoreReplies: false,
 };
 
 const commentByOwner: CommentWithRepliesOutput = {
@@ -237,6 +243,7 @@ const commentByOwner: CommentWithRepliesOutput = {
   deletedAt: null,
   author: { id: recipeAuthorId, username: 'alice', displayName: 'Alice', avatarUrl: null },
   replies: [],
+  hasMoreReplies: false,
 };
 
 const replyByAlice = {
@@ -312,6 +319,7 @@ function renderCommentSection(
                     authorId: 'user-1',
                     createdAt: '2024-02-01T10:00:00Z',
                     replies: [],
+                    hasMoreReplies: false,
                   })),
                   meta: {
                     pagination: { total: 25, page: 2, perPage: 10, totalPages: 3 },
@@ -326,6 +334,7 @@ function renderCommentSection(
                     authorId: 'user-3',
                     createdAt: '2024-02-01T08:00:00Z',
                     replies: [],
+                    hasMoreReplies: false,
                   })),
                   meta: {
                     pagination: { total: 25, page: 3, perPage: 10, totalPages: 3 },
@@ -381,6 +390,74 @@ beforeEach(() => {
   mockApi.get.mockResolvedValue([]);
   mockUseAuth.mockReturnValue(guestAuth as ReturnType<typeof useAuth>);
   mockUseTranslation.mockReturnValue(defaultTranslation);
+});
+
+// ── Reply cap hint (E10) ───────────────────────────────────────────────────
+
+describe('CommentSection — reply cap hint', () => {
+  function initialWith(comment: CommentWithRepliesOutput): InitialComments {
+    return {
+      data: [comment],
+      meta: { pagination: { total: 1, page: 1, perPage: 10, totalPages: 1 } },
+    };
+  }
+
+  it('shows the hint with the cap (20) under a thread with hasMoreReplies', async () => {
+    renderCommentSection({
+      initialComments: initialWith({ ...commentWithReply, hasMoreReplies: true }),
+    });
+    expect(await screen.findByText('Showing the first 20 replies.')).toBeInTheDocument();
+  });
+
+  it('shows the Turkish hint when the locale is tr', async () => {
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+    renderCommentSection({
+      initialComments: initialWith({ ...commentWithReply, hasMoreReplies: true }),
+    });
+    expect(await screen.findByText('İlk 20 yanıt gösteriliyor.')).toBeInTheDocument();
+  });
+
+  it('shows no hint when hasMoreReplies is false', async () => {
+    renderCommentSection({ initialComments: initialWith(commentWithReply) });
+    await screen.findByText('Thanks!');
+    expect(screen.queryByText(/Showing the first/)).not.toBeInTheDocument();
+  });
+});
+
+// ── Deleted accounts (E11) ─────────────────────────────────────────────────
+
+describe('CommentSection — deleted accounts', () => {
+  it('renders "Deleted user" without a profile link for a null author on a comment and a reply', async () => {
+    const comment: CommentWithRepliesOutput = {
+      ...topLevelComment,
+      author: null,
+      replies: [{ ...replyByAlice, author: null }],
+    };
+    renderCommentSection({
+      initialComments: {
+        data: [comment],
+        meta: { pagination: { total: 1, page: 1, perPage: 10, totalPages: 1 } },
+      },
+    });
+
+    expect(await screen.findAllByText('Deleted user')).toHaveLength(2);
+    expect(document.querySelector('a[href^="/u/"]')).toBeNull();
+    const articles = screen.getAllByRole('article');
+    expect(articles[0].getAttribute('aria-label')).toContain('Deleted user');
+    expect(articles[1].getAttribute('aria-label')).toBe('Reply by Deleted user');
+    expect(screen.queryByText('Unknown')).not.toBeInTheDocument();
+  });
+
+  it('uses the Turkish label when the locale is tr', async () => {
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+    renderCommentSection({
+      initialComments: {
+        data: [{ ...topLevelComment, author: null }],
+        meta: { pagination: { total: 1, page: 1, perPage: 10, totalPages: 1 } },
+      },
+    });
+    expect(await screen.findByText('Silinmiş kullanıcı')).toBeInTheDocument();
+  });
 });
 
 // ── i18n ───────────────────────────────────────────────────────────────────

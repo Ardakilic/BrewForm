@@ -289,7 +289,7 @@ whose value side is not lowered in SQL.
 | **Admin edit** (change username) | The unique indexes check it against every other user row. If taken → `409 CONFLICT "Username is already taken by another user."`. |
 | **Admin edit** (same username) | No-op. Allowed without error. |
 | **Future: OAuth/social login** | `generateUniqueUsername()` utility in `@brewform/shared`: tries a base name from the email prefix, appends `-1`, `-2` etc. on conflict. Max 100 attempts. |
-| **Soft-deleted users** | Their email and username stay reserved. |
+| **Soft-deleted users** | Their email and username stay reserved. Their comments, recipes and collections stay, shown as "Deleted user" without a name or profile link (non-admin responses carry `author: null`). |
 
 Registration checks availability with `isEmailTaken()` and `isUsernameTaken()` in
 `apps/api/src/modules/auth/model.ts`, which compare `lower(column)` with `lower(value)` against
