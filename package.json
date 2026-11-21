@@ -44,7 +44,8 @@
     "db:studio": "pnpm --filter @brewform/db run studio",
     "db:seed": "pnpm --filter @brewform/db run seed",
     "email-build": "pnpm --filter @brewform/api run email-build",
-    "ci": "pnpm run fmt-check && pnpm run lint && pnpm run check && pnpm run build && pnpm run test-coverage && pnpm run test:db && pnpm --filter @brewform/web run test"
+    "docs:check": "node scripts/doc-drift-check.ts && node scripts/docblock-scan.ts --check",
+    "ci": "pnpm run fmt-check && pnpm run lint && pnpm run check && pnpm run build && pnpm run test-coverage && pnpm run test:db && pnpm --filter @brewform/web run test && pnpm run docs:check"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.6",

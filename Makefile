@@ -66,6 +66,10 @@ fmt: ## Format all code
 fmt-check: ## Check formatting without changes
 	docker compose run --rm --no-deps app pnpm run fmt-check
 
+docs-check: ## Check docs/specs for drift (doc-drift-check.ts) and exports for docblocks (docblock-scan.ts)
+	docker compose run --rm --no-deps app pnpm run docs:check
+.PHONY: docs-check
+
 check: ## Type-check all workspaces (api, web, db, shared)
 	docker compose run --rm --no-deps app pnpm run check
 
@@ -219,7 +223,7 @@ preview: build-web up ## Build + preview production build
 
 # --- CI ---
 
-ci: fmt-check lint check build-web check-tests test-coverage test-web ## Run full CI pipeline (fmt, lint, check, build, test)
+ci: fmt-check lint check build-web check-tests test-coverage test-web docs-check ## Run full CI pipeline (fmt, lint, check, build, test, docs)
 
 # ── Icons ──────────────────────────────────────────────────────────────
 
