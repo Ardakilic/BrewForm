@@ -5,7 +5,7 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
     // DB-backed tests assert global table counts/deltas; run files serially
-    // (matches Deno-era `deno test` default) so files can't race each other.
+    // so one file's inserts never skew another file's counts.
     fileParallelism: false,
     coverage: {
       provider: 'v8',
