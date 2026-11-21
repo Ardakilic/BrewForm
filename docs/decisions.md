@@ -257,6 +257,67 @@ don't use it; the per-feature docs in this directory are the user-facing referen
 
 ---
 
+## ADR-017 — Database-side search ranking with pg_trgm (instead of in-app ranking or full-text search)
+
+**Decision.** Recipe search (`GET /api/v1/recipes?search=…` and `/recipes/starred`) is scored,
+ordered and paginated by PostgreSQL. `buildListPageQuery` / `findListPage` in
+`apps/api/src/modules/recipe/model.ts` run one core `select` with the author mini-projection,
+`ORDER BY score DESC, <sortBy>, recipes.id`, `LIMIT perPage OFFSET …`, plus a parallel `COUNT(*)`
+over the same `WHERE`. The score keeps the previous weights: `3 × title match + the best single
+version's (2 × productName match + 1 × personalNotes match)`. Every match is the same escaped
+`ilike '%term%'` predicate the filter uses (`toContainsPattern(normalizeSearchTerm(search))`), and
+the search filter is one `inArray(recipes.id, union(titleIds, versionRecipeIds))` condition.
+`sortBy=rating` orders by `avg(user_recipe_rating.rating)` with unrated recipes last. Every offset
+listing ends with `recipes.id` as a unique tie-break.
+
+The `pg_trgm` extension is approved, enabled by the only hand-written migration
+(`drizzle-kit generate --custom --name=enable_pg_trgm`: `CREATE EXTENSION IF NOT EXISTS pg_trgm;`),
+and backs three GIN `gin_trgm_ops` indexes declared in `schema.ts` (`recipe.title`,
+`recipe_version.product_name`, `recipe_version.personal_notes`). The migration runner checks first
+that the extension is installed or creatable (`packages/db/src/preflight.ts`). Two `sql` template
+fragments are approved in `model.ts`, both marked `// D03 raw-SQL exception:`. They take Drizzle
+columns and bound parameters only:
+
+- the `CASE WHEN … THEN n ELSE 0 END` relevance score (with `coalesce`), because Drizzle 0.45 has
+  no `CASE` builder;
+- the `… NULLS LAST` rating order, because Drizzle's `asc()`/`desc()` have no nulls option.
+
+Every API connection also runs under a server-side `statement_timeout`. It comes from
+`DB_STATEMENT_TIMEOUT_MS` (default 10000, `0` disables), and a cancelled statement (SQLSTATE
+`57014`) answers 503 `QUERY_TIMEOUT`.
+
+**Why.** The previous search loaded every matching recipe, with every version's coffee name and
+personal notes (up to 10,000 characters each), into the API process. It then ranked them in
+JavaScript and sliced out one page. Memory and CPU grew with the number of matches on every
+request, two pool connections stayed busy for the whole leading-wildcard sequential scan, and a
+one-letter search was an unauthenticated denial-of-service vector. JavaScript `toLowerCase()` also
+disagreed with PostgreSQL `ILIKE` (`İstanbul` matched in SQL but scored 0 in JS). Scoring in SQL
+with the filter's own predicate fixes the mismatch by construction. Memory is O(perPage), and the
+trigram indexes make `%term%` matches index-assisted for terms of three or more characters. The
+index is lossy and rechecked, so results are unchanged.
+
+Rejected alternatives:
+
+- **PostgreSQL full-text search (`tsvector` + `ts_rank`).** It matches lexemes, not substrings
+  (`yirga` does not find `Yirgacheffe`). `ts_rank` is frequency-based rather than the boolean
+  3/2/1 model. Generated columns cannot span `recipe` and `recipe_version`. The `turkish` stemmer
+  mangles English, and the query code would need the `@@` operator.
+- **A bounded top-K candidate set ranked in JavaScript.** It still loads thousands of rows of notes
+  per request, and relevant recipes older than the top K never appear, so the total is wrong.
+- **The previous unbounded in-app ranking (F11).** See "Why".
+
+**Trade-off.** The database now depends on an extension. Both official images BrewForm uses
+(`postgres:18-trixie`, `postgres:18-alpine`) ship `pg_trgm` 1.6. A managed server must offer it,
+and the migrating role needs `CREATE` on the database (`pg_trgm` is a trusted extension, so no
+superuser is needed); the pre-flight stops the deployment with a remedy otherwise. GIN indexes add
+write cost and size, roughly the size of the indexed text for `personal_notes`. Building them
+briefly locks `recipe`/`recipe_version` writes during the migration. Search keeps offset
+pagination (a `(createdAt, id)` cursor cannot follow the score), and keyset paging on the score is
+a deferred follow-up. Terms shorter than three characters extract no trigrams. They fall back to a
+full index scan, which the statement timeout bounds.
+
+---
+
 ## ADR-018 — Web data loading on React Router data APIs (instead of TanStack Query)
 
 **Decision.** The web app loads and writes server data only through React Router data APIs:

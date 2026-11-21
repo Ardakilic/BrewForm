@@ -70,6 +70,7 @@ List endpoints return `meta.pagination` with:
 | `TOKEN_USED`            | 400         | Reset token already used                                                      |
 | `QUERY_TOO_SHORT`       | 400         | Search query needs 3+ characters                                              |
 | `INTERNAL_ERROR`        | 500         | Unexpected server error                                                       |
+| `QUERY_TIMEOUT`         | 503         | A database statement ran past `DB_STATEMENT_TIMEOUT_MS`; try a narrower search |
 
 ---
 
@@ -247,14 +248,24 @@ Response `401` (invalid or expired refresh token):
 | `drinkType`    | —             | Filter by drink type                                   |
 | `visibility`   | —             | Filter by visibility (own drafts require auth)         |
 | `authorId`     | —             | Filter by author                                       |
-| `search`       | —             | Search by title                                        |
+| `search`       | —             | Case-insensitive substring match on title, coffee name and personal notes (any version); max 200 characters after trimming (longer → 400); `%`, `_` and `\` match literally; whitespace-only means no search. Results are relevance-ranked in the database (title 3, coffee name 2, notes 1, best single version), then by `sortBy`; trigram-indexed (`pg_trgm`). A search uses offset pagination even when `cursor` is sent |
 | `equipmentId`  | —             | Filter by linked equipment UUID                        |
 | `tasteNoteIds` | —             | Comma-separated taste note UUIDs (AND logic, max 10)   |
 | `tasteNoteId`  | —             | Single taste note UUID (**deprecated**, use `tasteNoteIds`). Responses include a `Deprecation: true` header (RFC 8594). Will be removed in a future release — see [`openspec/changes/d28-remove-deprecated-taste-note-id/`](../openspec/changes/d28-remove-deprecated-taste-note-id/proposal.md). |
 | `grinder`      | —             | Filter by grinder name                                 |
 | `mainBrewer`   | —             | Filter by main brewer name (partial, case-insensitive) |
-| `sortBy`       | `createdAt`   | Sort field: `createdAt`, `likeCount`, `rating`         |
+| `sortBy`       | `createdAt`   | Sort field: `createdAt`, `likeCount`, `rating` (average rating; unrated recipes last in both directions). `id` breaks ties, so pages never repeat or skip a recipe |
 | `sortOrder`    | `desc`        | Sort direction: `asc`, `desc`                          |
+
+`GET /recipes/starred` accepts the same filters, `search` and `sortBy`, and ranks a starred
+search the same way.
+
+**List items.** Each item in `GET /recipes`, `GET /recipes/starred` and the follow feed is the
+recipe row plus the author projection `{ id, username, displayName }`
+(`RecipeListItemOutputSchema`). List items no longer carry a `versions` array, so version coffee
+names and personal notes are never sent in list payloads. Use `GET /recipes/:slugOrId` for
+versions. A request reads at most `perPage` rows from the database. A query that runs longer than
+the database statement timeout fails with `503 QUERY_TIMEOUT`.
 
 ### POST /recipes
 

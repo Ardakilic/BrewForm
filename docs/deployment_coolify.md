@@ -157,6 +157,7 @@ service), while the env schema and this Coolify setup default to `memory`.
 
    DATABASE_URL=postgresql://postgres:<pw>@postgresql-<uuid>:5432/postgres
    DATABASE_PROVIDER=postgresql
+   DB_STATEMENT_TIMEOUT_MS=10000        # optional; per-statement limit in ms (0 disables)
 
    CACHE_ENABLED=true
    CACHE_DRIVER=memory
@@ -203,6 +204,17 @@ service), while the env schema and this Coolify setup default to `memory`.
      `S3_ENDPOINT`/`S3_PUBLIC_URL` as URLs — a placeholder makes the API **exit on boot**. Use
      `STORAGE_DRIVER=local` for a first smoke-boot if R2 isn't ready.
    - Mark any value containing `$` as **Literal** in Coolify (else it interpolates).
+   - **`DB_STATEMENT_TIMEOUT_MS`** (optional, default `10000`): server-side `statement_timeout`
+     set on every pooled API connection. A longer query is cancelled and answered with
+     `503 QUERY_TIMEOUT`; `0` disables the limit, and a non-integer or negative value falls
+     back to the default. Unset is fine for most installs.
+   - **Search needs the `pg_trgm` extension (ADR-017).** The wave-6 migrations run
+     `CREATE EXTENSION IF NOT EXISTS pg_trgm;` and then build three GIN trigram indexes. The
+     role in `DATABASE_URL` needs `CREATE` on the database (`pg_trgm` is a trusted
+     extension, so no superuser is needed). Coolify's `postgres` user has it. The migration
+     runner checks this before applying anything and stops with the remedy if it is missing.
+     While the GIN indexes build, writes to `recipe` and `recipe_version` are briefly locked,
+     so expect a short pause in recipe saves during that deploy.
 
 7. **Deploy.** First boot (empty DB) runs migrations + seed automatically via
    `docker-entrypoint.sh`. Watch for:

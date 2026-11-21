@@ -89,3 +89,133 @@ resource route (65 modules); AuthContext is the only API-client exception.
   `make lint` fails on a page or component that imports `api/client.ts`, `api/index.ts` or
   `api/static-cache.ts`.
 - `make test-web` passes with both pending lists deleted (188 files, 2254 tests).
+
+---
+
+## Search: database-side ranking, bounds and time budget (t7, group 10)
+
+### Release notes
+
+- Recipe search (`GET /api/v1/recipes?search=…` and `/recipes/starred`) is now ranked, ordered and
+  paginated by PostgreSQL. The API reads one page plus one `COUNT`, never the whole result set.
+  The ranking weights are unchanged (title 3, coffee name 2, personal notes 1, best single version).
+- `search` is trimmed and limited to 200 characters (longer → `400 VALIDATION_ERROR`). `%`, `_`
+  and `\` now match literally, and a whitespace-only search means no search.
+- `sortBy=rating` ("Top rated") now really orders by average rating, with unrated recipes last.
+  Before, it silently sorted by newest. Every offset listing breaks ties by `id`, so pages no
+  longer repeat or skip recipes.
+- List items (`/recipes`, `/recipes/starred`, the follow feed) no longer include `versions[]`, so
+  version coffee names and personal notes are no longer sent in list payloads.
+- New error: `503 QUERY_TIMEOUT` when a statement runs longer than `DB_STATEMENT_TIMEOUT_MS`
+  (default 10000 ms, `0` disables).
+- **Operators:** the migrations enable `pg_trgm` (`CREATE EXTENSION IF NOT EXISTS pg_trgm;`) and
+  build three GIN trigram indexes. The migrating role needs `CREATE` on the database. The GIN
+  index build briefly locks `recipe`/`recipe_version` writes. ADR-017 records the decision.
+
+### Verification records
+
+- **`pg_trgm` availability (task 10.1).** `pg_available_extensions` lists `pg_trgm` with
+  `default_version` **1.6** in both official images: compose `postgres:18-trixie` (PostgreSQL
+  18.4, Debian) and a throwaway CI-image container `postgres:18-alpine` (PostgreSQL 18.7, musl).
+- **Line-reference drift (task 10.2).** The design's line references predate groups 2-9: the search
+  branch of `buildRecipeFilters` was at `model.ts:178-200` (design: 128-150), `findMany` /
+  `findAllForRanking` at `model.ts:409-482` (design: 359-432), `findStarred` at `model.ts:1655-1693`
+  (design: 1191-1232), and `rankRecipes` / `listRecipes` / `listStarredRecipes` at
+  `service.ts:657-896` (design: 407-611). The code matched the design's description, so no design
+  change was needed.
+- **Migrations.** `0018_enable_pg_trgm.sql` (the `--custom` shell, the only hand-written migration
+  SQL) and `0019_numerous_fallen_one.sql` (generated `CREATE INDEX … USING gin (… gin_trgm_ops)`,
+  numbered after the extension). `make db-generate` prints "No schema changes, nothing to migrate".
+- **Index sizes on seeded data (task 10.25)** (`make db-reset`, 18 recipes and 18 versions):
+  `recipe_title_trgm_idx` 32 kB (32768 B), `recipe_version_product_name_trgm_idx` 32 kB
+  (32768 B), `recipe_version_personal_notes_trgm_idx` 40 kB (40960 B).
+- **Manual acceptance (task 10.36)**, dev API with the seed plus 30 temporary public recipes:
+  - `GET /api/v1/recipes?search=a&perPage=20` returned 20 items, no `versions` keys, and
+    `meta.pagination.total` 48, which matches a direct SQL count of 48.
+  - `?search=espresso&page=2` returned 0 items with total 17 (correct: one page of 20).
+  - `?search=espresso&perPage=5&page=2` returned 5 items with total 17.
+  - `?sortBy=rating&sortOrder=desc` returned the average-10 recipes first, then the 9s, and
+    unrated recipes last.
+- **`EXPLAIN (ANALYZE, BUFFERS)`** of the search page query (`search=espresso`, `page=2`,
+  `perPage=5`, `SET LOCAL enable_seqscan = off`) on the 48-recipe dev database, after merging the
+  GIN pending lists and running `ANALYZE`. On a table this small the planner prefers a full B-tree
+  index scan with a filter over the trigram bitmap path (both cost far less than a millisecond).
+  `model.search.explain.test.ts` proves the trigram path on production-like sizes (4000 filler
+  recipes): Bitmap Index Scans on all three trigram indexes for the page and count queries, and
+  the same ids in the same order with seqscan on and off.
+
+
+```text
+Limit  (cost=78.32..78.33 rows=5 width=1404) (actual time=0.169..0.170 rows=5.00 loops=1)
+  Buffers: shared hit=97
+  ->  Sort  (cost=78.31..78.33 rows=10 width=1404) (actual time=0.168..0.169 rows=10.00 loops=1)
+        Sort Key: ((CASE WHEN ((recipe.title)::text ~~* '%espresso%'::text) THEN 3 ELSE 0 END + COALESCE(version_score.best, 0))) DESC, recipe.created_at DESC, recipe.id DESC
+        Sort Method: quicksort  Memory: 30kB
+        Buffers: shared hit=97
+        ->  Nested Loop Left Join  (cost=46.61..78.14 rows=10 width=1404) (actual time=0.129..0.154 rows=17.00 loops=1)
+              Join Filter: ((version_score.recipe_id)::text = (recipe.id)::text)
+              Rows Removed by Join Filter: 81
+              Buffers: shared hit=88
+              ->  Nested Loop  (cost=46.47..56.69 rows=10 width=1400) (actual time=0.085..0.098 rows=17.00 loops=1)
+                    Buffers: shared hit=60
+                    ->  Hash Join  (cost=46.32..49.06 rows=10 width=278) (actual time=0.080..0.087 rows=17.00 loops=1)
+                          Hash Cond: ((recipe.id)::text = (recipe_1.id)::text)
+                          Buffers: shared hit=54
+                          ->  Bitmap Heap Scan on recipe  (cost=8.51..11.11 rows=48 width=278) (actual time=0.008..0.011 rows=48.00 loops=1)
+                                Recheck Cond: (visibility = 'public'::visibility)
+                                Filter: (deleted_at IS NULL)
+                                Heap Blocks: exact=2
+                                Buffers: shared hit=3
+                                ->  Bitmap Index Scan on recipe_visibility_featured_idx  (cost=0.00..8.50 rows=48 width=0) (actual time=0.002..0.002 rows=48.00 loops=1)
+                                      Index Cond: (visibility = 'public'::visibility)
+                                      Index Searches: 1
+                                      Buffers: shared hit=1
+                          ->  Hash  (cost=37.68..37.68 rows=10 width=90) (actual time=0.069..0.069 rows=17.00 loops=1)
+                                Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                                Buffers: shared hit=51
+                                ->  Unique  (cost=37.63..37.68 rows=10 width=90) (actual time=0.065..0.067 rows=17.00 loops=1)
+                                      Buffers: shared hit=51
+                                      ->  Sort  (cost=37.63..37.66 rows=10 width=90) (actual time=0.064..0.065 rows=18.00 loops=1)
+                                            Sort Key: recipe_1.id
+                                            Sort Method: quicksort  Memory: 25kB
+                                            Buffers: shared hit=51
+                                            ->  Append  (cost=0.14..37.47 rows=10 width=90) (actual time=0.007..0.058 rows=18.00 loops=1)
+                                                  Buffers: shared hit=51
+                                                  ->  Index Scan using recipe_pkey on recipe recipe_1  (cost=0.14..16.76 rows=6 width=37) (actual time=0.007..0.020 rows=12.00 loops=1)
+                                                        Filter: ((title)::text ~~* '%espresso%'::text)
+                                                        Rows Removed by Filter: 36
+                                                        Index Searches: 1
+                                                        Buffers: shared hit=23
+                                                  ->  Index Scan using recipe_version_recipe_id_idx on recipe_version  (cost=0.14..20.66 rows=4 width=37) (actual time=0.005..0.036 rows=6.00 loops=1)
+                                                        Filter: (((product_name)::text ~~* '%espresso%'::text) OR (personal_notes ~~* '%espresso%'::text))
+                                                        Rows Removed by Filter: 42
+                                                        Index Searches: 1
+                                                        Buffers: shared hit=28
+                    ->  Memoize  (cost=0.15..1.17 rows=1 width=1122) (actual time=0.000..0.001 rows=1.00 loops=17)
+                          Cache Key: recipe.author_id
+                          Cache Mode: logical
+                          Hits: 14  Misses: 3  Evictions: 0  Overflows: 0  Memory Usage: 1kB
+                          Buffers: shared hit=6
+                          ->  Index Scan using user_pkey on "user"  (cost=0.14..1.16 rows=1 width=1122) (actual time=0.002..0.002 rows=1.00 loops=3)
+                                Index Cond: ((id)::text = (recipe.author_id)::text)
+                                Index Searches: 3
+                                Buffers: shared hit=6
+              ->  Materialize  (cost=0.14..20.81 rows=4 width=41) (actual time=0.001..0.003 rows=5.12 loops=17)
+                    Storage: Memory  Maximum Storage: 17kB
+                    Buffers: shared hit=28
+                    ->  Subquery Scan on version_score  (cost=0.14..20.79 rows=4 width=41) (actual time=0.013..0.041 rows=6.00 loops=1)
+                          Buffers: shared hit=28
+                          ->  GroupAggregate  (cost=0.14..20.75 rows=4 width=41) (actual time=0.013..0.040 rows=6.00 loops=1)
+                                Group Key: recipe_version_1.recipe_id
+                                Buffers: shared hit=28
+                                ->  Index Scan using recipe_version_recipe_id_idx on recipe_version recipe_version_1  (cost=0.14..20.66 rows=4 width=79) (actual time=0.003..0.033 rows=6.00 loops=1)
+                                      Filter: (((product_name)::text ~~* '%espresso%'::text) OR (personal_notes ~~* '%espresso%'::text))
+                                      Rows Removed by Filter: 42
+                                      Index Searches: 1
+                                      Buffers: shared hit=28
+Planning:
+  Buffers: shared hit=794
+Planning Time: 0.920 ms
+Execution Time: 0.218 ms
+```
+
