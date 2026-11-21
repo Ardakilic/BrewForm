@@ -6,6 +6,7 @@ import {
   ForbiddenError,
   getPostgresError,
   isDatabaseError,
+  isStatementTimeout,
   isUniqueViolation,
   NotFoundError,
   postgresStatementKind,
@@ -177,6 +178,26 @@ describe('isUniqueViolation', () => {
     expect(isUniqueViolation(new Error('duplicate key value violates unique constraint'))).toBe(
       false,
     );
+  });
+});
+
+describe('isStatementTimeout', () => {
+  it('should detect 57014 on a Drizzle wrapper, bare and nested', () => {
+    expect(isStatementTimeout(wrapped(pgError('57014')))).toBe(true);
+    expect(isStatementTimeout(pgError('57014'))).toBe(true);
+    expect(isStatementTimeout(nest(pgError('57014'), 2))).toBe(true);
+  });
+
+  it('should detect a plain error carrying code 57014 directly or on its cause', () => {
+    expect(isStatementTimeout(Object.assign(new Error('x'), { code: '57014' }))).toBe(true);
+    expect(isStatementTimeout(new Error('x', { cause: { code: '57014' } }))).toBe(true);
+  });
+
+  it('should reject other SQLSTATEs and non-errors', () => {
+    expect(isStatementTimeout(wrapped(pgError('23505')))).toBe(false);
+    expect(isStatementTimeout(new Error('QUERY_TIMEOUT'))).toBe(false);
+    expect(isStatementTimeout(null)).toBe(false);
+    expect(isStatementTimeout('57014')).toBe(false);
   });
 });
 

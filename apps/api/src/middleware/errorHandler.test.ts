@@ -248,6 +248,18 @@ describe('errorHandler — Postgres errors wrapped in DrizzleQueryError', () => 
     expect(errorMessages()).not.toContain('Unhandled error');
   });
 
+  it('should log a wrapped 57014 with the SQLSTATE only (no SQL text or message)', async () => {
+    const err = wrapped('select * from "recipe" where "title" ilike $1', pgError('57014'));
+    await run(err);
+    expect(spies.warn).toHaveBeenCalledWith(
+      { requestId: REQUEST_ID, pgCode: '57014', method: METHOD, path: PATH },
+      'Database statement timeout',
+    );
+    const logText = capturedLogText();
+    expect(logText).not.toContain('ilike');
+    expect(logText).not.toContain('postgres error 57014');
+  });
+
   it('should map an unknown SQLSTATE to 500 with a sanitized error log', async () => {
     const err = wrapped(INSERT_USER_SQL, pgError('42P01', { table_name: 'user' }));
     const { status, body, text } = await run(err);
@@ -279,6 +291,44 @@ describe('errorHandler — Postgres errors wrapped in DrizzleQueryError', () => 
     expect(body.error.message).toBe('Database error');
     expectNoParamLeak(text);
     expect(errorMessages()).toContain('Unhandled error');
+  });
+});
+
+describe('errorHandler — statement timeout (QUERY_TIMEOUT)', () => {
+  /** Assert the exact 503 QUERY_TIMEOUT envelope. */
+  async function expectQueryTimeout(err: Error) {
+    const { status, body, text } = await run(err);
+    expect(status).toBe(503);
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('QUERY_TIMEOUT');
+    expect(body.error.message).toBe('The query took too long. Try a more specific search.');
+    expect(body.error.requestId).toBe(REQUEST_ID);
+    expect(errorMessages()).not.toContain('Unhandled error');
+    return text;
+  }
+
+  it('should map the sanitized QUERY_TIMEOUT domain error to 503', async () => {
+    await expectQueryTimeout(new Error('QUERY_TIMEOUT'));
+    expect(spies.warn).toHaveBeenCalledWith(
+      { requestId: REQUEST_ID, pgCode: '57014', method: METHOD, path: PATH },
+      'Database statement timeout',
+    );
+  });
+
+  it('should map a plain error whose own code is 57014 to 503', async () => {
+    const err = Object.assign(new Error('canceling statement due to statement timeout'), {
+      code: '57014',
+    });
+    await expectQueryTimeout(err);
+    expect(capturedLogText()).not.toContain('canceling statement');
+  });
+
+  it('should map an error whose cause carries code 57014 to 503 without leaking params', async () => {
+    const err = Object.assign(new Error(`Failed query: select ... params: ${SECRET_EMAIL}`), {
+      cause: { code: '57014', message: 'canceling statement due to statement timeout' },
+    });
+    const text = await expectQueryTimeout(err);
+    expectNoParamLeak(text);
   });
 });
 

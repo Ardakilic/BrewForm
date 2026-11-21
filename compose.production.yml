@@ -92,6 +92,8 @@ services:
       LOG_FORMAT: json
       DATABASE_URL: postgresql://${POSTGRES_USER:-brewform}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD before running}@postgres:5432/${POSTGRES_DB:-brewform}
       DATABASE_PROVIDER: postgresql
+      # Server-side statement timeout per DB connection (ms; unset = 10000, 0 disables).
+      DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-}
       CACHE_ENABLED: ${CACHE_ENABLED:-true}
       CACHE_DRIVER: ${CACHE_DRIVER:-redis}
       REDIS_URL: ${REDIS_URL:-redis://:${VALKEY_PASSWORD:?set VALKEY_PASSWORD before running}@valkey:6379}

@@ -174,6 +174,8 @@ db-reset: ## Full reset: recreate DB, push schema, seed, flush cache
 	@until docker compose exec postgres pg_isready -U brewform > /dev/null 2>&1; do sleep 1; done
 	-docker compose exec -T postgres psql -U brewform -d postgres -c "DROP DATABASE IF EXISTS brewform WITH (FORCE);"
 	-docker compose exec -T postgres psql -U brewform -d postgres -c "CREATE DATABASE brewform;"
+	# drizzle-kit push does not manage extensions; the trigram indexes need pg_trgm (ADR-017).
+	docker compose exec -T postgres psql -U brewform -d brewform -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 	$(MAKE) db-push
 	$(MAKE) db-seed
 	$(MAKE) flush-cache

@@ -278,6 +278,7 @@ export function RecipeListView({
               <input
                 type="text"
                 placeholder={t('recipe.list.searchPlaceholder')}
+                maxLength={200}
                 value={searchInput.value}
                 onChange={(e) => searchInput.setValue(e.target.value)}
                 className="input-field text-sm"
@@ -365,6 +366,7 @@ export function RecipeListView({
               <input
                 type="text"
                 placeholder={t('recipe.filter.authorPlaceholder')}
+                maxLength={100}
                 value={authorInput.value}
                 onChange={(e) => authorInput.setValue(e.target.value)}
                 className="input-field text-sm"

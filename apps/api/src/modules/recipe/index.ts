@@ -69,6 +69,33 @@ function validationFailure(c: Context<AppEnv>, err: unknown): Response | null {
   return null;
 }
 
+/** OpenAPI `search` query parameter shared by `GET /` and `GET /starred` (advanced-search). */
+const SEARCH_PARAMETER = {
+  name: 'search',
+  in: 'query' as const,
+  required: false,
+  schema: { type: 'string' as const, maxLength: 200 },
+  description:
+    'Case-insensitive substring match on title, coffee name and personal notes; results ordered by relevance (title 3, coffee name 2, notes 1), then sortBy. Trimmed; `%`, `_` and `\\` match literally; whitespace-only means no search.',
+};
+
+/** OpenAPI `sortBy` query parameter shared by `GET /` and `GET /starred`. */
+const SORT_BY_PARAMETER = {
+  name: 'sortBy',
+  in: 'query' as const,
+  required: false,
+  schema: { type: 'string' as const, enum: ['createdAt', 'likeCount', 'rating'] },
+  description:
+    'Sort key: `createdAt` (default), `likeCount`, or `rating` (average rating, unrated last). `recipes.id` breaks ties.',
+};
+
+/** OpenAPI 503 response for a list query cancelled by the statement timeout. */
+const QUERY_TIMEOUT_RESPONSE = {
+  description:
+    'The query exceeded the database statement timeout (`QUERY_TIMEOUT`); try a more specific search',
+  content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+};
+
 /** Hono sub-router for recipe endpoints, mounted at `/api/v1/recipes`. */
 const recipe = new Hono<AppEnv>();
 
@@ -87,12 +114,7 @@ recipe.get(
         required: false,
         schema: { type: 'integer', minimum: 1, maximum: 100 },
       },
-      {
-        name: 'sortBy',
-        in: 'query',
-        required: false,
-        schema: { type: 'string', enum: ['createdAt', 'likeCount', 'rating'] },
-      },
+      SORT_BY_PARAMETER,
       {
         name: 'sortOrder',
         in: 'query',
@@ -107,13 +129,7 @@ recipe.get(
         description: 'Base64 cursor for keyset pagination (sortBy=createdAt only)',
       },
       { name: 'includeTotal', in: 'query', required: false, schema: { type: 'boolean' } },
-      {
-        name: 'search',
-        in: 'query',
-        required: false,
-        schema: { type: 'string' },
-        description: 'Full-text search (ilike on title, productName, personalNotes)',
-      },
+      SEARCH_PARAMETER,
       { name: 'brewMethod', in: 'query', required: false, schema: { type: 'string' } },
       { name: 'drinkType', in: 'query', required: false, schema: { type: 'string' } },
       { name: 'visibility', in: 'query', required: false, schema: { type: 'string' } },
@@ -211,13 +227,15 @@ recipe.get(
         },
       },
       400: {
-        description: 'Invalid cursor',
+        description:
+          'Validation error (for example `search` over 200 characters or `perPage` over 100) or an invalid cursor',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
+      503: QUERY_TIMEOUT_RESPONSE,
     },
   }),
   optionalAuthMiddleware,
-  zValidator('query', RecipeFilterSchema),
+  zValidator('query', RecipeFilterSchema, zodValidationHook),
   async (c) => {
     const filters = c.req.valid('query');
     const userId = c.get('userId') ?? null;
@@ -281,9 +299,20 @@ recipe.get(
     security: [{ bearerAuth: [] }],
     parameters: [
       { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
-      { name: 'perPage', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
-      { name: 'sortBy', in: 'query', required: false, schema: { type: 'string' } },
-      { name: 'sortOrder', in: 'query', required: false, schema: { type: 'string' } },
+      {
+        name: 'perPage',
+        in: 'query',
+        required: false,
+        schema: { type: 'integer', minimum: 1, maximum: 100 },
+      },
+      SORT_BY_PARAMETER,
+      {
+        name: 'sortOrder',
+        in: 'query',
+        required: false,
+        schema: { type: 'string', enum: ['asc', 'desc'] },
+      },
+      SEARCH_PARAMETER,
       {
         name: 'tasteNoteId',
         in: 'query',
@@ -316,14 +345,20 @@ recipe.get(
           },
         },
       },
+      400: {
+        description:
+          'Validation error (for example `search` over 200 characters or `perPage` over 100)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
       401: {
         description: 'Unauthorized',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
+      503: QUERY_TIMEOUT_RESPONSE,
     },
   }),
   authGuard,
-  zValidator('query', RecipeFilterSchema),
+  zValidator('query', RecipeFilterSchema, zodValidationHook),
   async (c) => {
     const userId = c.get('userId') as string;
     const filters = c.req.valid('query');

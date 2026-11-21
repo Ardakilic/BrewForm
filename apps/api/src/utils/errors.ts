@@ -180,6 +180,22 @@ export function isUniqueViolation(err: unknown, constraint?: string): boolean {
 }
 
 /**
+ * True when `err` is a statement cancelled by the server's `statement_timeout`:
+ * SQLSTATE `57014` (`query_canceled`) on the error itself or on its `cause` chain
+ * (drizzle-orm wraps the postgres-js error in `DrizzleQueryError`). Used by the
+ * recipe listing to log a sanitized line and by the error handler to answer 503
+ * `QUERY_TIMEOUT`.
+ *
+ * @param err - Any thrown value.
+ */
+export function isStatementTimeout(err: unknown): boolean {
+  for (const link of causeChain(err)) {
+    if (link.code === '57014') return true;
+  }
+  return false;
+}
+
+/**
  * The lower-cased leading SQL keyword (`insert`, `update`, `delete`, `select`, …)
  * of the failed statement, read from the first `query` string on the `cause`
  * chain (Drizzle's wrapper carries it as `query`).

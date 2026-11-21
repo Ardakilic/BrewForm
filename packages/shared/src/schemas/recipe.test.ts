@@ -680,6 +680,33 @@ describe('RecipeFilterSchema', () => {
     expect(result.success).toBe(true);
     expect((result.data as Record<string, unknown>).grinder).toBeUndefined();
   });
+
+  // --- wave 6 (advanced-search): search is trimmed and bounded at 200 characters ---
+  it('rejects a search of 201 characters', () => {
+    const result = RecipeFilterSchema.safeParse({ search: 'a'.repeat(201) });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path).toEqual(['search']);
+    }
+  });
+
+  it('accepts a search of exactly 200 characters', () => {
+    const result = RecipeFilterSchema.safeParse({ search: 'a'.repeat(200) });
+    expect(result.success).toBe(true);
+  });
+
+  it('trims surrounding whitespace from search', () => {
+    const result = RecipeFilterSchema.safeParse({ search: '  espresso  ' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.search).toBe('espresso');
+    }
+  });
+
+  it('applies the 200-character bound after trimming', () => {
+    const result = RecipeFilterSchema.safeParse({ search: `  ${'a'.repeat(200)}  ` });
+    expect(result.success).toBe(true);
+  });
 });
 
 /**

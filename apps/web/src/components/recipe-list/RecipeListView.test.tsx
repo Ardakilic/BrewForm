@@ -314,6 +314,13 @@ describe('RecipeListView', () => {
     expect(screen.getByPlaceholderText('Search by author...')).toBeInTheDocument();
   });
 
+  // advanced-search (wave 6): the UI cannot produce the API's 400 for over-long values.
+  it('caps the search input at 200 and the author input at 100 characters', () => {
+    renderView({ recipesResponse: { data: [], meta: {} } });
+    expect(screen.getByPlaceholderText('Search recipes...')).toHaveAttribute('maxLength', '200');
+    expect(screen.getByPlaceholderText('Search by author...')).toHaveAttribute('maxLength', '100');
+  });
+
   it('should render the date range filter inputs', () => {
     renderView({ recipesResponse: { data: [], meta: {} } });
     expect(screen.getByLabelText('From date')).toBeInTheDocument();

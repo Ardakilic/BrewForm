@@ -25,6 +25,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
       - DATABASE_PROVIDER=postgresql
+      # Server-side statement timeout per DB connection (ms; unset = 10000, 0 disables).
+      - DB_STATEMENT_TIMEOUT_MS=${DB_STATEMENT_TIMEOUT_MS:-}
       - CACHE_ENABLED=true
       - CACHE_DRIVER=memory
       - REDIS_URL=${REDIS_URL:-redis://:${VALKEY_PASSWORD:-dev-valkey-password}@valkey:6379}
@@ -105,6 +107,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
       - DATABASE_PROVIDER=postgresql
+      # Server-side statement timeout per DB connection (ms; unset = 10000, 0 disables).
+      - DB_STATEMENT_TIMEOUT_MS=${DB_STATEMENT_TIMEOUT_MS:-}
       - CACHE_ENABLED=true
       - CACHE_DRIVER=memory
       - REDIS_URL=${REDIS_URL:-redis://:${VALKEY_PASSWORD:-dev-valkey-password}@valkey:6379}

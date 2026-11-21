@@ -27,14 +27,19 @@ import { encodeCursor } from '@brewform/shared/utils';
 import { eq, inArray } from 'drizzle-orm';
 import type { Context, Next } from 'hono';
 import { Hono } from 'hono';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { errorHandler } from '../../middleware/errorHandler.ts';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { errorHandler, log as errorHandlerLog } from '../../middleware/errorHandler.ts';
 import type { AppEnv } from '../../types/hono.ts';
 import { signAccessToken } from '../auth/jwt.ts';
 import coffeeVarietyRouter from '../coffee-variety/index.ts';
 import recipeRouter, { deps } from './index.ts';
+import * as model from './model.ts';
 import * as service from './service.ts';
 import { RecipeWriteFixtures, recipeInput } from './test-helpers.ts';
+
+// Spy on the model so one test can make `findListPage` fail with a statement timeout;
+// every other call goes through to the real implementation.
+vi.mock('./model.ts', { spy: true });
 
 async function createUser(prefix: string) {
   const id = crypto.randomUUID();
@@ -311,6 +316,133 @@ describe('Recipe routes — F11 advanced search params', () => {
     expect(res.status).toBe(200);
     expect(body.meta.pagination).toBeDefined();
     expect(body.meta.cursor).toBeUndefined();
+  });
+});
+
+/**
+ * advanced-search (wave 6): the `search` bound, `perPage` cap, literal metacharacter
+ * matching and the 503 `QUERY_TIMEOUT` mapping, through the real router. Listings are
+ * scoped with `authorId` so seed rows cannot change the results.
+ */
+describe('Recipe routes — search bounds, literal matching and time budget (advanced-search)', () => {
+  let author: typeof users.$inferSelect;
+  const createdRecipes: string[] = [];
+
+  /** Insert a public recipe owned by `author` with one version and track it. */
+  async function makeSearchRecipe(title: string, productName: string | null = null) {
+    const recipe = await createRecipe(author.id, title, new Date());
+    await db.insert(recipeVersions).values({
+      recipeId: recipe.id,
+      versionNumber: 1,
+      productName,
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: '',
+    });
+    createdRecipes.push(recipe.id);
+    return recipe;
+  }
+
+  /** GET the listing scoped to `author` and return the status and parsed body. */
+  async function list(query: string) {
+    const app = createTestApp(null);
+    const res = await app.request(`/api/v1/recipes?authorId=${author.id}&perPage=100&${query}`);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast of the JSON envelope
+    return { status: res.status, body: (await res.json()) as any };
+  }
+
+  beforeAll(async () => {
+    author = await createUser('search-bounds');
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    if (createdRecipes.length) {
+      await db.delete(recipeVersions).where(inArray(recipeVersions.recipeId, createdRecipes));
+      await db.delete(recipes).where(inArray(recipes.id, createdRecipes));
+      createdRecipes.length = 0;
+    }
+  });
+
+  afterAll(async () => {
+    deps.authMiddleware = originalAuthMiddleware;
+    await db.delete(users).where(eq(users.id, author.id));
+  });
+
+  it('rejects perPage=101 with the 400 validation envelope', async () => {
+    const { status, body } = await list('search=espresso&perPage=101');
+    expect(status).toBe(400);
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('rejects a 201-character search with a search detail', async () => {
+    const { status, body } = await list(`search=${'a'.repeat(201)}`);
+    expect(status).toBe(400);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.details.map((d: { field: string }) => d.field)).toContain('search');
+  });
+
+  it('treats a whitespace-only search as no search', async () => {
+    await makeSearchRecipe('Blank Search One');
+    await makeSearchRecipe('Blank Search Two');
+    const blank = await list('search=%20%20%20');
+    const none = await list('');
+    expect(blank.status).toBe(200);
+    expect(blank.body.data.map((r: { id: string }) => r.id)).toEqual(
+      none.body.data.map((r: { id: string }) => r.id),
+    );
+    expect(blank.body.meta.pagination.total).toBe(none.body.meta.pagination.total);
+  });
+
+  it('matches a backslash literally', async () => {
+    const backslash = await makeSearchRecipe('Windows beans', 'C:\\beans');
+    await makeSearchRecipe('Plain beans', 'Kenya');
+    const { status, body } = await list('search=%5C');
+    expect(status).toBe(200);
+    expect(body.data.map((r: { id: string }) => r.id)).toEqual([backslash.id]);
+  });
+
+  it('matches an underscore literally', async () => {
+    const underscore = await makeSearchRecipe('a_c');
+    await makeSearchRecipe('abc');
+    const { status, body } = await list('search=a_c');
+    expect(status).toBe(200);
+    expect(body.data.map((r: { id: string }) => r.id)).toEqual([underscore.id]);
+  });
+
+  it('maps a statement timeout to 503 QUERY_TIMEOUT without logging the term or params', async () => {
+    const timeout = Object.assign(new Error('Failed query'), {
+      name: 'DrizzleQueryError',
+      query: 'select ... where title ilike $1',
+      params: ['%secret-term%'],
+      cause: Object.assign(new Error('canceling statement due to statement timeout'), {
+        name: 'PostgresError',
+        code: '57014',
+      }),
+    });
+    vi.mocked(model.findListPage).mockRejectedValueOnce(timeout);
+    const logged: unknown[][] = [];
+    for (const logger of [service.logger, errorHandlerLog]) {
+      for (const level of ['debug', 'info', 'warn', 'error'] as const) {
+        vi.spyOn(logger, level).mockImplementation(((...args: unknown[]) => {
+          logged.push(args);
+        }) as never);
+      }
+    }
+
+    const { status, body } = await list('search=secret-term');
+
+    expect(status).toBe(503);
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('QUERY_TIMEOUT');
+    const text = JSON.stringify(logged, (_key, value) =>
+      value instanceof Error ? { name: value.name, message: value.message } : value,
+    );
+    expect(text).not.toContain('secret-term');
+    expect(text).not.toContain('params:');
+    expect(text).not.toContain('"params"');
+    expect(text).toContain('"searchLength":11');
   });
 });
 

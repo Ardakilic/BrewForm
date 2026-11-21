@@ -17,6 +17,7 @@
  *    (`user_id`, `recipe_id`) unique constraint and the notes length CHECK
  *  - wave-6 identifier uniqueness: the `lower()` expression unique indexes on
  *    `user.email` / `user.username` and the partial `setup_user_default_unique`
+ *  - wave-6 search: the three GIN `gin_trgm_ops` trigram indexes (`pg_trgm`)
  */
 
 import type { IndexedColumn, PgTableWithColumns } from 'drizzle-orm/pg-core';
@@ -148,6 +149,49 @@ describe('Recipe versions table composite indexes', () => {
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['coffee_variety_id', 'recipe_id']);
     expect(idx!.isUnique).toBe(false);
+  });
+});
+
+describe('Trigram search indexes (wave 6, advanced-search)', () => {
+  /**
+   * Find a named index and report its access method and each column's operator class.
+   *
+   * @param table - The Drizzle table that declares the index.
+   * @param name - The index name.
+   */
+  // biome-ignore lint/suspicious/noExplicitAny: test any usage, mirrors getTableIndexes
+  function trigramIndex(table: PgTableWithColumns<any>, name: string) {
+    const idx = getTableConfig(table).indexes.find((i) => i.config.name === name);
+    expect(idx).toBeDefined();
+    const config = idx?.config;
+    return {
+      method: config?.method,
+      columns: (config?.columns ?? []).map((col) => ({
+        name: (col as IndexedColumn).name,
+        opClass: (col as IndexedColumn).indexConfig?.opClass,
+      })),
+    };
+  }
+
+  it('has recipe_title_trgm_idx as GIN gin_trgm_ops on title', () => {
+    expect(trigramIndex(recipes, 'recipe_title_trgm_idx')).toEqual({
+      method: 'gin',
+      columns: [{ name: 'title', opClass: 'gin_trgm_ops' }],
+    });
+  });
+
+  it('has recipe_version_product_name_trgm_idx as GIN gin_trgm_ops on product_name', () => {
+    expect(trigramIndex(recipeVersions, 'recipe_version_product_name_trgm_idx')).toEqual({
+      method: 'gin',
+      columns: [{ name: 'product_name', opClass: 'gin_trgm_ops' }],
+    });
+  });
+
+  it('has recipe_version_personal_notes_trgm_idx as GIN gin_trgm_ops on personal_notes', () => {
+    expect(trigramIndex(recipeVersions, 'recipe_version_personal_notes_trgm_idx')).toEqual({
+      method: 'gin',
+      columns: [{ name: 'personal_notes', opClass: 'gin_trgm_ops' }],
+    });
   });
 });
 

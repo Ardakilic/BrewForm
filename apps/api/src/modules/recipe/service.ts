@@ -26,7 +26,12 @@ import {
   slugCandidates,
 } from '@brewform/shared/utils';
 import type { z } from 'zod';
-import { ConflictError, type ErrorDetail, ValidationError } from '../../utils/errors.ts';
+import {
+  ConflictError,
+  type ErrorDetail,
+  isStatementTimeout,
+  ValidationError,
+} from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyFollowersOfNewRecipe } from '../../utils/notify/index.ts';
 import { sanitizeText } from '../../utils/sanitize.ts';
@@ -56,7 +61,8 @@ type RecipeUpdateInput = z.infer<typeof RecipeUpdateSchema> & {
   photoIds?: string[];
 };
 
-const logger = createLogger('recipe-service');
+/** Module-scoped structured logger (exported for test spies). */
+export const logger = createLogger('recipe-service');
 
 /**
  * Build the ordered slug candidates for a (sanitized) title: the bare base when it is usable,
@@ -654,63 +660,34 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
   return forked;
 }
 
-/** Minimal shape required by {@link rankRecipes} — title, current version pointer, and version fields. */
-interface RankableRecipe {
-  title: string | null;
-  currentVersionId: string | null;
-  versions?: { id: string; productName: string | null; personalNotes: string | null }[];
-}
-
 /**
- * Rank recipes by weighted relevance score against a search term.
+ * Run one recipe list query, replacing a statement timeout with a sanitized error.
  *
- * Score weights:
- * - title match: 3 (highest — title is the most prominent field)
- * - productName match: 2 (coffee name is the second most visible)
- * - personalNotes match: 1 (lowest — free-text notes are least prominent)
+ * A query cancelled by the pool's `statement_timeout` (SQLSTATE `57014`, on the error
+ * or on the Drizzle error's `cause`) is logged at `warn` with ids and the term's length
+ * only, then rethrown as `new Error('QUERY_TIMEOUT')` WITHOUT a cause, so the SQL text,
+ * bound parameters and search term never reach a log line; the global error handler
+ * maps it to 503 `QUERY_TIMEOUT`. Any other error is rethrown unchanged.
  *
- * The search term is sanitized (stripping `%` and `_` wildcards) and
- * lowercased once before scoring, matching the sanitization applied in
- * `buildRecipeFilters` for the DB-level `ilike` conditions.
- *
- * The DB search matches ANY version's productName/personalNotes (via the
- * `inArray` subquery in `buildRecipeFilters`), not just the current version.
- * To keep ranking consistent with filtering, this function scores each version
- * independently (productName=2 + personalNotes=1 on the SAME version) and adds
- * the maximum per-version score to the title score.
- *
- * The sort is STABLE: recipes with equal scores preserve their original
- * DB-query order (sortBy/sortOrder from the model query). This ensures
- * ranking does not re-shuffle equally-relevant items.
- *
- * Ranking SHALL NOT be applied when `search` is absent — the DB-level
- * `sortBy` / `sortOrder` ordering is the sole ordering in that case.
- *
- * @param recipes - Fetched recipe rows with their version fields.
- * @param searchTerm - The raw search string (sanitized + lowercased internally).
- * @returns A new array sorted by rank DESC (original order preserved for ties).
+ * @param query - Starts the model query.
+ * @param requestId - The request id for the log line.
+ * @param searchLength - Length of the normalized search term (0 without search).
+ * @returns The query result.
  */
-export function rankRecipes<T extends RankableRecipe>(recipes: T[], searchTerm: string): T[] {
-  const searchLower = searchTerm.replace(/[%_]/g, '').toLowerCase();
-  const scored = recipes.map((recipe, index) => {
-    let score = 0;
-    if (recipe.title?.toLowerCase().includes(searchLower)) score += 3;
-    // Score the best matching version: compute per-version weighted score
-    // (productName=2 + personalNotes=1 on the SAME version), then add the max.
-    // This prevents combining matches across different versions.
-    const versions = recipe.versions ?? [];
-    const maxVersionScore = versions.reduce((max, v) => {
-      let vScore = 0;
-      if (v.productName?.toLowerCase().includes(searchLower)) vScore += 2;
-      if (v.personalNotes?.toLowerCase().includes(searchLower)) vScore += 1;
-      return Math.max(max, vScore);
-    }, 0);
-    score += maxVersionScore;
-    return { recipe, score, index };
-  });
-  // Stable sort: by score DESC, then by original index ASC (preserves DB order for ties)
-  scored.sort((a, b) => b.score - a.score || a.index - b.index);
-  return scored.map((s) => s.recipe);
+async function runListQuery<T>(
+  query: () => Promise<T>,
+  requestId: string | undefined,
+  searchLength: number,
+): Promise<T> {
+  try {
+    return await query();
+  } catch (err) {
+    if (isStatementTimeout(err)) {
+      logger.warn({ requestId, searchLength, pgCode: '57014' }, 'Recipe list query timed out');
+      throw new Error('QUERY_TIMEOUT');
+    }
+    throw err;
+  }
 }
 
 /**
@@ -727,11 +704,18 @@ export function rankRecipes<T extends RankableRecipe>(recipes: T[], searchTerm: 
  * When both `page` and `cursor` are provided, cursor wins and `page` is
  * silently ignored.
  *
+ * When `search` is non-empty after {@link model.normalizeSearchTerm}, the request
+ * uses offset pagination (a cursor is ignored) and {@link model.findListPage}
+ * ranks, orders and pages the matches in SQL: one bounded page query plus one
+ * `COUNT`, never the full result set. A statement timeout becomes
+ * `QUERY_TIMEOUT` (503) with a sanitized log line.
+ *
  * @param filters           - Filter criteria (see controller for accepted keys).
  * @param page              - Page number (1-based) for offset mode.
  * @param perPage           - Items per page.
  * @param _requestingUserId - Unused; reserved for future scoped queries.
  * @param isAdmin           - Whether the requester is an admin (bypasses visibility restrictions).
+ * @param requestId         - The request id for log lines.
  * @returns Either `{ recipes, total }` for offset mode or
  *          `{ recipes, hasMore, nextCursor, total? }` for cursor mode.
  */
@@ -747,8 +731,9 @@ export async function listRecipes(
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
 
-  // F11: search-active detection — non-empty after sanitization
-  const hasSearch = filters.search != null && filters.search.replace(/[%_]/g, '').length > 0;
+  // Search-active detection uses the same normalized term as the filter and the score.
+  const search = model.normalizeSearchTerm(filters.search);
+  const hasSearch = search.length > 0;
 
   logger.debug(
     { userId: _requestingUserId, page, perPage, requestId, hasSearch },
@@ -769,7 +754,8 @@ export async function listRecipes(
       ? { ...result, deprecations }
       : (result as T & { deprecations?: { tasteNoteId?: boolean } });
 
-  // F11: search active → skip cursor path (ranking reorders, keyset cursor non-deterministic)
+  // F11: search active → skip cursor path (the SQL relevance score orders the results, so a
+  // (createdAt, id) keyset cursor does not follow the result order)
   if (filters.cursor && !hasSearch) {
     if (page > 1) {
       logger.debug(
@@ -785,7 +771,11 @@ export async function listRecipes(
 
     if (sortBy !== 'createdAt') {
       logger.warn({ sortBy }, 'Cursor pagination incompatible with sortBy, falling back to offset');
-      const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
+      const result = await runListQuery(
+        () => model.findMany(where, page, perPage, sortBy, sortOrder),
+        requestId,
+        0,
+      );
       logger.debug(
         { userId: _requestingUserId, page, perPage, resultCount: result.total },
         'listRecipes completed',
@@ -803,7 +793,11 @@ export async function listRecipes(
 
     let result: Awaited<ReturnType<typeof model.findCursor>>;
     try {
-      result = await model.findCursor(where, cursor, perPage, sortOrder, filters.includeTotal);
+      result = await runListQuery(
+        () => model.findCursor(where, cursor, perPage, sortOrder, filters.includeTotal),
+        requestId,
+        0,
+      );
     } catch (err) {
       // findCursor throws VALIDATION_ERROR: INVALID_CURSOR when the decoded
       // cursor's createdAt is not a valid date — surface it as a 400, not 500.
@@ -824,7 +818,8 @@ export async function listRecipes(
     return withDeprecations(result);
   }
 
-  // F11: search + cursor → offset fallback (ranking reorders, keyset cursor non-deterministic)
+  // F11: search + cursor → offset fallback (the SQL relevance score reorders, keyset cursor
+  // non-deterministic)
   if (filters.cursor && hasSearch) {
     logger.debug(
       { requestId, hasSearch: true, searchLength: filters.search?.length ?? 0 },
@@ -832,26 +827,13 @@ export async function listRecipes(
     );
   }
 
-  // F11: global ranking — fetch ALL matching recipes, rank in JS, then slice for the page.
-  // This ensures relevance ranking is global, not page-local: a high-scoring title match
-  // on page 2 is returned before a lower-scoring productName match on page 1.
-  if (hasSearch) {
-    const allResults = await model.findAllForRanking(where, sortBy, sortOrder);
-    const ranked = rankRecipes(
-      allResults.recipes as unknown as RankableRecipe[],
-      filters.search!,
-    ) as unknown as typeof allResults.recipes;
-    const start = (page - 1) * perPage;
-    const paged = ranked.slice(start, start + perPage);
-    const result = { recipes: paged, total: allResults.total };
-    logger.debug(
-      { userId: _requestingUserId, page, perPage, resultCount: result.total },
-      'listRecipes completed',
-    );
-    return withDeprecations(result);
-  }
-
-  const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
+  // Search or not, ranking, ordering and paging happen in SQL (one bounded page query
+  // plus one COUNT); the normalized term drives the relevance score.
+  const result = await runListQuery(
+    () => model.findListPage({ where, page, perPage, sortBy, sortOrder, search }),
+    requestId,
+    search.length,
+  );
   logger.debug(
     { userId: _requestingUserId, page, perPage, resultCount: result.total },
     'listRecipes completed',
@@ -864,12 +846,15 @@ export async function listRecipes(
  *
  * Starred queries (`/recipes/starred`) involve a favourites subquery JOIN that
  * is not yet compatible with cursor pagination; a cursor parameter is silently
- * ignored with a debug log.
+ * ignored with a debug log. The normalized `search` is passed through, so a starred
+ * search is relevance-ranked in SQL by the same bounded query as `/recipes`; a
+ * statement timeout becomes `QUERY_TIMEOUT` (503).
  *
  * @param filters - Filter criteria, including ignored `cursor`.
  * @param page    - Page number (1-based).
  * @param perPage - Items per page.
  * @param userId  - UUID of the authenticated user whose favourites to query.
+ * @param requestId - The request id for log lines.
  * @returns Paginated recipe list with total count.
  */
 export async function listStarredRecipes(
@@ -890,7 +875,13 @@ export async function listStarredRecipes(
     logger.warn({ filter: 'tasteNoteId', userId, requestId }, 'Deprecated query parameter used');
   }
 
-  const result = await model.findStarred(userId, filters, page, perPage);
+  // The normalized term drives the starred filter and its SQL relevance ranking.
+  const search = model.normalizeSearchTerm(filters.search);
+  const result = await runListQuery(
+    () => model.findStarred(userId, { ...filters, search }, page, perPage),
+    requestId,
+    search.length,
+  );
   logger.debug({ userId }, 'listStarredRecipes completed');
   return {
     ...result,

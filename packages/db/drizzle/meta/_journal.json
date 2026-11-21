@@ -127,6 +127,20 @@
       "when": 1795217289285,
       "tag": "0017_acoustic_lockheed",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795221991985,
+      "tag": "0018_enable_pg_trgm",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795222016741,
+      "tag": "0019_numerous_fallen_one",
+      "breakpoints": true
     }
   ]
 }

@@ -10,13 +10,15 @@
  *    a custom `res` is returned unchanged.
  * 2. Typed `AppError` (`utils/errors.ts`) → its declared status, code and details.
  * 3. `EQUIPMENT_INCOMPATIBLE` → 422 with per-equipment details.
- * 4. Postgres errors, found along the `cause` chain (drizzle-orm wraps driver
+ * 4. Statement timeouts: the recipe listing's sanitized `QUERY_TIMEOUT` error, or
+ *    SQLSTATE `57014` on the error or its `cause` chain → 503 `QUERY_TIMEOUT`.
+ * 5. Other Postgres errors, found along the `cause` chain (drizzle-orm wraps driver
  *    errors in `DrizzleQueryError`) → the SQLSTATE table below.
- * 5. `ZodError` → 400 with field details.
- * 6. Auth/JWT failures → 401.
- * 7. Legacy string-coded domain errors (`FORBIDDEN`, `*_NOT_FOUND`,
+ * 6. `ZodError` → 400 with field details.
+ * 7. Auth/JWT failures → 401.
+ * 8. Legacy string-coded domain errors (`FORBIDDEN`, `*_NOT_FOUND`,
  *    `ALREADY_*` / `*_ALREADY_EXISTS`, `VALIDATION_ERROR…`) → 403/404/409/400.
- * 8. Anything else → 500 (`Something went wrong` in production).
+ * 9. Anything else → 500 (`Something went wrong` in production).
  *
  * SQLSTATE mapping: `23505` → 409 `CONFLICT`; `23503` → 400 `VALIDATION_ERROR` on
  * insert/update (or without query text) and 409 `CONFLICT` on delete; `23502`,
@@ -25,7 +27,8 @@
  * parameters, constraint, table or column names.
  *
  * Logging never includes query parameters or row values: mapped database errors
- * log only `{ pgCode, constraint, table }`, and 500s log `toLoggableError(err)`.
+ * log only `{ pgCode, constraint, table }`, statement timeouts only `{ pgCode }`
+ * (never `err.message`), and 500s log `toLoggableError(err)`.
  */
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
@@ -36,6 +39,7 @@ import {
   type ErrorDetail,
   getPostgresError,
   isDatabaseError,
+  isStatementTimeout,
   type PostgresErrorLike,
   postgresStatementKind,
   toLoggableError,
@@ -64,6 +68,16 @@ const HTTP_STATUS_CODES: Partial<Record<number, string>> = {
   415: 'UNSUPPORTED_MEDIA_TYPE',
   422: 'VALIDATION_ERROR',
   429: 'RATE_LIMITED',
+};
+
+/**
+ * The 503 answer for a statement cancelled by the pool's `statement_timeout`
+ * (SQLSTATE `57014`) or the recipe listing's sanitized `QUERY_TIMEOUT` error.
+ */
+const QUERY_TIMEOUT_ERROR: MappedError = {
+  status: 503,
+  code: 'QUERY_TIMEOUT',
+  message: 'The query took too long. Try a more specific search.',
 };
 
 /** Fallback message for an `HTTPException` 4xx thrown without a message. */
@@ -123,13 +137,7 @@ function mapPostgresError(
   if (code === '23502' || code === '23514' || code.startsWith('22')) {
     return { status: 400, code: 'VALIDATION_ERROR', message: 'A value is invalid for this field' };
   }
-  if (code === '57014') {
-    return {
-      status: 503,
-      code: 'QUERY_TIMEOUT',
-      message: 'The query took too long. Try a more specific search.',
-    };
-  }
+  if (code === '57014') return QUERY_TIMEOUT_ERROR;
   return null;
 }
 
@@ -250,6 +258,14 @@ export function errorHandler(err: Error, c: Context) {
     );
   }
 
+  // Statement timeout: the service's sanitized `QUERY_TIMEOUT` or SQLSTATE 57014 on the
+  // error or its cause. Logged without `err.message`, which carries SQL and parameters.
+  if (err.message === 'QUERY_TIMEOUT' || isStatementTimeout(err)) {
+    log.warn({ requestId, pgCode: '57014', method, path }, 'Database statement timeout');
+    const { status, code, message } = QUERY_TIMEOUT_ERROR;
+    return respond(c, status, code, message, requestId);
+  }
+
   const pgErr = getPostgresError(err);
   if (pgErr) {
     const mapped = mapPostgresError(pgErr, postgresStatementKind(err));
@@ -263,9 +279,7 @@ export function errorHandler(err: Error, c: Context) {
           method,
           path,
         },
-        mapped.code === 'QUERY_TIMEOUT'
-          ? 'Database statement timeout'
-          : 'Database constraint violation',
+        'Database constraint violation',
       );
       return respond(c, mapped.status, mapped.code, mapped.message, requestId);
     }

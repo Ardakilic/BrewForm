@@ -329,7 +329,15 @@ export const RecipeFilterSchema = z.object({
   tasteNoteId: z.uuid().optional().meta({ deprecated: true }),
   mainBrewer: z.string().max(200).optional(),
   coffeeVarietyId: z.uuid().optional(),
-  search: z.string().optional(),
+  /**
+   * Free-text search: a case-insensitive literal substring match on the recipe
+   * title, any version's coffee name (`productName`) and personal notes, with
+   * results ordered by relevance (title 3, coffee name 2, notes 1) and then by
+   * `sortBy`. Trimmed; at most 200 characters (longer values are rejected with
+   * 400). A value that is empty after trimming means "no search". `%`, `_` and
+   * `\` match literally (the API escapes them).
+   */
+  search: z.string().trim().max(200).optional(),
   /**
    * Author username or displayName substring filter (case-insensitive ilike).
    * Unlike `authorId` (exact UUID match), this is a free-text search on the

@@ -41,6 +41,7 @@ import {
   count,
   desc,
   eq,
+  getTableColumns,
   gte,
   ilike,
   inArray,
@@ -52,6 +53,7 @@ import {
   type SQL,
   sql,
 } from 'drizzle-orm';
+import { union } from 'drizzle-orm/pg-core';
 import { toLoggableError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 
@@ -145,8 +147,47 @@ export interface RecipeFilterCriteria {
 }
 
 /**
+ * Normalize a free-text filter value (`search`, `mainBrewer`, `author`) once, so the
+ * search-active check, the filter predicate and the relevance score all see the same
+ * term. Trims surrounding whitespace only; nothing is stripped or lowercased (case
+ * folding is left to PostgreSQL's `ilike`). `RecipeFilterSchema` already trims and
+ * bounds `search` at 200 characters; this helper keeps model callers safe too.
+ *
+ * @param raw - The raw filter value, or `undefined` when absent.
+ * @returns The trimmed term; `''` (no search) for `undefined` or whitespace-only input.
+ */
+export function normalizeSearchTerm(raw: string | undefined): string {
+  return raw === undefined ? '' : raw.trim();
+}
+
+/**
+ * Build the `ilike` "contains" pattern for a normalized term so user input matches
+ * literally. PostgreSQL's default `LIKE`/`ILIKE` escape character is `\`, so the
+ * metacharacters are escaped with it, in this order: `\` → `\\` first (so the escapes
+ * added next are not doubled), then `%` → `\%`, then `_` → `\_`; the result is wrapped
+ * as `%…%`. The pattern is passed as a bound parameter of Drizzle's `ilike()`, so no
+ * `ESCAPE` clause or raw SQL is needed, and `pg_trgm` honours the escapes.
+ *
+ * @example toContainsPattern('50%_\\') // → '%50\\%\\_\\\\%' (the text `%50\%\_\\%`)
+ * @param term - A term already passed through {@link normalizeSearchTerm}.
+ * @returns The `%<escaped>%` pattern.
+ */
+export function toContainsPattern(term: string): string {
+  const escaped = term.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
+  return `%${escaped}%`;
+}
+
+/**
  * Build an array of Drizzle SQL conditions from shared recipe filter criteria.
  * Returns a `SQL[]` array; the caller combines these with its own base conditions via `and()`.
+ *
+ * Free-text values (`search`, `mainBrewer`, `author`) go through
+ * {@link normalizeSearchTerm} and {@link toContainsPattern}: a value that is empty after
+ * trimming adds no condition, and `%`, `_` and `\` match literally. `search` becomes a
+ * single `inArray(recipes.id, union(titleIds, versionRecipeIds))` condition.
+ *
+ * @param filters - The shared filter criteria (see {@link RecipeFilterCriteria}).
+ * @returns The filter conditions only (no visibility or other caller base conditions).
  */
 export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
   const conditions: SQL[] = [];
@@ -175,61 +216,57 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
     );
   }
 
-  if (filters.search) {
-    const sanitized = filters.search.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      const searchCondition = or(
-        ilike(recipes.title, searchTerm),
-        inArray(
-          recipes.id,
-          db
-            .select({ id: recipeVersions.recipeId })
-            .from(recipeVersions)
-            .where(
-              or(
-                ilike(recipeVersions.productName, searchTerm),
-                // F11: personalNotes added to search scope (weight 1)
-                ilike(recipeVersions.personalNotes, searchTerm),
-              ),
-            ),
+  // Wave 6: search is ONE condition on recipes.id — the union of recipe ids whose title
+  // matches and recipe ids with any version whose productName or personalNotes matches
+  // (F11 added personalNotes, weight 1). Each branch can bitmap-scan its own trigram index,
+  // and the union de-duplicates recipes that match through several versions.
+  const searchTerm = normalizeSearchTerm(filters.search);
+  if (searchTerm) {
+    const pattern = toContainsPattern(searchTerm);
+    const titleIds = db
+      .select({ id: recipes.id })
+      .from(recipes)
+      .where(ilike(recipes.title, pattern));
+    const versionRecipeIds = db
+      .select({ id: recipeVersions.recipeId })
+      .from(recipeVersions)
+      .where(
+        or(
+          ilike(recipeVersions.productName, pattern),
+          ilike(recipeVersions.personalNotes, pattern),
         ),
       );
-      if (searchCondition) conditions.push(searchCondition);
-    }
+    const searchCondition = inArray(recipes.id, union(titleIds, versionRecipeIds));
+    if (searchCondition) conditions.push(searchCondition);
   }
 
-  if (filters.mainBrewer) {
-    const sanitized = filters.mainBrewer.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      conditions.push(
-        inArray(
-          recipes.id,
-          db
-            .select({ id: recipeVersions.recipeId })
-            .from(recipeVersions)
-            .where(ilike(recipeVersions.brewerDetails, searchTerm)),
-        ),
-      );
-    }
+  // Literal (escaped) substring match on any version's brewer details.
+  const mainBrewerTerm = normalizeSearchTerm(filters.mainBrewer);
+  if (mainBrewerTerm) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db
+          .select({ id: recipeVersions.recipeId })
+          .from(recipeVersions)
+          .where(ilike(recipeVersions.brewerDetails, toContainsPattern(mainBrewerTerm))),
+      ),
+    );
   }
 
-  // F11: author username/displayName substring filter
-  if (filters.author) {
-    const sanitized = filters.author.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      conditions.push(
-        inArray(
-          recipes.authorId,
-          db
-            .select({ id: users.id })
-            .from(users)
-            .where(or(ilike(users.username, searchTerm), ilike(users.displayName, searchTerm))),
-        ),
-      );
-    }
+  // F11: author username/displayName substring filter (literal, escaped pattern)
+  const authorTerm = normalizeSearchTerm(filters.author);
+  if (authorTerm) {
+    const pattern = toContainsPattern(authorTerm);
+    conditions.push(
+      inArray(
+        recipes.authorId,
+        db
+          .select({ id: users.id })
+          .from(users)
+          .where(or(ilike(users.username, pattern), ilike(users.displayName, pattern))),
+      ),
+    );
   }
 
   // F11: date range filter on recipes.createdAt
@@ -406,79 +443,200 @@ export function findBySlug(slug: string) {
   });
 }
 
+/** A Drizzle database handle that list queries run on: the shared `db`, or a test instance. */
+export type ListQueryExecutor = typeof db;
+
+/** Options for {@link buildListPageQuery} and {@link findListPage}. */
+export interface ListPageOptions {
+  /** The caller's WHERE (visibility, filters, scope); soft-deleted recipes are always excluded. */
+  where: SQL | undefined;
+  /** One-based page number. */
+  page: number;
+  /** Rows per page (`RecipeFilterSchema` caps it at 100). */
+  perPage: number;
+  /** `'createdAt'` (default), `'likeCount'` or `'rating'`; any other value sorts by `createdAt`. */
+  sortBy?: string;
+  /** `'desc'` (default) or `'asc'`; applies to the sort key and the `id` tie-break. */
+  sortOrder?: string;
+  /**
+   * The search term (raw or already normalized). When it is non-empty after
+   * {@link normalizeSearchTerm}, rows are ordered by relevance first. The caller's
+   * `where` must carry the matching search filter (from {@link buildRecipeFilters}).
+   */
+  search?: string;
+}
+
+/** The WHERE of every list page and count query: the caller's condition plus `deletedAt IS NULL`. */
+function listPageWhere(where: SQL | undefined): SQL {
+  // `and()` is typed `SQL | undefined` but is never undefined with defined arguments.
+  return where ? (and(isNull(recipes.deletedAt), where) as SQL) : isNull(recipes.deletedAt);
+}
+
+/** Columns of one list item: the recipe row plus the `{ id, username, displayName }` author. */
+const listItemSelection = {
+  ...getTableColumns(recipes),
+  author: { id: users.id, username: users.username, displayName: users.displayName },
+};
+
 /**
- * Fetch a paginated, sorted list of recipes with optional filters.
+ * Build the bounded page query shared by every offset-paginated recipe listing
+ * (`/recipes`, `/recipes/starred`, the offset feed): one core `select` over `recipe`
+ * with the author mini-projection (`innerJoin(users)`), ordered, limited and offset
+ * in SQL. It never loads `recipe_version` rows into the API process.
+ *
+ * - **Relevance (only when `search` is non-empty after trimming):** a grouped
+ *   subquery scores each matching version as `2 × productName match + 1 ×
+ *   personalNotes match` and keeps the BEST single version (`max`, never a sum across
+ *   versions); the recipe score is `3 × title match + coalesce(best, 0)`. Every match
+ *   uses the same {@link toContainsPattern} `ilike` predicate as the search filter,
+ *   over the same version set (any version), so every returned row scores at least 1.
+ *   The score is only an ORDER BY key and is not selected.
+ * - **Order:** `score desc` (search only), then the sort key in `sortOrder`
+ *   (`createdAt`, `likeCount`, or for `rating` the `avg(user_recipe_rating.rating)`
+ *   aggregate with `NULLS LAST` in both directions), then `recipes.id` in `sortOrder`
+ *   as the unique tie-break, so OFFSET pages never repeat or skip rows.
+ * - **Bound:** `LIMIT perPage OFFSET (page - 1) × perPage`, so a request reads at most
+ *   `perPage` recipe rows whatever the number of matches.
+ *
+ * The `CASE` score and `NULLS LAST` fragments are the two `sql` exceptions approved by
+ * ADR-017; they interpolate Drizzle columns and bound parameters only.
+ *
+ * @param opts - Paging, sorting, search and the caller's WHERE (see {@link ListPageOptions}).
+ * @param executor - The database handle to build on (defaults to the shared `db`).
+ * @returns The un-awaited Drizzle query (call `.toSQL()` to inspect it, or await it for rows).
+ */
+export function buildListPageQuery(opts: ListPageOptions, executor: ListQueryExecutor = db) {
+  const direction = opts.sortOrder === 'asc' ? asc : desc;
+  const term = normalizeSearchTerm(opts.search);
+  const orderBy: SQL[] = [];
+
+  let query = executor
+    .select(listItemSelection)
+    .from(recipes)
+    .innerJoin(users, eq(recipes.authorId, users.id))
+    .$dynamic();
+
+  if (term) {
+    const pattern = toContainsPattern(term);
+    const versionScore = executor
+      .select({
+        recipeId: recipeVersions.recipeId,
+        // D03 raw-SQL exception: Drizzle 0.45 has no CASE builder; the per-version score
+        // (productName 2 + personalNotes 1) interpolates only columns and the bound pattern.
+        best: max(
+          sql<number>`(case when ${ilike(recipeVersions.productName, pattern)} then 2 else 0 end) + (case when ${ilike(recipeVersions.personalNotes, pattern)} then 1 else 0 end)`,
+        ).as('best'),
+      })
+      .from(recipeVersions)
+      .where(
+        or(
+          ilike(recipeVersions.productName, pattern),
+          ilike(recipeVersions.personalNotes, pattern),
+        ),
+      )
+      .groupBy(recipeVersions.recipeId)
+      .as('version_score');
+    query = query.leftJoin(versionScore, eq(versionScore.recipeId, recipes.id));
+    // D03 raw-SQL exception: Drizzle 0.45 has no CASE or COALESCE builder; the recipe score
+    // (title 3 + best version) interpolates only columns and the bound pattern.
+    const score = sql<number>`(case when ${ilike(recipes.title, pattern)} then 3 else 0 end) + coalesce(${versionScore.best}, 0)`;
+    orderBy.push(desc(score));
+  }
+
+  if (opts.sortBy === 'rating') {
+    const ratingAverage = executor
+      .select({
+        recipeId: userRecipeRatings.recipeId,
+        average: avg(userRecipeRatings.rating).as('average_rating'),
+      })
+      .from(userRecipeRatings)
+      .groupBy(userRecipeRatings.recipeId)
+      .as('rating_average');
+    query = query.leftJoin(ratingAverage, eq(ratingAverage.recipeId, recipes.id));
+    // D03 raw-SQL exception: Drizzle 0.45's asc()/desc() have no NULLS LAST option; unrated
+    // recipes (no ratings, NULL average) sort after every rated recipe in both directions.
+    orderBy.push(
+      opts.sortOrder === 'asc'
+        ? sql`${ratingAverage.average} asc nulls last`
+        : sql`${ratingAverage.average} desc nulls last`,
+    );
+  } else {
+    orderBy.push(direction(opts.sortBy === 'likeCount' ? recipes.likeCount : recipes.createdAt));
+  }
+  orderBy.push(direction(recipes.id));
+
+  return query
+    .where(listPageWhere(opts.where))
+    .orderBy(...orderBy)
+    .limit(opts.perPage)
+    .offset((opts.page - 1) * opts.perPage);
+}
+
+/**
+ * Build the `COUNT(*)` query paired with {@link buildListPageQuery}: same `recipe`
+ * table and the same WHERE (the caller's condition plus `deletedAt IS NULL`), so the
+ * total always matches the rows the page query can return.
+ *
+ * @param where - The caller's WHERE, exactly as passed to the page query.
+ * @param executor - The database handle to build on (defaults to the shared `db`).
+ * @returns The un-awaited Drizzle query, resolving to `[{ count }]`.
+ */
+export function buildListCountQuery(where: SQL | undefined, executor: ListQueryExecutor = db) {
+  return executor.select({ count: count() }).from(recipes).where(listPageWhere(where));
+}
+
+/**
+ * Fetch one page of recipes and the total match count: runs {@link buildListPageQuery}
+ * and {@link buildListCountQuery} in parallel (exactly two statements). Search requests
+ * are relevance-ranked in SQL; nothing is ranked or sorted in the API process.
+ *
+ * @param opts - Paging, sorting, search and the caller's WHERE (see {@link ListPageOptions}).
+ * @param executor - The database handle to run on (defaults to the shared `db`).
+ * @returns `{ recipes, total }`: at most `perPage` list items (no `versions`, no score) and
+ *          the number of recipes matching `where`.
+ */
+export async function findListPage(opts: ListPageOptions, executor: ListQueryExecutor = db) {
+  const term = normalizeSearchTerm(opts.search);
+  const logContext = {
+    page: opts.page,
+    perPage: opts.perPage,
+    sortBy: opts.sortBy ?? 'createdAt',
+    hasSearch: term !== '',
+    searchLength: term.length,
+  };
+  modelLog.debug(logContext, 'findListPage started');
+
+  const [rows, totalResult] = await Promise.all([
+    buildListPageQuery(opts, executor),
+    buildListCountQuery(opts.where, executor),
+  ]);
+
+  modelLog.debug({ ...logContext, resultCount: rows.length }, 'findListPage completed');
+  return { recipes: rows, total: totalResult[0].count };
+}
+
+/** One list item as returned by {@link findListPage}. */
+export type RecipeListPageRow = Awaited<ReturnType<typeof findListPage>>['recipes'][number];
+
+/**
+ * Fetch a paginated, sorted list of recipes (no search ranking): delegates to
+ * {@link findListPage}. Used by the offset feed and the cursor fallback paths.
  *
  * @param where     - Optional Drizzle SQL WHERE clause for additional filtering
  * @param page      - One-based page number
  * @param perPage   - Number of recipes per page
- * @param sortBy    - Column to sort by: `'createdAt'` (default) or `'likeCount'`
+ * @param sortBy    - `'createdAt'` (default), `'likeCount'` or `'rating'`
  * @param sortOrder - Sort direction: `'desc'` (default) or `'asc'`
  * @returns Paginated result with `recipes` array and `total` count
  */
-export async function findMany(
+export function findMany(
   where: SQL | undefined,
   page: number,
   perPage: number,
   sortBy: string = 'createdAt',
   sortOrder: string = 'desc',
-): Promise<{ recipes: Record<string, unknown>[]; total: number }> {
-  const orderByColumn = sortBy === 'likeCount' ? recipes.likeCount : recipes.createdAt;
-  const orderBy = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
-  const finalWhere = where ? and(isNull(recipes.deletedAt), where) : isNull(recipes.deletedAt);
-
-  const [data, totalResult] = await Promise.all([
-    db.query.recipes.findMany({
-      where: finalWhere,
-      orderBy,
-      limit: perPage,
-      offset: (page - 1) * perPage,
-      with: {
-        author: { columns: { id: true, username: true, displayName: true } },
-        // F11: versions loaded for application-level relevance ranking (rankRecipes)
-        versions: { columns: { id: true, productName: true, personalNotes: true } },
-      },
-    }),
-    db.select({ count: count() }).from(recipes).where(finalWhere),
-  ]);
-
-  return { recipes: data, total: totalResult[0].count };
-}
-
-/**
- * Fetch ALL matching recipes (no LIMIT/OFFSET) for application-level ranking.
- *
- * Used by `listRecipes` when `search` is active: the full filtered result set
- * is fetched, ranked in JS by `rankRecipes`, then sliced to the requested
- * page. This ensures relevance ranking is global, not page-local.
- *
- * @param where     - Optional Drizzle SQL WHERE clause for additional filtering
- * @param sortBy    - Column to sort by: `'createdAt'` (default) or `'likeCount'`
- * @param sortOrder - Sort direction: `'desc'` (default) or `'asc'`
- * @returns All matching recipes (with versions for ranking) and total count
- */
-export async function findAllForRanking(
-  where: SQL | undefined,
-  sortBy: string = 'createdAt',
-  sortOrder: string = 'desc',
-): Promise<{ recipes: Record<string, unknown>[]; total: number }> {
-  const orderByColumn = sortBy === 'likeCount' ? recipes.likeCount : recipes.createdAt;
-  const orderBy = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
-  const finalWhere = where ? and(isNull(recipes.deletedAt), where) : isNull(recipes.deletedAt);
-
-  const [data, totalResult] = await Promise.all([
-    db.query.recipes.findMany({
-      where: finalWhere,
-      orderBy,
-      with: {
-        author: { columns: { id: true, username: true, displayName: true } },
-        versions: { columns: { id: true, productName: true, personalNotes: true } },
-      },
-    }),
-    db.select({ count: count() }).from(recipes).where(finalWhere),
-  ]);
-
-  return { recipes: data, total: totalResult[0].count };
+) {
+  return findListPage({ where, page, perPage, sortBy, sortOrder });
 }
 
 /** Patch a recipe row with partial data, identified by UUID. Returns the updated row or null. */
@@ -1641,18 +1799,19 @@ export function getFeed(
  * Fetch a paginated, filtered list of recipes the given user has favourited.
  *
  * The shared filter branches (`brewMethod`, `drinkType`, `search`, `mainBrewer`,
- * `equipmentId`, `tasteNoteIds` / `tasteNoteId`, `coffeeVarietyId`) are built
- * by {@link buildRecipeFilters}; this function prepends the
- * `eq(recipes.visibility, 'public')` base condition and the favourites-scope
- * subquery (`userRecipeFavourites` join) before composing with `and(...)`.
+ * `author`, dates, ratings, `equipmentId`, `tasteNoteIds` / `tasteNoteId`,
+ * `coffeeVarietyId`) are built by {@link buildRecipeFilters}; this function prepends
+ * the `eq(recipes.visibility, 'public')` base condition and the favourites-scope
+ * subquery (`userRecipeFavourites`), then delegates to {@link findListPage}, so a
+ * starred search is relevance-ranked by the same bounded query as `/recipes`.
  *
  * @param userId  - UUID of the user whose favourites to query
- * @param filters - Optional filter criteria (see {@link RecipeFilterCriteria})
+ * @param filters - Optional filter criteria (see {@link RecipeFilterCriteria}) plus sorting
  * @param page    - One-based page number
  * @param perPage - Number of recipes per page
  * @returns Paginated result with `recipes` array and `total` count
  */
-export async function findStarred(
+export function findStarred(
   userId: string,
   filters: RecipeFilterCriteria & {
     sortBy?: string;
@@ -1661,36 +1820,25 @@ export async function findStarred(
   page: number,
   perPage: number,
 ) {
-  const filterConditions = buildRecipeFilters(filters);
-  const conditions: SQL[] = [eq(recipes.visibility, 'public'), ...filterConditions];
-  const where = conditions.length > 1 ? and(...conditions) : conditions[0];
-
   const starredSubquery = db
     .select({ recipeId: userRecipeFavourites.recipeId })
     .from(userRecipeFavourites)
     .where(eq(userRecipeFavourites.userId, userId));
 
-  const finalWhere = and(where, inArray(recipes.id, starredSubquery), isNull(recipes.deletedAt));
+  const finalWhere = and(
+    eq(recipes.visibility, 'public'),
+    inArray(recipes.id, starredSubquery),
+    ...buildRecipeFilters(filters),
+  );
 
-  const sortBy = filters.sortBy || 'createdAt';
-  const sortOrder = filters.sortOrder || 'desc';
-  const orderByColumn = sortBy === 'likeCount' ? recipes.likeCount : recipes.createdAt;
-  const orderBy = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
-
-  const [data, totalResult] = await Promise.all([
-    db.query.recipes.findMany({
-      where: finalWhere,
-      orderBy,
-      limit: perPage,
-      offset: (page - 1) * perPage,
-      with: {
-        author: { columns: { id: true, username: true, displayName: true } },
-      },
-    }),
-    db.select({ count: count() }).from(recipes).where(finalWhere),
-  ]);
-
-  return { recipes: data, total: totalResult[0].count };
+  return findListPage({
+    where: finalWhere,
+    page,
+    perPage,
+    sortBy: filters.sortBy || 'createdAt',
+    sortOrder: filters.sortOrder || 'desc',
+    search: filters.search,
+  });
 }
 
 /** Fetch equipment by IDs, returning id + type for compatibility checks. */

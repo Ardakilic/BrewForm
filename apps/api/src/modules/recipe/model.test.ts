@@ -1,7 +1,7 @@
 /**
  * Unit tests for buildRecipeFilters() — the shared filter-building helper.
  *
- * These tests use a minimal mock Drizzle surface (eq, inArray, ilike, or)
+ * These tests use a minimal mock Drizzle surface (eq, inArray, ilike, or, union)
  * matching the pattern in service.preservation.test.ts, so no real DB is
  * required. The tests verify the shape of the SQL[] returned for each
  * filter branch.
@@ -39,7 +39,6 @@ import { eq as drizzleEq, getTableColumns } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as recipeModel from './model.ts';
 import * as recipeService from './service.ts';
-import { rankRecipes } from './service.ts';
 import { RecipeWriteFixtures } from './test-helpers.ts';
 
 type MockCondition = {
@@ -83,6 +82,14 @@ function and(...conditions: (MockCondition | undefined)[]): MockCondition | unde
   if (filtered.length === 1) return filtered[0];
   return { type: 'and', conditions: filtered };
 }
+
+function union(...selects: unknown[]): MockCondition {
+  return { type: 'union', value: selects };
+}
+
+// The pure search-term helpers are the real exports: the mirror below must build
+// exactly the patterns production builds.
+const { normalizeSearchTerm, toContainsPattern } = recipeModel;
 
 const recipes = {
   id: 'recipes.id',
@@ -194,61 +201,57 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
     );
   }
 
-  if (filters.search) {
-    const sanitized = filters.search.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      const searchCondition = or(
-        ilike(recipes.title, searchTerm),
-        inArray(
-          recipes.id,
-          db
-            .select({ id: recipeVersions.recipeId })
-            .from(recipeVersions)
-            .where(
-              or(
-                ilike(recipeVersions.productName, searchTerm),
-                // F11: personalNotes added to search scope (weight 1)
-                ilike(recipeVersions.personalNotes, searchTerm),
-              ),
-            ),
+  // Wave 6: search is ONE condition on recipes.id — the union of recipe ids whose title
+  // matches and recipe ids with any version whose productName or personalNotes matches
+  // (F11 added personalNotes, weight 1). Each branch can bitmap-scan its own trigram index,
+  // and the union de-duplicates recipes that match through several versions.
+  const searchTerm = normalizeSearchTerm(filters.search);
+  if (searchTerm) {
+    const pattern = toContainsPattern(searchTerm);
+    const titleIds = db
+      .select({ id: recipes.id })
+      .from(recipes)
+      .where(ilike(recipes.title, pattern));
+    const versionRecipeIds = db
+      .select({ id: recipeVersions.recipeId })
+      .from(recipeVersions)
+      .where(
+        or(
+          ilike(recipeVersions.productName, pattern),
+          ilike(recipeVersions.personalNotes, pattern),
         ),
       );
-      if (searchCondition) conditions.push(searchCondition);
-    }
+    const searchCondition = inArray(recipes.id, union(titleIds, versionRecipeIds));
+    if (searchCondition) conditions.push(searchCondition);
   }
 
-  if (filters.mainBrewer) {
-    const sanitized = filters.mainBrewer.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      conditions.push(
-        inArray(
-          recipes.id,
-          db
-            .select({ id: recipeVersions.recipeId })
-            .from(recipeVersions)
-            .where(ilike(recipeVersions.brewerDetails, searchTerm)),
-        ),
-      );
-    }
+  // Literal (escaped) substring match on any version's brewer details.
+  const mainBrewerTerm = normalizeSearchTerm(filters.mainBrewer);
+  if (mainBrewerTerm) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db
+          .select({ id: recipeVersions.recipeId })
+          .from(recipeVersions)
+          .where(ilike(recipeVersions.brewerDetails, toContainsPattern(mainBrewerTerm))),
+      ),
+    );
   }
 
-  // F11: author username/displayName substring filter
-  if (filters.author) {
-    const sanitized = filters.author.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      conditions.push(
-        inArray(
-          recipes.authorId,
-          db
-            .select({ id: users.id })
-            .from(users)
-            .where(or(ilike(users.username, searchTerm), ilike(users.displayName, searchTerm))),
-        ),
-      );
-    }
+  // F11: author username/displayName substring filter (literal, escaped pattern)
+  const authorTerm = normalizeSearchTerm(filters.author);
+  if (authorTerm) {
+    const pattern = toContainsPattern(authorTerm);
+    conditions.push(
+      inArray(
+        recipes.authorId,
+        db
+          .select({ id: users.id })
+          .from(users)
+          .where(or(ilike(users.username, pattern), ilike(users.displayName, pattern))),
+      ),
+    );
   }
 
   // F11: date range filter on recipes.createdAt
@@ -326,6 +329,46 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
   return conditions;
 }
 
+/** A mock `db.select().from().where()` subquery as built by the mirror above. */
+type MockSelect = { projection: unknown; table: unknown; where: MockCondition };
+
+/**
+ * The two branches of a search condition `inArray(recipes.id, union(titleIds,
+ * versionRecipeIds))`.
+ */
+function searchBranches(condition: MockCondition): [MockSelect, MockSelect] {
+  const unionNode = condition.value as MockCondition;
+  expect(unionNode.type).toBe('union');
+  return unionNode.value as [MockSelect, MockSelect];
+}
+
+/** Every `ilike` pattern in a search condition: title, productName, personalNotes. */
+function searchPatterns(condition: MockCondition): unknown[] {
+  const [titleIds, versionRecipeIds] = searchBranches(condition);
+  const versionConditions = versionRecipeIds.where.conditions ?? [];
+  return [titleIds.where.value, ...versionConditions.map((c) => c.value)];
+}
+
+describe('normalizeSearchTerm / toContainsPattern (real exports)', () => {
+  it('normalizeSearchTerm trims only and maps undefined to an empty string', () => {
+    expect(normalizeSearchTerm(undefined)).toBe('');
+    expect(normalizeSearchTerm('   ')).toBe('');
+    expect(normalizeSearchTerm('  Espresso_100%  ')).toBe('Espresso_100%');
+    expect(normalizeSearchTerm('İstanbul')).toBe('İstanbul');
+  });
+
+  it('toContainsPattern escapes \\, % and _ in that order and wraps in %…%', () => {
+    // The five-character term `50%_\` becomes the pattern `%50\%\_\\%`.
+    expect(toContainsPattern('50%_\\')).toBe('%50\\%\\_\\\\%');
+    expect(toContainsPattern('espresso')).toBe('%espresso%');
+    expect(toContainsPattern('\\')).toBe('%\\\\%');
+    expect(toContainsPattern('a_c')).toBe('%a\\_c%');
+    expect(toContainsPattern('100%')).toBe('%100\\%%');
+    // An already-escaped sequence is escaped again, never treated as an escape.
+    expect(toContainsPattern('\\%')).toBe('%\\\\\\%%');
+  });
+});
+
 describe('buildRecipeFilters', () => {
   it('returns an empty array when no filters are set', () => {
     const result = buildRecipeFilters({});
@@ -350,33 +393,37 @@ describe('buildRecipeFilters', () => {
     expect(sub.where).toEqual(eq(recipeVersions.drinkType, 'espresso'));
   });
 
-  it('generates a sanitized search condition with or()', () => {
+  it('generates one escaped union search condition', () => {
     const result = buildRecipeFilters({ search: 'fr%uit_y' });
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('or');
-    const subs = result[0].conditions!;
-    expect(subs).toHaveLength(2);
-    expect(subs[0]).toEqual(ilike(recipes.title, '%fruity%'));
-    expect(subs[1].type).toBe('inArray');
-    expect(subs[1].column).toBe(recipes.id);
+    expect(result[0].type).toBe('inArray');
+    expect(result[0].column).toBe(recipes.id);
+    const [titleIds] = searchBranches(result[0]);
+    expect(titleIds.where).toEqual(ilike(recipes.title, '%fr\\%uit\\_y%'));
   });
 
-  it('skips search when sanitized input is empty', () => {
-    expect(buildRecipeFilters({ search: '%_%' })).toEqual([]);
+  it('skips search when the trimmed input is empty', () => {
+    expect(buildRecipeFilters({ search: '   ' })).toEqual([]);
     expect(buildRecipeFilters({ search: '' })).toEqual([]);
   });
 
-  it('generates a sanitized mainBrewer condition', () => {
-    const result = buildRecipeFilters({ mainBrewer: 'Hario%' });
+  it('treats metacharacter-only search as a literal search', () => {
+    const result = buildRecipeFilters({ search: '%_%' });
+    expect(result).toHaveLength(1);
+    expect(searchPatterns(result[0])).toEqual(['%\\%\\_\\%%', '%\\%\\_\\%%', '%\\%\\_\\%%']);
+  });
+
+  it('generates an escaped mainBrewer condition', () => {
+    const result = buildRecipeFilters({ mainBrewer: ' Hario% ' });
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('inArray');
     expect(result[0].column).toBe(recipes.id);
     const sub = result[0].value as { where: MockCondition };
-    expect(sub.where).toEqual(ilike(recipeVersions.brewerDetails, '%Hario%'));
+    expect(sub.where).toEqual(ilike(recipeVersions.brewerDetails, '%Hario\\%%'));
   });
 
-  it('skips mainBrewer when sanitized input is empty', () => {
-    expect(buildRecipeFilters({ mainBrewer: '%' })).toEqual([]);
+  it('skips mainBrewer when the trimmed input is empty', () => {
+    expect(buildRecipeFilters({ mainBrewer: '  ' })).toEqual([]);
     expect(buildRecipeFilters({ mainBrewer: '' })).toEqual([]);
   });
 
@@ -442,15 +489,15 @@ describe('buildRecipeFilters', () => {
     expect(conditions).toHaveLength(0);
   });
 
-  it('buildRecipeFilters: author with wildcards stripped', () => {
+  it('buildRecipeFilters: author wildcards match literally', () => {
     const conditions = buildRecipeFilters({ author: '%alice%' });
     expect(conditions).toHaveLength(1);
     const sub = conditions[0].value as { where: MockCondition };
     const orCond = sub.where;
     expect(orCond.type).toBe('or');
     const orConds = orCond.conditions!;
-    expect(orConds[0]).toEqual(ilike(users.username, '%alice%'));
-    expect(orConds[1]).toEqual(ilike(users.displayName, '%alice%'));
+    expect(orConds[0]).toEqual(ilike(users.username, '%\\%alice\\%%'));
+    expect(orConds[1]).toEqual(ilike(users.displayName, '%\\%alice\\%%'));
   });
 
   // --- F11: date range filter ---
@@ -503,113 +550,33 @@ describe('buildRecipeFilters', () => {
     expect(sub.having.conditions).toHaveLength(2);
   });
 
-  // --- F11: search personalNotes ---
-  it('buildRecipeFilters: search includes personalNotes in or() condition', () => {
+  // --- recipe-filter "Shared recipe filter-building helper" (wave 6) ---
+  it('buildRecipeFilters: search is one union condition that includes personalNotes', () => {
     const conditions = buildRecipeFilters({ search: 'V60' });
     expect(conditions).toHaveLength(1);
-    expect(conditions[0].type).toBe('or');
-    // The inner inArray subquery's where should be an or() with productName + personalNotes
-    const subs = conditions[0].conditions!;
-    expect(subs[1].type).toBe('inArray');
-    const innerWhere = (subs[1].value as { where: MockCondition }).where;
-    expect(innerWhere.type).toBe('or');
-    expect(innerWhere.conditions).toHaveLength(2);
-    expect(innerWhere.conditions![0]).toEqual(ilike(recipeVersions.productName, '%V60%'));
-    expect(innerWhere.conditions![1]).toEqual(ilike(recipeVersions.personalNotes, '%V60%'));
-  });
-});
-
-describe('rankRecipes', () => {
-  it('title match scores higher than productName match', () => {
-    const recipes = [
-      {
-        title: 'Untitled',
-        currentVersionId: 'v2',
-        versions: [{ id: 'v2', productName: 'Espresso Blend', personalNotes: null }],
-      },
-      {
-        title: 'Espresso',
-        currentVersionId: 'v1',
-        versions: [{ id: 'v1', productName: 'Generic', personalNotes: null }],
-      },
-    ];
-    const ranked = rankRecipes(recipes, 'espresso');
-    expect(ranked[0].title).toBe('Espresso'); // score 3 > score 2
+    expect(conditions[0].type).toBe('inArray');
+    expect(conditions[0].column).toBe(recipes.id);
+    const [titleIds, versionRecipeIds] = searchBranches(conditions[0]);
+    expect(titleIds.projection).toEqual({ id: recipes.id });
+    expect(titleIds.table).toBe(recipes);
+    expect(titleIds.where).toEqual(ilike(recipes.title, '%V60%'));
+    expect(versionRecipeIds.projection).toEqual({ id: recipeVersions.recipeId });
+    expect(versionRecipeIds.table).toBe(recipeVersions);
+    expect(versionRecipeIds.where).toEqual(
+      or(ilike(recipeVersions.productName, '%V60%'), ilike(recipeVersions.personalNotes, '%V60%')),
+    );
   });
 
-  it('equal scores preserve DB order (stable sort)', () => {
-    const recipes = [
-      {
-        title: 'Match A',
-        currentVersionId: 'v1',
-        versions: [{ id: 'v1', productName: null, personalNotes: null }],
-      },
-      {
-        title: 'Match B',
-        currentVersionId: 'v2',
-        versions: [{ id: 'v2', productName: null, personalNotes: null }],
-      },
-    ];
-    const ranked = rankRecipes(recipes, 'match');
-    expect(ranked[0].title).toBe('Match A'); // original order preserved
-    expect(ranked[1].title).toBe('Match B');
-  });
-
-  it('personalNotes match scores lowest', () => {
-    const recipes = [
-      {
-        title: 'Untitled',
-        currentVersionId: 'v1',
-        versions: [{ id: 'v1', productName: null, personalNotes: 'Try V60' }],
-      },
-      {
-        title: 'V60 Recipe',
-        currentVersionId: 'v2',
-        versions: [{ id: 'v2', productName: null, personalNotes: null }],
-      },
-    ];
-    const ranked = rankRecipes(recipes, 'v60');
-    expect(ranked[0].title).toBe('V60 Recipe'); // score 3 > score 1
-  });
-
-  it('scores best matching version across ALL versions, not just currentVersionId', () => {
-    const recipes = [
-      {
-        title: 'Untitled',
-        currentVersionId: 'v1',
-        versions: [
-          { id: 'v1', productName: null, personalNotes: null },
-          { id: 'v2', productName: 'Espresso Blend', personalNotes: null },
-        ],
-      },
-      {
-        title: 'Other',
-        currentVersionId: 'v3',
-        versions: [{ id: 'v3', productName: null, personalNotes: 'weak match' }],
-      },
-    ];
-    const ranked = rankRecipes(recipes, 'espresso');
-    // Recipe 0: productName match on v2 (non-current) → score 2
-    // Recipe 1: no match → score 0
-    expect(ranked[0].title).toBe('Untitled');
-  });
-
-  it('sanitizes wildcard characters in search term before scoring', () => {
-    const recipes = [
-      {
-        title: 'Espresso',
-        currentVersionId: 'v1',
-        versions: [{ id: 'v1', productName: null, personalNotes: null }],
-      },
-      {
-        title: 'Other',
-        currentVersionId: 'v2',
-        versions: [{ id: 'v2', productName: null, personalNotes: null }],
-      },
-    ];
-    // %espresso% should be sanitized to "espresso" and still match
-    const ranked = rankRecipes(recipes, '%espresso%');
-    expect(ranked[0].title).toBe('Espresso');
+  it('buildRecipeFilters: wildcard characters in search match literally', () => {
+    const [condition] = buildRecipeFilters({ search: ' 50%_\\ ' });
+    expect(searchPatterns(condition)).toEqual([
+      '%50\\%\\_\\\\%',
+      '%50\\%\\_\\\\%',
+      '%50\\%\\_\\\\%',
+    ]);
+    const [backslash] = buildRecipeFilters({ search: '\\' });
+    expect(searchPatterns(backslash)).toEqual(['%\\\\%', '%\\\\%', '%\\\\%']);
+    expect(buildRecipeFilters({ search: '   ' })).toEqual([]);
   });
 });
 

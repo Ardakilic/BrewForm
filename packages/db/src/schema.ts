@@ -203,7 +203,7 @@ export const recipes = pgTable(
      * Composite index for homepage feed and explore page queries.
      *
      * Serves `findMany` (model.ts:270) with default sortBy 'createdAt',
-     * `getFeed` (model.ts:679), and `findStarred` (model.ts:700).
+     * `getFeed`, and `findStarred` (all via `findListPage` in recipe/model.ts).
      * Visibility is equality; createdAt supports ORDER BY DESC without a
      * separate sort step.
      */
@@ -228,6 +228,13 @@ export const recipes = pgTable(
      * Postgres can scan this index backward for ASC queries.
      */
     index('recipe_created_at_id_idx').on(table.createdAt.desc(), table.id.desc()),
+    /**
+     * GIN trigram index (`pg_trgm`, ADR-017) serving the title branch of the recipe search
+     * union: `ilike(recipes.title, '%term%')` in `buildRecipeFilters` and the title part of
+     * the relevance score in `buildListPageQuery` (recipe/model.ts). Leading-wildcard
+     * `ILIKE` cannot use a B-tree. Requires the `enable_pg_trgm` migration.
+     */
+    index('recipe_title_trgm_idx').using('gin', table.title.op('gin_trgm_ops')),
   ],
 );
 
@@ -301,6 +308,24 @@ export const recipeVersions = pgTable(
      * subquery selects only `recipeId`.
      */
     index('recipe_version_coffee_variety_idx').on(table.coffeeVarietyId, table.recipeId),
+    /**
+     * GIN trigram index (`pg_trgm`, ADR-017) serving the version branch of the recipe search
+     * union and the version score subquery: `ilike(recipeVersions.productName, '%term%')` in
+     * `buildRecipeFilters` and `buildListPageQuery` (recipe/model.ts).
+     */
+    index('recipe_version_product_name_trgm_idx').using(
+      'gin',
+      table.productName.op('gin_trgm_ops'),
+    ),
+    /**
+     * GIN trigram index (`pg_trgm`, ADR-017) serving the version branch of the recipe search
+     * union and the version score subquery: `ilike(recipeVersions.personalNotes, '%term%')`
+     * in `buildRecipeFilters` and `buildListPageQuery` (recipe/model.ts).
+     */
+    index('recipe_version_personal_notes_trgm_idx').using(
+      'gin',
+      table.personalNotes.op('gin_trgm_ops'),
+    ),
     check('recipe_version_rating_check', sql`${table.rating} BETWEEN 1 AND 10`),
   ],
 );
