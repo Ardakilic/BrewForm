@@ -1261,7 +1261,7 @@ How to use this task list
 - [x] 23.17 Fix `noEmptyBlockStatements` violations: user-facing catches call `toast.error(t('…'))` (new strings added to BOTH `packages/shared/src/i18n/en.json` and `tr.json`), service catches log `log.error({ err, …ids }, '<fn> failed')`, genuine fire-and-forget catches get an explanatory comment inside the block
 - [x] 23.18 Fix production `noExplicitAny` diagnostics with typed fixes, or justified line-level `biome-ignore` comments at true library boundaries
 - [x] 23.19 Final commit of the group: set `linter.rules.suspicious.noExplicitAny`, `useAwait` and `noEmptyBlockStatements` to `"error"` in `biome.json` (keep the web `noRestrictedImports` override from task 14.3); `make lint` exits 0
-- [ ] 23.20 Group check: the lint fixes of tasks 23.16-23.18 touch production code, so run `make check`, `make check-tests`, `make lint` (exit 0 at error level), `make test-api` (after `make test-db-provision`), `make test-shared` (en/tr key parity for any new toast strings) and `make test-web`, then `make fmt` and `make fmt-check`. All must be green.
+- [x] 23.20 Group check: the lint fixes of tasks 23.16-23.18 touch production code, so run `make check`, `make check-tests`, `make lint` (exit 0 at error level), `make test-api` (after `make test-db-provision`), `make test-shared` (en/tr key parity for any new toast strings) and `make test-web`, then `make fmt` and `make fmt-check`. All must be green.
 
 ## 24. Docs & specs: docblock scanner, doc-drift guard and generated API reference (t8)
 
