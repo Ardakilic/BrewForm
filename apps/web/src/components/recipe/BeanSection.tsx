@@ -100,12 +100,12 @@ export function BeanSection(props: BeanSectionProps) {
   }
 
   /**
-   * Short inline badge: "14d" or "today".
+   * Short inline badge: "14d" / "14 gün" (`recipe.bean.daysShort`) or "today".
    * Used next to the date in the compact grid.
    */
   function shortRelative(result: RelativeDateResult): string {
     if (result.type === 'today') return t('common.today');
-    return `${result.days}d`;
+    return t('recipe.bean.daysShort').replace('{days}', String(result.days));
   }
 
   // Header: "X days post-roast · peak window"

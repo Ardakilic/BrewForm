@@ -475,6 +475,7 @@
   "recipe.bean.daysPostRoast": "{days} gün kavurma sonrası",
   "recipe.bean.daysSinceOpened": "{days} gün önce açıldı",
   "recipe.bean.daysAgo": "{days} gün önce",
+  "recipe.bean.daysShort": "{days} gün",
   "recipe.bean.peakWindow": "zirve penceresi",
   "recipe.tastingNotes.title": "Tadım Notları · SCAA 2016",
   "recipe.tastingNotes.brewerNote": "— Demlemecinin notu",

@@ -14,8 +14,13 @@
  * - `you@example.com` / `coffee_lover`: D40 — locale-neutral EXAMPLE values,
  *   not prose (recorded at RegisterPage.tsx).
  *
- * The `scanSource` fixtures below check the matcher itself, so a broken pattern cannot silently
- * match nothing again (the first version matched only single-quoted values and never fired).
+ * A second guard, `scanGluedUnits`, walks every production .ts/.tsx file for a hard-coded unit
+ * glued to an interpolated value (`{days}d` in JSX text, `${days}d` in a template literal), which
+ * stays English under `tr`; such a unit goes through a `t()` key with a placeholder instead.
+ *
+ * The `scanSource` and `scanGluedUnits` fixtures below check the matchers themselves, so a broken
+ * pattern cannot silently match nothing again (the first version matched only single-quoted
+ * values and never fired).
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -112,6 +117,90 @@ export function scanSource(source: string): LiteralViolation[] {
 }
 
 /**
+ * CSS units a style template may glue to a number (`${n}px`): style values, not text a reader sees.
+ * Duration units (`s`, `ms`) are not listed, since they are also what a UI label would glue.
+ */
+const CSS_UNITS = new Set([
+  'px',
+  'rem',
+  'em',
+  'vh',
+  'vw',
+  'dvh',
+  'svh',
+  'vmin',
+  'vmax',
+  'deg',
+  'fr',
+]);
+
+/**
+ * Glued units that are machine formats rather than UI text, per file (path relative to `src`).
+ * `components/seo/JsonLd.tsx`: schema.org JSON-LD read by crawlers (`recipeIngredient` grams,
+ * `recipeYield` millilitres), never rendered in the page.
+ */
+const GLUED_UNIT_ALLOWED: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ['components/seo/JsonLd.tsx', new Set(['g', 'ml'])],
+]);
+
+/** A `{…}` (JSX text) or `${…}` (template literal) interpolation followed by a lowercase word. */
+const GLUED_UNIT_RE = /\}(\p{Ll}+)/gu;
+
+/**
+ * `source` with its comments blanked (newlines kept, so line numbers still match): block and JSX
+ * comments, and `//` line comments that follow whitespace (a URL's `://` is kept).
+ */
+function stripComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' '))
+    .replace(/(^|\s)\/\/.*$/gm, (comment) => comment.replace(/[^\n]/g, ' '));
+}
+
+/**
+ * Every hard-coded unit glued to an interpolated value in one file's source: `{days}d` in JSX
+ * text or `${days}d` in a template literal (a day unit that stays English under `tr`). Lowercase
+ * words only, so ISO formats (`PT${m}M`, `…T${hh}`) pass; CSS units pass; `allowed` lists a
+ * file's machine-format units.
+ */
+export function scanGluedUnits(
+  source: string,
+  allowed: ReadonlySet<string> = new Set(),
+): LiteralViolation[] {
+  const violations: LiteralViolation[] = [];
+  const code = stripComments(source);
+  for (const match of code.matchAll(GLUED_UNIT_RE)) {
+    const unit = match[1];
+    if (CSS_UNITS.has(unit) || allowed.has(unit)) continue;
+    const lineStart = code.lastIndexOf('\n', match.index) + 1;
+    const lineEnd = code.indexOf('\n', match.index);
+    violations.push({
+      line: lineAt(code, match.index),
+      text: code.slice(lineStart, lineEnd === -1 ? undefined : lineEnd).trim(),
+    });
+  }
+  return violations;
+}
+
+/** Recursively collect production .ts and .tsx files (no tests, no declaration files). */
+function collectSourceFiles(dir: string): string[] {
+  const results: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) {
+      if (entry.name === 'node_modules' || entry.name === '__tests__') continue;
+      results.push(...collectSourceFiles(full));
+    } else if (
+      /\.tsx?$/.test(entry.name) &&
+      !entry.name.includes('.test.') &&
+      !entry.name.endsWith('.d.ts')
+    ) {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
+/**
  * A JSX source fixture: `#{` stands for a template interpolation opener, which a plain string
  * literal cannot spell without tripping `noTemplateCurlyInString`.
  */
@@ -171,7 +260,60 @@ describe('scanSource', () => {
   });
 });
 
+describe('scanGluedUnits', () => {
+  it.each([
+    ['a template literal day unit', src('return `#{result.days}d`;')],
+    ['a JSX text day unit', '<span>{days}d</span>'],
+    ['a glued unit followed by more text', src('const label = `#{n}d ago`;')],
+    ['a Turkish unit', src('const label = `#{n}sn`;')],
+    ['a duration unit, which is not a CSS unit here', src('const label = `#{n}s`;')],
+  ])('flags %s', (_case, source) => {
+    expect(scanGluedUnits(source)).toHaveLength(1);
+  });
+
+  it('reports the line of the glued unit', () => {
+    const source = ['function f() {', src('  return `#{result.days}d`;'), '}'].join('\n');
+    expect(scanGluedUnits(source)).toEqual([{ line: 2, text: expect.stringContaining('days}d') }]);
+  });
+
+  it('passes CSS units, ISO formats, comments and translated units', () => {
+    const source = [
+      src('const style = { width: `#{w}px`, paddingLeft: `#{d * 1.5}rem` };'),
+      src('const iso = `PT#{m}M#{s}S`;'),
+      src('const local = `#{y}-#{m}-#{d}T#{hh}:#{mm}`;'),
+      '/** An ordered array of {@link BrewMethodGroup}s. */',
+      '// fills the `{n}s` template',
+      "const age = t('recipe.bean.daysShort').replace('{days}', String(n));",
+    ].join('\n');
+    expect(scanGluedUnits(source)).toEqual([]);
+  });
+
+  it('passes a unit only where the file allowlist names it', () => {
+    const source = src('const yieldMl = `#{ml}ml`;');
+    expect(scanGluedUnits(source, new Set(['ml']))).toEqual([]);
+    expect(scanGluedUnits(source)).toHaveLength(1);
+  });
+});
+
 describe('i18n literals regression guard', () => {
+  it('has no hard-coded unit glued to an interpolated value in production .ts/.tsx', () => {
+    const files = collectSourceFiles(SRC_ROOT);
+    expect(files.length).toBeGreaterThan(100);
+    const violations: string[] = [];
+    for (const file of files) {
+      const relative = file.replace(`${SRC_ROOT}/`, '');
+      const allowed = GLUED_UNIT_ALLOWED.get(relative);
+      for (const v of scanGluedUnits(readFileSync(file, 'utf8'), allowed)) {
+        violations.push(`  ${relative}:${v.line} ${v.text}`);
+      }
+    }
+
+    expect(
+      violations,
+      `Found ${violations.length} hard-coded unit(s) glued to a value (use a t() key with a placeholder):\n${violations.join('\n')}`,
+    ).toEqual([]);
+  });
+
   it('has no untranslated placeholder/aria-label/alt/title attribute in any quoting form', () => {
     const files = collectTsxFiles(SRC_ROOT);
     expect(files.length).toBeGreaterThan(50);

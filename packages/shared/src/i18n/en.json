@@ -475,6 +475,7 @@
   "recipe.bean.daysPostRoast": "{days} days post-roast",
   "recipe.bean.daysSinceOpened": "{days} days since opened",
   "recipe.bean.daysAgo": "{days} days ago",
+  "recipe.bean.daysShort": "{days}d",
   "recipe.bean.peakWindow": "peak window",
   "recipe.tastingNotes.title": "Tasting Notes · SCAA 2016",
   "recipe.tastingNotes.brewerNote": "— Brewer's note",

@@ -129,6 +129,38 @@ describe('BeanSection — conditional rendering unit tests', () => {
     expect(screen.getByText('Colombia')).toBeInTheDocument();
   });
 
+  it('renders the short ages through the en day key', () => {
+    render(
+      withI18n(
+        <BeanSection roastDate="2026-01-01" packageOpenDate="2026-02-01" grindDate="2026-02-02" />,
+      ),
+    );
+    for (const age of ['7d', '3d', '1d']) {
+      expect(screen.getByText(age)).toBeInTheDocument();
+    }
+  });
+
+  it('renders the short ages in Turkish under tr, never a hard-coded "d" unit', () => {
+    localStorage.setItem('brewform_locale', 'tr');
+    try {
+      const { container } = render(
+        withI18n(
+          <BeanSection
+            roastDate="2026-01-01"
+            packageOpenDate="2026-02-01"
+            grindDate="2026-02-02"
+          />,
+        ),
+      );
+      for (const age of ['7 gün', '3 gün', '1 gün']) {
+        expect(screen.getByText(age)).toBeInTheDocument();
+      }
+      expect(container.textContent).not.toMatch(/\d+d\b/);
+    } finally {
+      localStorage.removeItem('brewform_locale');
+    }
+  });
+
   it('stacks the date grid below sm and lets each date and age wrap (320 px, V1)', () => {
     render(
       withI18n(
