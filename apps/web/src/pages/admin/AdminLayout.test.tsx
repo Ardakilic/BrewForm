@@ -67,3 +67,22 @@ describe('AdminLayout — tr locale spot-check', () => {
     expect(screen.getByText('Yönetici Paneli')).toBeInTheDocument();
   });
 });
+
+describe('AdminLayout — print', () => {
+  it('marks the admin navigation print-hidden (print hides only marked elements, V2)', () => {
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/admin',
+          element: <AdminLayout />,
+          children: [{ path: '*', element: <div /> }],
+        },
+      ],
+      { initialEntries: ['/admin'] },
+    );
+
+    render(<RouterProvider router={router} />);
+
+    expect(screen.getByRole('navigation')).toHaveClass('print-hidden');
+  });
+});

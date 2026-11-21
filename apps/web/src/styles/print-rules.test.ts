@@ -10,6 +10,11 @@
  * assert that). Vitest stubs CSS imports (even `?raw`), so the stylesheet is read
  * with `node:fs` through `test-utils/source-scan.ts`; like the other source scans,
  * this file is listed in `apps/web/tsconfig.json` → `exclude`.
+ *
+ * Focus mode: `.focus-mode` sits on the page's own wrapper inside the layout's
+ * `<main>`, so a `.focus-mode footer` rule never reached the site footer and hid
+ * only the brewer-note credit (`TastingNotesSection`'s `<blockquote><footer>`).
+ * No screen rule may hide a footer, header or nav inside the focus-mode content.
  */
 import { describe, expect, it } from 'vitest';
 import { readSource } from '../test-utils/source-scan.ts';
@@ -69,5 +74,40 @@ describe('print stylesheet (globals.css)', () => {
     for (const selector of rules.flatMap((rule) => rule.selectors)) {
       expect(selector).not.toMatch(/(?:^|[\s>+~(])(?:button|header|footer|nav)\b/);
     }
+  });
+});
+
+/** `source` without comments and without its `@media print { … }` blocks: the screen rules. */
+function screenCss(source: string): string {
+  let code = source.replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const block of printBlocks(source)) code = code.replace(block, '');
+  return code;
+}
+
+describe('focus mode (globals.css)', () => {
+  it('keeps the brewer-note credit: no screen rule hides a footer, header or nav in the content', () => {
+    document.body.innerHTML = `
+      <main>
+        <div class="focus-mode">
+          <section class="card">
+            <header>Tasting notes</header>
+            <nav>Filters</nav>
+            <blockquote><p>Bloom longer.</p><footer>Brewer note</footer></blockquote>
+          </section>
+        </div>
+      </main>`;
+    const hiding = rulesOf(screenCss(css))
+      .filter((rule) => /display\s*:\s*none/.test(rule.body))
+      .flatMap((rule) => rule.selectors);
+    const content = [
+      ...document.querySelectorAll('.focus-mode footer, .focus-mode header, .focus-mode nav'),
+    ];
+    expect(content).toHaveLength(3);
+    const hidden = content.flatMap((el) =>
+      hiding
+        .filter((selector) => el.matches(selector))
+        .map((selector) => `${el.tagName}: ${selector}`),
+    );
+    expect(hidden).toEqual([]);
   });
 });

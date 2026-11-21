@@ -88,3 +88,54 @@ accent gradient under its curve (`TIMELINE_GRADIENT_OPACITY.top` in
 
 - **WHEN** the contrast unit test composites `--accent-primary` at `TIMELINE_GRADIENT_OPACITY.top` over `--bg-tertiary` and over `--bg-secondary` for each theme
 - **THEN** `--text-primary` is at least 4.5:1 against both composites and against plain `--bg-tertiary` and `--bg-secondary`
+
+### Requirement: Durations and derived metrics render through shared locale-aware formatters
+
+Every user-visible duration, brew ratio, flow rate, average rating and stat-tile number in chart and stat displays SHALL be formatted by shared helpers in `apps/web/src/utils/format.ts` that take the active `I18nContext` locale.
+
+- `formatDuration(seconds, locale)`: compact form with at most two units (`45s`, `4m 30s`,
+  `12h`, `1h 30m` in en; `45 sn`, `4 dk 30 sn`, `12 sa` in tr), with unit text from the
+  `chart.duration.*` i18n keys.
+- `formatDecimal(value, locale, maxFractionDigits)`: `Intl.NumberFormat`-based, with the locale
+  decimal separator.
+- `formatFlowRate(value, locale)`: a flow rate in ml/s, formatted as
+  `formatDecimal(value, locale, 1)` except that a positive rate that would round to 0 at one
+  decimal keeps two significant digits (500 ml over 12 h: `0.012` in en, `0,012` in tr), so a
+  real flow never reads `0 ml/s`. Zero, negative and non-finite input format as `formatDecimal`
+  does.
+- The existing `formatNumber` for integer grouping.
+
+Call sites:
+
+- `stat-cards.ts`: time via `formatDuration`; ratio as `1:` + `formatDecimal(ratio, 1)`;
+  extraction yield with one decimal.
+- `BrewTimeline`: phase values, end tick and flow rate (`formatFlowRate(flowRate, locale)` +
+  `ml/s`).
+- `RecipeComparePage`: durations and ratio. `VersionDiffPage`: durations, ratio and flow rate
+  (`formatFlowRate`).
+- `RecipeVersionsPage`: extraction time.
+- `RecipeBrewStats`: average rating.
+- `StarRating`: numeric label.
+- `AdminDashboard`: stat tiles via `formatNumber`.
+
+No stat value SHALL overflow its stat card at the md and lg grid widths.
+
+#### Scenario: Long brew time in a stat card
+
+- **WHEN** `buildStatCards` runs for `extractionTimeSeconds: 43200` under en and tr
+- **THEN** the time card value is `12h` (en) and `12 sa` (tr), not `43200s`
+
+#### Scenario: Unrounded ratio and flow rate
+
+- **WHEN** a version has `brewRatio: 2.2222223` and `flowRate: 1.2857143`
+- **THEN** the ratio stat card shows `1:2.2` (en) or `1:2,2` (tr), the timeline header shows `1.3 ml/s` (en) or `1,3 ml/s` (tr), and the compare page shows the same rounded ratio
+
+#### Scenario: A slow positive flow rate never shows as zero
+
+- **WHEN** a version brews 500 ml over 12 hours (`extractionTimeSeconds: 43200`, `flowRate: 500 / 43200`, about 0.0116)
+- **THEN** the timeline header and the version diff show `0.012 ml/s` (en) or `0,012 ml/s` (tr), not `0 ml/s`
+
+#### Scenario: Ratio card fits at md width
+
+- **WHEN** the stat-card geometry test estimates the widest formatted value for each card at 24px bold
+- **THEN** it is at most 100px, the inner card width at the md 5-column grid

@@ -19,7 +19,7 @@ export function AdminLayout() {
         <h2 className="text-lg font-bold mb-6" style={{ color: 'var(--accent-primary)' }}>
           {t('admin.title')}
         </h2>
-        <nav className="flex flex-col gap-1">
+        <nav className="print-hidden flex flex-col gap-1">
           <AdminNavLink to="/admin">{t('admin.dashboard')}</AdminNavLink>
           <AdminNavLink to="/admin/users">{t('admin.users')}</AdminNavLink>
           <AdminNavLink to="/admin/recipes">{t('admin.recipes')}</AdminNavLink>

@@ -128,9 +128,11 @@ On success (action returns `{ ok: true, ... }`):
 3. `fetcher.data` SHALL be set to the returned object, and the like, favourite and follow buttons SHALL show the state it carries without a loader revalidation (they submit with `defaultShouldRevalidate: false`)
 
 The interactive rating SHALL follow the same rule: while the rate action is pending it shows the
-submitted value; when it settles with `{ ok: false }` it shows the saved rating from the loader again
-(the slider drops its committed draft when `busy` clears); on `{ ok: true }` it shows the value from
-the revalidated loader.
+submitted value; when it settles with `{ ok: false }` it shows the saved rating from the loader again;
+on `{ ok: true }` it shows the value from the revalidated loader. `StarRating` drops its unsaved
+(committed, not yet saved) stars on each new settled action result it receives (the fetcher's
+`data`) while not busy, rather than on a rendered `busy` true → false transition, so a failure that
+settles at once, before a busy render is committed, also rolls back.
 
 #### Scenario: Like button reverts on API failure
 
@@ -168,6 +170,11 @@ the revalidated loader.
 
 - **WHEN** a user whose saved rating is 6 commits 8 and the rate action returns `{ ok: false }`
 - **THEN** the rating slider SHALL show 6 again and an error toast SHALL be shown
+
+#### Scenario: A failed rating after an earlier successful rating returns to the last confirmed value
+
+- **WHEN** on the same page a user commits 8, the rate action returns `{ ok: true }` and the revalidated loader shows 8, and the user then commits 7 and the rate action fails at once (for example a network failure)
+- **THEN** the rating slider SHALL show 8, the last confirmed value, not the unsaved 7, an error toast SHALL be shown, and the recipe detail loader SHALL NOT be revalidated
 
 #### Scenario: Fetcher data contains actionable error object on failure
 

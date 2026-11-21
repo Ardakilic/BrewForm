@@ -80,10 +80,10 @@ detail page, it is never indexed on its own:
 
 There is no separate print route. The detail page's Print button calls the browser's print dialog,
 and a print stylesheet (`@media print` in `globals.css`) hides only elements marked with the
-`print-hidden` class: the site chrome (navbar, footer, breadcrumb, banners, toasts) and the real
-controls (the action buttons, the sidebar, the comments, "Brew again"). Content that renders as
-buttons or links, such as the equipment items and the taste chips, still prints
-(`apps/web/src/styles/print-rules.test.ts`).
+`print-hidden` class: the site chrome (navbar, footer, breadcrumb, banners, toasts, the admin
+sidebar navigation) and the real controls (the action buttons, the sidebar, the comments, "Brew
+again"). Content that renders as buttons or links, such as the equipment items and the taste
+chips, still prints (`apps/web/src/styles/print-rules.test.ts`).
 
 ---
 

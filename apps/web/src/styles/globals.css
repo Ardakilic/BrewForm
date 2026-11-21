@@ -241,21 +241,6 @@
   .btn-danger:focus-visible {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 30%, transparent);
   }
-
-  .focus-mode header,
-  .focus-mode footer,
-  .focus-mode nav,
-  .focus-mode .social-section,
-  .focus-mode .comments-section {
-    display: none !important;
-  }
-
-  .focus-mode main {
-    max-width: 42rem;
-    margin: 0 auto;
-    font-size: 1.125rem;
-    line-height: 1.8;
-  }
 }
 
 .print-only {
